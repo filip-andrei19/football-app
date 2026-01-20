@@ -25,7 +25,6 @@
     --ring: #020817;
     --radius: 0.5rem;
   }
-
   .dark {
     --background: #020817;
     --foreground: #f8fafc;
@@ -59,60 +58,58 @@
 }
 
 /* ==========================================================
-   🛠️ CORECCȚII FORȚATE PENTRU MOBIL (V2.0 - AGRESIV)
+   📱 MOBILE FIX V3.0 - MENIU (NAVBAR) + LAYOUT
    ========================================================== */
 
-/* 1. Resetare globală pentru imagini (să nu iasă din ecran) */
-img, video, iframe {
+/* 1. Imaginile să nu iasă din ecran */
+img, video {
   max-width: 100% !important;
   height: auto !important;
 }
 
-/* 2. Ascunde scroll-ul orizontal care strică site-ul pe telefon */
+/* 2. Ascunde scroll orizontal */
 html, body {
   overflow-x: hidden;
-  max-width: 100vw;
+  width: 100%;
 }
 
-/* --- REGULI STRICT PENTRU ECRANE MICI (TELEFON) --- */
+/* --- REGULI STRICT PENTRU TELEFON (sub 768px) --- */
 @media (max-width: 768px) {
-  
-  /* A. FORȚEAZĂ GRID-URILE LA 1 COLOANĂ 
-     Aceasta linie caută orice element care are clasa 'grid-cols-...' 
-     (de ex: grid-cols-3) și îl obligă să fie 1 coloană pe telefon */
+
+  /* A. MENIUL DE NAVIGARE (Header-ul) 
+     Îl forțăm să se facă vertical, ca o listă, ca să vezi toate butoanele */
+  header, nav {
+    flex-direction: column !important;
+    height: auto !important;
+    padding: 1rem !important;
+    position: relative !important; /* Asigură că nu e acoperit */
+    z-index: 50 !important;        /* Îl pune deasupra la orice */
+  }
+
+  /* Containerul cu link-uri din meniu */
+  header > div, nav > div, .flex-row {
+    flex-direction: column !important;
+    width: 100% !important;
+    align-items: center !important;
+    gap: 15px !important; /* Spațiu între logo și butoane */
+  }
+
+  /* Link-urile și Butoanele de Log in */
+  nav a, nav button, header button {
+    width: 100% !important;
+    max-width: 300px !important; /* Să nu fie chiar cât tot ecranul */
+    margin-bottom: 5px !important;
+    display: block !important;
+    text-align: center !important;
+    padding: 10px !important; /* Să fie ușor de apăsat cu degetul */
+  }
+
+  /* B. CONȚINUTUL PAGINII (Grid-uri la 1 coloană) */
   [class*="grid-cols-"] {
     grid-template-columns: 1fr !important;
   }
 
-  /* B. FORȚEAZĂ SPAȚIEREA (PADDING) */
-  .container, section, main, .p-24, .p-10 {
-    padding-left: 1rem !important;  /* 16px */
-    padding-right: 1rem !important; /* 16px */
-    padding-top: 2rem !important;
-    padding-bottom: 2rem !important;
-    width: 100% !important;
-  }
-
-  /* C. REPARĂ FLEXBOX-UL (ELEMENTE PUSE PE RÂND) 
-     Dacă ai elemente puse stânga-dreapta care nu încap, 
-     le forțăm să se pună sus-jos, DAR excludem navbar-ul și butoanele mici */
-  .flex:not(button):not(nav div) {
-    flex-wrap: wrap !important;
-  }
-
-  /* D. AJUSTARE TEXT */
-  h1, .text-4xl, .text-5xl {
-    font-size: 1.8rem !important;
-    line-height: 1.2 !important;
-  }
-  
-  p, span, div {
-    font-size: 1rem !important; /* Text citibil, nu minuscul */
-  }
-
-  /* E. CARDURI */
-  .card, .border {
-    width: 100% !important;
-    margin-bottom: 1rem !important;
-  }
+  /* C. TEXT ȘI SPAȚIERE */
+  h1 { font-size: 1.8rem !important; text-align: center; }
+  .container { padding: 1rem !important; }
 }
