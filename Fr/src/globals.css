@@ -28,6 +28,7 @@
   .dark {
     --background: #020817;
     --foreground: #f8fafc;
+    /* ...restul culorilor rămân la fel... */
     --card: #020817;
     --card-foreground: #f8fafc;
     --popover: #020817;
@@ -49,67 +50,66 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
 }
 
 /* ==========================================================
-   📱 MOBILE FIX V3.0 - MENIU (NAVBAR) + LAYOUT
+   📱 MOBILE FIX V4.0 - MENIUL COMPLET
    ========================================================== */
 
-/* 1. Imaginile să nu iasă din ecran */
-img, video {
-  max-width: 100% !important;
-  height: auto !important;
+@layer utilities {
+  img, video { max-width: 100% !important; height: auto !important; }
 }
 
-/* 2. Ascunde scroll orizontal */
-html, body {
-  overflow-x: hidden;
-  width: 100%;
-}
+html, body { overflow-x: hidden; width: 100%; }
 
 /* --- REGULI STRICT PENTRU TELEFON (sub 768px) --- */
 @media (max-width: 768px) {
 
-  /* A. MENIUL DE NAVIGARE (Header-ul) 
-     Îl forțăm să se facă vertical, ca o listă, ca să vezi toate butoanele */
+  /* 1. HEADER & NAVIGARE - FORȚARE AFIȘARE
+     Caută orice div ascuns (hidden) din header și îl face vizibil */
   header, nav {
     flex-direction: column !important;
     height: auto !important;
-    padding: 1rem !important;
-    position: relative !important; /* Asigură că nu e acoperit */
-    z-index: 50 !important;        /* Îl pune deasupra la orice */
+    padding-bottom: 20px !important;
   }
 
-  /* Containerul cu link-uri din meniu */
-  header > div, nav > div, .flex-row {
+  /* Asta e regula MAGICĂ: anulează clasa 'hidden' de la Tailwind */
+  header div, nav div, header ul, nav ul, .hidden, .md\:flex {
+    display: flex !important;
     flex-direction: column !important;
     width: 100% !important;
     align-items: center !important;
-    gap: 15px !important; /* Spațiu între logo și butoane */
+    gap: 10px !important;
   }
 
-  /* Link-urile și Butoanele de Log in */
-  nav a, nav button, header button {
-    width: 100% !important;
-    max-width: 300px !important; /* Să nu fie chiar cât tot ecranul */
-    margin-bottom: 5px !important;
+  /* 2. STILIZARE BUTOANE MENIU */
+  header a, header button, nav a, nav button {
     display: block !important;
+    width: 90% !important;       /* Nu chiar tot ecranul */
+    padding: 12px !important;    /* Butoane mai grase */
+    margin: 5px 0 !important;
     text-align: center !important;
-    padding: 10px !important; /* Să fie ușor de apăsat cu degetul */
+    background-color: #f1f5f9;   /* Un fundal gri deschis ca să le vezi */
+    border-radius: 8px !important;
+    color: #0f172a !important;   /* Text negru */
   }
 
-  /* B. CONȚINUTUL PAGINII (Grid-uri la 1 coloană) */
+  /* Butonul de Login să iasă în evidență */
+  header button:last-child {
+    background-color: #0f172a !important; /* Negru */
+    color: white !important;
+  }
+
+  /* 3. INPUTUL DE CĂUTARE (din imaginea ta) */
+  input[type="text"] {
+    font-size: 16px !important; /* Să nu facă zoom aiurea */
+    padding: 15px !important;
+  }
+  
+  /* 4. LISTA DE JUCĂTORI */
   [class*="grid-cols-"] {
     grid-template-columns: 1fr !important;
   }
-
-  /* C. TEXT ȘI SPAȚIERE */
-  h1 { font-size: 1.8rem !important; text-align: center; }
-  .container { padding: 1rem !important; }
 }
