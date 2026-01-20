@@ -23,7 +23,7 @@ export function FutureStarsSection() {
   useEffect(() => {
     const fetchYoungTalents = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/sport/players');
+        const response = await fetch('https://football-backend-m2a4.onrender.com/api/sport/players');
         const data = await response.json();
         
         // --- LOGICA DE FILTRARE ---

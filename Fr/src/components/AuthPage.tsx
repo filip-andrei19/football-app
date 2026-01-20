@@ -19,8 +19,8 @@ export function AuthPage({ onClose }: { onClose: () => void }) {
 
     // URL-ul se schimbă în funcție de acțiune
     const endpoint = isSignUp 
-      ? 'http://localhost:3000/api/users/register' 
-      : 'http://localhost:3000/api/users/login';
+      ? 'https://football-backend-m2a4.onrender.com/api/users/register' 
+      : 'https://football-backend-m2a4.onrender.com/api/users/login';
 
     // Pregătim datele pentru trimis
     const payload = isSignUp 

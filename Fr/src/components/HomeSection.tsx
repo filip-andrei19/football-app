@@ -25,7 +25,7 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/sport/players');
+        const response = await fetch('https://football-backend-m2a4.onrender.com/api/sport/players');
         if (!response.ok) throw new Error(`Eroare server: ${response.status}`);
         const data = await response.json();
         setPlayers(data);

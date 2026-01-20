@@ -3,7 +3,7 @@
 Toate răspunsurile de succes sunt returnate în format JSON.
 Erorile au formatul standard: `{ "error": "Mesajul erorii" }`.
 
-Base URL: `http://localhost:3000/api`
+Base URL: `https://football-backend-m2a4.onrender.com/api`
 
 ## 1. 👤 Users (Utilizatori)
 
