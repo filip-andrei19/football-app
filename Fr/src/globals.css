@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
 @layer base {
   :root {
     --background: #ffffff;
@@ -9,68 +9,104 @@
 
     --card: #ffffff;
     --card-foreground: #020817;
- 
+
     --popover: #ffffff;
     --popover-foreground: #020817;
- 
+
     --primary: #0f172a;
     --primary-foreground: #f8fafc;
- 
+
     --secondary: #f1f5f9;
     --secondary-foreground: #0f172a;
- 
+
     --muted: #f1f5f9;
     --muted-foreground: #64748b;
- 
+
     --accent: #f1f5f9;
     --accent-foreground: #0f172a;
- 
+
     --destructive: #ef4444;
     --destructive-foreground: #f8fafc;
- 
+
     --border: #e2e8f0;
     --input: #e2e8f0;
     --ring: #020817;
- 
+
     --radius: 0.5rem;
   }
- 
+
   .dark {
     --background: #020817;
     --foreground: #f8fafc;
- 
+
     --card: #020817;
     --card-foreground: #f8fafc;
- 
+
     --popover: #020817;
     --popover-foreground: #f8fafc;
- 
+
     --primary: #f8fafc;
     --primary-foreground: #0f172a;
- 
+
     --secondary: #1e293b;
     --secondary-foreground: #f8fafc;
- 
+
     --muted: #1e293b;
     --muted-foreground: #94a3b8;
- 
+
     --accent: #1e293b;
     --accent-foreground: #f8fafc;
- 
+
     --destructive: #7f1d1d;
     --destructive-foreground: #f8fafc;
- 
+
     --border: #1e293b;
     --input: #1e293b;
     --ring: #cbd5e1;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ==========================================================
+   👇 DOAR ACEASTA ESTE PARTEA NOUĂ PENTRU TELEFON 👇
+   ========================================================== */
+
+@layer utilities {
+  /* 1. Previne imaginile să iasă din ecran pe telefon */
+  img, video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+}
+
+/* Reguli care se activează doar pe ecrane mici (sub 640px) */
+@media (max-width: 640px) {
+  
+  /* 2. Adaugă puțin spațiu la margini ca să nu fie textul lipit de ecran */
+  body, main, section, .container {
+    padding-left: 1rem;   /* aprox 16px */
+    padding-right: 1rem;
+    overflow-x: hidden;   /* Ascunde bara de scroll orizontală */
+  }
+
+  /* 3. Micșorează titlurile foarte mari pe telefon */
+  h1 {
+    font-size: 1.75rem !important; /* Mai mic decât pe PC */
+    line-height: 1.2;
+    word-wrap: break-word; /* Rupe cuvintele lungi */
+  }
+
+  /* 4. Butoanele și input-urile să fie mai ușor de apăsat cu degetul */
+  button, input, select {
+    min-height: 44px;
   }
 }
