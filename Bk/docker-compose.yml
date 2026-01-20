@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # Serviciul Aplicației Tale
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      # IMPORTANT: În Docker, host-ul bazei de date nu este 'localhost', ci numele serviciului ('mongo')
+      - MONGO_URI=mongodb://mongo:27017/football_db
+      - JWT_SECRET=secretul_tau_pentru_docker
+    depends_on:
+      - mongo
+    restart: always
+
+  # Serviciul Bazei de Date
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      # Asta asigură că datele nu se pierd când oprești containerul
+      - mongo-data:/data/db
+    restart: always
+
+volumes:
+  mongo-data:

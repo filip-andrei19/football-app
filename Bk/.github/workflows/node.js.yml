@@ -1,0 +1,39 @@
+name: Node.js CI
+
+# Când să ruleze? La fiecare push sau pull request pe ramura 'main'
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x] # Putem testa pe mai multe versiuni odată
+
+    steps:
+    # 1. Copiază codul din repo
+    - uses: actions/checkout@v3
+
+    # 2. Instalează Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    # 3. Instalează dependențele
+    - name: Install dependencies
+      run: npm install
+
+    # 4. Rulează testele (Jest)
+    - name: Run Tests
+      run: npm test
+      env:
+        # Setăm variabile dummy pentru teste (mock-urile oricum nu folosesc DB real)
+        JWT_SECRET: "test_secret"
+        MONGO_URI: "mongodb://localhost:27017/test_db"
