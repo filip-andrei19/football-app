@@ -6,7 +6,6 @@ import { HomeSection } from './components/HomeSection';
 import { DiasporaSection } from './components/DiasporaSection';
 import { FutureStarsSection } from './components/FutureStarsSection';
 import { UnsungHeroesSection } from './components/UnsungHeroesSection';
-// AICI ESTE SCHIMBAREA: Importăm componenta reală, nu mai folosim textul "În curând"
 import { CollectorsHubSection } from './components/CollectorsHubSection';
 
 // --- HELPER BUTTON ---
@@ -15,13 +14,12 @@ const Button = ({ children, onClick, variant, className, type, disabled }: any) 
   const variants: any = {
     default: "bg-blue-600 text-white hover:bg-blue-700 shadow-md",
     ghost: "hover:bg-gray-100 text-gray-700",
+    secondary: "bg-gray-100 text-gray-900", // Am adaugat stil pentru buton activ
     outline: "border border-gray-200 bg-white hover:bg-gray-50",
     destructive: "text-red-600 hover:bg-red-50"
   };
   return <button type={type || "button"} onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant || 'default']} ${className || ''}`}>{children}</button>;
 };
-
-// AM ȘTERS LINIA CU "const CollectorsHubSection = ... (În curând)" PENTRU CĂ ACUM AVEM IMPORTUL SUS
 
 // --- AUTH MODAL (SIMPLU) ---
 const AuthPage = ({ onClose, onLoginSuccess }: any) => {
@@ -29,7 +27,6 @@ const AuthPage = ({ onClose, onLoginSuccess }: any) => {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     
-    // Folosim name, email, password (Engleza)
     const [formData, setFormData] = useState({
         name: "", 
         email: "",
@@ -134,7 +131,6 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   
-  // Doar starea userului
   const [user, setUser] = useState<{name: string, email: string} | null>(null);
   const isLoggedIn = user !== null;
 
@@ -161,7 +157,7 @@ export default function App() {
       case 'diaspora': return <DiasporaSection />;
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
-      case 'collectors': return <CollectorsHubSection />; // Acum va afișa componenta reală
+      case 'collectors': return <CollectorsHubSection />;
       default: return <HomeSection onNavigate={setActiveSection} />;
     }
   };
@@ -171,6 +167,7 @@ export default function App() {
       <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
+            {/* LOGO */}
             <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => setActiveSection('home')}>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 via-yellow-500 to-red-600 shadow-md">
                 <span className="text-lg font-bold text-white">RO</span>
@@ -180,6 +177,7 @@ export default function App() {
               </div>
             </div>
 
+            {/* DESKTOP MENU (ASCUNS PE MOBIL) */}
             <nav className="hidden md:flex items-center gap-1">
               {navigation.map((item) => (
                   <Button key={item.id} variant={activeSection === item.id ? 'secondary' : 'ghost'} onClick={() => setActiveSection(item.id)} className="gap-2">
@@ -188,6 +186,7 @@ export default function App() {
               ))}
             </nav>
 
+            {/* ACTIONS RIGHT */}
             <div className="flex items-center gap-2">
               <div className="hidden md:flex">
                 {isLoggedIn ? (
@@ -203,12 +202,56 @@ export default function App() {
                     </Button>
                 )}
               </div>
+              
+              {/* MOBILE HAMBURGER BUTTON */}
               <Button variant="ghost" className="md:hidden px-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
                 {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </Button>
             </div>
           </div>
         </div>
+
+        {/* ------------------------------------------- */}
+        {/* MENIUL DE MOBIL (Apare când apeși pe iconiță) */}
+        {/* ------------------------------------------- */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 shadow-lg flex flex-col gap-2">
+            
+            {/* NAVIGAȚIE */}
+            {navigation.map((item) => (
+              <Button 
+                key={item.id} 
+                variant={activeSection === item.id ? 'secondary' : 'ghost'} 
+                onClick={() => {
+                   setActiveSection(item.id);
+                   setMobileMenuOpen(false); // Închide meniul după click
+                }} 
+                className="w-full justify-start gap-3 h-12 text-base"
+              >
+                <item.icon className="h-5 w-5 text-gray-500" />
+                {item.label}
+              </Button>
+            ))}
+
+            <div className="border-t border-gray-100 my-2"></div>
+
+            {/* LOGIN / LOGOUT PE MOBIL */}
+            {isLoggedIn ? (
+               <div className="flex flex-col gap-2">
+                 <div className="px-4 py-2 text-sm text-gray-500 font-semibold">
+                    Logat ca {user?.name}
+                 </div>
+                 <Button variant="destructive" onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="w-full justify-start gap-3">
+                    <LogOut className="h-5 w-5" /> Deconectare
+                 </Button>
+               </div>
+            ) : (
+               <Button variant="default" onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="w-full justify-center gap-2 bg-blue-900 text-white py-6">
+                  <LogIn className="h-5 w-5" /> Intră în cont
+               </Button>
+            )}
+          </div>
+        )}
       </header>
 
       <main className="flex-1 container mx-auto px-4 py-8 animate-in fade-in duration-500">

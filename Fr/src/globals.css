@@ -6,7 +6,6 @@
   :root {
     --background: #ffffff;
     --foreground: #020817;
-    /* ... restul variabilelor tale standard ... */
     --card: #ffffff;
     --card-foreground: #020817;
     --popover: #ffffff;
@@ -26,6 +25,9 @@
     --ring: #020817;
     --radius: 0.5rem;
   }
+  .dark {
+    /* ... păstrează culorile dark mode dacă vrei, sau lasă gol ... */
+  }
 }
 
 @layer base {
@@ -33,83 +35,7 @@
   body { @apply bg-background text-foreground; }
 }
 
-/* ==========================================================
-   🛠️ REPARAȚIE CAPITALĂ MENIU MOBIL
-   ========================================================== */
-
 @layer utilities {
-  img, video { max-width: 100% !important; height: auto !important; }
-}
-
-html, body { 
-  overflow-x: hidden; 
-  width: 100%; 
-}
-
-@media (max-width: 768px) {
-
-  /* 1. HEADER-UL (Cutia principală de sus) */
-  header, nav {
-    background-color: #ffffff !important; /* ALB SOLID - CRITIC! */
-    position: relative !important;
-    z-index: 999 !important; /* Să stea peste orice alt text */
-    flex-direction: column !important;
-    height: auto !important;
-    padding: 10px !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* Umbră fină sub meniu */
-  }
-
-  /* 2. LOGO-UL și CONTAINERUL INTERN */
-  header > div, nav > div, .container {
-    flex-direction: column !important;
-    width: 100% !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 15px !important;
-  }
-
-  /* 3. ASCUNDE BARĂ NAVIGAȚIE GOALĂ (acea bară albastră de jos din poză) */
-  nav:empty {
-    display: none !important;
-  }
-
-  /* 4. BUTOANELE DE MENIU (Home, Diaspora, etc.) */
-  header a, nav a, header button, nav button, .flex-row a {
-    display: flex !important;
-    align-items: center !important; /* Centrează iconița cu textul vertical */
-    justify-content: center !important; /* Centrează totul pe mijloc */
-    width: 100% !important;
-    max-width: 350px !important; /* Să nu fie prea lat pe tablete */
-    padding: 12px 20px !important;
-    margin-bottom: 8px !important;
-    
-    background-color: #f8fafc !important; /* Gri foarte deschis */
-    color: #0f172a !important; /* Scris Negru */
-    border: 1px solid #e2e8f0 !important; /* Bordură fină */
-    border-radius: 12px !important;
-    font-weight: 600 !important;
-    font-size: 16px !important;
-    text-decoration: none !important;
-    height: auto !important;
-  }
-
-  /* 5. BUTONUL DE LOGIN/SIGN IN (Să fie diferit) */
-  /* Îl căutăm pe cel care are text alb sau e ultimul */
-  header button:last-of-type, nav button:last-of-type, .bg-primary {
-    background-color: #0f172a !important; /* Negru/Bleumarin */
-    color: white !important;
-    border: none !important;
-    margin-top: 10px !important; /* Puțin spațiu extra înainte de Login */
-  }
-
-  /* 6. ICONIȚELE DIN MENIU */
-  /* Dacă ai iconițe (svg), pune spațiu între ele și text */
-  header svg, nav svg {
-    margin-right: 10px !important;
-  }
-
-  /* 7. REPARĂ "CĂUTĂ JUCĂTORI" care intra sub meniu */
-  main {
-    padding-top: 20px !important;
-  }
+  /* Doar siguranța pentru imagini */
+  img, video { max-width: 100%; height: auto; }
 }
