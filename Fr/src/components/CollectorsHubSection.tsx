@@ -53,7 +53,7 @@ export function CollectorsHubSection() {
 
   const fetchListings = async () => {
     try {
-        const response = await fetch('http://localhost:3000/api/listings');
+        const response = await fetch('https://football-backend-m2a4.onrender.com/api/listings');
         const data = await response.json();
         setListings(data);
     } catch (error) {
@@ -82,7 +82,7 @@ export function CollectorsHubSection() {
   const handleDelete = async (id: string) => {
     if (window.confirm('Sigur vrei să ștergi acest anunț definitiv?')) {
         try {
-            await fetch(`http://localhost:3000/api/listings/${id}`, {
+            await fetch(`https://football-backend-m2a4.onrender.com/api/listings/${id}`, {
                 method: 'DELETE'
             });
             // Actualizăm lista locală după ștergere
@@ -106,7 +106,7 @@ export function CollectorsHubSection() {
     };
 
     try {
-        const response = await fetch('http://localhost:3000/api/listings', {
+        const response = await fetch('https://football-backend-m2a4.onrender.com/api/listings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(itemToSend)

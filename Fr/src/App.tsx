@@ -44,7 +44,7 @@ const AuthPage = ({ onClose, onLoginSuccess }: any) => {
         const endpoint = isRegistering ? '/api/users/register' : '/api/users/login';
         
         try {
-            const response = await fetch(`http://localhost:3000${endpoint}`, {
+            const response = await fetch(`https://football-backend-m2a4.onrender.com${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
