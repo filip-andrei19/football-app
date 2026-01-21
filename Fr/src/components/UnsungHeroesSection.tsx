@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Heart, Quote, Calendar, ChevronDown, ChevronUp, Eye, Users, User } from 'lucide-react';
+import { Heart, Quote, Calendar, ChevronDown, ChevronUp, Eye, Users } from 'lucide-react';
 
 export function UnsungHeroesSection() {
   const [expandedInterview, setExpandedInterview] = useState<number | null>(null);
 
-  // --- DATELE STATICE ---
+  // --- DATELE STATICE (Fără Imagini) ---
   const interviews = [
     {
       name: 'Gheorghe "Gică" Popescu',
@@ -12,16 +12,14 @@ export function UnsungHeroesSection() {
       organization: 'Academia FC Viitorul / Farul',
       date: 'Decembrie 2025',
       excerpt: 'După 30 de ani de descoperit talente, ne împărtășește secretele prin care identifică viitoarele stele ale României.',
-      image: '/gica.jpg',
       fullInterview: `Î: Faci scouting de trei decenii. Ce s-a schimbat?\n\nR: Totul și nimic. Tehnologia ne oferă date, dar inima nu o poți măsura cu un computer.`
     },
-     {
+    {
       name: 'Ion "Nea Nelu" Barbu',
       role: 'Magazioner & Specialist Echipament',
       organization: 'Rapid București',
       date: 'Octombrie 2025',
       excerpt: 'Omul care se asigură că fiecare detaliu este perfect, de la crampoane până la pregătirea vestiarului.',
-      image: 'https://images.unsplash.com/photo-1511886929837-354d827aae26?q=80&w=1000&auto=format&fit=crop',
       fullInterview: `Î: Lumea nu realizează importanța unui magazioner.\n\nR: Sunt responsabil de tot ce înseamnă echipament. Dar e mai mult de atât - sunt adesea prima persoană pe care o văd jucătorii dimineața.`
     },
   ];
@@ -74,51 +72,53 @@ export function UnsungHeroesSection() {
         </div>
       </div>
 
-      {/* INTERVIURI */}
+      {/* INTERVIURI (FĂRĂ POZE) */}
       <div>
         <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
            <Quote className="h-6 w-6 text-green-600" />
            Povești din Culise
         </h2>
-        <div className="space-y-8">
+        <div className="space-y-6">
           {interviews.map((interview, index) => (
             <div key={index} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300">
-              <div className="md:flex">
-                {/* Imagine */}
-                <div className="md:w-1/3 h-64 md:h-auto relative">
-                    <img src={interview.image} alt={interview.name} className="w-full h-full object-cover" />
-                </div>
-                
-                {/* Text */}
-                <div className="p-6 md:w-2/3 flex flex-col justify-between">
-                  <div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">{interview.name}</h3>
-                      <div className="flex items-center gap-1 text-xs text-gray-400 mb-3">
+              
+              {/* Container Text Full Width */}
+              <div className="p-8 w-full flex flex-col justify-between">
+                <div>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900">{interview.name}</h3>
+                        <span className="text-sm font-medium text-green-600">{interview.role} • {interview.organization}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-gray-400 mt-2 md:mt-0">
                         <Calendar className="h-3 w-3" /> {interview.date}
                       </div>
-                      <p className="text-gray-600 mb-4 italic border-l-4 border-green-500 pl-3">"{interview.excerpt}"</p>
                   </div>
-                  <button
-                    className="w-full mt-2 flex items-center justify-between px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-                    onClick={() => setExpandedInterview(expandedInterview === index ? null : index)}
-                  >
-                    <span>{expandedInterview === index ? 'Ascunde Interviul' : 'Citește Interviul Complet'}</span>
-                    {expandedInterview === index ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </button>
+                  
+                  <p className="text-gray-600 mb-6 italic border-l-4 border-green-500 pl-4 py-1 bg-gray-50 rounded-r-lg">
+                    "{interview.excerpt}"
+                  </p>
                 </div>
+
+                <button
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                  onClick={() => setExpandedInterview(expandedInterview === index ? null : index)}
+                >
+                  <span>{expandedInterview === index ? 'Ascunde Interviul' : 'Citește Interviul Complet'}</span>
+                  {expandedInterview === index ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
               </div>
+
               {/* Expandare */}
               {expandedInterview === index && (
-                <div className="border-t border-gray-100 bg-gray-50/50 p-6 whitespace-pre-line text-gray-800">
-                    {interview.fullInterview}
+                <div className="border-t border-gray-100 bg-green-50/30 p-8 whitespace-pre-line text-gray-800 leading-relaxed">
+                   {interview.fullInterview}
                 </div>
               )}
             </div>
           ))}
         </div>
       </div>
-
-      {/* PARTEA CU BUTONUL A FOST ștearsă COMPLET */}
     </div>
   );
 }
