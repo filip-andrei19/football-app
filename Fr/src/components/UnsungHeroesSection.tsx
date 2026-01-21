@@ -12,7 +12,7 @@ export function UnsungHeroesSection() {
       organization: 'Academia FC Viitorul / Farul',
       date: 'Decembrie 2025',
       excerpt: 'După 30 de ani de descoperit talente, ne împărtășește secretele prin care identifică viitoarele stele ale României.',
-      image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Football_manager_touchline.jpg/640px-Football_manager_touchline.jpg',
+      image: 'https://ro.wikipedia.org/wiki/Fi%C8%99ier:Hagi_and_Nadia_Comaneci.jpg',
       fullInterview: `Î: Faci scouting de trei decenii. Ce s-a schimbat?\n\nR: Totul și nimic. Tehnologia ne oferă date, dar inima nu o poți măsura cu un computer.`
     },
      {
@@ -21,7 +21,7 @@ export function UnsungHeroesSection() {
       organization: 'Rapid București',
       date: 'Octombrie 2025',
       excerpt: 'Omul care se asigură că fiecare detaliu este perfect, de la crampoane până la pregătirea vestiarului.',
-      image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Locker_room_of_Stamford_Bridge.jpg/640px-Locker_room_of_Stamford_Bridge.jpg',
+      image: 'https://www.facebook.com/100067395624597/posts/24-decembrie-1938-s-a-n%C4%83scut-fotbalistul-bebe-barbuion-barbu-24-decembrie-1938-c/1190193023237207/',
       fullInterview: `Î: Lumea nu realizează importanța unui magazioner.\n\nR: Sunt responsabil de tot ce înseamnă echipament. Dar e mai mult de atât - sunt adesea prima persoană pe care o văd jucătorii dimineața.`
     },
   ];
