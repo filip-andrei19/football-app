@@ -12,7 +12,7 @@ export function UnsungHeroesSection() {
       organization: 'Academia FC Viitorul / Farul',
       date: 'Decembrie 2025',
       excerpt: 'După 30 de ani de descoperit talente, ne împărtășește secretele prin care identifică viitoarele stele ale României.',
-      image: 'https://img.a.transfermarkt.technology/portrait/header/3129-1664873752.jpg?lm=1',
+      image: '/gica.jpg',
       fullInterview: `Î: Faci scouting de trei decenii. Ce s-a schimbat?\n\nR: Totul și nimic. Tehnologia ne oferă date, dar inima nu o poți măsura cu un computer.`
     },
      {
