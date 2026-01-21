@@ -12,7 +12,7 @@ export function UnsungHeroesSection() {
       organization: 'Academia FC Viitorul / Farul',
       date: 'Decembrie 2025',
       excerpt: 'După 30 de ani de descoperit talente, ne împărtășește secretele prin care identifică viitoarele stele ale României.',
-      image: 'https://ro.wikipedia.org/wiki/Fi%C8%99ier:Hagi_and_Nadia_Comaneci.jpg',
+      image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Gheorghe_Popescu_2011.jpg/800px-Gheorghe_Popescu_2011.jpg',
       fullInterview: `Î: Faci scouting de trei decenii. Ce s-a schimbat?\n\nR: Totul și nimic. Tehnologia ne oferă date, dar inima nu o poți măsura cu un computer.`
     },
      {
@@ -21,7 +21,7 @@ export function UnsungHeroesSection() {
       organization: 'Rapid București',
       date: 'Octombrie 2025',
       excerpt: 'Omul care se asigură că fiecare detaliu este perfect, de la crampoane până la pregătirea vestiarului.',
-      image: 'https://www.facebook.com/100067395624597/posts/24-decembrie-1938-s-a-n%C4%83scut-fotbalistul-bebe-barbuion-barbu-24-decembrie-1938-c/1190193023237207/',
+      image: 'https://images.unsplash.com/photo-1511886929837-354d827aae26?q=80&w=1000&auto=format&fit=crop',
       fullInterview: `Î: Lumea nu realizează importanța unui magazioner.\n\nR: Sunt responsabil de tot ce înseamnă echipament. Dar e mai mult de atât - sunt adesea prima persoană pe care o văd jucătorii dimineața.`
     },
   ];
