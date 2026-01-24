@@ -156,8 +156,8 @@ const startServer = async () => {
         });
 
         // --- 3. CRON JOB INTELIGENT ---
-        // Rulează în fiecare zi la ora 03:00 dimineața
-        cron.schedule('0 3 * * *', async () => {
+        // Rulează la ora 15:03 (Minutul 3, Ora 15)
+        cron.schedule('3 15 * * *', async () => {
             console.log('⏰ [CRON] Pornesc actualizarea zilnică...');
             await runDailyJob(); 
         });
