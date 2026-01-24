@@ -1,18 +1,24 @@
 import React, { useEffect, useState } from 'react';
 
-// 1. Actualizăm interfața să fim siguri că TypeScript știe de poză și pase
+// 1. ACTUALIZARE INTERFAȚĂ (Tipuri de date)
 interface Player {
   _id: string;
   name: string;
   position: string;
   age?: number;
-  image?: string;          // <--- URL-ul pozei
+  nationality?: string;      // <--- NOU
+  birth_date?: string;       // <--- NOU
+  height?: string;           // <--- NOU
+  weight?: string;           // <--- NOU
+  image?: string;
   team_name?: string;
   statistics_summary?: {
     team_name?: string;
     total_goals: number;
-    total_assists: number;     // <--- Pase de gol
-    total_appearances: number; // <--- Număr meciuri
+    total_assists: number;
+    total_appearances: number;
+    minutes_played?: number; // <--- NOU
+    rating?: string;         // <--- NOU (Nota medie)
   };
 }
 
@@ -45,17 +51,24 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
 
   const showResults = searchTerm.length > 0;
 
+  // Funcție simplă pentru formatarea datei (din 1998-05-22 în 22 Mai 1998)
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
   return (
     <div className="space-y-12 py-10 min-h-[60vh]">
+      
+      {/* HEADER */}
       <section className="text-center space-y-4">
         <h1 className="text-4xl font-bold tracking-tight lg:text-5xl">
           Caută Jucători
         </h1>
         <p className="text-muted-foreground">
-          Statistici complete: Goluri, Pase, Meciuri.
+          Profil complet: Biografie, Fizic & Statistici.
         </p>
         
-        {/* BARA DE CĂUTARE */}
         <div className="max-w-xl mx-auto mt-8 relative z-10">
             <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-200"></div>
@@ -65,8 +78,8 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
                     </svg>
                     <input
                       type="text"
-                      placeholder="Caută un jucător (ex: Dragusin, Coman)..."
-                      className="w-full pl-12 pr-4 py-4 text-lg border rounded-full shadow-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-background"
+                      placeholder="Caută (ex: Olaru, Mitrita)..."
+                      className="w-full pl-12 pr-4 py-4 text-lg border rounded-full shadow-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-background"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -75,80 +88,92 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
         </div>
       </section>
 
-      <section className="px-4">
-        {loading && <div className="text-center text-sm text-muted-foreground">Se încarcă datele...</div>}
-        {error && <div className="text-center text-red-500">{error}</div>}
-
-        {!loading && !showResults && !error && (
-          <div className="text-center mt-10 opacity-50">
-             <p className="text-xl font-medium">Începe să tastezi pentru a vedea profilul jucătorilor</p>
-          </div>
-        )}
-
-        {showResults && filteredPlayers.length === 0 && (
-          <div className="text-center p-8">
-            <p className="text-xl text-muted-foreground">Nu am găsit niciun jucător cu numele "{searchTerm}".</p>
-          </div>
-        )}
-
-        {/* --- GRIDUL DE REZULTATE --- */}
+      {/* GRID REZULTATE */}
+      <section className="px-4 max-w-7xl mx-auto">
+        {loading && <div className="text-center text-sm text-muted-foreground py-10">Se încarcă baza de date...</div>}
+        
         {showResults && filteredPlayers.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
             {filteredPlayers.map((player) => {
-               const actualTeamName = player.statistics_summary?.team_name || player.team_name || 'Fără Echipă';
-               const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0 };
-
+               const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
+               
                return (
-                <div key={player._id} className="border rounded-xl p-5 bg-card shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 group overflow-hidden relative">
+                <div key={player._id} className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 group">
                   
-                  {/* --- HEADER CARD: POZĂ + NUME --- */}
-                  <div className="flex items-center gap-4 mb-4">
-                    {/* Poza Jucătorului */}
-                    <div className="relative h-16 w-16 flex-shrink-0">
+                  {/* HEADER CARD: FUNDAL + POZĂ */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 p-5 flex items-center gap-4">
+                    <div className="relative h-20 w-20 flex-shrink-0">
                         <img 
-                            src={player.image || "https://via.placeholder.com/150?text=No+Img"} 
+                            src={player.image || "https://via.placeholder.com/150"} 
                             alt={player.name}
-                            className="h-full w-full rounded-full object-cover border-2 border-gray-100 shadow-sm"
-                            onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/150?text=No+Img"; }}
+                            className="h-full w-full rounded-full object-cover border-4 border-white shadow-md bg-white"
                         />
                     </div>
-                    
-                    {/* Detalii Text */}
                     <div className="min-w-0">
-                        <h4 className="font-bold text-lg truncate group-hover:text-blue-600 transition-colors">
+                        <h4 className="font-bold text-xl text-gray-900 dark:text-white truncate">
                             {player.name}
                         </h4>
-                        <div className="text-sm text-muted-foreground truncate font-medium">
-                            {actualTeamName}
+                        <div className="flex flex-wrap gap-2 mt-1">
+                             <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-600 text-white">
+                                {player.position}
+                             </span>
+                             {player.nationality && (
+                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700">
+                                    {player.nationality}
+                                </span>
+                             )}
                         </div>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
-                          {player.position}
-                        </span>
                     </div>
                   </div>
 
-                  {/* --- TABEL STATISTICI (Grid 3 Coloane) --- */}
-                  <div className="grid grid-cols-3 gap-2 border-t pt-4 text-center">
-                    
-                    {/* 1. Meciuri */}
-                    <div className="flex flex-col">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider">Meciuri</span>
-                        <span className="font-bold text-lg">{stats.total_appearances ?? 0}</span>
-                    </div>
-
-                    {/* 2. Goluri */}
-                    <div className="flex flex-col border-l border-r border-gray-100 dark:border-gray-800">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider">Goluri</span>
-                        <span className="font-bold text-lg text-green-600">{stats.total_goals ?? 0}</span>
-                    </div>
-
-                    {/* 3. Pase de Gol */}
-                    <div className="flex flex-col">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider">Pase</span>
-                        <span className="font-bold text-lg text-blue-600">{stats.total_assists ?? 0}</span>
-                    </div>
-
+                  {/* INFO BIO (Vârstă, Dată, Fizic) */}
+                  <div className="p-4 grid grid-cols-2 gap-y-2 text-sm border-b border-gray-100 bg-gray-50/50">
+                      <div>
+                          <span className="text-gray-400 block text-xs uppercase">Vârstă</span>
+                          <span className="font-semibold">{player.age ? `${player.age} ani` : '-'}</span>
+                      </div>
+                      <div>
+                          <span className="text-gray-400 block text-xs uppercase">Data Nașterii</span>
+                          <span className="font-semibold">{formatDate(player.birth_date)}</span>
+                      </div>
+                      <div>
+                          <span className="text-gray-400 block text-xs uppercase">Înălțime</span>
+                          <span className="font-semibold">{player.height || '-'}</span>
+                      </div>
+                      <div>
+                          <span className="text-gray-400 block text-xs uppercase">Greutate</span>
+                          <span className="font-semibold">{player.weight || '-'}</span>
+                      </div>
                   </div>
+
+                  {/* STATISTICI MAJORE */}
+                  <div className="p-4">
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="p-2 bg-gray-50 rounded-lg">
+                            <span className="block text-xl font-bold text-gray-800">{stats.total_appearances}</span>
+                            <span className="text-[10px] text-gray-500 uppercase">Meciuri</span>
+                        </div>
+                        <div className="p-2 bg-green-50 rounded-lg border border-green-100">
+                            <span className="block text-xl font-bold text-green-600">{stats.total_goals}</span>
+                            <span className="text-[10px] text-green-600 uppercase">Goluri</span>
+                        </div>
+                        <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
+                            <span className="block text-xl font-bold text-blue-600">{stats.total_assists}</span>
+                            <span className="text-[10px] text-blue-600 uppercase">Pase</span>
+                        </div>
+                      </div>
+                      
+                      {/* STATISTICI EXTRA (Rating + Minute) */}
+                      <div className="mt-4 flex justify-between items-center text-xs text-gray-500 px-1">
+                          <span>⏱️ {stats.minutes_played || 0} minute jucate</span>
+                          {stats.rating && (
+                              <span className="flex items-center gap-1 font-bold text-amber-600">
+                                  ⭐ Nota: {parseFloat(stats.rating).toFixed(1)}
+                              </span>
+                          )}
+                      </div>
+                  </div>
+
                 </div>
               );
             })}
