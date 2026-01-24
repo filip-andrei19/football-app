@@ -3,8 +3,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const cron = require('node-cron');
-const bcrypt = require('bcryptjs'); // <--- 1. IMPORT NOU
-const { syncPlayers } = require('./services/syncService');
+const bcrypt = require('bcryptjs');
+
+// --- IMPORTURI SERVICII ---
+const { syncPlayers } = require('./services/syncService'); // Păstrăm și vechiul script (de rezervă)
+const { runDailyJob } = require('./services/smartSync');   // <--- 1. IMPORT NOU (Sincronizarea Rotativă)
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,12 +27,9 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true }
 });
 
-// --- 2. MODIFICARE SCHEMA: Criptare automată la înregistrare ---
+// Criptare automată la înregistrare
 userSchema.pre('save', async function(next) {
-    // Dacă parola nu s-a schimbat, trecem mai departe
     if (!this.isModified('password')) return next();
-    
-    // Criptăm parola
     try {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
@@ -69,7 +69,7 @@ const startServer = async () => {
         await mongoose.connect(process.env.MONGO_URI);
         console.log('✅ Conectat la MongoDB.');
 
-        // --- RUTE AUTH (MODIFICAT) ---
+        // --- RUTE AUTH ---
         
         // LOGIN SECURIZAT
         app.post('/api/users/login', async (req, res) => {
@@ -97,7 +97,7 @@ const startServer = async () => {
             }
         });
 
-        // REGISTER (Nu trebuie modificat mult, hook-ul 'pre save' face treaba)
+        // REGISTER
         app.post('/api/users/register', async (req, res) => {
             try {
                 const { name, email, password } = req.body;
@@ -107,8 +107,7 @@ const startServer = async () => {
                 }
 
                 const newUser = new User({ name, email, password });
-                // AICI se declanșează automat criptarea înainte de .save()
-                await newUser.save();
+                await newUser.save(); // Criptarea se face automat
 
                 res.status(201).json({ success: true, user: { name: newUser.name, email: newUser.email } });
             } catch (err) { 
@@ -119,13 +118,12 @@ const startServer = async () => {
 
         // --- RUTE JUCĂTORI ---
         app.get('/api/sport/players', async (req, res) => {
-            const players = await Player.find();
+            // Putem adăuga și o sortare simplă (ex: după nume)
+            const players = await Player.find().limit(500); // Limităm la 500 să nu blocheze browserul dacă ai mii
             res.json(players);
         });
 
         // --- RUTE LISTINGS (PRODUSE) ---
-        
-        // 1. GET: Ia toate produsele
         app.get('/api/listings', async (req, res) => {
             try {
                 const listings = await Listing.find().sort({ posted: -1 });
@@ -135,7 +133,6 @@ const startServer = async () => {
             }
         });
 
-        // 2. POST: Adaugă produs nou
         app.post('/api/listings', async (req, res) => {
             try {
                 const newListing = new Listing(req.body);
@@ -148,7 +145,6 @@ const startServer = async () => {
             }
         });
 
-        // 3. DELETE: Șterge produs
         app.delete('/api/listings/:id', async (req, res) => {
             try {
                 await Listing.findByIdAndDelete(req.params.id);
@@ -159,8 +155,13 @@ const startServer = async () => {
             }
         });
 
-        // CRON & START
-        cron.schedule('0 4 * * *', () => syncPlayers());
+        // --- 3. CRON JOB INTELIGENT ---
+        // Rulează în fiecare zi la ora 03:00 dimineața
+        cron.schedule('0 3 * * *', async () => {
+            console.log('⏰ [CRON] Pornesc actualizarea zilnică...');
+            await runDailyJob(); 
+        });
+
         app.listen(PORT, () => console.log(`🚀 Serverul merge pe http://localhost:${PORT}`));
 
     } catch (error) { console.error("❌ Eroare critică:", error.message); }
