@@ -6,7 +6,7 @@ const API_KEY = process.env.API_KEY;
 
 // ⚠️ SCHIMBARE AICI: Punem 2025 pentru sezonul curent (2025-2026)
 // Dacă API-ul nu are încă datele pe 2025 (rar), încearcă 2024.
-const SEASON = 2024; 
+const SEASON = 2023; 
 
 // Ordinea priorităților: 
 // 1. SuperLiga (ID 283) - O luăm prima ca să fim siguri că intră
