@@ -4,14 +4,14 @@ const Player = require('../models/player');
 // --- CONFIGURARE ---
 const API_KEY = process.env.API_KEY;
 
-// ⚠️ SCHIMBARE AICI: Punem 2025 pentru sezonul curent (2025-2026)
-// Dacă API-ul nu are încă datele pe 2025 (rar), încearcă 2024.
-const SEASON = 2023; 
+// Folosim sezonul 2024 (care este sezonul curent 2024-2025)
+const SEASON = 2024; 
 
-// Ordinea priorităților: 
-// 1. SuperLiga (ID 283) - O luăm prima ca să fim siguri că intră
-// 2. Premier League (ID 39)
-// 3. La Liga (ID 140)
+// --- CONFIGURARE RAPID API (FIX) ---
+// Aceasta este adresa corectă pentru abonamentele prin RapidAPI
+const BASE_URL = "https://api-football-v1.p.rapidapi.com/v3";
+const HOST_HEADER = "api-football-v1.p.rapidapi.com";
+
 const LEAGUE_PRIORITIES = [
     { id: 283, name: "SuperLiga (Romania)" }, 
     { id: 39, name: "Premier League (Anglia)" },
@@ -23,53 +23,57 @@ const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const hardResetAndLoad = async () => {
     console.log(`☢️  [HARD RESET] Inițiez procedura pentru SEZONUL ${SEASON}...`);
 
-    // 1. Verificăm API-ul cu un test mic
     try {
         console.log("🔍 Verific conexiunea API...");
-        // Facem un call mic de test
-        await axios.get('https://v3.football.api-sports.io/status', {
-            headers: { 'x-rapidapi-key': API_KEY, 'x-rapidapi-host': 'v3.football.api-sports.io' }
+        // Testăm pe endpoint-ul de status al RapidAPI
+        await axios.get(`${BASE_URL}/status`, {
+            headers: { 
+                'x-rapidapi-key': API_KEY, 
+                'x-rapidapi-host': HOST_HEADER 
+            }
         });
     } catch (err) {
-        console.error("❌ EROARE: Cheia API nu merge sau ai atins limita. NU șterg baza de date.");
+        console.error("❌ EROARE: Cheia API nu merge sau ai atins limita.");
+        if (err.response) console.error("Detalii eroare:", err.response.data);
         return;
     }
 
-    // 2. ȘTERGEM TOT (Doar acum!)
+    // 2. ȘTERGEM TOT
     console.log("🗑️  Șterg toți jucătorii din baza de date...");
     await Player.deleteMany({});
     console.log("✅ Baza de date este goală.");
 
-    // 3. Începem încărcarea pe rând
+    // 3. Începem încărcarea
     for (const league of LEAGUE_PRIORITIES) {
         console.log(`🌍 Încep importul pentru: ${league.name} (Sezon ${SEASON})...`);
         
         try {
-            // A. Luăm echipele din sezonul curent
-            const teamsRes = await axios.get(`https://v3.football.api-sports.io/teams?league=${league.id}&season=${SEASON}`, {
-                headers: { 'x-rapidapi-key': API_KEY, 'x-rapidapi-host': 'v3.football.api-sports.io' }
+            // A. Luăm echipele (folosind noua adresă BASE_URL)
+            const teamsRes = await axios.get(`${BASE_URL}/teams?league=${league.id}&season=${SEASON}`, {
+                headers: { 
+                    'x-rapidapi-key': API_KEY, 
+                    'x-rapidapi-host': HOST_HEADER 
+                }
             });
             
             const teams = teamsRes.data.response;
             
             if (!teams || teams.length === 0) {
-                console.log(`⚠️  Nu am găsit echipe pentru ${league.name} în sezonul ${SEASON}.`);
+                console.log(`⚠️  Nu am găsit echipe pentru ${league.name}. (Posibil ca abonamentul să nu permită această ligă sau sezonul e greșit)`);
                 continue;
             }
 
-            console.log(`   Găsite ${teams.length} echipe. Încep descărcarea jucătorilor...`);
+            console.log(`   ✅ Găsite ${teams.length} echipe. Încep descărcarea jucătorilor...`);
 
             // B. Luăm jucătorii fiecărei echipe
             for (const t of teams) {
                 console.log(`   👉 Procesez echipa: ${t.team.name}`);
                 await processTeam(t.team.id, t.team.name, league.id);
-                // Pauză mică să nu supărăm API-ul (important la contul free)
-                await wait(1500); 
+                await wait(1000); // Pauză de siguranță
             }
 
         } catch (error) {
-            console.error(`⚠️  Limită atinsă sau eroare la ${league.name}.`);
-            console.log("💾  Ce s-a salvat până acum rămâne în bază. Mă opresc.");
+            console.error(`⚠️  Eroare la ${league.name}:`, error.message);
             break; 
         }
     }
@@ -83,16 +87,20 @@ const processTeam = async (teamId, teamName, leagueId) => {
 
     do {
         try {
-            const res = await axios.get(`https://v3.football.api-sports.io/players?team=${teamId}&season=${SEASON}&page=${currentPage}`, {
-                headers: { 'x-rapidapi-key': API_KEY, 'x-rapidapi-host': 'v3.football.api-sports.io' }
+            const res = await axios.get(`${BASE_URL}/players?team=${teamId}&season=${SEASON}&page=${currentPage}`, {
+                headers: { 
+                    'x-rapidapi-key': API_KEY, 
+                    'x-rapidapi-host': HOST_HEADER 
+                }
             });
             
+            if (!res.data.response || res.data.response.length === 0) break;
+
             totalPages = res.data.paging.total;
             const playersList = res.data.response;
 
             for (const item of playersList) {
                 const p = item.player;
-                // Căutăm statisticile specifice ligii curente
                 const stats = item.statistics.find(s => s.league.id === leagueId) || item.statistics[0];
 
                 const newPlayer = new Player({
@@ -121,10 +129,7 @@ const processTeam = async (teamId, teamName, leagueId) => {
             }
             currentPage++;
         } catch (err) {
-            if (err.response && (err.response.status === 403 || err.response.status === 429)) {
-                throw err; // Aruncăm eroarea sus ca să oprim tot scriptul
-            }
-            console.log(`   Eroare mică la pagina ${currentPage}, trec mai departe.`);
+            console.log(`   Eroare la pagina ${currentPage}, trec mai departe.`);
             break;
         }
     } while (currentPage <= totalPages);
