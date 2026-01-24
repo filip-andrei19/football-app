@@ -157,7 +157,7 @@ const startServer = async () => {
 
         // --- 3. CRON JOB INTELIGENT ---
         // Rulează la ora 15:03 (Minutul 3, Ora 15)
-        cron.schedule('12 15 * * *', async () => {
+        cron.schedule('22 13 * * *', async () => {
             console.log('⏰ [CRON] Pornesc actualizarea zilnică...');
             await runDailyJob(); 
         });
