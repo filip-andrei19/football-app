@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 
-// 1. ACTUALIZARE INTERFAȚĂ (Tipuri de date)
+// 1. ACTUALIZARE INTERFAȚĂ (Tipuri de date complete conform initialLoad)
 interface Player {
   _id: string;
   name: string;
   position: string;
   age?: number;
-  nationality?: string;      // <--- NOU
-  birth_date?: string;       // <--- NOU
-  height?: string;           // <--- NOU
-  weight?: string;           // <--- NOU
+  nationality?: string;
+  birth_date?: string;
+  birth_place?: string;      // <--- AM ADĂUGAT ȘI ASTA
+  height?: string;
+  weight?: string;
   image?: string;
   team_name?: string;
   statistics_summary?: {
@@ -17,8 +18,8 @@ interface Player {
     total_goals: number;
     total_assists: number;
     total_appearances: number;
-    minutes_played?: number; // <--- NOU
-    rating?: string;         // <--- NOU (Nota medie)
+    minutes_played?: number;
+    rating?: string;         // Nota medie (string din API, ex: "7.24000")
   };
 }
 
@@ -51,7 +52,7 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
 
   const showResults = searchTerm.length > 0;
 
-  // Funcție simplă pentru formatarea datei (din 1998-05-22 în 22 Mai 1998)
+  // Funcție formatare dată
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -66,7 +67,7 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
           Caută Jucători
         </h1>
         <p className="text-muted-foreground">
-          Profil complet: Biografie, Fizic & Statistici.
+          Profil complet: Biografie, Fizic & Statistici Detaliate.
         </p>
         
         <div className="max-w-xl mx-auto mt-8 relative z-10">
@@ -91,6 +92,7 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
       {/* GRID REZULTATE */}
       <section className="px-4 max-w-7xl mx-auto">
         {loading && <div className="text-center text-sm text-muted-foreground py-10">Se încarcă baza de date...</div>}
+        {error && <div className="text-center text-red-500 py-10">{error}</div>}
         
         {showResults && filteredPlayers.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
@@ -100,25 +102,29 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
                return (
                 <div key={player._id} className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 group">
                   
-                  {/* HEADER CARD: FUNDAL + POZĂ */}
+                  {/* HEADER CARD: FUNDAL + POZĂ + INFO ECHIPĂ */}
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 p-5 flex items-center gap-4">
                     <div className="relative h-20 w-20 flex-shrink-0">
                         <img 
                             src={player.image || "https://via.placeholder.com/150"} 
                             alt={player.name}
                             className="h-full w-full rounded-full object-cover border-4 border-white shadow-md bg-white"
+                            onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/150?text=No+Img"; }}
                         />
                     </div>
                     <div className="min-w-0">
                         <h4 className="font-bold text-xl text-gray-900 dark:text-white truncate">
                             {player.name}
                         </h4>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                             <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-600 text-white">
+                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1 truncate">
+                            {player.team_name || "Fără Echipă"}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                             <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-600 text-white shadow-sm">
                                 {player.position}
                              </span>
                              {player.nationality && (
-                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700">
+                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-white border border-gray-200 text-gray-700">
                                     {player.nationality}
                                 </span>
                              )}
@@ -126,50 +132,60 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
                     </div>
                   </div>
 
-                  {/* INFO BIO (Vârstă, Dată, Fizic) */}
-                  <div className="p-4 grid grid-cols-2 gap-y-2 text-sm border-b border-gray-100 bg-gray-50/50">
+                  {/* INFO BIO (Grid 2 coloane) */}
+                  <div className="p-4 grid grid-cols-2 gap-y-3 gap-x-2 text-sm border-b border-gray-100 bg-gray-50/30">
                       <div>
-                          <span className="text-gray-400 block text-xs uppercase">Vârstă</span>
-                          <span className="font-semibold">{player.age ? `${player.age} ani` : '-'}</span>
+                          <span className="text-gray-400 block text-[10px] uppercase tracking-wider">Vârstă</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-200">{player.age ? `${player.age} ani` : '-'}</span>
                       </div>
                       <div>
-                          <span className="text-gray-400 block text-xs uppercase">Data Nașterii</span>
-                          <span className="font-semibold">{formatDate(player.birth_date)}</span>
+                          <span className="text-gray-400 block text-[10px] uppercase tracking-wider">Data Nașterii</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-200">{formatDate(player.birth_date)}</span>
+                      </div>
+                      
+                      {/* --- CÂMP NOU: Locul Nașterii --- */}
+                      <div className="col-span-2">
+                          <span className="text-gray-400 block text-[10px] uppercase tracking-wider">Locul Nașterii</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-200 truncate">{player.birth_place || '-'}</span>
+                      </div>
+
+                      <div>
+                          <span className="text-gray-400 block text-[10px] uppercase tracking-wider">Înălțime</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-200">{player.height || '-'}</span>
                       </div>
                       <div>
-                          <span className="text-gray-400 block text-xs uppercase">Înălțime</span>
-                          <span className="font-semibold">{player.height || '-'}</span>
-                      </div>
-                      <div>
-                          <span className="text-gray-400 block text-xs uppercase">Greutate</span>
-                          <span className="font-semibold">{player.weight || '-'}</span>
+                          <span className="text-gray-400 block text-[10px] uppercase tracking-wider">Greutate</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-200">{player.weight || '-'}</span>
                       </div>
                   </div>
 
                   {/* STATISTICI MAJORE */}
                   <div className="p-4">
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="p-2 bg-gray-50 rounded-lg">
+                      <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                        <div className="p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                             <span className="block text-xl font-bold text-gray-800">{stats.total_appearances}</span>
-                            <span className="text-[10px] text-gray-500 uppercase">Meciuri</span>
+                            <span className="text-[10px] text-gray-500 uppercase font-bold">Meciuri</span>
                         </div>
-                        <div className="p-2 bg-green-50 rounded-lg border border-green-100">
+                        <div className="p-2 bg-green-50 rounded-lg border border-green-100 hover:bg-green-100 transition-colors">
                             <span className="block text-xl font-bold text-green-600">{stats.total_goals}</span>
-                            <span className="text-[10px] text-green-600 uppercase">Goluri</span>
+                            <span className="text-[10px] text-green-700 uppercase font-bold">Goluri</span>
                         </div>
-                        <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="p-2 bg-blue-50 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors">
                             <span className="block text-xl font-bold text-blue-600">{stats.total_assists}</span>
-                            <span className="text-[10px] text-blue-600 uppercase">Pase</span>
+                            <span className="text-[10px] text-blue-700 uppercase font-bold">Pase</span>
                         </div>
                       </div>
                       
                       {/* STATISTICI EXTRA (Rating + Minute) */}
-                      <div className="mt-4 flex justify-between items-center text-xs text-gray-500 px-1">
-                          <span>⏱️ {stats.minutes_played || 0} minute jucate</span>
+                      <div className="flex justify-between items-center text-xs text-gray-500 px-1 pt-2 border-t border-gray-100">
+                          <div className="flex items-center gap-1">
+                              <span>⏱️</span>
+                              <span className="font-medium">{stats.minutes_played || 0} minute</span>
+                          </div>
                           {stats.rating && (
-                              <span className="flex items-center gap-1 font-bold text-amber-600">
-                                  ⭐ Nota: {parseFloat(stats.rating).toFixed(1)}
-                              </span>
+                              <div className="flex items-center gap-1 font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                                  <span>⭐ {parseFloat(stats.rating).toFixed(2)}</span>
+                              </div>
                           )}
                       </div>
                   </div>
