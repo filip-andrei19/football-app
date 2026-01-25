@@ -4,11 +4,10 @@ const Player = require('../models/player');
 // --- CONFIGURARE ---
 const API_KEY = process.env.API_KEY;
 
-// FOLOSIM ADRESA RAPID API (OBLIGATORIU PENTRU CHEIA TA)
-const BASE_URL = "https://api-football-v1.p.rapidapi.com/v3";
-const HOST_HEADER = "api-football-v1.p.rapidapi.com";
+// ⚠️ MODIFICARE MAJORA: ADRESA DIRECTA API-SPORTS
+const BASE_URL = "https://v3.football.api-sports.io";
 
-// Sezonul curent este 2024 (2024-2025)
+// Sezonul curent 2024-2025
 const SEASON = 2024; 
 
 const LEAGUE_PRIORITIES = [
@@ -20,20 +19,20 @@ const LEAGUE_PRIORITIES = [
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const hardResetAndLoad = async () => {
-    console.log(`☢️  [HARD RESET] Inițiez procedura pentru SEZONUL ${SEASON}...`);
-    console.log(`🔌 Folosesc endpoint RapidAPI: ${BASE_URL}`);
+    console.log(`☢️  [HARD RESET] Inițiez procedura DIRECTĂ pentru SEZONUL ${SEASON}...`);
+    console.log(`🔌 Folosesc endpoint Oficial: ${BASE_URL}`);
 
-    // 1. Verificăm API-ul
+    // 1. Verificăm API-ul (folosind header-ul corect x-apisports-key)
     try {
         console.log("🔍 Verific conexiunea API...");
         await axios.get(`${BASE_URL}/status`, {
             headers: { 
-                'x-rapidapi-key': API_KEY, 
-                'x-rapidapi-host': HOST_HEADER 
+                'x-apisports-key': API_KEY 
             }
         });
     } catch (err) {
         console.error("❌ EROARE: Cheia API nu merge sau ai atins limita.");
+        if (err.response) console.error("Detalii eroare:", err.response.data);
         return;
     }
 
@@ -50,15 +49,14 @@ const hardResetAndLoad = async () => {
             // A. Luăm echipele
             const teamsRes = await axios.get(`${BASE_URL}/teams?league=${league.id}&season=${SEASON}`, {
                 headers: { 
-                    'x-rapidapi-key': API_KEY, 
-                    'x-rapidapi-host': HOST_HEADER 
+                    'x-apisports-key': API_KEY 
                 }
             });
             
             const teams = teamsRes.data.response;
             
             if (!teams || teams.length === 0) {
-                console.log(`⚠️  Nu am găsit echipe pentru ${league.name}. Verifică dacă abonamentul acoperă această ligă.`);
+                console.log(`⚠️  Nu am găsit echipe pentru ${league.name}. Verifică abonamentul.`);
                 continue;
             }
 
@@ -68,7 +66,7 @@ const hardResetAndLoad = async () => {
             for (const t of teams) {
                 console.log(`   👉 Procesez echipa: ${t.team.name}`);
                 await processTeam(t.team.id, t.team.name, league.id);
-                await wait(1000); // Pauză să nu blocăm API-ul
+                await wait(1000); // Pauză de respect
             }
 
         } catch (error) {
@@ -79,7 +77,7 @@ const hardResetAndLoad = async () => {
     console.log("🏁 [HARD RESET] Finalizat!");
 };
 
-// Funcție ajutătoare pentru paginarea jucătorilor
+// Funcție ajutătoare pentru paginare
 const processTeam = async (teamId, teamName, leagueId) => {
     let currentPage = 1;
     let totalPages = 1;
@@ -88,8 +86,7 @@ const processTeam = async (teamId, teamName, leagueId) => {
         try {
             const res = await axios.get(`${BASE_URL}/players?team=${teamId}&season=${SEASON}&page=${currentPage}`, {
                 headers: { 
-                    'x-rapidapi-key': API_KEY, 
-                    'x-rapidapi-host': HOST_HEADER 
+                    'x-apisports-key': API_KEY 
                 }
             });
             
