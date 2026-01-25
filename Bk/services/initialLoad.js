@@ -14,7 +14,8 @@ const LEAGUE_PRIORITIES = [
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const hardResetAndLoad = async () => {
-    console.log(`🛡️ [UPDATE] Încep actualizarea inteligentă (Cluburi + Națională)...`);
+    // ⚠️ Mesaj nou ca să știi că rulează versiunea corectă
+    console.log(`🛡️ [UPDATE + NATIONALA] Încep actualizarea (Cluburi + Stranieri)...`);
 
     // 1. Verificăm API-ul
     try {
@@ -53,7 +54,7 @@ const hardResetAndLoad = async () => {
                 console.log(`   📥 [DESCARC] ${teamName} lipsește. O adaug...`);
                 await processTeam(t.team.id, teamName, league.id, false); // false = nu e națională
                 
-                console.log("      ⏳ Aștept 6 secunde...");
+                console.log("      ⏳ Aștept 6 secunde (protecție API)...");
                 await wait(6000); 
             }
         } catch (error) {
@@ -73,17 +74,18 @@ const hardResetAndLoad = async () => {
             params: { name: 'Romania', country: 'Romania', national: 'true' }
         });
 
-        const romaniaTeam = natRes.data.response[0]?.team;
+        // Verificăm dacă am primit răspuns
+        const romaniaTeam = natRes.data.response && natRes.data.response[0] ? natRes.data.response[0].team : null;
 
         if (romaniaTeam) {
-            console.log(`✅ Găsită: ${romaniaTeam.name} (ID: ${romaniaTeam.id}). Verific jucătorii...`);
+            console.log(`✅ Găsită: ${romaniaTeam.name} (ID: ${romaniaTeam.id}). Verific stranierii...`);
             
             // Descărcăm jucătorii naționalei
-            // true = e națională (activăm logica specială pentru stranieri)
+            // Parametrul 'true' activează logica specială (nu suprascrie jucătorii de la cluburi)
             await processTeam(romaniaTeam.id, "Romania (Nationala)", null, true); 
 
         } else {
-            console.log("⚠️ Nu am găsit echipa națională în API.");
+            console.log("⚠️ Nu am găsit echipa națională în API (verifică manual pe dashboard).");
         }
 
     } catch (error) {
@@ -94,7 +96,6 @@ const hardResetAndLoad = async () => {
 };
 
 // Funcție universală de procesare
-// isNationalTeam = true -> Adaugă doar dacă NU există deja în bază
 const processTeam = async (teamId, teamName, leagueId, isNationalTeam) => {
     let currentPage = 1;
     let totalPages = 1;
@@ -112,19 +113,21 @@ const processTeam = async (teamId, teamName, leagueId, isNationalTeam) => {
 
             for (const item of playersList) {
                 const p = item.player;
-                const stats = item.statistics[0]; // Luăm primele statistici disponibile
+                const stats = item.statistics[0]; 
 
                 // --- LOGICA PENTRU STRANIERI ---
                 if (isNationalTeam) {
-                    // Verificăm dacă jucătorul există deja (de la echipa de club din SuperLiga)
-                    const existingPlayer = await Player.findOne({ name: p.name }); // Căutare după nume pentru siguranță
+                    // Căutăm jucătorul în baza noastră
+                    const existingPlayer = await Player.findOne({ api_player_id: p.id });
                     
                     if (existingPlayer) {
-                        // Dacă există (ex: Târnovanu, Olaru), NU facem nimic. Îl lăsăm la club.
+                        // Dacă există, înseamnă că joacă în SuperLiga (l-am descărcat la Etapa 1)
+                        // Îl lăsăm acolo, nu îi schimbăm echipa în "Romania"
+                        // console.log(`      • [SKIP] ${p.name} joacă deja la ${existingPlayer.team_name}`);
                         continue; 
                     }
-                    // Dacă NU există (ex: Drăgușin), codul continuă și îl va adăuga mai jos.
-                    console.log(`      ⭐ Adaug stranier: ${p.name}`);
+                    // Dacă NU există, înseamnă că joacă afară (Tottenham, Parma, etc.)
+                    console.log(`      ⭐ [STRANIER] Adaug: ${p.name}`);
                 }
 
                 // Salvare / Actualizare
@@ -142,7 +145,8 @@ const processTeam = async (teamId, teamName, leagueId, isNationalTeam) => {
                             position: stats.games.position,
                             image: p.photo,
                             
-                            // Dacă e de la națională și nu exista, va avea echipa "Romania (Nationala)"
+                            // Dacă e stranier, va primi "Romania (Nationala)". 
+                            // Dacă e din SuperLigă, primește numele clubului.
                             team_name: teamName, 
                             
                             statistics_summary: {
@@ -161,8 +165,8 @@ const processTeam = async (teamId, teamName, leagueId, isNationalTeam) => {
             }
             currentPage++;
             
-            // Dacă descărcăm naționala, punem o mică pauză între pagini ca să nu blocăm
-            if (isNationalTeam) await wait(2000);
+            // Pauză mică între paginile naționalei
+            if (isNationalTeam) await wait(3000);
 
         } catch (err) {
             console.log(`      ❌ Eroare pagină: ${err.message}`);
