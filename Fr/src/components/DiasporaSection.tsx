@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Globe, Plane, MapPin, AlertCircle, Shield, Award } from 'lucide-react';
+import { Globe, Plane, MapPin, AlertCircle, Shield, Star } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
@@ -83,19 +83,15 @@ export function DiasporaSection() {
            if (p.nationality !== "Romania") return false;
 
            const cleanTeamName = normalizeText(p.team_name || "");
-           
-           // 1. Verificăm dacă e Naționala (SPECIAL CASE)
-           // Permitem orice include "nationala" sau e fix "romania"
            const isNationalTeam = cleanTeamName.includes("nationala") || cleanTeamName === "romania";
-           if (isNationalTeam) return true; // Îi păstrăm!
-
-           // 2. Pentru restul, verificăm să nu fie club românesc
-           const isRomanianClub = BLOCKED_KEYWORDS.some(keyword => cleanTeamName.includes(keyword));
            
+           if (isNationalTeam) return true; 
+
+           const isRomanianClub = BLOCKED_KEYWORDS.some(keyword => cleanTeamName.includes(keyword));
            return !isRomanianClub;
         });
 
-        // Sortare: Îi punem pe cei de la Națională la început, apoi după meciuri
+        // Sortare: Naționala sus, apoi restul după meciuri
         const sortedStranieri = stranieri.sort((a: Player, b: Player) => {
             const isNationalA = a.team_name.includes("Nationala");
             const isNationalB = b.team_name.includes("Nationala");
@@ -120,17 +116,19 @@ export function DiasporaSection() {
       
       {/* HEADER */}
       <section className="text-center space-y-6 px-4">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-100 text-blue-800 text-sm font-semibold mb-2 border border-blue-200">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-yellow-100 text-yellow-800 text-sm font-bold mb-2 border border-yellow-300 shadow-sm">
           <Globe className="w-4 h-4" />
-          Diaspora & Echipa Națională
+          Tricolorii în Lume
         </div>
         
-        <h1 className="text-4xl font-extrabold tracking-tight lg:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-blue-500 to-cyan-400">
-          Tricolorii Noștri
+        <h1 className="text-4xl font-black tracking-tighter lg:text-7xl uppercase">
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-700 via-yellow-500 to-red-600 drop-shadow-sm">
+            Echipa Națională
+          </span>
         </h1>
         
-        <p className="max-w-2xl mx-auto text-muted-foreground text-lg">
-           Jucătorii care reprezintă România în campionatele externe sau direct sub steagul naționalei.
+        <p className="max-w-2xl mx-auto text-muted-foreground text-lg font-medium">
+           Cei mai buni fotbaliști români care ne reprezintă peste hotare.
         </p>
       </section>
 
@@ -139,102 +137,85 @@ export function DiasporaSection() {
         {loading ? (
              <div className="text-center py-20 animate-pulse text-gray-500 flex flex-col items-center">
                 <Plane className="w-10 h-10 mb-4 text-blue-500 animate-bounce" />
-                <p>Scanăm mapamondul...</p>
+                <p>Convocăm jucătorii...</p>
              </div>
         ) : players.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-gray-300 text-center px-4">
                 <AlertCircle className="w-12 h-12 text-yellow-500 mb-4" />
-                <h3 className="text-lg font-bold text-gray-800">Niciun rezultat</h3>
-                <p className="text-gray-500 max-w-md">Nu am găsit jucători care să corespundă criteriilor.</p>
+                <h3 className="text-lg font-bold text-gray-800">Lot indisponibil</h3>
+                <p className="text-gray-500 max-w-md">Nu s-au găsit jucători conform criteriilor.</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {players.map((player) => {
                 const stats = player.statistics_summary || { matches: 0, total_goals: 0, total_assists: 0, total_appearances: 0 };
                 
-                // --- DESIGN LOGIC ---
-                // Verificăm dacă e jucător de "Națională" (fără club)
-                const isNationalTeam = player.team_name.includes("Nationala") || player.team_name === "Romania";
+                // Verificăm dacă e "doar" la națională sau are club
+                const isNationalOnly = player.team_name.includes("Nationala") || player.team_name === "Romania";
                 
-                // Setări specifice pentru Națională
-                const leagueBadge = isNationalTeam ? "CONVOCAT 🇷🇴" : (LEAGUE_MAP[player.team_name] || "International 🌍");
-                
-                // Stiluri Condiționale
-                const cardClasses = isNationalTeam 
-                    ? "relative rounded-2xl overflow-hidden group shadow-2xl shadow-yellow-500/20 border-2 border-yellow-400 transform hover:-translate-y-2 transition-all duration-300"
-                    : "relative bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-xl hover:shadow-blue-100/50 transition-all duration-300 hover:-translate-y-1 overflow-hidden group border border-gray-100 dark:border-slate-800";
-
-                const bgGradient = isNationalTeam
-                    ? "bg-gradient-to-br from-yellow-300 via-yellow-100 to-white"
-                    : "bg-gray-100";
-                    
-                const badgeColor = isNationalTeam
-                    ? "bg-gradient-to-r from-blue-600 via-yellow-500 to-red-600 text-white shadow-lg"
-                    : "bg-blue-600 text-white";
+                // Textul din badge: Numele Ligii (dacă există) sau "CONVOCAT"
+                const badgeText = isNationalOnly ? "CONVOCAT" : (LEAGUE_MAP[player.team_name] || player.team_name);
 
                 return (
-                    <div key={player._id} className={cardClasses}>
+                    <div key={player._id} className="relative rounded-2xl overflow-hidden group shadow-2xl shadow-yellow-500/10 border-2 border-yellow-400 transform hover:-translate-y-2 transition-all duration-300 bg-white dark:bg-slate-900">
                         
-                        {/* Steag / Badge Dreapta Sus */}
-                        <div className={`absolute top-0 right-0 z-20 text-[10px] font-bold px-4 py-1.5 rounded-bl-xl ${badgeColor}`}>
-                            {leagueBadge}
+                        {/* 1. BADGE TRICOLOR (Pt toți) */}
+                        <div className="absolute top-0 right-0 z-20 text-[10px] font-bold px-4 py-1.5 rounded-bl-xl bg-gradient-to-r from-blue-600 via-yellow-500 to-red-600 text-white shadow-lg flex items-center gap-1">
+                            {badgeText} {isNationalOnly && "🇷🇴"}
                         </div>
 
-                        {/* Imagine + Gradient */}
-                        <div className={`h-48 relative overflow-hidden ${bgGradient}`}>
-                            {/* Pattern special pt Națională */}
-                            {isNationalTeam && (
-                                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
-                            )}
+                        {/* 2. POZA + GRADIENT AURIU */}
+                        <div className="h-52 relative overflow-hidden bg-gradient-to-br from-yellow-50 via-white to-gray-50">
+                            {/* Textură subtilă */}
+                            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
                             
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent z-10"></div>
+                            {/* Gradient închis jos pentru lizibilitate text */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
                             
                             <img 
                                 src={player.image || GENERIC_USER_IMAGE} 
                                 alt={player.name}
-                                className={`w-full h-full object-cover transition-transform duration-500 ${isNationalTeam ? 'group-hover:scale-110 sepia-[.10]' : 'group-hover:scale-105'}`}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                             />
                             
-                            {/* Nume Peste Imagine */}
+                            {/* NUME ȘI CLUB */}
                             <div className="absolute bottom-3 left-4 z-20 text-white">
-                                <h3 className="text-xl font-bold leading-tight drop-shadow-md">
+                                <h3 className="text-2xl font-black leading-none drop-shadow-md uppercase italic">
                                     {player.name}
                                 </h3>
-                                <div className="flex items-center gap-1 text-gray-200 text-sm font-medium">
-                                    {isNationalTeam ? <Shield className="w-3 h-3 text-yellow-400" /> : <MapPin className="w-3 h-3" />} 
-                                    {isNationalTeam ? "Echipa Națională" : player.team_name}
+                                <div className="flex items-center gap-1 text-yellow-300 text-xs font-bold mt-1 tracking-wide uppercase">
+                                    <Shield className="w-3 h-3" /> 
+                                    {player.team_name}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Statistici */}
-                        <div className={`p-4 grid grid-cols-3 gap-2 text-center relative z-20 ${isNationalTeam ? 'bg-yellow-50/80' : 'bg-white dark:bg-slate-900'}`}>
+                        {/* 3. STATISTICI (Background gălbui subtil) */}
+                        <div className="p-4 grid grid-cols-3 gap-2 text-center relative z-20 bg-yellow-50/50 dark:bg-slate-800">
                             <div>
-                                <span className={`block text-xl font-bold ${isNationalTeam ? 'text-blue-900' : 'text-gray-800 dark:text-gray-200'}`}>{stats.total_appearances}</span>
-                                <span className="text-[10px] uppercase text-gray-400 font-bold">Meciuri</span>
+                                <span className="block text-xl font-black text-blue-900 dark:text-blue-400">{stats.total_appearances}</span>
+                                <span className="text-[9px] uppercase text-gray-500 font-bold tracking-widest">Meciuri</span>
                             </div>
-                            <div className={`border-x ${isNationalTeam ? 'border-yellow-200' : 'border-gray-100'}`}>
-                                <span className="block text-xl font-bold text-green-600">{stats.total_goals}</span>
-                                <span className="text-[10px] uppercase text-gray-400 font-bold">Goluri</span>
+                            <div className="border-x border-yellow-200 dark:border-slate-700">
+                                <span className="block text-xl font-black text-red-600">{stats.total_goals}</span>
+                                <span className="text-[9px] uppercase text-gray-500 font-bold tracking-widest">Goluri</span>
                             </div>
                             <div>
-                                <span className="block text-xl font-bold text-blue-600">{stats.total_assists}</span>
-                                <span className="text-[10px] uppercase text-gray-400 font-bold">Pase</span>
+                                <span className="block text-xl font-black text-yellow-600">{stats.total_assists}</span>
+                                <span className="text-[9px] uppercase text-gray-500 font-bold tracking-widest">Pase</span>
                             </div>
                         </div>
 
-                        {/* Poziție Badge */}
+                        {/* 4. POZIȚIE (Badge Galben) */}
                         <div className="absolute top-3 left-3 z-20">
-                            <span className={`px-2 py-1 text-xs font-bold rounded-md shadow-sm border ${isNationalTeam ? 'bg-yellow-400 text-blue-900 border-yellow-500' : 'bg-white/90 backdrop-blur text-gray-800 border-gray-200'}`}>
+                            <span className="px-2 py-1 text-xs font-bold rounded-md shadow-sm border border-yellow-500 bg-yellow-400 text-blue-900 uppercase tracking-wider">
                                 {player.position}
                             </span>
                         </div>
                         
-                        {/* Footer Special Națională */}
-                        {isNationalTeam && (
-                            <div className="bg-gradient-to-r from-blue-600 via-yellow-500 to-red-600 h-1.5 w-full"></div>
-                        )}
+                        {/* 5. FOOTER TRICOLOR */}
+                        <div className="bg-gradient-to-r from-blue-600 via-yellow-500 to-red-600 h-1.5 w-full"></div>
                     </div>
                 );
             })}
