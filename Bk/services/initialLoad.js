@@ -1,78 +1,78 @@
 const axios = require('axios');
 const Player = require('../models/player');
 
-// --- CONFIGURARE PENTRU CONT DIRECT API-FOOTBALL ---
+// --- CONFIGURARE ---
 const API_KEY = process.env.API_KEY;
-const BASE_URL = "https://v3.football.api-sports.io"; // Endpoint-ul oficial direct
-
-// Sezonul 2024 este cel curent pentru SuperLiga (2024-2025)
+const BASE_URL = "https://v3.football.api-sports.io"; 
 const SEASON = 2024; 
 
 const LEAGUE_PRIORITIES = [
-    { id: 283, name: "SuperLiga (Romania)" }, 
-    { id: 39, name: "Premier League (Anglia)" },
-    { id: 140, name: "La Liga (Spania)" }
+    { id: 283, name: "SuperLiga (Romania)" }
 ];
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const hardResetAndLoad = async () => {
-    console.log(`☢️  [HARD RESET - API FOOTBALL] Inițiez procedura pentru SEZONUL ${SEASON}...`);
-    console.log(`🔌 Conectare la: ${BASE_URL}`);
+    console.log(`🛡️ [FILL MISSING] Încep completarea datelor lipsă...`);
+    console.log(`   (NU voi șterge jucătorii existenți)`);
 
     // 1. Verificăm API-ul
     try {
-        console.log("🔍 Verific conexiunea API...");
-        // Header-ul corect pentru cont direct este 'x-apisports-key'
-        await axios.get(`${BASE_URL}/status`, {
-            headers: { 'x-apisports-key': API_KEY }
-        });
+        await axios.get(`${BASE_URL}/status`, { headers: { 'x-apisports-key': API_KEY } });
     } catch (err) {
-        console.error("❌ EROARE: Cheia API nu merge. Verifică să fie luată de pe dashboard.api-football.com");
-        if (err.response) console.error("Detalii:", err.response.data);
+        console.error("❌ EROARE CONEXIUNE: Verifică cheia sau limita zilnică.");
         return;
     }
 
-    // 2. ȘTERGEM TOT
-    console.log("🗑️  Șterg toți jucătorii din baza de date...");
-    await Player.deleteMany({});
-    console.log("✅ Baza de date este goală.");
-
-    // 3. Începem încărcarea
+    // 2. NU MAI ȘTERGEM BAZA DE DATE (Am scos deleteMany)
+    
+    // 3. Iterăm prin ligi
     for (const league of LEAGUE_PRIORITIES) {
-        console.log(`🌍 Încep importul pentru: ${league.name} (Sezon ${SEASON})...`);
+        console.log(`🌍 Verific Liga: ${league.name}...`);
         
         try {
-            // A. Luăm echipele
+            // Luăm lista tuturor echipelor din API
             const teamsRes = await axios.get(`${BASE_URL}/teams?league=${league.id}&season=${SEASON}`, {
                 headers: { 'x-apisports-key': API_KEY }
             });
-            
             const teams = teamsRes.data.response;
-            
+
             if (!teams || teams.length === 0) {
-                console.log(`⚠️  Nu am găsit echipe pentru ${league.name}.`);
+                console.log("⚠️ Nu am găsit echipe."); 
                 continue;
             }
 
-            console.log(`   ✅ Găsite ${teams.length} echipe. Încep descărcarea jucătorilor...`);
+            console.log(`📋 Am găsit ${teams.length} echipe în API. Verific care lipsesc din DB...`);
 
-            // B. Luăm jucătorii fiecărei echipe
             for (const t of teams) {
-                console.log(`   👉 Procesez echipa: ${t.team.name}`);
-                await processTeam(t.team.id, t.team.name, league.id);
-                await wait(1000); // Pauză să nu blocăm contul
+                const teamName = t.team.name;
+                const teamId = t.team.id;
+
+                // --- VERIFICARE SMART ---
+                // Căutăm dacă avem DEJA cel puțin un jucător de la această echipă în bază
+                const exists = await Player.findOne({ team_name: teamName });
+
+                if (exists) {
+                    console.log(`   ⏭️  [SKIP] ${teamName} există deja. Trec mai departe.`);
+                    continue; // Sărim peste echipa asta, nu consumăm API
+                }
+
+                // Dacă am ajuns aici, echipa NU există în bază. O descărcăm.
+                console.log(`   📥 [DESCARC] ${teamName} lipsește. O adaug acum...`);
+                await processTeam(teamId, teamName, league.id);
+                
+                // Pauză de siguranță doar când descărcăm efectiv
+                console.log("      ⏳ Aștept 6 secunde...");
+                await wait(6000); 
             }
 
         } catch (error) {
-            console.error(`⚠️  Eroare la ${league.name}:`, error.message);
-            break; 
+            console.error(`⚠️ Eroare:`, error.message);
         }
     }
-    console.log("🏁 [HARD RESET] Finalizat!");
+    console.log("🏁 [FILL MISSING] Finalizat! Toate echipele ar trebui să fie acum în DB.");
 };
 
-// Funcție ajutătoare pentru paginare
 const processTeam = async (teamId, teamName, leagueId) => {
     let currentPage = 1;
     let totalPages = 1;
@@ -83,6 +83,11 @@ const processTeam = async (teamId, teamName, leagueId) => {
                 headers: { 'x-apisports-key': API_KEY }
             });
             
+            if (res.data.errors && Object.keys(res.data.errors).length > 0) {
+                console.log(`      ❌ Eroare API:`, JSON.stringify(res.data.errors));
+                return; 
+            }
+
             if (!res.data.response || res.data.response.length === 0) break;
             
             totalPages = res.data.paging.total;
@@ -92,33 +97,38 @@ const processTeam = async (teamId, teamName, leagueId) => {
                 const p = item.player;
                 const stats = item.statistics.find(s => s.league.id === leagueId) || item.statistics[0];
 
-                const newPlayer = new Player({
-                    name: p.name,
-                    age: p.age,
-                    nationality: p.nationality,
-                    birth_date: p.birth.date,
-                    birth_place: p.birth.place,
-                    height: p.height,
-                    weight: p.weight,
-                    position: stats.games.position,
-                    image: p.photo,
-                    team_name: teamName,
-                    statistics_summary: {
-                        team_name: teamName,
-                        total_goals: stats.goals.total || 0,
-                        total_assists: stats.goals.assists || 0,
-                        total_appearances: stats.games.appearences || 0,
-                        minutes_played: stats.games.minutes || 0,
-                        rating: stats.games.rating || null
+                // Folosim updateOne cu upsert: true pentru a nu duplica jucătorii dacă rulăm de mai multe ori
+                await Player.updateOne(
+                    { api_player_id: p.id }, // Caută după ID
+                    {
+                        $set: {
+                            name: p.name,
+                            age: p.age,
+                            nationality: p.nationality,
+                            birth_date: p.birth.date,
+                            birth_place: p.birth.place,
+                            height: p.height,
+                            weight: p.weight,
+                            position: stats.games.position,
+                            image: p.photo,
+                            team_name: teamName,
+                            statistics_summary: {
+                                team_name: teamName,
+                                total_goals: stats.goals.total || 0,
+                                total_assists: stats.goals.assists || 0,
+                                total_appearances: stats.games.appearences || 0,
+                                minutes_played: stats.games.minutes || 0,
+                                rating: stats.games.rating || null
+                            },
+                            api_player_id: p.id
+                        }
                     },
-                    api_player_id: p.id
-                });
-
-                await newPlayer.save();
+                    { upsert: true } // Dacă nu există, îl creează. Dacă există, îl actualizează.
+                );
             }
             currentPage++;
         } catch (err) {
-            console.log(`   Eroare la pagina ${currentPage}, trec mai departe.`);
+            console.log(`      ❌ Eroare Request: ${err.message}`);
             break;
         }
     } while (currentPage <= totalPages);
