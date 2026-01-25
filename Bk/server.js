@@ -101,7 +101,7 @@ const startServer = async () => {
 
         // --- RUTE JUCĂTORI ---
         app.get('/api/sport/players', async (req, res) => {
-            const players = await Player.find().limit(600); 
+            const players = await Player.find().limit(5000); 
             res.json(players);
         });
 
