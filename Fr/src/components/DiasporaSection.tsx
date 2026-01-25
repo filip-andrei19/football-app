@@ -3,18 +3,34 @@ import { Globe, Plane, MapPin, AlertCircle } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
-// 🚫 LISTA NEAGRĂ: Echipe din România pe care le EXCLUDEM complet
-// Aceste nume trebuie să fie exact cum vin din API (sau părți din ele)
-const BLOCKED_TEAMS = [
-  "FCSB", "Steaua", "CFR", "Cluj", "Universitatea Craiova", "FC U Craiova", 
-  "Rapid", "Farul", "Sepsi", "Petrolul", "Hermannstadt", "UTA", "Arad", 
-  "Poli Iasi", "Politehnica Iasi", "Otelul", "Oțelul", "Botosani", "Botoșani", 
-  "Dinamo", "Slobozia", "Gloria Buzau", "Voluntari", "Chiajna", "Mioveni", 
-  "Chindia", "Arges", "Metaloglobus", "Csikszereda", "Corvinul", "Resita",
-  "SuperLiga", "Liga 2", "Romania (Nationala)" // Excludem și "Nationala" generică dacă vrei DOAR cluburi străine confirmate
+// 🚫 LISTA NEAGRĂ (Cuvinte cheie care indică o echipă românească)
+// Scriem totul fără diacritice, cu litere mici.
+const BLOCKED_KEYWORDS = [
+  "fcsb", "steaua", "becali", 
+  "cfr", "cluj", "universitatea cluj", "u cluj",
+  "craiova", "universitatea craiova", "fc u", 
+  "rapid", "giulesti",
+  "farul", "constanta", "viitorul",
+  "sepsi", "sfantu", "gheorghe",
+  "petrolul", "ploiesti",
+  "hermannstadt", "sibiu",
+  "uta", "arad",
+  "poli", "iasi", "politehnica",
+  "otelul", "galati", "sc otelul",
+  "botosani", "fc botosani",
+  "dinamo", "bucuresti",
+  "slobozia", "unirea",
+  "buzau", "gloria", "scm gloria",
+  "voluntari", "fc voluntari",
+  "chiajna", "concordia",
+  "mioveni", "arges",
+  "chindia", "targoviste",
+  "metaloglobus", "csikszereda", "miercurea", "ciuc",
+  "corvinul", "hunedoara",
+  "resita", "csm", "scm", "fc", "acs" // Termeni generici românești
 ];
 
-// Dicționar pentru steaguri/ligi (pentru aspect)
+// Dicționar ligi (pentru aspect)
 const LEAGUE_MAP: { [key: string]: string } = {
   "Tottenham Hotspur": "Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿",
   "Parma": "Serie A 🇮🇹",
@@ -29,8 +45,16 @@ const LEAGUE_MAP: { [key: string]: string } = {
   "Pisa": "Serie B 🇮🇹",
   "Palermo": "Serie B 🇮🇹",
   "Raków Częstochowa": "Ekstraklasa 🇵🇱",
-  "Wuhan Three Towns": "Super League 🇨🇳",
-  "Muaither": "Stars League 🇶🇦"
+  "Wuhan Three Towns": "Super League 🇨🇳"
+};
+
+// Funcție pentru eliminarea diacriticelor (Ex: "Buzău" -> "buzau")
+const normalizeText = (text: string) => {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Scoate accentele
+    .replace(/[^a-z0-9 ]/g, "");     // Păstrează doar litere și cifre
 };
 
 interface Player {
@@ -62,20 +86,24 @@ export function DiasporaSection() {
            // 1. Trebuie să fie Român
            if (p.nationality !== "Romania") return false;
 
-           // 2. Normalizăm numele echipei (litere mici) pentru verificare
-           const teamName = (p.team_name || "").toLowerCase();
+           // 2. Normalizăm numele echipei (fără diacritice, litere mici)
+           const cleanTeamName = normalizeText(p.team_name || "");
            
-           // 3. Verificăm dacă numele echipei conține vreun cuvânt din LISTA NEAGRĂ
-           // Ex: Dacă echipa e "FC Rapid 1923", conține "Rapid" -> E BLOCATĂ.
-           const isRomanianClub = BLOCKED_TEAMS.some(blocked => 
-              teamName.includes(blocked.toLowerCase())
-           );
+           // 3. Verificăm dacă conține cuvinte interzise
+           // Ex: "scm gloria buzău" -> "scm gloria buzau". Conține "buzau" -> BLOCKED.
+           const isRomanianClub = BLOCKED_KEYWORDS.some(keyword => {
+              // Verificăm cuvânt cu cuvânt pentru precizie
+              return cleanTeamName.includes(keyword);
+           });
+           
+           // 4. Excludem și cazul generic "Romania (Nationala)" dacă nu i-am găsit clubul
+           const isNationalGeneric = cleanTeamName.includes("nationala");
 
-           // 4. Păstrăm doar dacă NU e club românesc
-           return !isRomanianClub;
+           // Păstrăm doar ce NU e românesc și NU e generic
+           return !isRomanianClub && !isNationalGeneric;
         });
 
-        // Sortare după meciuri jucate
+        // Sortare
         const sortedStranieri = stranieri.sort((a: Player, b: Player) => 
             (b.statistics_summary?.total_appearances || 0) - (a.statistics_summary?.total_appearances || 0)
         );
@@ -106,7 +134,7 @@ export function DiasporaSection() {
         </h1>
         
         <p className="max-w-2xl mx-auto text-muted-foreground text-lg">
-           Jucătorii echipei naționale care evoluează exclusiv în campionatele din străinătate.
+           Jucătorii echipei naționale care evoluează în campionatele din străinătate.
         </p>
       </section>
 
@@ -115,14 +143,14 @@ export function DiasporaSection() {
         {loading ? (
              <div className="text-center py-20 animate-pulse text-gray-500 flex flex-col items-center">
                 <Plane className="w-10 h-10 mb-4 text-blue-500 animate-bounce" />
-                <p>Scanăm campionatele Europei...</p>
+                <p>Căutăm stranierii...</p>
              </div>
         ) : players.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-gray-300 text-center px-4">
                 <AlertCircle className="w-12 h-12 text-yellow-500 mb-4" />
-                <h3 className="text-lg font-bold text-gray-800">Niciun stranier găsit</h3>
+                <h3 className="text-lg font-bold text-gray-800">Lista e goală?</h3>
                 <p className="text-gray-500 max-w-md">
-                   Momentan nu am detectat jucători români la echipe externe. Asigură-te că scriptul de backend (v5) a rulat cu succes.
+                   Se pare că filtrul strict a eliminat toți jucătorii. Verifică dacă scriptul de backend a reușit să găsească cluburile străine (ex: Tottenham, Parma). Dacă toți au rămas cu "Romania (Nationala)" sau echipe de SuperLigă, nu vor apărea aici.
                 </p>
             </div>
         ) : (
@@ -136,7 +164,7 @@ export function DiasporaSection() {
                     key={player._id} 
                     className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-xl hover:shadow-blue-100/50 transition-all duration-300 hover:-translate-y-1 overflow-hidden group border border-gray-100 dark:border-slate-800"
                     >
-                        {/* Steag Liga (Colț Dreapta Sus) */}
+                        {/* Steag Liga */}
                         <div className="absolute top-0 right-0 z-20 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-md">
                             {leagueBadge}
                         </div>
@@ -175,7 +203,7 @@ export function DiasporaSection() {
                             </div>
                         </div>
 
-                        {/* Poziție (Badge) */}
+                        {/* Poziție Badge */}
                         <div className="absolute top-3 left-3 z-20">
                             <span className="px-2 py-1 bg-white/90 backdrop-blur text-gray-800 text-xs font-bold rounded-md shadow-sm border border-gray-200">
                                 {player.position}
