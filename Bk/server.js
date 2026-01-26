@@ -6,10 +6,10 @@ const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
 
 // --- IMPORTURI SERVICII ---
-const { syncPlayers } = require('./services/syncService'); 
-const { runDailyJob } = require('./services/smartSync');   
-// 1. IMPORT NOU PENTRU RESETARE MANUALĂ
+// const { syncPlayers } = require('./services/syncService'); // (Nu mai folosim vechiul sync)
 const { hardResetAndLoad } = require('./services/initialLoad'); 
+// 1. IMPORTĂM NOUL SERVICIU DE SMART SYNC
+const { runDailySmartSync } = require('./services/smartSync'); 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,7 +42,7 @@ userSchema.pre('save', async function(next) {
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// B. PLAYER (Schema flexibilă pentru a accepta date noi gen height, weight)
+// B. PLAYER (Schema flexibilă)
 const playerSchema = new mongoose.Schema({}, { strict: false });
 const Player = mongoose.models.Player || mongoose.model('Player', playerSchema);
 
@@ -138,23 +138,23 @@ const startServer = async () => {
         // 3. ZONA ADMINISTRATIVĂ & CRON JOBS
         // ============================================================
 
-        // --- RUTĂ SPECIALĂ: RESET TOTAL (Folosește-o ACUM pentru API-ul nou) ---
-        // Accesează: https://site-ul-tau.onrender.com/api/admin/hard-reset
+        // --- RUTĂ SPECIALĂ: RESET TOTAL ---
         app.get('/api/admin/hard-reset', async (req, res) => {
             console.log("⚠️  Comandă de HARD RESET primită!");
-            
-            // Răspundem imediat browserului ca să nu dea timeout
-            res.send("🚀 Operațiunea a început în fundal! Verifică consola (Logs) în Render. Durează câteva minute.");
-
-            // Pornim scriptul în fundal
+            res.send("🚀 Operațiunea a început în fundal! Verifică consola.");
             hardResetAndLoad(); 
         });
 
         // --- CRON JOB ZILNIC (Sincronizare Rotativă) ---
-        // Rulează automat la 4 dimineața (UTC) în fiecare zi
-        cron.schedule('0 4 * * *', async () => {
-            console.log('⏰ [CRON] Pornesc actualizarea zilnică...');
-            await runDailyJob(); 
+        // Ora 15:57 în România (aproximativ 13:57 UTC)
+        // Setăm cron-ul pe UTC pentru siguranță pe serverele Render
+        // 57 13 * * * înseamnă ora 13:57 UTC -> 15:57 Ora României (iarna)
+        
+        cron.schedule('59 13 * * *', async () => {
+            console.log('⏰ [CRON 15:57 RO] Pornesc actualizarea zilnică rotativă...');
+            await runDailySmartSync(); 
+        }, {
+            timezone: "Europe/Bucharest" // Încercăm să forțăm fusul orar corect
         });
 
         app.listen(PORT, () => console.log(`🚀 Serverul merge pe http://localhost:${PORT}`));

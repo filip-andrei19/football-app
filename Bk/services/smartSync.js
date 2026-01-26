@@ -1,125 +1,169 @@
 const axios = require('axios');
-const mongoose = require('mongoose');
-const Player = require('../models/player'); // Asigură-te că calea e corectă
+const fs = require('fs');
+const path = require('path');
+const Player = require('../models/player');
 
 // --- CONFIGURARE ---
 const API_KEY = process.env.API_KEY;
-const CURRENT_SEASON = 2023; // Schimbă la 2024 când apare sezonul nou
+const BASE_URL = "https://v3.football.api-sports.io";
+const SEASON = 2024;
+const STATE_FILE = path.join(__dirname, 'syncState.json');
 
-// Harta Ligilor pe Zile (0 = Duminică, 1 = Luni, etc.)
-const SCHEDULE = {
-    1: { name: "Premier League (Anglia)", id: 39 },
-    2: { name: "La Liga (Spania)", id: 140 },
-    3: { name: "Serie A (Italia)", id: 135 },
-    4: { name: "Bundesliga (Germania)", id: 78 },
-    5: { name: "Ligue 1 (Franța)", id: 61 },
-    6: { name: "SuperLiga (România)", id: 283 }, // Sâmbăta e pentru noi!
-    0: { name: "Echipe Naționale & Altele", id: null } // Duminica - zi de odihnă sau curățenie
-};
+// Lista Ligilor Importante prin care vom roti (Câte una pe zi)
+const TARGET_LEAGUES = [
+    { id: 39, name: "Premier League (Anglia)" },
+    { id: 140, name: "La Liga (Spania)" },
+    { id: 135, name: "Serie A (Italia)" },
+    { id: 78, name: "Bundesliga (Germania)" },
+    { id: 61, name: "Ligue 1 (Franta)" },
+    { id: 283, name: "SuperLiga (Romania)" } // O re-verificăm și pe aceasta periodic
+];
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const fetchAndSaveLeague = async (leagueId, leagueName) => {
-    console.log(`\n🌍 [ZIUA ${new Date().getDay()}] Încep importul pentru: ${leagueName}...`);
-    
+// Funcție pentru citirea stării (Ce ligă urmează?)
+const getNextLeagueIndex = () => {
     try {
-        // 1. Luăm toate ECHIPELE din acea ligă
-        const teamsUrl = `https://v3.football.api-sports.io/teams?league=${leagueId}&season=${CURRENT_SEASON}`;
-        const teamsRes = await axios.get(teamsUrl, {
-            headers: { 'x-rapidapi-key': API_KEY, 'x-rapidapi-host': 'v3.football.api-sports.io' }
+        if (fs.existsSync(STATE_FILE)) {
+            const data = fs.readFileSync(STATE_FILE);
+            const state = JSON.parse(data);
+            // Trecem la următoarea ligă (index + 1). Dacă ajungem la final, o luăm de la 0.
+            let nextIndex = state.lastIndex + 1;
+            if (nextIndex >= TARGET_LEAGUES.length) nextIndex = 0;
+            return nextIndex;
+        }
+    } catch (err) { console.error("Eroare citire state:", err); }
+    return 0; // Default: Începem cu prima
+};
+
+// Funcție pentru salvarea stării
+const saveLeagueIndex = (index) => {
+    try {
+        fs.writeFileSync(STATE_FILE, JSON.stringify({ lastIndex: index, lastRun: new Date() }));
+    } catch (err) { console.error("Eroare salvare state:", err); }
+};
+
+const runDailySmartSync = async () => {
+    console.log(`⏰ [SMART SYNC 15:57] Pornesc actualizarea zilnică...`);
+
+    // 1. Aflăm ce ligă este programată pentru azi
+    const leagueIndex = getNextLeagueIndex();
+    const targetLeague = TARGET_LEAGUES[leagueIndex];
+
+    console.log(`🌍 Liga Programată Azi: ${targetLeague.name}`);
+
+    try {
+        // 2. Luăm echipele din acea ligă
+        const teamsRes = await axios.get(`${BASE_URL}/teams?league=${targetLeague.id}&season=${SEASON}`, {
+            headers: { 'x-apisports-key': API_KEY }
         });
-
+        
         const teams = teamsRes.data.response;
-        console.log(`📋 Am găsit ${teams.length} echipe în ${leagueName}.`);
-
-        // 2. Luăm jucătorii pentru FIECARE echipă
-        for (const t of teams) {
-            const teamId = t.team.id;
-            const teamName = t.team.name;
-            
-            console.log(`   ⚽ Procesez echipa: ${teamName}...`);
-            await processTeamPlayers(teamId, teamName, leagueId);
-            
-            // Pauză mică să nu supărăm API-ul
-            await wait(2000); 
+        if (!teams) {
+            console.log("⚠️ Nu am putut lua echipele. Mă opresc.");
+            return;
         }
 
+        console.log(`📋 Procesez ${teams.length} echipe din ${targetLeague.name}...`);
+
+        // 3. Iterăm prin echipe
+        for (const t of teams) {
+            const teamName = t.team.name;
+            const teamId = t.team.id;
+
+            console.log(`   👉 Verific: ${teamName}`);
+            await processTeamAndUpdate(teamId, teamName, targetLeague.id);
+            
+            // Pauză de siguranță (4 secunde) pentru a nu depăși limita API
+            await wait(4000); 
+        }
+
+        // 4. Dacă totul a mers bine, salvăm indexul pentru mâine
+        saveLeagueIndex(leagueIndex);
+        console.log(`✅ [SMART SYNC] Finalizat pentru azi! Mâine urmează liga următoare.`);
+
     } catch (error) {
-        console.error(`❌ Eroare la liga ${leagueName}:`, error.message);
+        console.error(`❌ Eroare critică Smart Sync:`, error.message);
     }
 };
 
-// Funcția care descarcă pagină cu pagină jucătorii unei echipe
-const processTeamPlayers = async (teamId, teamName, leagueId) => {
+const processTeamAndUpdate = async (teamId, teamName, leagueId) => {
     let currentPage = 1;
-    let totalPages = 1; // Presupunem 1 inițial
+    let totalPages = 1;
 
     do {
         try {
-            const url = `https://v3.football.api-sports.io/players?team=${teamId}&season=${CURRENT_SEASON}&page=${currentPage}`;
-            const res = await axios.get(url, {
-                headers: { 'x-rapidapi-key': API_KEY, 'x-rapidapi-host': 'v3.football.api-sports.io' }
+            const res = await axios.get(`${BASE_URL}/players?team=${teamId}&season=${SEASON}&page=${currentPage}`, {
+                headers: { 'x-apisports-key': API_KEY }
             });
 
-            // Actualizăm nr total de pagini
+            if (!res.data.response || res.data.response.length === 0) break;
+            
             totalPages = res.data.paging.total;
             const playersList = res.data.response;
 
-            // SALVARE ÎN BAZA DE DATE
             for (const item of playersList) {
                 const p = item.player;
-                // Căutăm statistica relevantă pentru liga curentă
-                const stats = item.statistics.find(s => s.league.id === leagueId) || item.statistics[0];
+                const stats = item.statistics[0];
 
-                // --- LOGICA DE "DOAR CEI NOI" ---
-                // Upsert face exact asta: Dacă nu există, îl creează. Dacă există, îl lasă (sau actualizează).
-                // Aici actualizăm datele ca să fie proaspete, dar nu dublăm.
-                
-                await Player.updateOne(
-                    { api_player_id: p.id }, // Condiția: Îl cauți după ID
-                    {
-                        $set: {
+                // --- LOGICA DE ACTUALIZARE INTELIGENTĂ ---
+                // Căutăm dacă jucătorul există deja în baza noastră
+                const existingPlayer = await Player.findOne({ api_player_id: p.id });
+
+                if (existingPlayer) {
+                    // CAZ 1: Există. Verificăm dacă trebuie "reparat" numele echipei.
+                    // Dacă la noi apare ca "Romania" sau "Romania (Nationala)", dar API-ul zice că e la un Club (ex: Tottenham)
+                    // Atunci facem UPDATE la numele clubului.
+                    const isGenericTeam = existingPlayer.team_name.includes("Romania") || existingPlayer.team_name.includes("Nationala");
+                    
+                    if (isGenericTeam) {
+                        console.log(`      🔄 UPDATE: ${p.name} mutat de la "${existingPlayer.team_name}" la "${teamName}"`);
+                        
+                        existingPlayer.team_name = teamName;
+                        existingPlayer.statistics_summary = {
+                            team_name: teamName, // Actualizăm și în stats
+                            total_goals: stats.goals.total || 0,
+                            total_assists: stats.goals.assists || 0,
+                            total_appearances: stats.games.appearences || 0,
+                            minutes_played: stats.games.minutes || 0,
+                            rating: stats.games.rating || null
+                        };
+                        await existingPlayer.save();
+                    } 
+                    // Altfel, dacă e deja la clubul corect, putem actualiza doar statistici (opțional), 
+                    // dar NU îl ștergem și nu îl duplicăm.
+                } else {
+                    // CAZ 2: Nu există. Îl adăugăm (doar dacă vrei să adaugi și străini).
+                    // Dacă vrei să adaugi DOAR români noi:
+                    if (p.nationality === "Romania") {
+                        console.log(`      ⭐ Jucător NOU Român găsit: ${p.name}`);
+                        const newPlayer = new Player({
                             name: p.name,
                             age: p.age,
                             nationality: p.nationality,
-                            position: stats.games.position,
-                            image: p.photo,
+                            // ... restul câmpurilor ...
                             team_name: teamName,
-                            statistics_summary: {
+                            api_player_id: p.id,
+                            image: p.photo,
+                             statistics_summary: {
                                 team_name: teamName,
                                 total_goals: stats.goals.total || 0,
-                                total_assists: stats.goals.assists || 0
-                            },
-                            api_player_id: p.id
-                        }
-                    },
-                    { upsert: true } // <--- ASTA E CHEIA (Inserează dacă nu există)
-                );
+                                total_assists: stats.goals.assists || 0,
+                                total_appearances: stats.games.appearences || 0,
+                                minutes_played: stats.games.minutes || 0,
+                                rating: stats.games.rating || null
+                            }
+                        });
+                        await newPlayer.save();
+                    }
+                }
             }
-            
             currentPage++;
-            // Pauză între pagini
-            await wait(1000);
-
         } catch (err) {
-            console.error(`Eroare la echipa ${teamName} pg ${currentPage}:`, err.message);
+            console.log(`      ❌ Eroare pagină: ${err.message}`);
             break;
         }
     } while (currentPage <= totalPages);
 };
 
-const runDailyJob = async () => {
-    const todayIndex = new Date().getDay(); // 0-6
-    const target = SCHEDULE[todayIndex];
-
-    if (!target || !target.id) {
-        console.log("☕ Azi e Duminică (sau zi liberă). Nu rulăm importuri masive.");
-        return;
-    }
-
-    console.log(`🚀 [DAILY JOB] Pornire sincronizare pentru: ${target.name}`);
-    await fetchAndSaveLeague(target.id, target.name);
-    console.log(`✅ [DAILY JOB] Finalizat pentru azi.`);
-};
-
-module.exports = { runDailyJob };
+module.exports = { runDailySmartSync };
