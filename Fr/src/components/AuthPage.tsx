@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock, ArrowRight, Shield, Star, AlertCircle } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, Shield, Star } from 'lucide-react';
 
 // Imagine de fundal (Stadion/Fotbal)
 const HERO_IMAGE = "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?q=80&w=2830&auto=format&fit=crop";
@@ -43,72 +43,72 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-white dark:bg-slate-900 overflow-hidden">
+    <div className="min-h-screen flex bg-white dark:bg-slate-900 animate-in fade-in duration-700">
       
-      {/* PARTEA STÂNGĂ: IMAGINE CINEMATICĂ */}
-      {/* Am schimbat 'hidden lg:flex' în 'hidden md:flex' ca să apară mai des */}
-      <div className="hidden md:flex md:w-1/2 relative bg-slate-900">
+      {/* PARTEA STÂNGĂ: IMAGINE CINEMATICĂ (Doar pe Desktop) */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-slate-900">
          {/* Imaginea de fundal */}
          <div 
-            className="absolute inset-0 bg-cover bg-center opacity-60 transition-opacity duration-1000"
+            className="absolute inset-0 bg-cover bg-center opacity-60"
             style={{ backgroundImage: `url(${HERO_IMAGE})` }}
          ></div>
          
-         {/* Gradient Overlay */}
-         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-blue-900/40 to-black/90"></div>
+         {/* Gradient Overlay peste imagine */}
+         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 via-transparent to-black/90"></div>
 
-         {/* Conținut Text pe Imagine */}
-         <div className="relative z-10 flex flex-col justify-between p-12 h-full text-white w-full">
-             <div className="flex items-center gap-2 font-bold tracking-widest text-sm opacity-90">
-                <Shield className="w-5 h-5 text-yellow-400" />
+         {/* Text pe imagine */}
+         <div className="relative z-10 flex flex-col justify-between p-12 h-full text-white">
+             <div className="flex items-center gap-2 font-bold tracking-widest text-sm opacity-80">
+                <Star className="w-4 h-4 text-yellow-400" />
                 SCOUT ROMÂNIA
              </div>
 
-             <div className="max-w-lg space-y-6">
-                 <h2 className="text-4xl lg:text-5xl font-black leading-tight drop-shadow-lg">
-                    {isLogin ? "Bine ai revenit pe teren." : "Începe cariera de scouter."}
+             <div className="max-w-md space-y-4">
+                 <h2 className="text-5xl font-black leading-tight">
+                    Descoperă viitorul fotbalului.
                  </h2>
-                 <p className="text-lg text-blue-100 font-light leading-relaxed drop-shadow-md">
-                    Analize detaliate, statistici avansate și monitorizarea stranierilor. Totul într-o singură platformă dedicată fotbalului românesc.
+                 <p className="text-lg text-blue-100 font-light">
+                    Analize detaliate, statistici în timp real și monitorizarea stranierilor. Totul într-o singură platformă.
                  </p>
              </div>
 
-             <div className="text-xs opacity-60 border-t border-white/20 pt-6">
-                 © 2024 România Fotbal Scout. Platformă oficială de date.
+             <div className="text-xs opacity-50">
+                 © 2024 România Fotbal Scout. All rights reserved.
              </div>
          </div>
       </div>
 
       {/* PARTEA DREAPTĂ: FORMULARUL */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-6 lg:p-12 relative">
-        
-        {/* Buton Mobile de branding (apare doar pe ecrane foarte mici) */}
-        <div className="absolute top-6 left-6 md:hidden flex items-center gap-2 font-bold text-blue-900 dark:text-white">
-            <Shield className="w-6 h-6 text-blue-600" /> RO FOTBAL
-        </div>
-
-        <div className="max-w-md w-full animate-in slide-in-from-right-8 duration-700">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12">
+        <div className="max-w-md w-full">
             
-            <div className="mb-10">
-                <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 dark:text-white mb-3">
-                  {isLogin ? 'Autentificare' : 'Creează Cont'}
+            {/* Logo Mobile (apare doar pe ecrane mici) */}
+            <div className="lg:hidden text-center mb-8">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-lg mb-4">
+                    <Shield className="w-6 h-6" />
+                </div>
+            </div>
+
+            <div className="text-center lg:text-left mb-8">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                  {isLogin ? 'Bine ai revenit!' : 'Creează un cont'}
                 </h1>
-                <p className="text-gray-500 dark:text-gray-400 text-lg">
-                  {isLogin ? 'Introdu credențialele pentru acces.' : 'Completează datele pentru a începe.'}
+                <p className="text-gray-500">
+                  {isLogin ? 'Introdu datele pentru a continua.' : 'Începe călătoria ta de scouting azi.'}
                 </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
                 
                 {/* Nume (Register) */}
                 {!isLogin && (
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300 ml-1">Nume Complet</label>
-                    <div className="relative group">
-                        <User className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
+                <div className="space-y-1.5 animate-in slide-in-from-top-2">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Nume Complet</label>
+                    <div className="relative">
+                        <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                         <input 
                             type="text" 
-                            className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white font-medium"
+                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                             placeholder="Ex: Andrei Popescu"
                             value={formData.name}
                             onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -119,13 +119,13 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                 )}
 
                 {/* Email */}
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300 ml-1">Email</label>
-                    <div className="relative group">
-                        <Mail className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
+                <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Email</label>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                         <input 
                             type="email" 
-                            className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white font-medium"
+                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                             placeholder="nume@exemplu.com"
                             value={formData.email}
                             onChange={(e) => setFormData({...formData, email: e.target.value})}
@@ -135,15 +135,16 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                 </div>
 
                 {/* Password */}
-                <div className="space-y-2">
-                    <div className="flex justify-between ml-1">
-                        <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Parolă</label>
+                <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Parolă</label>
+                        {isLogin && <a href="#" className="text-sm text-blue-600 hover:underline">Ai uitat parola?</a>}
                     </div>
-                    <div className="relative group">
-                        <Lock className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                         <input 
                             type="password" 
-                            className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white font-medium"
+                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                             placeholder="••••••••"
                             value={formData.password}
                             onChange={(e) => setFormData({...formData, password: e.target.value})}
@@ -154,8 +155,8 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
 
                 {/* Mesaj Eroare */}
                 {error && (
-                    <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-sm font-medium rounded-xl flex items-center justify-center gap-2 animate-in fade-in">
-                        <AlertCircle className="w-5 h-5" /> {error}
+                    <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg flex items-center justify-center gap-2 animate-in fade-in">
+                        <AlertCircle className="w-4 h-4" /> {error}
                     </div>
                 )}
 
@@ -163,28 +164,40 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                 <button 
                     type="submit" 
                     disabled={loading}
-                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-4"
+                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                    {loading ? 'Se procesează...' : (isLogin ? 'Intră în Cont' : 'Creează Cont')}
+                    {loading ? 'Se încarcă...' : (isLogin ? 'Autentificare' : 'Creează Cont')}
                     {!loading && <ArrowRight className="w-5 h-5" />}
                 </button>
             </form>
 
             {/* Toggle */}
-            <div className="mt-8 text-center">
-                <p className="text-gray-500 font-medium">
+            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-700 text-center">
+                <p className="text-gray-500 text-sm">
                     {isLogin ? 'Nu ești înregistrat?' : 'Ai deja un cont?'}
                     <button 
                         onClick={() => { setIsLogin(!isLogin); setError(''); }}
-                        className="ml-2 font-bold text-blue-600 hover:text-blue-800 transition-colors underline decoration-2 decoration-transparent hover:decoration-blue-600"
+                        className="ml-2 font-bold text-blue-600 hover:text-blue-700 transition-colors"
                     >
-                        {isLogin ? 'Înregistrează-te' : 'Loghează-te'}
+                        {isLogin ? 'Fă-ți cont acum' : 'Loghează-te'}
                     </button>
                 </p>
             </div>
 
         </div>
       </div>
+
     </div>
   );
+}
+
+// Iconiță extra pentru eroare (dacă nu o ai importată)
+function AlertCircle({ className }: { className?: string }) {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+    );
 }
