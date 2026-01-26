@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogIn, LogOut } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogIn, LogOut, Shield, ArrowRight, User, Mail, Lock } from 'lucide-react';
 
 // --- IMPORTURI ---
 import { HomeSection } from './components/HomeSection';
@@ -14,15 +14,16 @@ const Button = ({ children, onClick, variant, className, type, disabled }: any) 
   const variants: any = {
     default: "bg-blue-600 text-white hover:bg-blue-700 shadow-md",
     ghost: "hover:bg-gray-100 text-gray-700",
-    secondary: "bg-gray-100 text-gray-900", // Am adaugat stil pentru buton activ
+    secondary: "bg-gray-100 text-gray-900",
     outline: "border border-gray-200 bg-white hover:bg-gray-50",
     destructive: "text-red-600 hover:bg-red-50"
   };
   return <button type={type || "button"} onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant || 'default']} ${className || ''}`}>{children}</button>;
 };
 
-// --- AUTH MODAL (SIMPLU) ---
-const AuthPage = ({ onClose, onLoginSuccess }: any) => {
+// --- AUTH PAGE (STANDALONE - PAGINA DE START) ---
+// Am scos butonul de Close (X) pentru că acum e pagina obligatorie de start
+const AuthPage = ({ onLoginSuccess }: any) => {
     const [isRegistering, setIsRegistering] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -55,69 +56,85 @@ const AuthPage = ({ onClose, onLoginSuccess }: any) => {
                 setError(data.message || "Eroare la conectare.");
             }
         } catch (err) {
-            setError("Serverul nu răspunde.");
+            setError("Serverul nu răspunde. Verifică conexiunea.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] animate-in fade-in">
-            <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full relative">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="h-5 w-5"/></button>
+        <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-slate-700">
                 
-                <h2 className="text-2xl font-bold text-center mb-6 text-gray-900">
-                    {isRegistering ? "Creează Cont" : "Autentificare"}
-                </h2>
+                {/* Header Tricolor */}
+                <div className="h-2 bg-gradient-to-r from-blue-600 via-yellow-500 to-red-600"></div>
 
-                {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded mb-4 text-center">{error}</div>}
+                <div className="p-8">
+                    <div className="text-center mb-8">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 text-blue-600 mb-4 shadow-sm">
+                           <Shield className="w-8 h-8" />
+                        </div>
+                        <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">
+                          {isRegistering ? 'Alătură-te Echipei' : 'Bine ai revenit!'}
+                        </h1>
+                        <p className="text-gray-500 text-sm">
+                          Scouting, Statistici și Diaspora Tricoloră
+                        </p>
+                    </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {isRegistering && (
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Nume</label>
+                    {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded mb-4 text-center border border-red-100">{error}</div>}
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {isRegistering && (
+                            <div className="relative">
+                                <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Numele tău"
+                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                    value={formData.name}
+                                    onChange={e => setFormData({...formData, name: e.target.value})}
+                                    required
+                                />
+                            </div>
+                        )}
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                             <input 
-                                type="text" 
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                value={formData.name}
-                                onChange={e => setFormData({...formData, name: e.target.value})}
+                                type="email" 
+                                placeholder="Email"
+                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                value={formData.email}
+                                onChange={e => setFormData({...formData, email: e.target.value})}
                                 required
                             />
                         </div>
-                    )}
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
-                        <input 
-                            type="email" 
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                            value={formData.email}
-                            onChange={e => setFormData({...formData, email: e.target.value})}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Parolă</label>
-                        <input 
-                            type="password" 
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                            value={formData.password}
-                            onChange={e => setFormData({...formData, password: e.target.value})}
-                            required
-                        />
-                    </div>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                            <input 
+                                type="password" 
+                                placeholder="Parola"
+                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                value={formData.password}
+                                onChange={e => setFormData({...formData, password: e.target.value})}
+                                required
+                            />
+                        </div>
 
-                    <Button type="submit" disabled={loading} className="w-full font-bold">
-                        {loading ? "Se încarcă..." : (isRegistering ? "Înregistrează-te" : "Intră în cont")}
-                    </Button>
-                </form>
+                        <Button type="submit" disabled={loading} className="w-full font-bold py-6 text-base gap-2">
+                            {loading ? "Se procesează..." : (isRegistering ? "Creează Cont" : "Intră în Cont")}
+                            {!loading && <ArrowRight className="w-5 h-5" />}
+                        </Button>
+                    </form>
 
-                <div className="mt-4 text-center">
-                    <button 
-                        onClick={() => { setIsRegistering(!isRegistering); setError(""); }}
-                        className="text-blue-600 text-sm hover:underline"
-                    >
-                        {isRegistering ? "Ai deja cont? Loghează-te" : "Nu ai cont? Creează unul"}
-                    </button>
+                    <div className="mt-6 text-center">
+                        <button 
+                            onClick={() => { setIsRegistering(!isRegistering); setError(""); }}
+                            className="text-blue-600 text-sm hover:underline font-medium"
+                        >
+                            {isRegistering ? "Ai deja cont? Loghează-te" : "Nu ai cont? Creează unul"}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -129,18 +146,33 @@ type Section = 'home' | 'diaspora' | 'stars' | 'heroes' | 'collectors';
 export default function App() {
   const [activeSection, setActiveSection] = useState<Section>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
   
+  // Starea utilizatorului
   const [user, setUser] = useState<{name: string, email: string} | null>(null);
-  const isLoggedIn = user !== null;
+
+  // --- 1. PERSISTENȚA SESIUNII (Nu te scoate dacă dai refresh) ---
+  useEffect(() => {
+    const savedUser = localStorage.getItem('footballAppUser');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        console.error("Eroare la citirea userului", e);
+      }
+    }
+  }, []);
 
   const handleLoginSuccess = (userData: any) => {
       setUser(userData);
-      setShowAuth(false);
+      // Salvăm userul în browser
+      localStorage.setItem('footballAppUser', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
       setUser(null);
+      setActiveSection('home'); // Resetăm secțiunea la logout
+      // Ștergem userul din browser
+      localStorage.removeItem('footballAppUser');
   };
 
   const navigation = [
@@ -162,8 +194,16 @@ export default function App() {
     }
   };
 
+  // --- 2. LOGICA DE AFIȘARE (GATEKEEPER) ---
+  
+  // Dacă NU suntem logați, arătăm DOAR pagina de Auth
+  if (!user) {
+      return <AuthPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Dacă SUNTEM logați, arătăm aplicația completă
   return (
-    <div className="min-h-screen bg-white text-gray-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-white text-gray-900 flex flex-col font-sans animate-in fade-in duration-700">
       <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
@@ -177,7 +217,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* DESKTOP MENU (ASCUNS PE MOBIL) */}
+            {/* DESKTOP MENU */}
             <nav className="hidden md:flex items-center gap-1">
               {navigation.map((item) => (
                   <Button key={item.id} variant={activeSection === item.id ? 'secondary' : 'ghost'} onClick={() => setActiveSection(item.id)} className="gap-2">
@@ -188,19 +228,11 @@ export default function App() {
 
             {/* ACTIONS RIGHT */}
             <div className="flex items-center gap-2">
-              <div className="hidden md:flex">
-                {isLoggedIn ? (
-                    <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold text-blue-800">Salut, {user?.name}!</span>
-                        <Button variant="destructive" onClick={handleLogout} className="h-8 text-xs">
-                            <LogOut className="h-3 w-3 mr-1" /> Logout
-                        </Button>
-                    </div>
-                ) : (
-                    <Button variant="default" onClick={() => setShowAuth(true)} className="gap-2">
-                        <LogIn className="h-4 w-4" /> Sign In
-                    </Button>
-                )}
+              <div className="hidden md:flex items-center gap-3">
+                 <span className="text-sm font-bold text-blue-800">Salut, {user.name}!</span>
+                 <Button variant="destructive" onClick={handleLogout} className="h-8 text-xs">
+                     <LogOut className="h-3 w-3 mr-1" /> Logout
+                 </Button>
               </div>
               
               {/* MOBILE HAMBURGER BUTTON */}
@@ -211,20 +243,17 @@ export default function App() {
           </div>
         </div>
 
-        {/* ------------------------------------------- */}
-        {/* MENIUL DE MOBIL (Apare când apeși pe iconiță) */}
-        {/* ------------------------------------------- */}
+        {/* MENIUL DE MOBIL */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 shadow-lg flex flex-col gap-2">
             
-            {/* NAVIGAȚIE */}
             {navigation.map((item) => (
               <Button 
                 key={item.id} 
                 variant={activeSection === item.id ? 'secondary' : 'ghost'} 
                 onClick={() => {
                    setActiveSection(item.id);
-                   setMobileMenuOpen(false); // Închide meniul după click
+                   setMobileMenuOpen(false);
                 }} 
                 className="w-full justify-start gap-3 h-12 text-base"
               >
@@ -235,30 +264,21 @@ export default function App() {
 
             <div className="border-t border-gray-100 my-2"></div>
 
-            {/* LOGIN / LOGOUT PE MOBIL */}
-            {isLoggedIn ? (
-               <div className="flex flex-col gap-2">
-                 <div className="px-4 py-2 text-sm text-gray-500 font-semibold">
-                    Logat ca {user?.name}
-                 </div>
-                 <Button variant="destructive" onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="w-full justify-start gap-3">
-                    <LogOut className="h-5 w-5" /> Deconectare
-                 </Button>
-               </div>
-            ) : (
-               <Button variant="default" onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="w-full justify-center gap-2 bg-blue-900 text-white py-6">
-                  <LogIn className="h-5 w-5" /> Intră în cont
-               </Button>
-            )}
+            <div className="flex flex-col gap-2">
+              <div className="px-4 py-2 text-sm text-gray-500 font-semibold">
+                Logat ca {user.name}
+              </div>
+              <Button variant="destructive" onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="w-full justify-start gap-3">
+                 <LogOut className="h-5 w-5" /> Deconectare
+              </Button>
+            </div>
           </div>
         )}
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-8 animate-in fade-in duration-500">
+      <main className="flex-1 container mx-auto px-4 py-8">
         {renderSection()}
       </main>
-
-      {showAuth && <AuthPage onClose={() => setShowAuth(false)} onLoginSuccess={handleLoginSuccess} />}
     </div>
   );
 }
