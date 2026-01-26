@@ -150,8 +150,8 @@ const startServer = async () => {
         // Setăm cron-ul pe UTC pentru siguranță pe serverele Render
         // 57 13 * * * înseamnă ora 13:57 UTC -> 15:57 Ora României (iarna)
         
-        cron.schedule('59 13 * * *', async () => {
-            console.log('⏰ [CRON 15:57 RO] Pornesc actualizarea zilnică rotativă...');
+        cron.schedule('07 16 * * *', async () => {
+            console.log('⏰ [CRON 16:07 RO] Pornesc actualizarea zilnică rotativă...');
             await runDailySmartSync(); 
         }, {
             timezone: "Europe/Bucharest" // Încercăm să forțăm fusul orar corect
