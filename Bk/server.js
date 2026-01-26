@@ -146,15 +146,14 @@ const startServer = async () => {
         });
 
         // --- CRON JOB ZILNIC (Sincronizare Rotativă) ---
-        // Ora 15:57 în România (aproximativ 13:57 UTC)
-        // Setăm cron-ul pe UTC pentru siguranță pe serverele Render
-        // 57 13 * * * înseamnă ora 13:57 UTC -> 15:57 Ora României (iarna)
+        // Ora 16:13 în România
+        // Format Cron: Minute Ora Zi Luna Zi_saptamana
         
-        cron.schedule('07 16 * * *', async () => {
-            console.log('⏰ [CRON 16:07 RO] Pornesc actualizarea zilnică rotativă...');
+        cron.schedule('13 16 * * *', async () => {
+            console.log('⏰ [CRON 16:13 RO] Pornesc actualizarea zilnică rotativă...');
             await runDailySmartSync(); 
         }, {
-            timezone: "Europe/Bucharest" // Încercăm să forțăm fusul orar corect
+            timezone: "Europe/Bucharest" 
         });
 
         app.listen(PORT, () => console.log(`🚀 Serverul merge pe http://localhost:${PORT}`));
