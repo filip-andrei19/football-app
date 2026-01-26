@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Lock, ArrowRight, Shield, Star, AlertCircle } from 'lucide-react';
 
-// --- CONFIGURARE IMAGINI ---
-// Aici poți înlocui link-urile cu poze reale locale (ex: import hagi from './hagi.jpg')
+// --- CONFIGURARE IMAGINI (Slider Fotbal Românesc) ---
 const ROMANIAN_FOOTBALL_IMAGES = [
   {
     url: "https://images.unsplash.com/photo-1522778119026-d647f0565c6a?q=80&w=2940&auto=format&fit=crop",
@@ -11,12 +10,12 @@ const ROMANIAN_FOOTBALL_IMAGES = [
   },
   {
     url: "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?q=80&w=2831&auto=format&fit=crop",
-    alt: "Echipament Galben", // Amintește de Națională
+    alt: "Echipament Galben", 
     description: "Spiritul Tricolor"
   },
   {
     url: "https://images.unsplash.com/photo-1504064030616-5bc77b968412?q=80&w=2940&auto=format&fit=crop",
-    alt: "Atmosferă Suporteri", // Amintește de peluzele din Liga 1
+    alt: "Atmosferă Suporteri", 
     description: "Pasiune din tribune"
   }
 ];
@@ -74,6 +73,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
     <div className="min-h-screen w-full flex bg-white dark:bg-slate-900 overflow-hidden font-sans">
       
       {/* --- PARTEA STÂNGĂ: SLIDER IMAGINI --- */}
+      {/* Această parte este ascunsă pe mobil (hidden) și vizibilă pe desktop (md:flex) */}
       <div className="hidden md:flex md:w-1/2 relative bg-slate-900 overflow-hidden">
          
          {/* Mapăm imaginile pentru a crea efectul de cross-fade */}
@@ -97,7 +97,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                     <Shield className="w-5 h-5 text-yellow-400" />
                     SCOUT ROMÂNIA
                 </div>
-                {/* Linia Tricoloră Decorativă */}
+                {/* ELEMENT NOU: Linia Tricoloră Decorativă */}
                 <div className="h-1 w-16 flex mt-2">
                     <div className="h-full w-1/3 bg-blue-600"></div>
                     <div className="h-full w-1/3 bg-yellow-400"></div>
@@ -106,9 +106,11 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
              </div>
 
              <div className="max-w-lg space-y-6 animate-in slide-in-from-left-8 duration-700 delay-100">
-                 <div className="inline-block px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-semibold uppercase tracking-wider mb-2 backdrop-blur-sm">
+                 {/* Badge care se schimbă în funcție de imagine */}
+                 <div className="inline-block px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-semibold uppercase tracking-wider mb-2 backdrop-blur-sm transition-all">
                     {ROMANIAN_FOOTBALL_IMAGES[currentImageIndex].description}
                  </div>
+                 
                  <h2 className="text-4xl lg:text-5xl font-black leading-tight drop-shadow-lg">
                     {isLogin ? "Fotbalul românesc în cifre." : "Descoperă viitorul naționalei."}
                  </h2>
@@ -129,7 +131,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                 <div className="text-xs opacity-60">
                     © 2024 România Fotbal Scout.
                 </div>
-                {/* Dots pentru slider */}
+                {/* Dots (Buline) pentru slider */}
                 <div className="flex gap-2">
                     {ROMANIAN_FOOTBALL_IMAGES.map((_, idx) => (
                         <button 
@@ -143,7 +145,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
          </div>
       </div>
 
-      {/* --- PARTEA DREAPTĂ: FORMULARUL (Neschimbată funcțional) --- */}
+      {/* --- PARTEA DREAPTĂ: FORMULARUL --- */}
       <div className="w-full md:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-gray-50 dark:bg-slate-900">
         
         {/* Buton Mobile Branding */}
