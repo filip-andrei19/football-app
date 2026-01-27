@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Image as ImageIcon } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Image as ImageIcon, Upload } from 'lucide-react';
 
 // Interfața pentru un produs
 interface Product {
@@ -9,8 +9,8 @@ interface Product {
   category: string;
   image: string;
   description: string;
-  seller: string;      // Numele vizibil
-  sellerEmail: string; // Identificator unic pentru permisiuni
+  seller: string;
+  sellerEmail: string;
   date: string;
 }
 
@@ -21,31 +21,8 @@ interface CollectorsHubProps {
   };
 }
 
-// Date inițiale (demo)
-const DEMO_PRODUCTS: Product[] = [
-  {
-    id: 1,
-    title: "Tricou Hagi 1994 Original",
-    price: "450 EUR",
-    category: "Tricouri",
-    image: "https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&q=80&w=500",
-    description: "Tricou purtat la CM 1994, stare impecabilă, semnat.",
-    seller: "Magazin Oficial",
-    sellerEmail: "admin@romania.ro",
-    date: "2024-01-15"
-  },
-  {
-    id: 2,
-    title: "Minge Semnată Generația de Aur",
-    price: "200 EUR",
-    category: "Suveniruri",
-    image: "https://images.unsplash.com/photo-1614632537423-1e6c2e7e0aab?auto=format&fit=crop&q=80&w=500",
-    description: "Minge de colecție cu semnăturile tuturor jucătorilor.",
-    seller: "Ion Popescu",
-    sellerEmail: "ion@test.com",
-    date: "2024-01-20"
-  }
-];
+// Lista categoriilor
+const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
 
 export function CollectorsHubSection({ user }: CollectorsHubProps) {
   // --- STATE ---
@@ -53,55 +30,75 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
   const [activeTab, setActiveTab] = useState<'market' | 'my_items'>('market');
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("Toate");
 
   // Formular nou produs
   const [newProduct, setNewProduct] = useState({
     title: '',
     price: '',
     category: 'Tricouri',
-    image: '',
+    image: '', // Aici vom stoca acum poza convertită în text (Base64)
     description: ''
   });
 
-  // --- 1. ÎNCĂRCARE DATE (din LocalStorage sau Demo) ---
+  // --- 1. ÎNCĂRCARE DATE ---
   useEffect(() => {
     const saved = localStorage.getItem('collectors_products');
     if (saved) {
-      setProducts(JSON.parse(saved));
-    } else {
-      setProducts(DEMO_PRODUCTS);
+      const loadedProducts = JSON.parse(saved);
+      // Curățăm produsele demo vechi
+      const cleanProducts = loadedProducts.filter((p: Product) => p.id !== 1 && p.id !== 2);
+      setProducts(cleanProducts);
     }
   }, []);
 
-  // --- 2. SALVARE DATE (la fiecare modificare) ---
+  // --- 2. SALVARE DATE ---
   useEffect(() => {
-    if (products.length > 0) {
-      localStorage.setItem('collectors_products', JSON.stringify(products));
-    }
+    localStorage.setItem('collectors_products', JSON.stringify(products));
   }, [products]);
 
-  // --- LOGICA ADĂUGARE ---
+  // --- LOGICA ÎNCĂRCARE POZĂ (NOU) ---
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    
+    if (file) {
+      // Verificare mărime (Max 2MB ca să nu umplem localStorage)
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Imaginea este prea mare! Te rugăm să încarci o poză sub 2MB.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Rezultatul este un string lung (Base64) care reprezintă imaginea
+        setNewProduct({ ...newProduct, image: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- LOGICA ADĂUGARE PRODUS ---
   const handleAddProduct = (e: React.FormEvent) => {
     e.preventDefault();
     
     const product: Product = {
       id: Date.now(),
       ...newProduct,
-      image: newProduct.image || "https://images.unsplash.com/photo-1552318965-5638e4c66e71?auto=format&fit=crop&q=80&w=500", // Placeholder
-      seller: user.name,       // Luăm automat numele userului logat
-      sellerEmail: user.email, // Luăm emailul pentru verificare ulterioară
+      // Dacă nu a pus poză, punem una default
+      image: newProduct.image || "https://images.unsplash.com/photo-1552318965-5638e4c66e71?auto=format&fit=crop&q=80&w=500",
+      seller: user.name,
+      sellerEmail: user.email,
       date: new Date().toISOString().split('T')[0]
     };
 
     setProducts([product, ...products]);
     setShowAddModal(false);
     setNewProduct({ title: '', price: '', category: 'Tricouri', image: '', description: '' });
-    
-    // Comutăm automat pe tab-ul "Produsele Mele" să vadă ce a adăugat
     setActiveTab('my_items');
+    setSelectedCategory("Toate");
   };
 
-  // --- LOGICA ȘTERGERE (Doar proprietarul poate) ---
+  // --- LOGICA ȘTERGERE ---
   const handleDelete = (id: number) => {
     if (window.confirm("Sigur vrei să ștergi acest produs?")) {
       const updatedList = products.filter(p => p.id !== id);
@@ -109,20 +106,16 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     }
   };
 
-  // --- FILTRARE PENTRU AFIȘARE ---
+  // --- FILTRARE ---
   const filteredProducts = products.filter(p => {
-    // 1. Filtru text (căutare)
     const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // 2. Filtru Tab (Toate vs Ale Mele)
-    if (activeTab === 'my_items') {
-      return matchesSearch && p.sellerEmail === user.email;
-    }
-    return matchesSearch;
+    const matchesTab = activeTab === 'my_items' ? p.sellerEmail === user.email : true;
+    const matchesCategory = selectedCategory === "Toate" ? true : p.category === selectedCategory;
+    return matchesSearch && matchesTab && matchesCategory;
   });
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       
       {/* HEADER + TABURI */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -139,22 +132,18 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
           <button
             onClick={() => setActiveTab('market')}
             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-              activeTab === 'market' 
-                ? 'bg-white text-blue-600 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700'
+              activeTab === 'market' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Toate Produsele
+            Toate
           </button>
           <button
             onClick={() => setActiveTab('my_items')}
             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
-              activeTab === 'my_items' 
-                ? 'bg-white text-blue-600 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700'
+              activeTab === 'my_items' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            <User className="w-4 h-4" /> Produsele Mele
+            <User className="w-4 h-4" /> Ale Mele
           </button>
         </div>
 
@@ -166,24 +155,46 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
         </button>
       </div>
 
-      {/* CĂUTARE */}
-      <div className="relative">
-        <Search className="absolute left-4 top-3.5 text-gray-400 w-5 h-5" />
-        <input 
-          type="text" 
-          placeholder="Caută tricouri, fulare, bilete..." 
-          className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      {/* FILTRE ȘI CĂUTARE */}
+      <div className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-4 top-3.5 text-gray-400 w-5 h-5" />
+          <input 
+            type="text" 
+            placeholder="Caută tricouri, fulare, bilete..." 
+            className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap border transition-all ${
+                selectedCategory === cat
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* LISTA DE PRODUSE */}
       {filteredProducts.length === 0 ? (
         <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
           <Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-gray-500">Nu am găsit produse.</h3>
-          <p className="text-sm text-gray-400">Încearcă să schimbi filtrele sau adaugă primul tău produs.</p>
+          <h3 className="text-lg font-bold text-gray-500">Niciun produs găsit.</h3>
+          <p className="text-sm text-gray-400">
+            {products.length === 0 
+              ? "Nu există încă produse la vânzare. Fii primul care adaugă!" 
+              : "Încearcă să schimbi filtrele."}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -218,13 +229,12 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
 
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
                   <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">
                       {product.seller.charAt(0)}
                     </div>
                     <span className="font-medium truncate max-w-[100px]">{product.seller}</span>
                   </div>
 
-                  {/* Buton Ștergere - Apare DOAR dacă ești proprietarul */}
                   {product.sellerEmail === user.email ? (
                     <button 
                       onClick={() => handleDelete(product.id)}
@@ -248,8 +258,8 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
       {/* MODAL ADĂUGARE PRODUS */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 h-[90vh] md:h-auto overflow-y-auto">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-xl font-bold">Vinde un articol</h3>
               <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-full">
                 <X className="w-5 h-5" />
@@ -257,6 +267,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
             </div>
             
             <form onSubmit={handleAddProduct} className="p-6 space-y-4">
+              {/* Titlu */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Titlu Produs</label>
                 <input 
@@ -269,6 +280,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                 />
               </div>
 
+              {/* Preț și Categorie */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Preț</label>
@@ -288,30 +300,58 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                     value={newProduct.category}
                     onChange={e => setNewProduct({...newProduct, category: e.target.value})}
                   >
-                    <option>Tricouri</option>
-                    <option>Fulatre</option>
-                    <option>Bilete & Programe</option>
-                    <option>Suveniruri</option>
-                    <option>Echipament</option>
+                    {CATEGORIES.filter(c => c !== "Toate").map(cat => (
+                      <option key={cat}>{cat}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
+              {/* ZONA NOUĂ DE UPLOAD IMAGINE */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Link Imagine (URL)</label>
-                <div className="relative">
-                  <ImageIcon className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
-                  <input 
-                    type="url" 
-                    className="w-full pl-10 pr-3 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="https://..."
-                    value={newProduct.image}
-                    onChange={e => setNewProduct({...newProduct, image: e.target.value})}
-                  />
+                <label className="block text-sm font-bold text-gray-700 mb-2">Imagine Produs</label>
+                
+                {/* Zona de click/drop */}
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition-colors relative">
+                  
+                  {/* Dacă avem deja o imagine încărcată, o arătăm */}
+                  {newProduct.image ? (
+                    <div className="relative">
+                      <img 
+                        src={newProduct.image} 
+                        alt="Preview" 
+                        className="h-48 w-full object-contain rounded-lg mx-auto"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setNewProduct({...newProduct, image: ''})}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    // Dacă nu, arătăm input-ul de fișier
+                    <>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <div className="flex flex-col items-center justify-center py-4">
+                        <div className="bg-blue-50 p-3 rounded-full mb-2">
+                            <Upload className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <p className="text-sm font-medium text-gray-900">Apasă pentru a încărca o poză</p>
+                        <p className="text-xs text-gray-500 mt-1">PNG, JPG (Max 2MB)</p>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <p className="text-xs text-gray-400 mt-1">Lasă gol pentru imaginea default.</p>
               </div>
 
+              {/* Descriere */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Descriere</label>
                 <textarea 
@@ -323,7 +363,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                 ></textarea>
               </div>
 
-              {/* AICI ESTE SCHIMBAREA CERUTĂ: VÂNZĂTORUL ESTE FIXAT */}
+              {/* Info Vânzător */}
               <div className="bg-blue-50 p-3 rounded-lg flex items-center gap-3 text-sm text-blue-800">
                 <User className="w-5 h-5" />
                 <span>
