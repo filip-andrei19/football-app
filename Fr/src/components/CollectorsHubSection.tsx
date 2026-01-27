@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, Loader2 } from 'lucide-react';
 
 // --- INTERFEȚE ---
 interface Product {
-  id: number;
+  _id: string; // MongoDB folosește _id, nu id
   title: string;
   price: string;
   category: string;
@@ -12,7 +12,7 @@ interface Product {
   seller: string;
   sellerEmail: string;
   sellerPhone: string;
-  date: string;
+  posted: string; // Data vine ca string de la server
 }
 
 interface CollectorsHubProps {
@@ -23,9 +23,11 @@ interface CollectorsHubProps {
 }
 
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
+// URL-ul Backend-ului (folosește link-ul tău de Render sau localhost pentru teste)
+const API_URL = 'https://football-backend-m2a4.onrender.com/api/listings'; 
 
-// --- 1. COMPONENTA: PRODUCT CARD (Listă) ---
-const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, user: any, onDelete: (id: number) => void, onClick: (p: Product) => void }) => {
+// --- 1. COMPONENTA: PRODUCT CARD ---
+const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void }) => {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
   const nextImage = () => {
@@ -107,7 +109,7 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
 
             {product.sellerEmail === user.email && (
               <button 
-                onClick={(e) => { e.stopPropagation(); onDelete(product.id); }} 
+                onClick={(e) => { e.stopPropagation(); onDelete(product._id); }} 
                 className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors z-20 relative"
               >
                 <Trash2 className="w-4 h-4" />
@@ -119,27 +121,21 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
   );
 };
 
-// --- 2. COMPONENTA: VIZUALIZARE PRODUS (MODAL CU ZOOM) ---
+// --- 2. COMPONENTA: VIZUALIZARE PRODUS (MODAL) ---
 const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () => void }) => {
     const [activeIdx, setActiveIdx] = useState(0);
-    
-    // --- STATE PENTRU ZOOM ---
     const [isZoomed, setIsZoomed] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!isZoomed) return;
         const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-        
-        // Calculăm poziția mouse-ului ca procentaj (0-100%)
         const x = ((e.clientX - left) / width) * 100;
         const y = ((e.clientY - top) / height) * 100;
-        
         setMousePos({ x, y });
     };
 
     const toggleZoom = (e: React.MouseEvent) => {
-        // Dacă activăm zoom-ul, setăm poziția inițială unde a dat click
         if (!isZoomed) {
              const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
              const x = ((e.clientX - left) / width) * 100;
@@ -160,17 +156,13 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                     <X className="w-6 h-6" />
                 </button>
 
-                {/* PARTEA STÂNGĂ: GALERIE FOTO CU ZOOM */}
                 <div className="w-full md:w-3/5 bg-gray-100 flex flex-col relative h-[50vh] md:h-auto border-r border-gray-100">
-                    
-                    {/* Zona Imagine Mare - CU ZOOM */}
                     <div 
                         className={`flex-1 relative overflow-hidden flex items-center justify-center bg-white ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
                         onMouseMove={handleMouseMove}
                         onClick={toggleZoom}
                         onMouseLeave={() => setIsZoomed(false)}
                     >
-                        {/* Imaginea efectivă */}
                         <img 
                             src={product.images[activeIdx]} 
                             alt="Full view" 
@@ -180,8 +172,6 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                                 transform: isZoomed ? 'scale(2.5)' : 'scale(1)'
                             }}
                         />
-
-                        {/* Hint vizual pentru Zoom */}
                         {!isZoomed && (
                             <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 pointer-events-none backdrop-blur-sm">
                                 <ZoomIn className="w-3 h-3" /> Click pentru Zoom
@@ -189,7 +179,6 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                         )}
                     </div>
                     
-                    {/* Thumbnail Strip */}
                     {product.images.length > 1 && (
                         <div className="p-4 bg-white border-t border-gray-100 flex gap-3 overflow-x-auto justify-center z-40 relative">
                             {product.images.map((img, idx) => (
@@ -205,7 +194,6 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                     )}
                 </div>
 
-                {/* PARTEA DREAPTĂ: DETALII */}
                 <div className="w-full md:w-2/5 p-8 flex flex-col overflow-y-auto bg-white">
                     <div className="mb-6">
                         <span className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
@@ -213,7 +201,9 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                         </span>
                         <h2 className="text-3xl font-black text-gray-900 leading-tight mb-2">{product.title}</h2>
                         <div className="text-2xl font-bold text-green-600">{product.price}</div>
-                        <div className="text-xs text-gray-400 mt-1">Postat pe: {product.date}</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                            Postat pe: {new Date(product.posted).toLocaleDateString('ro-RO')}
+                        </div>
                     </div>
 
                     <div className="prose prose-sm text-gray-600 mb-8 border-t border-b border-gray-100 py-6">
@@ -232,7 +222,7 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                                 <div className="font-medium text-lg text-gray-900">{product.seller}</div>
                             </div>
 
-                            {product.sellerPhone && (
+                            {product.sellerPhone ? (
                                 <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
                                     <div className="bg-green-100 p-2 rounded-full text-green-700">
                                         <Phone className="w-5 h-5" />
@@ -244,9 +234,7 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                                         </a>
                                     </div>
                                 </div>
-                            )}
-
-                            {!product.sellerPhone && (
+                            ) : (
                                 <div className="text-sm text-gray-500 italic">
                                     Acest vânzător nu a lăsat un număr de telefon.
                                 </div>
@@ -262,8 +250,10 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
 // --- 3. COMPONENTA PRINCIPALĂ ---
 export function CollectorsHubSection({ user }: CollectorsHubProps) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'market' | 'my_items'>('market');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Toate");
@@ -277,22 +267,28 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     phone: ''
   });
 
+  // --- FETCH DATA DIN BACKEND ---
   useEffect(() => {
-    const saved = localStorage.getItem('collectors_products');
-    if (saved) {
-      const loadedProducts = JSON.parse(saved);
-      const sanitizedProducts = loadedProducts.map((p: any) => ({
-        ...p,
-        images: p.images ? p.images : (p.image ? [p.image] : []),
-        sellerPhone: p.sellerPhone || ''
-      })).filter((p: any) => p.id !== 1 && p.id !== 2);
-      setProducts(sanitizedProducts);
-    }
+    fetchProducts();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('collectors_products', JSON.stringify(products));
-  }, [products]);
+  const fetchProducts = async () => {
+      try {
+          const res = await fetch(API_URL);
+          const data = await res.json();
+          // Backend-ul returnează array-ul direct sau { listings: [] } în funcție de cum e configurat server.js.
+          // Având în vedere codul tău de server: res.json(listings);
+          if (Array.isArray(data)) {
+              setProducts(data);
+          } else {
+              setProducts([]);
+          }
+      } catch (err) {
+          console.error("Eroare la încărcare produse:", err);
+      } finally {
+          setLoading(false);
+      }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -322,7 +318,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     }));
   };
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     if (!newProduct.title.trim() || !newProduct.price.trim() || !newProduct.description.trim() || !newProduct.phone.trim()) {
       alert("Te rog completează toate câmpurile, inclusiv numărul de telefon!");
       return;
@@ -332,32 +328,61 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
       return;
     }
 
-    const product: Product = {
-      id: Date.now(),
-      title: newProduct.title,
-      price: newProduct.price,
-      category: newProduct.category,
-      images: newProduct.images,
-      description: newProduct.description,
-      sellerPhone: newProduct.phone,
-      seller: user.name,
-      sellerEmail: user.email,
-      date: new Date().toISOString().split('T')[0]
-    };
+    setIsSubmitting(true);
 
-    setProducts([product, ...products]);
-    setShowAddModal(false);
-    setNewProduct({ title: '', price: '', category: 'Tricouri', images: [], description: '', phone: '' });
-    setActiveTab('my_items');
-    setSelectedCategory("Toate");
-    alert("Anunțul a fost publicat!");
+    try {
+        const payload = {
+            title: newProduct.title,
+            price: newProduct.price,
+            category: newProduct.category,
+            images: newProduct.images,
+            description: newProduct.description,
+            seller: user.name,
+            sellerEmail: user.email,
+            sellerPhone: newProduct.phone
+        };
+
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const savedProduct = await res.json();
+            setProducts([savedProduct, ...products]); // Adăugăm local ca să nu facem refresh
+            setShowAddModal(false);
+            setNewProduct({ title: '', price: '', category: 'Tricouri', images: [], description: '', phone: '' });
+            alert("Anunțul a fost publicat!");
+            setActiveTab('my_items');
+            setSelectedCategory("Toate");
+        } else {
+            alert("Eroare la salvare pe server.");
+        }
+    } catch (err) {
+        alert("Eroare de conexiune.");
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm("Ștergi acest produs?")) {
-      setProducts(products.filter(p => p.id !== id));
-      if (selectedProduct?.id === id) {
-          setSelectedProduct(null);
+      try {
+          const res = await fetch(`${API_URL}/${id}`, {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: user.email }) // Trimitem emailul pentru verificare
+          });
+
+          if (res.ok) {
+              setProducts(products.filter(p => p._id !== id));
+              if (selectedProduct?._id === id) setSelectedProduct(null);
+          } else {
+              alert("Nu ai permisiunea să ștergi acest produs.");
+          }
+      } catch (err) {
+          alert("Eroare la ștergere.");
       }
     }
   };
@@ -402,7 +427,11 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
         </div>
       </div>
 
-      {filteredProducts.length === 0 ? (
+      {loading ? (
+          <div className="flex justify-center py-20">
+              <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+          </div>
+      ) : filteredProducts.length === 0 ? (
         <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
           <Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-gray-500">Niciun produs găsit.</h3>
@@ -412,7 +441,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProducts.map((product) => (
             <ProductCard 
-                key={product.id} 
+                key={product._id} 
                 product={product} 
                 user={user} 
                 onDelete={handleDelete}
@@ -490,8 +519,14 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                 <span>Vei posta ca: <strong>{user.name}</strong></span>
               </div>
 
-              <button type="button" onClick={handleAddProduct} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/30">
-                Publică Anunțul
+              <button 
+                  type="button" 
+                  onClick={handleAddProduct} 
+                  disabled={isSubmitting}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/30 flex justify-center items-center gap-2"
+              >
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isSubmitting ? 'Se publică...' : 'Publică Anunțul'}
               </button>
             </div>
           </div>

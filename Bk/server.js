@@ -6,17 +6,17 @@ const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
 
 // --- IMPORTURI SERVICII ---
-// const { syncPlayers } = require('./services/syncService'); // (Nu mai folosim vechiul sync)
 const { hardResetAndLoad } = require('./services/initialLoad'); 
-// 1. IMPORTĂM NOUL SERVICIU DE SMART SYNC
 const { runDailySmartSync } = require('./services/smartSync'); 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-// IMPORTANT: Mărim limita pentru JSON ca să putem primi POZE (Base64)
-app.use(express.json({ limit: '10mb' })); 
+
+// IMPORTANT: Mărim limita la 50MB pentru a permite încărcarea a 5 poze
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // ==========================================
 // 1. MODELE (User + Player + Listing)
@@ -46,17 +46,22 @@ const User = mongoose.models.User || mongoose.model('User', userSchema);
 const playerSchema = new mongoose.Schema({}, { strict: false });
 const Player = mongoose.models.Player || mongoose.model('Player', playerSchema);
 
-// C. LISTING
+// C. LISTING (ACTUALIZAT PENTRU NOILE FUNCȚII)
 const listingSchema = new mongoose.Schema({
-    title: String,
-    category: String,
-    price: String,
-    condition: String,
-    seller: String,
-    location: String,
-    phone: String,
-    image: String,
-    description: String,
+    title: { type: String, required: true },
+    category: { type: String, required: true },
+    price: { type: String, required: true },
+    
+    // ARRAY DE IMAGINI (Pentru mai multe poze)
+    images: [{ type: String }], 
+    
+    description: { type: String, required: true },
+    
+    // Detalii Vânzător
+    seller: { type: String, required: true },
+    sellerEmail: { type: String, required: true }, // Esențial pentru permisiuni
+    sellerPhone: { type: String }, // Opțional
+
     posted: { type: Date, default: Date.now }
 });
 const Listing = mongoose.models.Listing || mongoose.model('Listing', listingSchema);
@@ -105,7 +110,9 @@ const startServer = async () => {
             res.json(players);
         });
 
-        // --- RUTE LISTINGS ---
+        // --- RUTE LISTINGS (PRODUSE) ---
+        
+        // 1. GET - Obține toate produsele
         app.get('/api/listings', async (req, res) => {
             try {
                 const listings = await Listing.find().sort({ posted: -1 });
@@ -115,20 +122,34 @@ const startServer = async () => {
             }
         });
 
+        // 2. POST - Adaugă produs nou
         app.post('/api/listings', async (req, res) => {
             try {
+                // req.body conține acum imaginile și telefonul automat datorită schemei noi
                 const newListing = new Listing(req.body);
                 await newListing.save();
                 res.status(201).json(newListing);
             } catch (err) {
+                console.error("Eroare la salvare:", err);
                 res.status(500).json({ error: "Nu s-a putut salva produsul." });
             }
         });
 
+        // 3. DELETE - Șterge produs (Securizat)
         app.delete('/api/listings/:id', async (req, res) => {
             try {
+                const { email } = req.body; // Primim emailul userului care vrea să șteargă
+                
+                const listing = await Listing.findById(req.params.id);
+                if (!listing) return res.status(404).json({ error: "Produsul nu există" });
+
+                // Verificăm dacă cel care șterge este cel care a postat
+                if (listing.sellerEmail !== email) {
+                    return res.status(403).json({ error: "Nu ai permisiunea să ștergi acest produs." });
+                }
+
                 await Listing.findByIdAndDelete(req.params.id);
-                res.json({ success: true });
+                res.json({ success: true, message: "Produs șters." });
             } catch (err) {
                 res.status(500).json({ error: "Eroare la ștergere." });
             }
@@ -138,17 +159,13 @@ const startServer = async () => {
         // 3. ZONA ADMINISTRATIVĂ & CRON JOBS
         // ============================================================
 
-        // --- RUTĂ SPECIALĂ: RESET TOTAL ---
         app.get('/api/admin/hard-reset', async (req, res) => {
             console.log("⚠️  Comandă de HARD RESET primită!");
             res.send("🚀 Operațiunea a început în fundal! Verifică consola.");
             hardResetAndLoad(); 
         });
 
-        // --- CRON JOB ZILNIC (Sincronizare Rotativă) ---
-        // Ora 16:13 în România
-        // Format Cron: Minute Ora Zi Luna Zi_saptamana
-        
+        // CRON JOB ZILNIC (Sincronizare Rotativă) - Ora 16:13 RO
         cron.schedule('10 16 * * *', async () => {
             console.log('⏰ [CRON 16:13 RO] Pornesc actualizarea zilnică rotativă...');
             await runDailySmartSync(); 
