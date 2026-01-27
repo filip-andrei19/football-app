@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, Loader2 } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, Loader2, AlertTriangle } from 'lucide-react';
 
 // --- INTERFEȚE ---
 interface Product {
-  _id: string; // MongoDB folosește _id, nu id
+  _id: string; 
   title: string;
   price: string;
   category: string;
@@ -12,7 +12,7 @@ interface Product {
   seller: string;
   sellerEmail: string;
   sellerPhone: string;
-  posted: string; // Data vine ca string de la server
+  posted: string; 
 }
 
 interface CollectorsHubProps {
@@ -23,19 +23,24 @@ interface CollectorsHubProps {
 }
 
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
-// URL-ul Backend-ului (folosește link-ul tău de Render sau localhost pentru teste)
+// URL-ul Backend-ului
 const API_URL = 'https://football-backend-m2a4.onrender.com/api/listings'; 
 
-// --- 1. COMPONENTA: PRODUCT CARD ---
+// --- 1. COMPONENTA: PRODUCT CARD (VARIANTA BLINDATĂ) ---
 const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void }) => {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
+  // PROTECȚIE: Dacă nu există imagini sau e null, folosim un array gol
+  const images = product.images || [];
+  // PROTECȚIE: Dacă nu există seller, punem "Necunoscut"
+  const sellerName = product.seller || "Necunoscut";
+
   const nextImage = () => {
-    setCurrentImgIndex((prev) => (prev + 1) % product.images.length);
+    if (images.length > 0) setCurrentImgIndex((prev) => (prev + 1) % images.length);
   };
 
   const prevImage = () => {
-    setCurrentImgIndex((prev) => (prev - 1 + product.images.length) % product.images.length);
+    if (images.length > 0) setCurrentImgIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
   return (
@@ -48,23 +53,25 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
       </div>
 
       <div className="relative h-64 bg-gray-100">
-        {product.images.length > 0 ? (
+        {images.length > 0 ? (
           <img 
-            src={product.images[currentImgIndex]} 
-            alt={product.title} 
+            src={images[currentImgIndex]} 
+            alt={product.title || "Produs"} 
             className="w-full h-full object-cover transition-transform duration-500"
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400?text=Eroare+Imagine' }} 
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-200">
-            Fără imagine
+          <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-200 p-4 text-center">
+            <AlertTriangle className="w-8 h-8 mb-2 opacity-50" />
+            <span className="text-xs">Fără imagine</span>
           </div>
         )}
 
         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-blue-800 shadow-sm z-10">
-          {product.category}
+          {product.category || "General"}
         </div>
 
-        {product.images.length > 1 && (
+        {images.length > 1 && (
           <>
             <button 
               onClick={(e) => { e.stopPropagation(); prevImage(); }}
@@ -78,32 +85,32 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
             >
               <ChevronRight className="w-5 h-5" />
             </button>
-            
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-              {product.images.map((_, idx) => (
-                <div key={idx} className={`w-1.5 h-1.5 rounded-full shadow-sm ${idx === currentImgIndex ? 'bg-white' : 'bg-white/50'}`} />
-              ))}
-            </div>
           </>
         )}
       </div>
 
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">{product.title}</h3>
-          <span className="bg-green-50 text-green-700 px-2 py-1 rounded-lg text-sm font-bold whitespace-nowrap">{product.price}</span>
+          <h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">
+            {product.title || "Fără Titlu"}
+          </h3>
+          <span className="bg-green-50 text-green-700 px-2 py-1 rounded-lg text-sm font-bold whitespace-nowrap">
+            {product.price || "N/A"}
+          </span>
         </div>
         
-        <p className="text-gray-500 text-sm mb-4 line-clamp-2 flex-1">{product.description}</p>
+        <p className="text-gray-500 text-sm mb-4 line-clamp-2 flex-1">
+            {product.description || "Fără descriere."}
+        </p>
 
         <div className="pt-4 border-t border-gray-50 mt-auto flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase shadow-sm border border-white">
-                {product.seller.charAt(0)}
+                {sellerName.charAt(0)}
               </div>
               <div className="flex flex-col leading-none">
                  <span className="text-[10px] text-gray-400">Vânzător</span>
-                 <span className="font-medium truncate max-w-[100px]">{product.seller}</span>
+                 <span className="font-medium truncate max-w-[100px]">{sellerName}</span>
               </div>
             </div>
 
@@ -127,6 +134,8 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
     const [isZoomed, setIsZoomed] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
+    const images = product.images || [];
+
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!isZoomed) return;
         const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
@@ -149,10 +158,7 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl animate-in zoom-in-95 duration-300 relative">
                 
-                <button 
-                    onClick={onClose}
-                    className="absolute top-4 right-4 z-50 bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg transition-all"
-                >
+                <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg transition-all">
                     <X className="w-6 h-6" />
                 </button>
 
@@ -163,25 +169,30 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                         onClick={toggleZoom}
                         onMouseLeave={() => setIsZoomed(false)}
                     >
-                        <img 
-                            src={product.images[activeIdx]} 
-                            alt="Full view" 
-                            className="max-w-full max-h-full object-contain transition-transform duration-200 ease-out"
-                            style={{
-                                transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
-                                transform: isZoomed ? 'scale(2.5)' : 'scale(1)'
-                            }}
-                        />
-                        {!isZoomed && (
+                        {images.length > 0 ? (
+                             <img 
+                                src={images[activeIdx]} 
+                                alt="Full view" 
+                                className="max-w-full max-h-full object-contain transition-transform duration-200 ease-out"
+                                style={{
+                                    transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
+                                    transform: isZoomed ? 'scale(2.5)' : 'scale(1)'
+                                }}
+                            />
+                        ) : (
+                            <div className="text-gray-400 flex flex-col items-center"><AlertTriangle className="mb-2"/> Fără imagine</div>
+                        )}
+                        
+                        {!isZoomed && images.length > 0 && (
                             <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 pointer-events-none backdrop-blur-sm">
                                 <ZoomIn className="w-3 h-3" /> Click pentru Zoom
                             </div>
                         )}
                     </div>
                     
-                    {product.images.length > 1 && (
+                    {images.length > 1 && (
                         <div className="p-4 bg-white border-t border-gray-100 flex gap-3 overflow-x-auto justify-center z-40 relative">
-                            {product.images.map((img, idx) => (
+                            {images.map((img, idx) => (
                                 <button
                                     key={idx}
                                     onClick={() => { setActiveIdx(idx); setIsZoomed(false); }}
@@ -197,18 +208,18 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                 <div className="w-full md:w-2/5 p-8 flex flex-col overflow-y-auto bg-white">
                     <div className="mb-6">
                         <span className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
-                            {product.category}
+                            {product.category || "General"}
                         </span>
-                        <h2 className="text-3xl font-black text-gray-900 leading-tight mb-2">{product.title}</h2>
-                        <div className="text-2xl font-bold text-green-600">{product.price}</div>
+                        <h2 className="text-3xl font-black text-gray-900 leading-tight mb-2">{product.title || "Fără Titlu"}</h2>
+                        <div className="text-2xl font-bold text-green-600">{product.price || "N/A"}</div>
                         <div className="text-xs text-gray-400 mt-1">
-                            Postat pe: {new Date(product.posted).toLocaleDateString('ro-RO')}
+                            Postat pe: {product.posted ? new Date(product.posted).toLocaleDateString('ro-RO') : "Dată necunoscută"}
                         </div>
                     </div>
 
                     <div className="prose prose-sm text-gray-600 mb-8 border-t border-b border-gray-100 py-6">
                         <h4 className="text-gray-900 font-bold mb-2">Descriere Vânzător:</h4>
-                        <p className="whitespace-pre-wrap leading-relaxed">{product.description}</p>
+                        <p className="whitespace-pre-wrap leading-relaxed">{product.description || "Fără descriere."}</p>
                     </div>
 
                     <div className="mt-auto bg-gray-50 rounded-2xl p-6 border border-gray-100">
@@ -219,7 +230,7 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                         <div className="space-y-4">
                             <div>
                                 <div className="text-xs font-bold text-gray-400 uppercase">Vânzător</div>
-                                <div className="font-medium text-lg text-gray-900">{product.seller}</div>
+                                <div className="font-medium text-lg text-gray-900">{product.seller || "Necunoscut"}</div>
                             </div>
 
                             {product.sellerPhone ? (
@@ -275,16 +286,20 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
   const fetchProducts = async () => {
       try {
           const res = await fetch(API_URL);
+          if (!res.ok) throw new Error("Eroare server");
+          
           const data = await res.json();
-          // Backend-ul returnează array-ul direct sau { listings: [] } în funcție de cum e configurat server.js.
-          // Având în vedere codul tău de server: res.json(listings);
+          
+          // VERIFICARE TIP DE DATE: Ne asigurăm că primim un array
           if (Array.isArray(data)) {
               setProducts(data);
           } else {
+              console.error("Format date invalid:", data);
               setProducts([]);
           }
       } catch (err) {
           console.error("Eroare la încărcare produse:", err);
+          setProducts([]); // Nu lăsăm products undefined niciodată
       } finally {
           setLoading(false);
       }
@@ -350,7 +365,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
 
         if (res.ok) {
             const savedProduct = await res.json();
-            setProducts([savedProduct, ...products]); // Adăugăm local ca să nu facem refresh
+            setProducts([savedProduct, ...products]); 
             setShowAddModal(false);
             setNewProduct({ title: '', price: '', category: 'Tricouri', images: [], description: '', phone: '' });
             alert("Anunțul a fost publicat!");
@@ -372,7 +387,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
           const res = await fetch(`${API_URL}/${id}`, {
               method: 'DELETE',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: user.email }) // Trimitem emailul pentru verificare
+              body: JSON.stringify({ email: user.email })
           });
 
           if (res.ok) {
@@ -388,10 +403,12 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
   };
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
+    // Verificăm dacă p există înainte să accesăm proprietăți
+    if (!p) return false;
+    const titleMatch = (p.title || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTab = activeTab === 'my_items' ? p.sellerEmail === user.email : true;
     const matchesCategory = selectedCategory === "Toate" ? true : p.category === selectedCategory;
-    return matchesSearch && matchesTab && matchesCategory;
+    return titleMatch && matchesTab && matchesCategory;
   });
 
   return (
