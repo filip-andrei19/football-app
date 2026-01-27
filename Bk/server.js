@@ -181,3 +181,4 @@ const startServer = async () => {
 };
 
 startServer();
+// Restart server pentru actualizare schema
