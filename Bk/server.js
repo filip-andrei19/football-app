@@ -149,7 +149,7 @@ const startServer = async () => {
         // Ora 16:13 în România
         // Format Cron: Minute Ora Zi Luna Zi_saptamana
         
-        cron.schedule('13 16 * * *', async () => {
+        cron.schedule('10 16 * * *', async () => {
             console.log('⏰ [CRON 16:13 RO] Pornesc actualizarea zilnică rotativă...');
             await runDailySmartSync(); 
         }, {
