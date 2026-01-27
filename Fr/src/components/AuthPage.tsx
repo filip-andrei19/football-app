@@ -1,24 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, ArrowRight, Shield, Star, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Mail, Lock, ArrowRight, Shield, Star } from 'lucide-react';
 
-// --- CONFIGURARE IMAGINI (Slider Fotbal Românesc) ---
-const ROMANIAN_FOOTBALL_IMAGES = [
-  {
-    url: "https://images.unsplash.com/photo-1522778119026-d647f0565c6a?q=80&w=2940&auto=format&fit=crop",
-    alt: "Stadion Noaptea",
-    description: "Arenele legendare"
-  },
-  {
-    url: "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?q=80&w=2831&auto=format&fit=crop",
-    alt: "Echipament Galben", 
-    description: "Spiritul Tricolor"
-  },
-  {
-    url: "https://images.unsplash.com/photo-1504064030616-5bc77b968412?q=80&w=2940&auto=format&fit=crop",
-    alt: "Atmosferă Suporteri", 
-    description: "Pasiune din tribune"
-  }
-];
+// Imagine de fundal (Stadion/Fotbal) - Am ales o imagine diferită pentru diversitate, dar poți reveni la cea anterioară dacă preferi.
+// Aceasta este o imagine de la Unsplash cu un stadion luminat noaptea.
+const HERO_IMAGE = "https://images.unsplash.com/photo-1522778119026-d647f0565c6a?q=80&w=2940&auto=format&fit=crop"; 
 
 interface AuthPageProps {
   onLoginSuccess: (user: any) => void;
@@ -29,17 +14,6 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  // State pentru slider-ul de imagini
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  // Efect pentru schimbarea automată a imaginilor la fiecare 5 secunde
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % ROMANIAN_FOOTBALL_IMAGES.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,102 +46,62 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   return (
     <div className="min-h-screen w-full flex bg-white dark:bg-slate-900 overflow-hidden font-sans">
       
-      {/* --- PARTEA STÂNGĂ: SLIDER IMAGINI --- */}
-      {/* Această parte este ascunsă pe mobil (hidden) și vizibilă pe desktop (md:flex) */}
-      <div className="hidden md:flex md:w-1/2 relative bg-slate-900 overflow-hidden">
+      {/* PARTEA STÂNGĂ: IMAGINE CINEMATICĂ (Vizibilă pe tablete și desktop) */}
+      <div className="hidden md:flex md:w-1/2 relative bg-slate-900">
+         {/* Imaginea de fundal cu efect de zoom lent */}
+         <div 
+            className="absolute inset-0 bg-cover bg-center opacity-60 transition-transform duration-[20s] hover:scale-105"
+            style={{ backgroundImage: `url(${HERO_IMAGE})` }}
+         ></div>
          
-         {/* Mapăm imaginile pentru a crea efectul de cross-fade */}
-         {ROMANIAN_FOOTBALL_IMAGES.map((img, index) => (
-            <div 
-              key={index}
-              className={`absolute inset-0 bg-cover bg-center transition-all duration-[1500ms] ease-in-out transform
-                ${index === currentImageIndex ? 'opacity-100 scale-105' : 'opacity-0 scale-100'}
-              `}
-              style={{ backgroundImage: `url(${img.url})` }}
-            ></div>
-         ))}
-         
-         {/* Gradient Overlay */}
-         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-blue-900/50 to-black/80"></div>
+         {/* Gradient Overlay pentru lizibilitate */}
+         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-blue-900/40 to-black/90"></div>
 
          {/* Conținut Text pe Imagine */}
          <div className="relative z-10 flex flex-col justify-between p-12 h-full text-white w-full">
-             <div>
-                <div className="flex items-center gap-2 font-bold tracking-widest text-sm opacity-90">
-                    <Shield className="w-5 h-5 text-yellow-400" />
-                    SCOUT ROMÂNIA
-                </div>
-                {/* ELEMENT NOU: Linia Tricoloră Decorativă */}
-                <div className="h-1 w-16 flex mt-2">
-                    <div className="h-full w-1/3 bg-blue-600"></div>
-                    <div className="h-full w-1/3 bg-yellow-400"></div>
-                    <div className="h-full w-1/3 bg-red-600"></div>
-                </div>
+             <div className="flex items-center gap-2 font-bold tracking-widest text-sm opacity-90">
+                <Shield className="w-5 h-5 text-yellow-400" />
+                SCOUT ROMÂNIA
              </div>
 
              <div className="max-w-lg space-y-6 animate-in slide-in-from-left-8 duration-700 delay-100">
-                 {/* Badge care se schimbă în funcție de imagine */}
-                 <div className="inline-block px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-semibold uppercase tracking-wider mb-2 backdrop-blur-sm transition-all">
-                    {ROMANIAN_FOOTBALL_IMAGES[currentImageIndex].description}
-                 </div>
-                 
                  <h2 className="text-4xl lg:text-5xl font-black leading-tight drop-shadow-lg">
-                    {isLogin ? "Fotbalul românesc în cifre." : "Descoperă viitorul naționalei."}
+                    {isLogin ? "Bine ai revenit pe teren." : "Începe cariera de scouter."}
                  </h2>
                  <p className="text-lg text-blue-100 font-light leading-relaxed drop-shadow-md">
-                    Analize detaliate, statistici din SuperLigă și monitorizarea tinerelor talente.
+                    Analize detaliate, statistici avansate și monitorizarea stranierilor. Totul într-o singură platformă dedicată fotbalului românesc.
                  </p>
                  
-                 {/* Feature list */}
+                 {/* Feature list mic */}
                  <div className="pt-4 flex gap-4 text-sm font-medium text-blue-200">
-                    <div className="flex items-center gap-1"><Star className="w-4 h-4 text-yellow-400" /> Liga 1</div>
-                    <div className="flex items-center gap-1"><Star className="w-4 h-4 text-yellow-400" /> Liga 2</div>
-                    <div className="flex items-center gap-1"><Star className="w-4 h-4 text-yellow-400" /> Naționala</div>
+                    <div className="flex items-center gap-1"><Star className="w-4 h-4 text-yellow-400" /> Scouting</div>
+                    <div className="flex items-center gap-1"><Star className="w-4 h-4 text-yellow-400" /> Statistici</div>
+                    <div className="flex items-center gap-1"><Star className="w-4 h-4 text-yellow-400" /> Transferuri</div>
                  </div>
              </div>
 
-             {/* Footer Stânga + Indicatori Slider */}
-             <div className="flex justify-between items-end border-t border-white/20 pt-6">
-                <div className="text-xs opacity-60">
-                    © 2024 România Fotbal Scout.
-                </div>
-                {/* Dots (Buline) pentru slider */}
-                <div className="flex gap-2">
-                    {ROMANIAN_FOOTBALL_IMAGES.map((_, idx) => (
-                        <button 
-                            key={idx}
-                            onClick={() => setCurrentImageIndex(idx)}
-                            className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'w-6 bg-yellow-400' : 'w-1.5 bg-white/40'}`}
-                        />
-                    ))}
-                </div>
+             <div className="text-xs opacity-60 border-t border-white/20 pt-6">
+                 © 2024 România Fotbal Scout. Platformă oficială de date.
              </div>
          </div>
       </div>
 
-      {/* --- PARTEA DREAPTĂ: FORMULARUL --- */}
+      {/* PARTEA DREAPTĂ: FORMULARUL */}
       <div className="w-full md:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-gray-50 dark:bg-slate-900">
         
-        {/* Buton Mobile Branding */}
-        <div className="absolute top-6 left-6 md:hidden flex flex-col gap-1">
-            <div className="flex items-center gap-2 font-bold text-blue-900 dark:text-white">
-                <Shield className="w-6 h-6 text-blue-600" /> RO FOTBAL
-            </div>
-             <div className="h-0.5 w-12 flex">
-                    <div className="h-full w-1/3 bg-blue-600"></div>
-                    <div className="h-full w-1/3 bg-yellow-400"></div>
-                    <div className="h-full w-1/3 bg-red-600"></div>
-             </div>
+        {/* Buton Mobile de branding (apare doar pe ecrane foarte mici) */}
+        <div className="absolute top-6 left-6 md:hidden flex items-center gap-2 font-bold text-blue-900 dark:text-white">
+            <Shield className="w-6 h-6 text-blue-600" /> RO FOTBAL
         </div>
 
         <div className="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl animate-in slide-in-from-right-8 duration-700 border border-gray-100 dark:border-slate-700">
             
             <div className="mb-8 text-center md:text-left">
                 <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2 tracking-tight">
-                  {isLogin ? 'Autentificare' : 'Scouter Nou'}
+                  {isLogin ? 'Autentificare' : 'Creează Cont'}
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400">
-                  {isLogin ? 'Bine ai revenit în platformă.' : 'Completează datele pentru a începe scouting-ul.'}
+                  {isLogin ? 'Introdu credențialele pentru acces.' : 'Completează datele pentru a începe.'}
                 </p>
             </div>
 
@@ -182,7 +116,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                         <input 
                             type="text" 
                             className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all dark:bg-slate-900 dark:border-slate-600 dark:text-white font-medium"
-                            placeholder="Ex: Gică Popescu"
+                            placeholder="Ex: Andrei Popescu"
                             value={formData.name}
                             onChange={(e) => setFormData({...formData, name: e.target.value})}
                             required={!isLogin}
@@ -199,7 +133,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                         <input 
                             type="email" 
                             className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all dark:bg-slate-900 dark:border-slate-600 dark:text-white font-medium"
-                            placeholder="scout@frf.ro"
+                            placeholder="nume@exemplu.com"
                             value={formData.email}
                             onChange={(e) => setFormData({...formData, email: e.target.value})}
                             required
@@ -238,7 +172,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                     disabled={loading}
                     className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
                 >
-                    {loading ? 'Se procesează...' : (isLogin ? 'Intră în Vestiar' : 'Semnează Contractul')}
+                    {loading ? 'Se procesează...' : (isLogin ? 'Intră în Cont' : 'Creează Cont')}
                     {!loading && <ArrowRight className="w-5 h-5" />}
                 </button>
             </form>
@@ -246,12 +180,12 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
             {/* Toggle Link */}
             <div className="mt-8 text-center pt-6 border-t border-gray-100 dark:border-slate-700">
                 <p className="text-gray-500 font-medium text-sm">
-                    {isLogin ? 'Vrei să devii scouter?' : 'Ai deja legitimație?'}
+                    {isLogin ? 'Nu ești înregistrat?' : 'Ai deja un cont?'}
                     <button 
                         onClick={() => { setIsLogin(!isLogin); setError(''); }}
                         className="ml-2 font-bold text-blue-600 hover:text-blue-800 transition-colors underline decoration-2 decoration-transparent hover:decoration-blue-600"
                     >
-                        {isLogin ? 'Înregistrează-te' : 'Loghează-te'}
+                        {isLogin ? 'Înregistrează-te acum' : 'Loghează-te aici'}
                     </button>
                 </p>
             </div>
@@ -259,5 +193,16 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Iconiță extra pentru eroare (în caz că nu e importată din lucide-react)
+function AlertCircle({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
   );
 }
