@@ -37,7 +37,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     title: '',
     price: '',
     category: 'Tricouri',
-    image: '', // Aici vom stoca acum poza convertită în text (Base64)
+    image: '',
     description: ''
   });
 
@@ -57,12 +57,11 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     localStorage.setItem('collectors_products', JSON.stringify(products));
   }, [products]);
 
-  // --- LOGICA ÎNCĂRCARE POZĂ (NOU) ---
+  // --- LOGICA ÎNCĂRCARE POZĂ ---
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     
     if (file) {
-      // Verificare mărime (Max 2MB ca să nu umplem localStorage)
       if (file.size > 2 * 1024 * 1024) {
         alert("Imaginea este prea mare! Te rugăm să încarci o poză sub 2MB.");
         return;
@@ -70,7 +69,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Rezultatul este un string lung (Base64) care reprezintă imaginea
         setNewProduct({ ...newProduct, image: reader.result as string });
       };
       reader.readAsDataURL(file);
@@ -84,7 +82,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     const product: Product = {
       id: Date.now(),
       ...newProduct,
-      // Dacă nu a pus poză, punem una default
       image: newProduct.image || "https://images.unsplash.com/photo-1552318965-5638e4c66e71?auto=format&fit=crop&q=80&w=500",
       seller: user.name,
       sellerEmail: user.email,
@@ -255,19 +252,22 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
         </div>
       )}
 
-      {/* MODAL ADĂUGARE PRODUS */}
+      {/* MODAL ADĂUGARE PRODUS - REPARAT PENTRU SCROLL */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 h-[90vh] md:h-auto overflow-y-auto">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
+          {/* AICI ESTE FIX-UL: max-h-[90vh] și flex-col */}
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-10">
+            
+            {/* Header-ul rămâne fix sus */}
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
               <h3 className="text-xl font-bold">Vinde un articol</h3>
               <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-full">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleAddProduct} className="p-6 space-y-4">
-              {/* Titlu */}
+            {/* Zona Scrollabilă pentru Formular */}
+            <div className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Titlu Produs</label>
                 <input 
@@ -280,7 +280,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                 />
               </div>
 
-              {/* Preț și Categorie */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Preț</label>
@@ -307,14 +306,10 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                 </div>
               </div>
 
-              {/* ZONA NOUĂ DE UPLOAD IMAGINE */}
+              {/* Zona Imagine */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Imagine Produs</label>
-                
-                {/* Zona de click/drop */}
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition-colors relative">
-                  
-                  {/* Dacă avem deja o imagine încărcată, o arătăm */}
                   {newProduct.image ? (
                     <div className="relative">
                       <img 
@@ -331,7 +326,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                       </button>
                     </div>
                   ) : (
-                    // Dacă nu, arătăm input-ul de fișier
                     <>
                       <input 
                         type="file" 
@@ -351,7 +345,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                 </div>
               </div>
 
-              {/* Descriere */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Descriere</label>
                 <textarea 
@@ -363,7 +356,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                 ></textarea>
               </div>
 
-              {/* Info Vânzător */}
               <div className="bg-blue-50 p-3 rounded-lg flex items-center gap-3 text-sm text-blue-800">
                 <User className="w-5 h-5" />
                 <span>
@@ -371,10 +363,11 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                 </span>
               </div>
 
+              {/* ACUM ACEST BUTON VA FI MEREU VIZIBIL PRIN SCROLL */}
               <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/30">
                 Publică Anunțul
               </button>
-            </form>
+            </div>
           </div>
         </div>
       )}
