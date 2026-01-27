@@ -70,7 +70,11 @@ export default function App() {
       case 'diaspora': return <DiasporaSection />;
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
-      case 'collectors': return <CollectorsHubSection />;
+      
+      // AICI ESTE MODIFICAREA: Trimitem 'user' ca proprietate
+      // Asigură-te că user-ul există (fiindcă trecem de AuthPage, sigur există)
+      case 'collectors': return <CollectorsHubSection user={user!} />; 
+      
       default: return <HomeSection onNavigate={setActiveSection} />;
     }
   };
