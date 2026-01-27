@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Lock, ArrowRight, Shield, Star, Activity, Award } from 'lucide-react';
 
-// --- IMAGINI REPREZENTATIVE (Slideshow) ---
+// --- IMPORTĂM IMAGINILE LOCALE ---
+// ".. " înseamnă "ieși din folderul components"
+// "/Photo" înseamnă "intră în folderul Photo"
+import stadionImg from '../Photo/stadion.jpg';
+import hagiImg from '../Photo/hagi.jpg';
+import echipaImg from '../Photo/echipa.jpg';
+
+// --- FOLOSIM VARIABILELE IMPORTATE ---
 const BACKGROUND_IMAGES = [
-  // 1. Stadion Mare (Vibe de Arena Națională / Meci Națională)
-  "https://images.unsplash.com/photo-1522778119026-d647f0565c6a?q=80&w=2940&auto=format&fit=crop",
-  // 2. Detaliu Gazon/Minge (Vibe de Scouting/Antrenament)
-  "https://images.unsplash.com/photo-1552318965-5638e4c66e71?q=80&w=2940&auto=format&fit=crop",
-  // 3. Atmosferă Nocturnă (Vibe de Derby Liga 1)
-  "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?q=80&w=2940&auto=format&fit=crop"
+  stadionImg, // Imaginea 1: Stadion
+  hagiImg,    // Imaginea 2: Hagi
+  echipaImg   // Imaginea 3: Echipa Națională
 ];
 
 interface AuthPageProps {
