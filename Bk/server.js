@@ -46,7 +46,7 @@ const User = mongoose.models.User || mongoose.model('User', userSchema);
 const playerSchema = new mongoose.Schema({}, { strict: false });
 const Player = mongoose.models.Player || mongoose.model('Player', playerSchema);
 
-// C. LISTING (ACTUALIZAT PENTRU NOILE FUNCȚII)
+// C. LISTING (SCHEMA COMPLETĂ)
 const listingSchema = new mongoose.Schema({
     title: { type: String, required: true },
     category: { type: String, required: true },
@@ -125,7 +125,7 @@ const startServer = async () => {
         // 2. POST - Adaugă produs nou
         app.post('/api/listings', async (req, res) => {
             try {
-                // req.body conține acum imaginile și telefonul automat datorită schemei noi
+                // req.body conține imaginile și telefonul automat
                 const newListing = new Listing(req.body);
                 await newListing.save();
                 res.status(201).json(newListing);
@@ -135,7 +135,7 @@ const startServer = async () => {
             }
         });
 
-        // 3. DELETE - Șterge produs (Securizat)
+        // 3. DELETE - Șterge produs (FIX PENTRU PRODUSELE STRICATE)
         app.delete('/api/listings/:id', async (req, res) => {
             try {
                 const { email } = req.body; // Primim emailul userului care vrea să șteargă
@@ -143,8 +143,10 @@ const startServer = async () => {
                 const listing = await Listing.findById(req.params.id);
                 if (!listing) return res.status(404).json({ error: "Produsul nu există" });
 
-                // Verificăm dacă cel care șterge este cel care a postat
-                if (listing.sellerEmail !== email) {
+                // MODIFICARE IMPORTANTĂ:
+                // Dacă produsul are un email salvat, verificăm dacă ești tu proprietarul.
+                // Dacă produsul NU are email (e buguit/stricat), permitem ștergerea!
+                if (listing.sellerEmail && listing.sellerEmail !== email) {
                     return res.status(403).json({ error: "Nu ai permisiunea să ștergi acest produs." });
                 }
 
