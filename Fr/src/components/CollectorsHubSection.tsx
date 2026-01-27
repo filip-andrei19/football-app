@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Upload, ChevronLeft, ChevronRight, Phone } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2 } from 'lucide-react';
 
 // --- INTERFEȚE ---
 interface Product {
@@ -7,11 +7,11 @@ interface Product {
   title: string;
   price: string;
   category: string;
-  images: string[]; // ACUM ESTE ARRAY (LISTĂ) DE IMAGINI
+  images: string[];
   description: string;
   seller: string;
   sellerEmail: string;
-  sellerPhone: string; // CÂMP NOU
+  sellerPhone: string;
   date: string;
 }
 
@@ -24,9 +24,8 @@ interface CollectorsHubProps {
 
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
 
-// --- SUB-COMPONENTA: PRODUCT CARD (Cu Carusel) ---
-// O facem separată ca să aibă fiecare produs propriul "state" pentru poza curentă
-const ProductCard = ({ product, user, onDelete }: { product: Product, user: any, onDelete: (id: number) => void }) => {
+// --- 1. COMPONENTA: PRODUCT CARD (Miniatura din listă) ---
+const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, user: any, onDelete: (id: number) => void, onClick: (p: Product) => void }) => {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
   const nextImage = () => {
@@ -38,10 +37,17 @@ const ProductCard = ({ product, user, onDelete }: { product: Product, user: any,
   };
 
   return (
-    <div className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full">
-      
-      {/* ZONA IMAGINE (CARUSEL) */}
-      <div className="relative h-56 bg-gray-100 group-scope">
+    <div 
+      onClick={() => onClick(product)}
+      className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full cursor-pointer relative"
+    >
+      {/* Iconiță de Zoom la hover */}
+      <div className="absolute top-3 left-3 z-20 bg-black/50 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <Maximize2 className="w-4 h-4" />
+      </div>
+
+      {/* ZONA IMAGINE (CARUSEL MINI) */}
+      <div className="relative h-64 bg-gray-100">
         {product.images.length > 0 ? (
           <img 
             src={product.images[currentImgIndex]} 
@@ -59,24 +65,24 @@ const ProductCard = ({ product, user, onDelete }: { product: Product, user: any,
           {product.category}
         </div>
 
-        {/* BUTOANE NAVIGARE (Doar dacă sunt mai multe poze) */}
+        {/* Butoane Navigare (doar dacă sunt > 1 poză) */}
         {product.images.length > 1 && (
           <>
             <button 
               onClick={(e) => { e.stopPropagation(); prevImage(); }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); nextImage(); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
             
             {/* Indicator buline */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
               {product.images.map((_, idx) => (
                 <div key={idx} className={`w-1.5 h-1.5 rounded-full shadow-sm ${idx === currentImgIndex ? 'bg-white' : 'bg-white/50'}`} />
               ))}
@@ -88,55 +94,146 @@ const ProductCard = ({ product, user, onDelete }: { product: Product, user: any,
       {/* CONȚINUT */}
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="font-bold text-lg text-gray-900 leading-tight">{product.title}</h3>
+          <h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">{product.title}</h3>
           <span className="bg-green-50 text-green-700 px-2 py-1 rounded-lg text-sm font-bold whitespace-nowrap">{product.price}</span>
         </div>
         
         <p className="text-gray-500 text-sm mb-4 line-clamp-2 flex-1">{product.description}</p>
 
         {/* INFO CONTACT & VÂNZĂTOR */}
-        <div className="pt-4 border-t border-gray-50 mt-auto space-y-3">
-          
-          {/* Telefon (dacă există) */}
-          {product.sellerPhone && (
-             <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
-                <Phone className="w-4 h-4 text-blue-600" />
-                <span className="font-mono font-medium">{product.sellerPhone}</span>
-             </div>
-          )}
-
-          <div className="flex items-center justify-between">
+        <div className="pt-4 border-t border-gray-50 mt-auto flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-gray-500">
-              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase shadow-sm border border-white">
                 {product.seller.charAt(0)}
               </div>
-              <span className="font-medium truncate max-w-[100px]">{product.seller}</span>
+              <div className="flex flex-col leading-none">
+                 <span className="text-[10px] text-gray-400">Vânzător</span>
+                 <span className="font-medium truncate max-w-[100px]">{product.seller}</span>
+              </div>
             </div>
 
-            {product.sellerEmail === user.email ? (
-              <button onClick={() => onDelete(product.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
+            {product.sellerEmail === user.email && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDelete(product.id); }} 
+                className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors z-20 relative"
+              >
                 <Trash2 className="w-4 h-4" />
               </button>
-            ) : (
-              <button className="text-blue-600 font-bold text-sm hover:underline">Contact</button>
             )}
-          </div>
         </div>
       </div>
     </div>
   );
 };
 
+// --- 2. COMPONENTA: VIZUALIZARE PRODUS (MODAL MARE) ---
+const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () => void }) => {
+    const [activeIdx, setActiveIdx] = useState(0);
 
-// --- COMPONENTA PRINCIPALĂ ---
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl animate-in zoom-in-95 duration-300 relative">
+                
+                {/* Buton Închidere */}
+                <button 
+                    onClick={onClose}
+                    className="absolute top-4 right-4 z-50 bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg transition-all"
+                >
+                    <X className="w-6 h-6" />
+                </button>
+
+                {/* PARTEA STÂNGĂ: GALERIE FOTO */}
+                <div className="w-full md:w-3/5 bg-gray-100 flex flex-col relative h-[50vh] md:h-auto">
+                    {/* Imagine Mare */}
+                    <div className="flex-1 relative flex items-center justify-center bg-black/5 overflow-hidden">
+                        <img 
+                            src={product.images[activeIdx]} 
+                            alt="Full view" 
+                            className="max-w-full max-h-full object-contain p-4 shadow-xl" 
+                        />
+                    </div>
+                    
+                    {/* Thumbnail Strip (Doar dacă sunt mai multe poze) */}
+                    {product.images.length > 1 && (
+                        <div className="p-4 bg-white border-t border-gray-100 flex gap-3 overflow-x-auto justify-center">
+                            {product.images.map((img, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => setActiveIdx(idx)}
+                                    className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${activeIdx === idx ? 'border-blue-600 ring-2 ring-blue-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                >
+                                    <img src={img} alt="thumb" className="w-full h-full object-cover" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* PARTEA DREAPTĂ: DETALII */}
+                <div className="w-full md:w-2/5 p-8 flex flex-col overflow-y-auto bg-white">
+                    <div className="mb-6">
+                        <span className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
+                            {product.category}
+                        </span>
+                        <h2 className="text-3xl font-black text-gray-900 leading-tight mb-2">{product.title}</h2>
+                        <div className="text-2xl font-bold text-green-600">{product.price}</div>
+                        <div className="text-xs text-gray-400 mt-1">Postat pe: {product.date}</div>
+                    </div>
+
+                    <div className="prose prose-sm text-gray-600 mb-8 border-t border-b border-gray-100 py-6">
+                        <h4 className="text-gray-900 font-bold mb-2">Descriere Vânzător:</h4>
+                        <p className="whitespace-pre-wrap leading-relaxed">{product.description}</p>
+                    </div>
+
+                    <div className="mt-auto bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <User className="w-5 h-5 text-blue-600" /> Detalii Contact
+                        </h3>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <div className="text-xs font-bold text-gray-400 uppercase">Vânzător</div>
+                                <div className="font-medium text-lg text-gray-900">{product.seller}</div>
+                            </div>
+
+                            {product.sellerPhone && (
+                                <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+                                    <div className="bg-green-100 p-2 rounded-full text-green-700">
+                                        <Phone className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <div className="text-xs font-bold text-gray-400 uppercase">Telefon</div>
+                                        <a href={`tel:${product.sellerPhone}`} className="font-mono text-lg font-bold text-gray-900 hover:text-green-600 transition-colors">
+                                            {product.sellerPhone}
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!product.sellerPhone && (
+                                <div className="text-sm text-gray-500 italic">
+                                    Acest vânzător nu a lăsat un număr de telefon.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// --- 3. COMPONENTA PRINCIPALĂ (Main Section) ---
 export function CollectorsHubSection({ user }: CollectorsHubProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeTab, setActiveTab] = useState<'market' | 'my_items'>('market');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null); // State pentru zoom produs
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Toate");
 
-  // State pentru formular (acum cu images array și phone)
+  // State Formular
   const [newProduct, setNewProduct] = useState({
     title: '',
     price: '',
@@ -146,20 +243,16 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     phone: ''
   });
 
-  // --- ÎNCĂRCARE & MIGRARE DATE VECHI ---
+  // Încărcare date
   useEffect(() => {
     const saved = localStorage.getItem('collectors_products');
     if (saved) {
       const loadedProducts = JSON.parse(saved);
-      
-      // Mapăm produsele ca să ne asigurăm că formatul e corect (pentru compatibilitate cu versiunea veche)
       const sanitizedProducts = loadedProducts.map((p: any) => ({
         ...p,
-        // Dacă are 'image' string vechi, îl punem în array. Dacă are 'images', îl lăsăm așa.
         images: p.images ? p.images : (p.image ? [p.image] : []),
         sellerPhone: p.sellerPhone || ''
-      })).filter((p: any) => p.id !== 1 && p.id !== 2); // Eliminăm demo vechi
-
+      })).filter((p: any) => p.id !== 1 && p.id !== 2);
       setProducts(sanitizedProducts);
     }
   }, []);
@@ -168,28 +261,22 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     localStorage.setItem('collectors_products', JSON.stringify(products));
   }, [products]);
 
-  // --- LOGICA ÎNCĂRCARE IMAGINI MULTIPLE ---
+  // Logică Upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      // Limităm la 5 poze per produs
       if (newProduct.images.length + files.length > 5) {
         alert("Poți încărca maxim 5 poze!");
         return;
       }
-
       Array.from(files).forEach(file => {
         if (file.size > 2 * 1024 * 1024) {
           alert(`Fișierul ${file.name} este prea mare (Max 2MB).`);
           return;
         }
-        
         const reader = new FileReader();
         reader.onloadend = () => {
-          setNewProduct(prev => ({
-            ...prev,
-            images: [...prev.images, reader.result as string]
-          }));
+          setNewProduct(prev => ({ ...prev, images: [...prev.images, reader.result as string] }));
         };
         reader.readAsDataURL(file);
       });
@@ -208,7 +295,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
       alert("Te rog completează toate câmpurile, inclusiv numărul de telefon!");
       return;
     }
-    
     if (newProduct.images.length === 0) {
       alert("Te rog adaugă cel puțin o poză!");
       return;
@@ -229,7 +315,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
 
     setProducts([product, ...products]);
     setShowAddModal(false);
-    // Reset form
     setNewProduct({ title: '', price: '', category: 'Tricouri', images: [], description: '', phone: '' });
     setActiveTab('my_items');
     setSelectedCategory("Toate");
@@ -239,6 +324,10 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
   const handleDelete = (id: number) => {
     if (window.confirm("Ștergi acest produs?")) {
       setProducts(products.filter(p => p.id !== id));
+      // Dacă ștergem produsul pe care ne uităm, închidem modalul de zoom
+      if (selectedProduct?.id === id) {
+          setSelectedProduct(null);
+      }
     }
   };
 
@@ -294,9 +383,23 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} user={user} onDelete={handleDelete} />
+            <ProductCard 
+                key={product.id} 
+                product={product} 
+                user={user} 
+                onDelete={handleDelete}
+                onClick={setSelectedProduct} // Deschide modalul la click
+            />
           ))}
         </div>
+      )}
+
+      {/* MODAL VIZUALIZARE PRODUS (ZOOM) */}
+      {selectedProduct && (
+          <ProductViewModal 
+            product={selectedProduct} 
+            onClose={() => setSelectedProduct(null)} 
+          />
       )}
 
       {/* MODAL ADĂUGARE PRODUS */}
@@ -332,26 +435,15 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                  </select>
               </div>
 
-              {/* UPLOAD IMAGINI MULTIPLE */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Imagini (Max 5)</label>
-                
-                {/* Grid previzualizare imagini */}
                 <div className="grid grid-cols-3 gap-2 mb-2">
                    {newProduct.images.map((img, idx) => (
                       <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200">
                          <img src={img} alt="preview" className="w-full h-full object-cover" />
-                         <button 
-                            type="button" 
-                            onClick={() => removeImage(idx)} 
-                            className="absolute top-1 right-1 bg-red-500 text-white p-0.5 rounded-full hover:bg-red-600"
-                         >
-                            <X className="w-3 h-3" />
-                         </button>
+                         <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white p-0.5 rounded-full hover:bg-red-600"><X className="w-3 h-3" /></button>
                       </div>
                    ))}
-                   
-                   {/* Buton Upload (Dacă nu am atins limita) */}
                    {newProduct.images.length < 5 && (
                       <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
                          <Upload className="w-6 h-6 text-gray-400 mb-1" />
