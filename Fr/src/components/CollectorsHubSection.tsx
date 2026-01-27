@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn } from 'lucide-react';
 
 // --- INTERFEȚE ---
 interface Product {
@@ -24,7 +24,7 @@ interface CollectorsHubProps {
 
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
 
-// --- 1. COMPONENTA: PRODUCT CARD (Miniatura din listă) ---
+// --- 1. COMPONENTA: PRODUCT CARD (Listă) ---
 const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, user: any, onDelete: (id: number) => void, onClick: (p: Product) => void }) => {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
@@ -41,12 +41,10 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
       onClick={() => onClick(product)}
       className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full cursor-pointer relative"
     >
-      {/* Iconiță de Zoom la hover */}
       <div className="absolute top-3 left-3 z-20 bg-black/50 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
         <Maximize2 className="w-4 h-4" />
       </div>
 
-      {/* ZONA IMAGINE (CARUSEL MINI) */}
       <div className="relative h-64 bg-gray-100">
         {product.images.length > 0 ? (
           <img 
@@ -60,12 +58,10 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
           </div>
         )}
 
-        {/* Categorie Badge */}
         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-blue-800 shadow-sm z-10">
           {product.category}
         </div>
 
-        {/* Butoane Navigare (doar dacă sunt > 1 poză) */}
         {product.images.length > 1 && (
           <>
             <button 
@@ -81,7 +77,6 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
               <ChevronRight className="w-5 h-5" />
             </button>
             
-            {/* Indicator buline */}
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
               {product.images.map((_, idx) => (
                 <div key={idx} className={`w-1.5 h-1.5 rounded-full shadow-sm ${idx === currentImgIndex ? 'bg-white' : 'bg-white/50'}`} />
@@ -91,7 +86,6 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
         )}
       </div>
 
-      {/* CONȚINUT */}
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex justify-between items-start mb-2">
           <h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">{product.title}</h3>
@@ -100,7 +94,6 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
         
         <p className="text-gray-500 text-sm mb-4 line-clamp-2 flex-1">{product.description}</p>
 
-        {/* INFO CONTACT & VÂNZĂTOR */}
         <div className="pt-4 border-t border-gray-50 mt-auto flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase shadow-sm border border-white">
@@ -126,15 +119,40 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
   );
 };
 
-// --- 2. COMPONENTA: VIZUALIZARE PRODUS (MODAL MARE) ---
+// --- 2. COMPONENTA: VIZUALIZARE PRODUS (MODAL CU ZOOM) ---
 const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () => void }) => {
     const [activeIdx, setActiveIdx] = useState(0);
+    
+    // --- STATE PENTRU ZOOM ---
+    const [isZoomed, setIsZoomed] = useState(false);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!isZoomed) return;
+        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+        
+        // Calculăm poziția mouse-ului ca procentaj (0-100%)
+        const x = ((e.clientX - left) / width) * 100;
+        const y = ((e.clientY - top) / height) * 100;
+        
+        setMousePos({ x, y });
+    };
+
+    const toggleZoom = (e: React.MouseEvent) => {
+        // Dacă activăm zoom-ul, setăm poziția inițială unde a dat click
+        if (!isZoomed) {
+             const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+             const x = ((e.clientX - left) / width) * 100;
+             const y = ((e.clientY - top) / height) * 100;
+             setMousePos({ x, y });
+        }
+        setIsZoomed(!isZoomed);
+    };
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl animate-in zoom-in-95 duration-300 relative">
                 
-                {/* Buton Închidere */}
                 <button 
                     onClick={onClose}
                     className="absolute top-4 right-4 z-50 bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg transition-all"
@@ -142,24 +160,42 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                     <X className="w-6 h-6" />
                 </button>
 
-                {/* PARTEA STÂNGĂ: GALERIE FOTO */}
-                <div className="w-full md:w-3/5 bg-gray-100 flex flex-col relative h-[50vh] md:h-auto">
-                    {/* Imagine Mare */}
-                    <div className="flex-1 relative flex items-center justify-center bg-black/5 overflow-hidden">
+                {/* PARTEA STÂNGĂ: GALERIE FOTO CU ZOOM */}
+                <div className="w-full md:w-3/5 bg-gray-100 flex flex-col relative h-[50vh] md:h-auto border-r border-gray-100">
+                    
+                    {/* Zona Imagine Mare - CU ZOOM */}
+                    <div 
+                        className={`flex-1 relative overflow-hidden flex items-center justify-center bg-white ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
+                        onMouseMove={handleMouseMove}
+                        onClick={toggleZoom}
+                        onMouseLeave={() => setIsZoomed(false)}
+                    >
+                        {/* Imaginea efectivă */}
                         <img 
                             src={product.images[activeIdx]} 
                             alt="Full view" 
-                            className="max-w-full max-h-full object-contain p-4 shadow-xl" 
+                            className="max-w-full max-h-full object-contain transition-transform duration-200 ease-out"
+                            style={{
+                                transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
+                                transform: isZoomed ? 'scale(2.5)' : 'scale(1)'
+                            }}
                         />
+
+                        {/* Hint vizual pentru Zoom */}
+                        {!isZoomed && (
+                            <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 pointer-events-none backdrop-blur-sm">
+                                <ZoomIn className="w-3 h-3" /> Click pentru Zoom
+                            </div>
+                        )}
                     </div>
                     
-                    {/* Thumbnail Strip (Doar dacă sunt mai multe poze) */}
+                    {/* Thumbnail Strip */}
                     {product.images.length > 1 && (
-                        <div className="p-4 bg-white border-t border-gray-100 flex gap-3 overflow-x-auto justify-center">
+                        <div className="p-4 bg-white border-t border-gray-100 flex gap-3 overflow-x-auto justify-center z-40 relative">
                             {product.images.map((img, idx) => (
                                 <button
                                     key={idx}
-                                    onClick={() => setActiveIdx(idx)}
+                                    onClick={() => { setActiveIdx(idx); setIsZoomed(false); }}
                                     className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${activeIdx === idx ? 'border-blue-600 ring-2 ring-blue-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
                                 >
                                     <img src={img} alt="thumb" className="w-full h-full object-cover" />
@@ -223,17 +259,15 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
     );
 };
 
-
-// --- 3. COMPONENTA PRINCIPALĂ (Main Section) ---
+// --- 3. COMPONENTA PRINCIPALĂ ---
 export function CollectorsHubSection({ user }: CollectorsHubProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeTab, setActiveTab] = useState<'market' | 'my_items'>('market');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null); // State pentru zoom produs
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Toate");
 
-  // State Formular
   const [newProduct, setNewProduct] = useState({
     title: '',
     price: '',
@@ -243,7 +277,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     phone: ''
   });
 
-  // Încărcare date
   useEffect(() => {
     const saved = localStorage.getItem('collectors_products');
     if (saved) {
@@ -261,7 +294,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     localStorage.setItem('collectors_products', JSON.stringify(products));
   }, [products]);
 
-  // Logică Upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -324,7 +356,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
   const handleDelete = (id: number) => {
     if (window.confirm("Ștergi acest produs?")) {
       setProducts(products.filter(p => p.id !== id));
-      // Dacă ștergem produsul pe care ne uităm, închidem modalul de zoom
       if (selectedProduct?.id === id) {
           setSelectedProduct(null);
       }
@@ -341,7 +372,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       
-      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div>
           <h2 className="text-3xl font-black text-gray-900 mb-2 flex items-center gap-2">
@@ -360,7 +390,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
         </button>
       </div>
 
-      {/* FILTRE */}
       <div className="space-y-4">
         <div className="relative">
           <Search className="absolute left-4 top-3.5 text-gray-400 w-5 h-5" />
@@ -373,7 +402,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
         </div>
       </div>
 
-      {/* LISTA PRODUSE */}
       {filteredProducts.length === 0 ? (
         <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
           <Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -388,13 +416,12 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                 product={product} 
                 user={user} 
                 onDelete={handleDelete}
-                onClick={setSelectedProduct} // Deschide modalul la click
+                onClick={setSelectedProduct}
             />
           ))}
         </div>
       )}
 
-      {/* MODAL VIZUALIZARE PRODUS (ZOOM) */}
       {selectedProduct && (
           <ProductViewModal 
             product={selectedProduct} 
@@ -402,7 +429,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
           />
       )}
 
-      {/* MODAL ADĂUGARE PRODUS */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-10">
