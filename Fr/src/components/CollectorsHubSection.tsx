@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, Filter, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, Loader2, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, Loader2, AlertTriangle } from 'lucide-react';
 
 // --- INTERFEȚE ---
 interface Product {
@@ -30,9 +30,8 @@ const API_URL = 'https://football-backend-m2a4.onrender.com/api/listings';
 const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void }) => {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
-  // PROTECȚIE: Dacă nu există imagini sau e null, folosim un array gol
+  // PROTECȚIE: Dacă datele lipsesc, punem valori implicite
   const images = product.images || [];
-  // PROTECȚIE: Dacă nu există seller, punem "Necunoscut"
   const sellerName = product.seller || "Necunoscut";
 
   const nextImage = () => {
@@ -290,16 +289,14 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
           
           const data = await res.json();
           
-          // VERIFICARE TIP DE DATE: Ne asigurăm că primim un array
           if (Array.isArray(data)) {
               setProducts(data);
           } else {
-              console.error("Format date invalid:", data);
               setProducts([]);
           }
       } catch (err) {
           console.error("Eroare la încărcare produse:", err);
-          setProducts([]); // Nu lăsăm products undefined niciodată
+          setProducts([]); 
       } finally {
           setLoading(false);
       }
@@ -334,13 +331,29 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
   };
 
   const handleAddProduct = async () => {
-    if (!newProduct.title.trim() || !newProduct.price.trim() || !newProduct.description.trim() || !newProduct.phone.trim()) {
-      alert("Te rog completează toate câmpurile, inclusiv numărul de telefon!");
-      return;
+    // ------------------------------------------------------------------
+    // AICI ESTE VALIDAREA STRICTĂ NOUĂ
+    // Dacă oricare dintre aceste condiții e adevărată, oprim funcția.
+    // ------------------------------------------------------------------
+    if (!newProduct.title.trim()) {
+        alert("Te rog adaugă un Titlu pentru produs!");
+        return;
+    }
+    if (!newProduct.price.trim()) {
+        alert("Te rog adaugă un Preț!");
+        return;
+    }
+    if (!newProduct.phone.trim()) {
+        alert("Te rog adaugă un Număr de Telefon valid!");
+        return;
     }
     if (newProduct.images.length === 0) {
-      alert("Te rog adaugă cel puțin o poză!");
-      return;
+        alert("Te rog adaugă cel puțin o Poză! Oamenii vor să vadă produsul.");
+        return;
+    }
+    if (!newProduct.description.trim()) {
+        alert("Te rog adaugă o Descriere!");
+        return;
     }
 
     setIsSubmitting(true);
@@ -403,7 +416,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
   };
 
   const filteredProducts = products.filter(p => {
-    // Verificăm dacă p există înainte să accesăm proprietăți
     if (!p) return false;
     const titleMatch = (p.title || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTab = activeTab === 'my_items' ? p.sellerEmail === user.email : true;
@@ -485,17 +497,17 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
             
             <div className="p-6 space-y-4 overflow-y-auto">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Titlu Produs</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Titlu Produs <span className="text-red-500">*</span></label>
                 <input type="text" className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: Tricou Națională" value={newProduct.title} onChange={e => setNewProduct({...newProduct, title: e.target.value})} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Preț</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Preț <span className="text-red-500">*</span></label>
                   <input type="text" className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: 150 RON" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Telefon</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Telefon <span className="text-red-500">*</span></label>
                   <input type="tel" className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="07xx xxx xxx" value={newProduct.phone} onChange={e => setNewProduct({...newProduct, phone: e.target.value})} />
                 </div>
               </div>
@@ -508,7 +520,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Imagini (Max 5)</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Imagini (Min 1, Max 5) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-3 gap-2 mb-2">
                    {newProduct.images.map((img, idx) => (
                       <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200">
@@ -527,7 +539,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Descriere</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Descriere <span className="text-red-500">*</span></label>
                 <textarea className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none" placeholder="Detalii..." value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})}></textarea>
               </div>
 
