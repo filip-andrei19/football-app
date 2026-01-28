@@ -5,6 +5,11 @@ const cors = require('cors');
 const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
 
+// --- IMPORTURI NOI (Cele 3 cerute) ---
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+
 // --- IMPORTURI SERVICII ---
 const { hardResetAndLoad } = require('./services/initialLoad'); 
 const { runDailySmartSync } = require('./services/smartSync'); 
@@ -12,9 +17,27 @@ const { runDailySmartSync } = require('./services/smartSync');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ==========================================
+// CONFIGURĂRI DE BAZĂ & SECURITATE
+// ==========================================
+
+// 1. SECURITATE (Helmet) - Protejează headerele HTTP
+app.use(helmet());
+
+// 2. COMPRESIE (Compression) - Face site-ul mai rapid
+app.use(compression());
+
 app.use(cors());
 
-// IMPORTANT: Mărim limita la 50MB pentru a permite încărcarea a 5 poze
+// 3. ANTI-SPAM (Rate Limiting) - Maxim 100 cereri la 15 min per IP
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minute
+    max: 100, // Limita per IP
+    message: "Prea multe cereri de la acest IP. Te rugăm să încerci peste 15 minute."
+});
+app.use(limiter);
+
+// Mărim limita la 50MB pentru a permite încărcarea a 5 poze
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -181,4 +204,3 @@ const startServer = async () => {
 };
 
 startServer();
-// Restart server pentru actualizare schema
