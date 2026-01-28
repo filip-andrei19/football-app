@@ -1,0 +1,10 @@
+# Dependințe (Regula nr 1)
+node_modules/
+
+# Fișiere de sistem/env (Nu vrem cheile API pe net)
+.env
+.DS_Store
+
+# Foldere de build (Render le face singur)
+dist/
+build/
