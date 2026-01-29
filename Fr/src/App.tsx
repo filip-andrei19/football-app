@@ -58,13 +58,13 @@ export default function App() {
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'home': return <HomeSection onNavigate={setActiveSection} />;
+      // MODIFICARE AICI: Adăugăm "user={user!}"
+      case 'home': return <HomeSection user={user!} onNavigate={setActiveSection} />;
       case 'diaspora': return <DiasporaSection />;
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
-      case 'collectors': return <CollectorsHubSection user={user!} />;
-      case '404': return <NotFoundPage onGoHome={() => setActiveSection('home')} />;
-      default: return <NotFoundPage onGoHome={() => setActiveSection('home')} />;
+      case 'collectors': return <CollectorsHubSection user={user!} />; 
+      default: return <HomeSection user={user!} onNavigate={setActiveSection} />;
     }
   };
 

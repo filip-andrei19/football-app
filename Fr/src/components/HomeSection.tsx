@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-// 1. INTERFAȚA PLAYER (Neschimbată)
+// 1. INTERFAȚA PLAYER
 interface Player {
   _id: string;
   name: string;
@@ -23,13 +23,28 @@ interface Player {
   };
 }
 
-export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void }) {
+// 2. INTERFAȚA PROPS (Adăugăm 'user')
+interface HomeProps {
+    user: { name: string; email: string };
+    onNavigate: (section: any) => void;
+}
+
+export function HomeSection({ user, onNavigate }: HomeProps) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // State pentru salutul dinamic
+  const [greeting, setGreeting] = useState("Salut");
 
   useEffect(() => {
+    // Logica pentru salut în funcție de oră
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) setGreeting("Neața");
+    else if (hour >= 12 && hour < 18) setGreeting("Salut");
+    else setGreeting("Bună seara");
+
     const fetchPlayers = async () => {
       try {
         const response = await fetch('https://football-backend-m2a4.onrender.com/api/sport/players');
@@ -57,52 +72,41 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
     return new Date(dateString).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
+  // Extragem doar prenumele pentru a fi mai prietenos (ex: "Salut, Andrei" în loc de "Andrei Popescu")
+  const firstName = user?.name ? user.name.split(' ')[0] : 'Scouter';
+
   return (
-    // --- CONTAINER PRINCIPAL CU POZIȚIONARE RELATIVĂ ---
     <div className="relative min-h-[80vh] py-10 overflow-hidden">
 
-      {/* ==========================================================================
-          NOUL FUNDAL COLORAT (Background Mesh Gradient)
-          Acesta stă în spatele conținutului (-z-10)
-      ========================================================================== */}
+      {/* FUNDAL ANIMAT */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none">
-          {/* Bila Albastră - Sus Stânga */}
           <div className="absolute top-0 left-0 -translate-x-1/4 -translate-y-1/4 w-[500px] h-[500px] rounded-full bg-blue-600/30 blur-[100px] animate-pulse-slow"></div>
-          
-          {/* Bila Galbenă - Centru Dreapta */}
           <div className="absolute top-[30%] right-0 translate-x-1/4 w-[400px] h-[400px] rounded-full bg-yellow-400/30 blur-[100px] animate-pulse-slow delay-700"></div>
-          
-          {/* Bila Roșie - Jos Centru */}
           <div className="absolute bottom-0 left-[20%] translate-y-1/4 w-[600px] h-[600px] rounded-full bg-red-600/20 blur-[120px] animate-pulse-slow delay-1000"></div>
-
-          {/* O lumină albă centrală pentru contrast */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-white/40 blur-[100px] mix-blend-overlay"></div>
       </div>
-      {/* ========================================================================== */}
 
-
-      {/* CONȚINUTUL PAGINII (Stă peste fundal datorită poziționării relative implicite) */}
       <div className="relative z-10 space-y-12">
         
-        {/* HEADER */}
+        {/* HEADER PERSONALIZAT */}
         <section className="text-center space-y-4 px-4">
-            {/* Am adăugat un text shadow subtil și culoare mai închisă pentru contrast pe fundal colorat */}
-            <h1 className="text-4xl font-black tracking-tight lg:text-6xl text-slate-900 drop-shadow-sm">
-            Caută Jucători
-            </h1>
-            <p className="text-lg text-slate-700 font-medium max-w-2xl mx-auto">
-            Baza de date completă a fotbalului românesc. Profiluri, statistici și istoric.
+            <div className="inline-block animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <h1 className="text-4xl font-black tracking-tight lg:text-6xl text-slate-900 drop-shadow-sm">
+                    {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-yellow-500 to-red-600">{firstName}</span>!
+                </h1>
+            </div>
+            
+            <p className="text-lg text-slate-700 font-medium max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-5 duration-1000 delay-150">
+                Baza de date este pregătită. Pe cine analizăm astăzi?
             </p>
             
-            <div className="max-w-xl mx-auto mt-10 relative z-10">
+            <div className="max-w-xl mx-auto mt-10 relative z-10 animate-in fade-in zoom-in-95 duration-700 delay-300">
                 <div className="relative group">
-                    {/* Glow-ul din spatele search-ului a fost ajustat să fie mai intens */}
                     <div className="absolute -inset-1.5 bg-gradient-to-r from-blue-600 via-yellow-500 to-red-600 rounded-full blur-md opacity-40 group-hover:opacity-70 transition duration-500 animate-gradient-xy"></div>
                     <div className="relative">
                         <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-5 top-1/2 transform -translate-y-1/2 h-6 w-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        {/* Input-ul este acum alb semi-transparent pentru a se integra în fundal */}
                         <input
                         type="text"
                         placeholder="Caută un jucător (ex: Hagi, Mutu)..."
@@ -125,10 +129,14 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
             {error && <div className="text-center text-red-600 font-bold py-10 bg-red-50/50 rounded-xl">{error}</div>}
             
             {!showResults && !loading && (
-                <div className="text-center py-28 opacity-60">
-                    <div className="text-7xl mb-6 drop-shadow-lg">🇷🇴⚽</div>
-                    <p className="text-2xl font-bold text-slate-800">Tastează numele unui fotbalist.</p>
-                    <p className="text-slate-600">Descoperă eroii naționalei și ai campionatului intern.</p>
+                <div className="text-center py-20 opacity-60">
+                    <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto opacity-20 mb-6">
+                        <div className="h-32 bg-slate-300 rounded-2xl rotate-[-6deg]"></div>
+                        <div className="h-32 bg-slate-300 rounded-2xl translate-y-[-10px]"></div>
+                        <div className="h-32 bg-slate-300 rounded-2xl rotate-[6deg]"></div>
+                    </div>
+                    <p className="text-xl font-bold text-slate-800">Totul e calm momentan.</p>
+                    <p className="text-slate-600">Tastează pentru a explora mii de profiluri.</p>
                 </div>
             )}
 
@@ -138,7 +146,6 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
                 const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
                 
                 return (
-                    // Cardurile au acum un fundal alb semi-transparent cu backdrop-blur
                     <div key={player._id} className="bg-white/95 backdrop-blur-sm border border-white/40 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all hover:-translate-y-2 group">
                     
                     {/* HEADER CARD */}
@@ -150,7 +157,6 @@ export function HomeSection({ onNavigate }: { onNavigate: (section: any) => void
                                 className="h-full w-full rounded-full object-cover border-[5px] border-white shadow-sm bg-white"
                                 onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/150?text=No+Img"; }}
                             />
-                             {/* Steag mic (dacă e român) - opțional, poți scoate dacă nu e relevant */}
                             {player.nationality === 'Romania' && (
                                 <span className="absolute bottom-0 right-0 text-xl drop-shadow-md" title="România">🇷🇴</span>
                             )}
