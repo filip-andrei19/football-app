@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Globe, Plane, MapPin, AlertCircle, Shield, Star, Clock, Activity } from 'lucide-react';
+import { Globe, Plane, AlertCircle, Shield, Star, Clock, Activity, Filter } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
-// 🚫 LISTA NEAGRĂ (Cluburi din România) - Filtrăm jucătorii din campionatul intern
+// 🚫 LISTA NEAGRĂ (Cluburi din România)
 const BLOCKED_KEYWORDS = [
   "fcsb", "steaua", "becali", 
   "cfr", "cluj", "universitatea cluj", "u cluj",
@@ -29,7 +29,6 @@ const BLOCKED_KEYWORDS = [
   "resita", "csm", "scm", "fc", "acs"
 ];
 
-// Mapare ligi importante pentru steaguri și nume scurte
 const LEAGUE_MAP: { [key: string]: string } = {
   "Tottenham Hotspur": "Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿",
   "Parma": "Serie A 🇮🇹",
@@ -71,7 +70,7 @@ interface Player {
   };
 }
 
-// --- COMPONENTA SKELETON (LOCALĂ) PENTRU ÎNCĂRCARE ELEGANTĂ ---
+// --- SKELETON ---
 const DiasporaSkeleton = () => (
     <div className="rounded-2xl overflow-hidden border border-white/50 bg-white/40 shadow-sm animate-pulse h-[400px]">
         <div className="h-48 bg-gray-200 w-full relative"></div>
@@ -87,9 +86,13 @@ const DiasporaSkeleton = () => (
     </div>
 );
 
+// FILTRELE
+const FILTERS = ["Toate", "Portari", "Fundași", "Mijlocași", "Atacanți"];
+
 export function DiasporaSection() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState("Toate"); // <--- STATE NOU
 
   useEffect(() => {
     const fetchDiaspora = async () => {
@@ -133,12 +136,30 @@ export function DiasporaSection() {
     fetchDiaspora();
   }, []);
 
+  // --- LOGICA DE FILTRARE (Include și "ATTACKER") ---
+  const getFilteredPlayers = () => {
+      if (activeFilter === "Toate") return players;
+
+      return players.filter(player => {
+          const pos = (player.position || "").toLowerCase();
+          
+          if (activeFilter === "Portari") return pos.includes("goalkeeper") || pos.includes("portar");
+          if (activeFilter === "Fundași") return pos.includes("defender") || pos.includes("back") || pos.includes("funda");
+          if (activeFilter === "Mijlocași") return pos.includes("midfield") || pos.includes("mijloca");
+          
+          // Adăugat check pentru "attacker"
+          if (activeFilter === "Atacanți") return pos.includes("forward") || pos.includes("striker") || pos.includes("wing") || pos.includes("ataca") || pos.includes("attack");
+          
+          return false;
+      });
+  };
+
+  const filteredPlayers = getFilteredPlayers();
+
   return (
     <div className="relative min-h-[80vh] py-10 overflow-hidden bg-slate-50 dark:bg-slate-900">
       
-      {/* ==========================================================================
-          NOUL FUNDAL COLORAT (TRICOLOR MESH)
-      ========================================================================== */}
+      {/* FUNDAL TRICOLOR ANIMAT */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-60">
           <div className="absolute top-0 left-0 -translate-x-1/4 -translate-y-1/4 w-[600px] h-[600px] rounded-full bg-blue-600/20 blur-[120px] animate-pulse-slow"></div>
           <div className="absolute top-[40%] right-0 translate-x-1/4 w-[500px] h-[500px] rounded-full bg-yellow-400/20 blur-[120px] animate-pulse-slow delay-1000"></div>
@@ -146,7 +167,7 @@ export function DiasporaSection() {
       </div>
 
       {/* HEADER */}
-      <section className="text-center space-y-6 px-4 relative z-10 mb-12">
+      <section className="text-center space-y-6 px-4 relative z-10 mb-8">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur border border-yellow-200 text-yellow-800 text-sm font-bold mb-2 shadow-sm">
           <Globe className="w-4 h-4 text-blue-600" />
           <span className="text-blue-900">Tricolorii</span> <span className="text-yellow-600">în</span> <span className="text-red-600">Lume</span>
@@ -161,24 +182,48 @@ export function DiasporaSection() {
         </p>
       </section>
 
+      {/* --- ZONA DE BUTOANE (NOU) --- */}
+      <section className="px-4 container mx-auto relative z-10 mb-10 flex justify-center">
+          <div className="flex flex-wrap justify-center gap-2 bg-white/60 backdrop-blur-md p-2 rounded-2xl border border-blue-100 shadow-lg">
+              {FILTERS.map((filter) => (
+                  <button
+                      key={filter}
+                      onClick={() => setActiveFilter(filter)}
+                      className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+                          activeFilter === filter 
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 transform scale-105' 
+                          : 'bg-transparent text-slate-600 hover:bg-blue-50 hover:text-blue-700'
+                      }`}
+                  >
+                      {activeFilter === filter && <Filter className="w-3 h-3" />}
+                      {filter}
+                  </button>
+              ))}
+          </div>
+      </section>
+
       {/* GRID */}
       <section className="px-6 container mx-auto relative z-10">
         {loading ? (
-             // --- ÎNCĂRCARE CU SKELETONS ---
+             // --- SKELETONS ---
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                  {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <DiasporaSkeleton key={i} />)}
              </div>
-        ) : players.length === 0 ? (
+        ) : filteredPlayers.length === 0 ? (
+            // --- MESAJ LISTĂ GOALĂ (ADAPTAT PENTRU FILTRE) ---
             <div className="flex flex-col items-center justify-center py-20 bg-white/50 backdrop-blur rounded-3xl border border-dashed border-gray-300 text-center px-4 max-w-2xl mx-auto">
                 <div className="bg-yellow-100 p-4 rounded-full mb-4">
                     <Plane className="w-8 h-8 text-yellow-600" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800">Niciun jucător găsit</h3>
-                <p className="text-gray-500">Momentan nu avem date despre stranieri.</p>
+                <h3 className="text-xl font-bold text-gray-800">Nu am găsit jucători</h3>
+                <p className="text-gray-500 mt-1">Niciun rezultat pentru filtrul "{activeFilter}".</p>
+                <button onClick={() => setActiveFilter("Toate")} className="mt-4 text-blue-600 font-bold hover:underline">
+                    Vezi toți stranierii
+                </button>
             </div>
         ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-in slide-in-from-bottom-8 duration-700">
-            {players.map((player) => {
+            {filteredPlayers.map((player) => {
                 const stats = player.statistics_summary || { matches: 0, total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
                 
                 const isNationalOnly = player.team_name.includes("Nationala") || player.team_name === "Romania";
