@@ -15,6 +15,14 @@ export function UnsungHeroesSection() {
       fullInterview: `Î: Faci scouting de trei decenii. Ce s-a schimbat?\n\nR: Totul și nimic. Tehnologia ne oferă date, dar inima nu o poți măsura cu un computer. Când văd un copil cum lovește mingea, știu în 5 minute dacă are "acel ceva".\n\nÎ: Care e cel mai greu lucru?\n\nR: Să convingi părinții să aibă răbdare. Toți vor rezultate ieri. Campionii se cresc în ani de zile, nu peste noapte.`
     },
     {
+      name: 'Alexandru Andrași',
+      role: 'Fost Atacant',
+      organization: 'Steaua / Rapid București',
+      date: 'Ianuarie 2026',
+      excerpt: 'Povestea plecării de la Steaua și golul memorabil marcat pe San Siro împotriva lui Inter Milano.',
+      fullInterview: `Î: Ce îți mai aduci aminte de atunci?\n\nR: Până la golul marcat pentru Rapid, a fost un episod care m-a adus aici. Eram la Steaua București, câștigasem Cupa României și campionatul. Venisem după o accidentare extrem de urâtă. Nu am fost obligat, dar mi s-a dat de înțeles că ar fi mai bine să plec. Venise Adrian Ilie, mai luaseră 2-3 fotbaliști, iar mie îmi trebuiau jocuri în picioare și am acceptat să plec la Rapid.\n\nÎ: A fost o tristețe că a trebuit să pleci de la o echipă care juca în Liga Campionilor?\n\nR: Știu, dar eram conștient că nu mai puteam să joc la Steaua. Primele minute după ce m-am refăcut au fost în acel meci cu Anvers, în sferturile Cupei Cupelor. La final de joc mi s-a reproșat și mie acel gol, că nu aș fi stat bine în teren. Am ajuns la Rapid, care s-a calificat după câțiva ani în cupele europene. Pentru mine era extraordinar, mai ales că întâlneam și Inter Milano, care avea cei mai mari fotbaliști în perioada respectivă.`
+    },
+    {
       name: 'Ion "Nea Nelu" Barbu',
       role: 'Magazioner & Specialist Echipament',
       organization: 'Rapid București',
@@ -45,7 +53,7 @@ export function UnsungHeroesSection() {
         </p>
       </div>
 
-      {/* 1. STAFF SPOTLIGHTS (Carduri Moderne) */}
+      {/* 1. STAFF SPOTLIGHTS */}
       <div>
         <div className="flex items-center gap-3 mb-8">
             <div className="h-10 w-1 bg-blue-600 rounded-full"></div>
@@ -73,7 +81,7 @@ export function UnsungHeroesSection() {
         </div>
       </div>
 
-      {/* 2. ȘTIAȚI CĂ? (Secțiune Nouă) */}
+      {/* 2. ȘTIAȚI CĂ? */}
       <div className="bg-amber-50 dark:bg-amber-900/10 rounded-3xl p-8 border border-amber-100 dark:border-amber-800/30">
         <div className="flex items-center gap-2 mb-6">
             <Lightbulb className="h-6 w-6 text-amber-500" />
@@ -104,7 +112,7 @@ export function UnsungHeroesSection() {
         </div>
       </div>
 
-      {/* 3. INTERVIURI (Stilizare Îmbunătățită) */}
+      {/* 3. INTERVIURI */}
       <div>
         <div className="flex items-center gap-3 mb-8">
             <div className="h-10 w-1 bg-green-600 rounded-full"></div>
@@ -154,20 +162,6 @@ export function UnsungHeroesSection() {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* 4. CTA SECTION (Nou!) */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-10 text-center relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-white/5 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 bg-red-500/10 rounded-full blur-3xl"></div>
-          
-          <h3 className="text-2xl font-bold text-white mb-3">Cunoști un Erou Necunoscut?</h3>
-          <p className="text-slate-300 max-w-xl mx-auto mb-8 text-lg">
-              Fie că este antrenorul de la juniori care nu renunță niciodată sau omul care are grijă de gazon pe ploaie și vânt, vrem să-i aflăm povestea.
-          </p>
-          <button className="bg-white text-slate-900 hover:bg-gray-100 px-8 py-3 rounded-xl font-bold inline-flex items-center gap-2 transition-transform hover:scale-105 shadow-xl">
-              <Send className="w-4 h-4" /> Trimite o Nominalizare
-          </button>
       </div>
 
     </div>
