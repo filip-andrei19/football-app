@@ -47,7 +47,7 @@ const FILTERS = ["Toate", "Portari", "Fundași", "Mijlocași", "Atacanți"];
 export function FutureStarsSection() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState("Toate"); // <--- STATE NOU PENTRU FILTRU
+  const [activeFilter, setActiveFilter] = useState("Toate");
 
   useEffect(() => {
     const fetchYoungTalents = async () => {
@@ -75,7 +75,7 @@ export function FutureStarsSection() {
     fetchYoungTalents();
   }, []);
 
-  // --- LOGICA DE FILTRARE PE POZIȚII ---
+  // --- LOGICA DE FILTRARE PE POZIȚII (CORECATĂ) ---
   const getFilteredPlayers = () => {
       if (activeFilter === "Toate") return players;
 
@@ -85,7 +85,9 @@ export function FutureStarsSection() {
           if (activeFilter === "Portari") return pos.includes("goalkeeper") || pos.includes("portar");
           if (activeFilter === "Fundași") return pos.includes("defender") || pos.includes("back") || pos.includes("funda");
           if (activeFilter === "Mijlocași") return pos.includes("midfield") || pos.includes("mijloca");
-          if (activeFilter === "Atacanți") return pos.includes("forward") || pos.includes("striker") || pos.includes("wing") || pos.includes("ataca");
+          
+          // AICI AM ADĂUGAT "ATTACK" PENTRU A PRINDE ȘI "ATTACKER"
+          if (activeFilter === "Atacanți") return pos.includes("forward") || pos.includes("striker") || pos.includes("wing") || pos.includes("ataca") || pos.includes("attack");
           
           return false;
       });
