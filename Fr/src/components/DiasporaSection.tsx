@@ -3,7 +3,7 @@ import { Globe, Plane, MapPin, AlertCircle, Shield, Star, Clock, Activity } from
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
-// 🚫 LISTA NEAGRĂ (Cluburi din România)
+// 🚫 LISTA NEAGRĂ (Cluburi din România) - Filtrăm jucătorii din campionatul intern
 const BLOCKED_KEYWORDS = [
   "fcsb", "steaua", "becali", 
   "cfr", "cluj", "universitatea cluj", "u cluj",
@@ -29,6 +29,7 @@ const BLOCKED_KEYWORDS = [
   "resita", "csm", "scm", "fc", "acs"
 ];
 
+// Mapare ligi importante pentru steaguri și nume scurte
 const LEAGUE_MAP: { [key: string]: string } = {
   "Tottenham Hotspur": "Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿",
   "Parma": "Serie A 🇮🇹",
@@ -65,10 +66,26 @@ interface Player {
     total_goals: number;
     total_assists: number;
     total_appearances: number;
-    minutes_played?: number; // Adăugat
-    rating?: string;         // Adăugat
+    minutes_played?: number; 
+    rating?: string;        
   };
 }
+
+// --- COMPONENTA SKELETON (LOCALĂ) PENTRU ÎNCĂRCARE ELEGANTĂ ---
+const DiasporaSkeleton = () => (
+    <div className="rounded-2xl overflow-hidden border border-white/50 bg-white/40 shadow-sm animate-pulse h-[400px]">
+        <div className="h-48 bg-gray-200 w-full relative"></div>
+        <div className="p-4 space-y-4">
+            <div className="h-6 bg-gray-300 rounded w-3/4 mx-auto"></div>
+            <div className="h-4 bg-gray-300 rounded w-1/2 mx-auto"></div>
+            <div className="grid grid-cols-3 gap-2 mt-4">
+                <div className="h-10 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+            </div>
+        </div>
+    </div>
+);
 
 export function DiasporaSection() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -80,20 +97,17 @@ export function DiasporaSection() {
         const response = await fetch('https://football-backend-m2a4.onrender.com/api/sport/players');
         const data = await response.json();
 
-        // --- FILTRARE ---
+        // --- FILTRARE DATE BRUTE ---
         const stranieri = data.filter((p: Player) => {
            if (p.nationality !== "Romania") return false;
-
            const cleanTeamName = normalizeText(p.team_name || "");
            const isNationalTeam = cleanTeamName.includes("nationala") || cleanTeamName === "romania";
-           
            if (isNationalTeam) return true; 
-
            const isRomanianClub = BLOCKED_KEYWORDS.some(keyword => cleanTeamName.includes(keyword));
            return !isRomanianClub;
         });
 
-        // Sortare: Naționala sus, apoi după Rating (dacă există), apoi Meciuri
+        // SORTARE
         const sortedStranieri = stranieri.sort((a: Player, b: Player) => {
             const isNationalA = a.team_name.includes("Nationala");
             const isNationalB = b.team_name.includes("Nationala");
@@ -101,7 +115,6 @@ export function DiasporaSection() {
             if (isNationalA && !isNationalB) return -1;
             if (!isNationalA && isNationalB) return 1;
 
-            // Sortare secundară după Rating
             const ratingA = parseFloat(a.statistics_summary?.rating || "0");
             const ratingB = parseFloat(b.statistics_summary?.rating || "0");
             if (ratingB !== ratingA) return ratingB - ratingA;
@@ -121,139 +134,146 @@ export function DiasporaSection() {
   }, []);
 
   return (
-    <div className="space-y-12 py-10 min-h-[60vh] bg-slate-50 dark:bg-black/10">
+    <div className="relative min-h-[80vh] py-10 overflow-hidden bg-slate-50 dark:bg-slate-900">
       
+      {/* ==========================================================================
+          NOUL FUNDAL COLORAT (TRICOLOR MESH)
+      ========================================================================== */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-60">
+          <div className="absolute top-0 left-0 -translate-x-1/4 -translate-y-1/4 w-[600px] h-[600px] rounded-full bg-blue-600/20 blur-[120px] animate-pulse-slow"></div>
+          <div className="absolute top-[40%] right-0 translate-x-1/4 w-[500px] h-[500px] rounded-full bg-yellow-400/20 blur-[120px] animate-pulse-slow delay-1000"></div>
+          <div className="absolute bottom-0 left-[20%] translate-y-1/4 w-[700px] h-[700px] rounded-full bg-red-600/15 blur-[120px] animate-pulse-slow delay-2000"></div>
+      </div>
+
       {/* HEADER */}
-      <section className="text-center space-y-6 px-4">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-yellow-100 text-yellow-800 text-sm font-bold mb-2 border border-yellow-300 shadow-sm">
-          <Globe className="w-4 h-4" />
-          Tricolorii în Lume
+      <section className="text-center space-y-6 px-4 relative z-10 mb-12">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur border border-yellow-200 text-yellow-800 text-sm font-bold mb-2 shadow-sm">
+          <Globe className="w-4 h-4 text-blue-600" />
+          <span className="text-blue-900">Tricolorii</span> <span className="text-yellow-600">în</span> <span className="text-red-600">Lume</span>
         </div>
         
-        <h1 className="text-4xl font-black tracking-tighter lg:text-7xl uppercase">
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-700 via-yellow-500 to-red-600 drop-shadow-sm">
-            Echipa Națională
-          </span>
+        <h1 className="text-4xl font-black tracking-tighter lg:text-7xl uppercase text-slate-900 dark:text-white drop-shadow-sm">
+           Echipa Națională
         </h1>
         
-        <p className="max-w-2xl mx-auto text-muted-foreground text-lg font-medium">
-           Cifrele complete ale stranierilor noștri în sezonul curent.
+        <p className="max-w-2xl mx-auto text-slate-600 dark:text-slate-400 text-lg font-medium">
+           Monitorizăm performanțele stranierilor noștri în timp real.
         </p>
       </section>
 
       {/* GRID */}
-      <section className="px-6 container mx-auto">
+      <section className="px-6 container mx-auto relative z-10">
         {loading ? (
-             <div className="text-center py-20 animate-pulse text-gray-500 flex flex-col items-center">
-                <Plane className="w-10 h-10 mb-4 text-blue-500 animate-bounce" />
-                <p>Analizăm statisticile...</p>
+             // --- ÎNCĂRCARE CU SKELETONS ---
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                 {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <DiasporaSkeleton key={i} />)}
              </div>
         ) : players.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-gray-300 text-center px-4">
-                <AlertCircle className="w-12 h-12 text-yellow-500 mb-4" />
-                <h3 className="text-lg font-bold text-gray-800">Lot indisponibil</h3>
-                <p className="text-gray-500 max-w-md">Nu s-au găsit jucători conform criteriilor.</p>
+            <div className="flex flex-col items-center justify-center py-20 bg-white/50 backdrop-blur rounded-3xl border border-dashed border-gray-300 text-center px-4 max-w-2xl mx-auto">
+                <div className="bg-yellow-100 p-4 rounded-full mb-4">
+                    <Plane className="w-8 h-8 text-yellow-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Niciun jucător găsit</h3>
+                <p className="text-gray-500">Momentan nu avem date despre stranieri.</p>
             </div>
         ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-in slide-in-from-bottom-8 duration-700">
             {players.map((player) => {
                 const stats = player.statistics_summary || { matches: 0, total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
                 
                 const isNationalOnly = player.team_name.includes("Nationala") || player.team_name === "Romania";
                 const badgeText = isNationalOnly ? "CONVOCAT" : (LEAGUE_MAP[player.team_name] || player.team_name);
-                
-                // Calculăm rating-ul (formatare cu 2 zecimale)
                 const ratingValue = stats.rating ? parseFloat(stats.rating).toFixed(2) : "-";
 
                 return (
-                    <div key={player._id} className="relative rounded-2xl overflow-hidden group shadow-2xl shadow-yellow-500/10 border-2 border-yellow-400 transform hover:-translate-y-2 transition-all duration-300 bg-white dark:bg-slate-900 flex flex-col h-full">
+                    <div key={player._id} className="relative rounded-2xl overflow-hidden group shadow-xl hover:shadow-2xl hover:shadow-yellow-500/20 border border-white/60 bg-white/80 backdrop-blur-sm dark:bg-slate-800/80 dark:border-slate-700 transform hover:-translate-y-2 transition-all duration-300 flex flex-col h-full">
                         
-                        {/* 1. BADGE LIGA + RATING (Nou!) */}
+                        {/* 1. BADGE LIGA + RATING */}
                         <div className="absolute top-0 right-0 z-20 flex">
-                             {/* Nota (Rating) - Stil FIFA */}
                              {ratingValue !== "-" && (
-                                <div className="bg-black text-yellow-400 text-[10px] font-black px-2 py-1.5 flex items-center gap-1 border-b border-l border-white/20">
+                                <div className="bg-slate-900 text-yellow-400 text-[10px] font-black px-2 py-1.5 flex items-center gap-1 border-b border-l border-white/10 shadow-md">
                                     <Star className="w-3 h-3 fill-yellow-400" />
                                     {ratingValue}
                                 </div>
                              )}
-                             {/* Liga */}
-                             <div className="text-[10px] font-bold px-3 py-1.5 rounded-bl-xl bg-gradient-to-r from-blue-600 via-yellow-500 to-red-600 text-white shadow-lg flex items-center gap-1">
+                             <div className="text-[10px] font-bold px-3 py-1.5 rounded-bl-xl bg-gradient-to-r from-blue-700 via-yellow-500 to-red-600 text-white shadow-lg flex items-center gap-1">
                                 {badgeText} {isNationalOnly && "🇷🇴"}
                             </div>
                         </div>
 
                         {/* 2. POZA */}
-                        <div className="h-48 relative overflow-hidden bg-gradient-to-br from-yellow-50 via-white to-gray-50 shrink-0">
-                            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
+                        <div className="h-56 relative overflow-hidden bg-gradient-to-b from-gray-100 to-white shrink-0">
+                            {/* Efect fundal texturat */}
+                            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fbbf24_1px,transparent_1px)] [background-size:16px_16px]"></div>
                             
                             <img 
                                 src={player.image || GENERIC_USER_IMAGE} 
                                 alt={player.name}
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                                 onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                             />
                             
-                            <div className="absolute bottom-3 left-4 z-20 text-white">
-                                <h3 className="text-xl font-black leading-none drop-shadow-md uppercase italic truncate max-w-[180px]">
+                            {/* Gradient peste poza pentru lizibilitate text */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10"></div>
+                            
+                            <div className="absolute bottom-4 left-4 z-20 text-white">
+                                <h3 className="text-xl font-black leading-none drop-shadow-lg uppercase italic truncate max-w-[200px] tracking-tight">
                                     {player.name}
                                 </h3>
-                                <div className="flex items-center gap-1 text-yellow-300 text-xs font-bold mt-1 tracking-wide uppercase">
+                                <div className="flex items-center gap-1 text-yellow-300 text-xs font-bold mt-1 tracking-wide uppercase opacity-90">
                                     <Shield className="w-3 h-3" /> 
                                     {player.team_name}
                                 </div>
                             </div>
                         </div>
 
-                        {/* 3. STATISTICI COMPLETE (Grid pe 2 rânduri) */}
-                        <div className="p-3 bg-yellow-50/50 dark:bg-slate-800 flex-1 flex flex-col justify-center">
+                        {/* 3. STATISTICI */}
+                        <div className="p-4 flex-1 flex flex-col justify-center">
                             
                             {/* Rândul 1: Principale */}
-                            <div className="grid grid-cols-3 gap-2 text-center border-b border-yellow-200/50 dark:border-slate-700 pb-2 mb-2">
+                            <div className="grid grid-cols-3 gap-2 text-center border-b border-gray-100 dark:border-slate-700 pb-3 mb-3">
                                 <div>
-                                    <span className="block text-lg font-black text-blue-900 dark:text-blue-400">{stats.total_appearances}</span>
-                                    <span className="text-[8px] uppercase text-gray-500 font-bold tracking-widest">Meci</span>
+                                    <span className="block text-xl font-black text-slate-800 dark:text-white">{stats.total_appearances}</span>
+                                    <span className="text-[9px] uppercase text-gray-400 font-bold tracking-widest">Meciuri</span>
                                 </div>
-                                <div className="border-x border-yellow-200 dark:border-slate-700">
-                                    <span className="block text-lg font-black text-green-600">{stats.total_goals}</span>
-                                    <span className="text-[8px] uppercase text-gray-500 font-bold tracking-widest">Gol</span>
+                                <div className="border-x border-gray-100 dark:border-slate-700">
+                                    <span className="block text-xl font-black text-green-600">{stats.total_goals}</span>
+                                    <span className="text-[9px] uppercase text-gray-400 font-bold tracking-widest">Goluri</span>
                                 </div>
                                 <div>
-                                    <span className="block text-lg font-black text-blue-600">{stats.total_assists}</span>
-                                    <span className="text-[8px] uppercase text-gray-500 font-bold tracking-widest">Pase</span>
+                                    <span className="block text-xl font-black text-blue-600">{stats.total_assists}</span>
+                                    <span className="text-[9px] uppercase text-gray-400 font-bold tracking-widest">Pase</span>
                                 </div>
                             </div>
 
-                            {/* Rândul 2: Detalii (Minute & Formă) */}
+                            {/* Rândul 2: Detalii */}
                             <div className="grid grid-cols-2 gap-2 text-center">
-                                <div className="flex flex-col items-center justify-center">
-                                     <div className="flex items-center gap-1 text-gray-700 dark:text-gray-300 font-bold text-sm">
+                                <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-50 dark:bg-slate-700/50">
+                                     <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-bold text-sm">
                                         <Clock className="w-3 h-3 text-yellow-600" />
                                         {stats.minutes_played || 0}'
                                      </div>
-                                     <span className="text-[8px] uppercase text-gray-400 font-bold">Minute Jucate</span>
+                                     <span className="text-[8px] uppercase text-gray-400 font-bold">Minute</span>
                                 </div>
-                                <div className="flex flex-col items-center justify-center border-l border-yellow-200 dark:border-slate-700">
-                                     <div className="flex items-center gap-1 text-gray-700 dark:text-gray-300 font-bold text-sm">
+                                <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-50 dark:bg-slate-700/50">
+                                     <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-bold text-sm">
                                         <Activity className="w-3 h-3 text-red-500" />
                                         {ratingValue}
                                      </div>
-                                     <span className="text-[8px] uppercase text-gray-400 font-bold">Rating Mediu</span>
+                                     <span className="text-[8px] uppercase text-gray-400 font-bold">Rating</span>
                                 </div>
                             </div>
-
                         </div>
 
                         {/* 4. POZIȚIE */}
                         <div className="absolute top-3 left-3 z-20">
-                            <span className="px-2 py-1 text-xs font-bold rounded-md shadow-sm border border-yellow-500 bg-yellow-400 text-blue-900 uppercase tracking-wider">
+                            <span className="px-2 py-1 text-[10px] font-black rounded shadow-md bg-white/90 text-slate-900 uppercase tracking-widest border border-gray-200">
                                 {player.position}
                             </span>
                         </div>
                         
-                        {/* 5. FOOTER */}
-                        <div className="bg-gradient-to-r from-blue-600 via-yellow-500 to-red-600 h-1.5 w-full mt-auto"></div>
+                        {/* 5. BARĂ JOS TRICOLOR */}
+                        <div className="bg-gradient-to-r from-blue-600 via-yellow-500 to-red-600 h-1 w-full mt-auto opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     </div>
                 );
             })}
