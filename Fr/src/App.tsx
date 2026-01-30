@@ -49,6 +49,7 @@ export default function App() {
   };
 
   const handleLoginSuccess = (userData: any) => {
+      console.log("LOGIN SUCCESS. User data:", userData); // DEBUG
       setUser(userData);
       localStorage.setItem('footballAppUser', JSON.stringify(userData));
   };
@@ -58,6 +59,10 @@ export default function App() {
       setActiveSection('home');
       localStorage.removeItem('footballAppUser');
   };
+
+  // --- LOGICA DE ADMIN CENTRALIZATĂ ---
+  // Aici verificăm dacă userul are rolul 'admin' SAU dacă are email-ul specific (fallback)
+  const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
 
   const navigation = [
     { id: 'home' as Section, label: 'Home', icon: Home },
@@ -74,9 +79,9 @@ export default function App() {
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
       case 'collectors': return <CollectorsHubSection user={user!} />;
-      // MODIFICARE: Trimitem funcția onLogout către componenta ProfileSection
       case 'profile': return <ProfileSection user={user!} onUpdateUser={handleLoginSuccess} onLogout={handleLogout} />; 
-      case 'admin': return <AdminDashboard user={user!} />;
+      // Doar adminul poate vedea dashboard-ul
+      case 'admin': return isAdmin ? <AdminDashboard user={user!} /> : <HomeSection user={user!} onNavigate={setActiveSection} />;
       default: return <HomeSection user={user!} onNavigate={setActiveSection} />;
     }
   };
@@ -113,8 +118,10 @@ export default function App() {
               </button>
 
               <div className="hidden md:flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-slate-700">
-                 {(user.email === 'admin@scout.ro' || user.role === 'admin') && (
-                     <Button variant={activeSection === 'admin' ? 'default' : 'ghost'} onClick={() => setActiveSection('admin')} className="text-red-600 hover:text-red-700">
+                 
+                 {/* BUTON ADMIN - Vizibil doar dacă ești admin */}
+                 {isAdmin && (
+                     <Button variant={activeSection === 'admin' ? 'default' : 'ghost'} onClick={() => setActiveSection('admin')} className="text-red-600 hover:text-red-700 font-bold border border-red-100 dark:border-red-900/30">
                         <ShieldAlert className="h-4 w-4 mr-1" /> Admin
                      </Button>
                  )}
@@ -126,7 +133,6 @@ export default function App() {
                     <span className="max-w-[100px] truncate">{user.name.split(' ')[0]}</span>
                  </Button>
 
-                 {/* MODIFICARE: Buton Logout mai vizibil în Header */}
                  <Button variant="destructive" onClick={handleLogout} className="gap-2 ml-1" title="Deconectare">
                      <LogOut className="h-4 w-4" />
                      <span className="hidden lg:inline">Ieșire</span>
@@ -147,6 +153,14 @@ export default function App() {
                 <item.icon className="h-5 w-5" /> {item.label}
               </Button>
             ))}
+            
+            {/* Buton Admin Mobil */}
+            {isAdmin && (
+                <Button variant="destructive" onClick={() => { setActiveSection('admin'); setMobileMenuOpen(false); }} className="w-full justify-start gap-3 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200">
+                    <ShieldAlert className="h-5 w-5" /> Panou Administrator
+                </Button>
+            )}
+
             <div className="border-t border-gray-100 dark:border-slate-800 my-2"></div>
             <Button variant="ghost" onClick={() => { setActiveSection('profile'); setMobileMenuOpen(false); }} className="w-full justify-start gap-3"><Settings className="h-5 w-5" /> Profilul Meu</Button>
             <Button variant="destructive" onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="w-full justify-start gap-3"><LogOut className="h-5 w-5" /> Deconectare</Button>

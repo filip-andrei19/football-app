@@ -138,14 +138,14 @@ const startServer = async () => {
             }
         });
 
-        // REGISTER
+       // REGISTER
         app.post('/api/users/register', async (req, res) => {
             try {
                 const { name, email, password } = req.body;
                 if (await User.findOne({ email })) return res.status(400).json({ success: false, message: "Email folosit." });
 
-                // HACK: Primul user "admin@scout.ro" devine automat ADMIN
-                const role = email === 'admin123@scout.ro' ? 'admin' : 'user';
+                // MODIFICARE: Folosește ACEASTĂ adresă exactă pentru admin
+                const role = email === 'admin.nou@scout.ro' ? 'admin' : 'user';
 
                 const newUser = new User({ name, email, password, role });
                 await newUser.save();
