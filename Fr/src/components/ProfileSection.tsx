@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { User, Lock, Save, Camera, Mail, Shield, Loader2 } from 'lucide-react';
+import { User, Lock, Save, Camera, Mail, Shield, Loader2, LogOut } from 'lucide-react'; // MODIFICARE: Am importat LogOut
 import toast from 'react-hot-toast';
 
-export function ProfileSection({ user, onUpdateUser }: { user: any, onUpdateUser: (u: any) => void }) {
+// MODIFICARE: Am adăugat onLogout în interfață și props
+export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, onUpdateUser: (u: any) => void, onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<'details' | 'security'>('details');
   const [loading, setLoading] = useState(false);
   
@@ -166,6 +167,13 @@ export function ProfileSection({ user, onUpdateUser }: { user: any, onUpdateUser
                 >
                     <Lock className="w-5 h-5" /> Securitate & Parolă
                 </button>
+
+                {/* MODIFICARE: ZONA DE LOGOUT ÎN SIDEBAR */}
+                <div className="pt-4 border-t border-gray-100 dark:border-slate-700 mt-4">
+                    <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                        <LogOut className="w-5 h-5" /> Deconectare
+                    </button>
+                </div>
             </div>
 
             <div className="md:col-span-2 bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-slate-700">

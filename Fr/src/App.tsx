@@ -2,15 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogOut, User, Settings, ShieldAlert, Moon, Sun } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
-// --- IMPORTURI COMPONENTE ---
 import { HomeSection } from './components/HomeSection';
 import { DiasporaSection } from './components/DiasporaSection';
 import { FutureStarsSection } from './components/FutureStarsSection';
 import { UnsungHeroesSection } from './components/UnsungHeroesSection';
 import { CollectorsHubSection } from './components/CollectorsHubSection';
 import { AuthPage } from './components/AuthPage';
-import { ProfileSection } from './components/ProfileSection'; // <--- NOU
-import { AdminDashboard } from './components/AdminDashboard'; // <--- NOU
+import { ProfileSection } from './components/ProfileSection'; 
+import { AdminDashboard } from './components/AdminDashboard'; 
 
 const Button = ({ children, onClick, variant, className, disabled }: any) => {
   const baseStyle = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50";
@@ -31,13 +30,9 @@ export default function App() {
   const [user, setUser] = useState<{name: string, email: string, role?: string, avatar?: string} | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-  // --- 1. INITIALIZARE (User + Theme) ---
   useEffect(() => {
-    // User
     const savedUser = localStorage.getItem('footballAppUser');
     if (savedUser) setUser(JSON.parse(savedUser));
-
-    // Theme
     const savedTheme = localStorage.getItem('footballAppTheme') as 'light' | 'dark';
     if (savedTheme) {
         setTheme(savedTheme);
@@ -79,8 +74,9 @@ export default function App() {
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
       case 'collectors': return <CollectorsHubSection user={user!} />;
-      case 'profile': return <ProfileSection user={user!} onUpdateUser={handleLoginSuccess} />; // <--- NOU
-      case 'admin': return <AdminDashboard user={user!} />; // <--- NOU
+      // MODIFICARE: Trimitem funcția onLogout către componenta ProfileSection
+      case 'profile': return <ProfileSection user={user!} onUpdateUser={handleLoginSuccess} onLogout={handleLogout} />; 
+      case 'admin': return <AdminDashboard user={user!} />;
       default: return <HomeSection user={user!} onNavigate={setActiveSection} />;
     }
   };
@@ -94,7 +90,6 @@ export default function App() {
       <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur transition-colors duration-300">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
-            {/* LOGO */}
             <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => setActiveSection('home')}>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 via-yellow-500 to-red-600 shadow-md">
                 <span className="text-lg font-bold text-white">RO</span>
@@ -104,7 +99,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* NAVIGARE DESKTOP */}
             <nav className="hidden md:flex items-center gap-1">
               {navigation.map((item) => (
                   <Button key={item.id} variant={activeSection === item.id ? 'secondary' : 'ghost'} onClick={() => setActiveSection(item.id)} className="gap-2">
@@ -113,32 +107,29 @@ export default function App() {
               ))}
             </nav>
 
-            {/* ACTION BUTTONS */}
             <div className="flex items-center gap-2">
-              
-              {/* DARK MODE TOGGLE */}
               <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
                   {theme === 'light' ? <Moon className="h-5 w-5 text-slate-600" /> : <Sun className="h-5 w-5 text-yellow-400" />}
               </button>
 
               <div className="hidden md:flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-slate-700">
-                 {/* ADMIN BUTTON (Doar dacă e admin - simulare) */}
                  {(user.email === 'admin@scout.ro' || user.role === 'admin') && (
                      <Button variant={activeSection === 'admin' ? 'default' : 'ghost'} onClick={() => setActiveSection('admin')} className="text-red-600 hover:text-red-700">
                         <ShieldAlert className="h-4 w-4 mr-1" /> Admin
                      </Button>
                  )}
 
-                 {/* PROFILE BUTTON */}
                  <Button variant={activeSection === 'profile' ? 'secondary' : 'ghost'} onClick={() => setActiveSection('profile')} className="gap-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-300">
-                        {user.name.charAt(0)}
+                    <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-300 overflow-hidden">
+                        {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover"/> : user.name.charAt(0)}
                     </div>
                     <span className="max-w-[100px] truncate">{user.name.split(' ')[0]}</span>
                  </Button>
 
-                 <Button variant="destructive" onClick={handleLogout} className="h-8 w-8 p-0 rounded-full">
+                 {/* MODIFICARE: Buton Logout mai vizibil în Header */}
+                 <Button variant="destructive" onClick={handleLogout} className="gap-2 ml-1" title="Deconectare">
                      <LogOut className="h-4 w-4" />
+                     <span className="hidden lg:inline">Ieșire</span>
                  </Button>
               </div>
               
@@ -149,7 +140,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* MOBILE MENU */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-4 shadow-lg flex flex-col gap-2">
             {navigation.map((item) => (
