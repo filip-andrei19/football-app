@@ -24,10 +24,10 @@ app.use(helmet());      // Securitate Headere
 app.use(compression()); // Compresie Gzip
 app.use(cors());
 
-// Limită Anti-Spam (100 req / 15 min)
+// Limită Anti-Spam (200 req / 15 min)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
-    max: 200, // Am mărit puțin limita pentru admin
+    max: 200, 
     message: "Prea multe cereri. Încearcă mai târziu."
 });
 app.use(limiter);
@@ -40,15 +40,13 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // 1. MODELE BAZA DE DATE
 // ==========================================
 
-// A. USER (Actualizat cu Role & Ban & Avatar)
+// A. USER
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    
-    // Câmpuri Noi:
     role: { type: String, default: 'user', enum: ['user', 'admin'] }, 
-    avatar: { type: String, default: '' }, // URL sau Base64
+    avatar: { type: String, default: '' }, 
     isBanned: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
 });
@@ -68,31 +66,28 @@ const User = mongoose.models.User || mongoose.model('User', userSchema);
 const playerSchema = new mongoose.Schema({}, { strict: false });
 const Player = mongoose.models.Player || mongoose.model('Player', playerSchema);
 
-// C. LISTING (Marketplace)
+// C. LISTING
 const listingSchema = new mongoose.Schema({
     title: { type: String, required: true },
     category: { type: String, required: true },
     price: { type: String, required: true },
     images: [{ type: String }], 
     description: { type: String, required: true },
-    
-    // Detalii Vânzător
     seller: { type: String, required: true },
     sellerEmail: { type: String, required: true },
     sellerPhone: { type: String },
-    sellerAvatar: { type: String, default: '' }, // <--- CÂMP NOU
-    
+    sellerAvatar: { type: String, default: '' },
     posted: { type: Date, default: Date.now }
 });
 const Listing = mongoose.models.Listing || mongoose.model('Listing', listingSchema);
 
-// D. STORY (Nou - Pentru "Unsung Heroes")
+// D. STORY
 const storySchema = new mongoose.Schema({
-    title: String,       // Numele persoanei
-    role: String,        // Rol (ex: Magazioner)
-    organization: String,// Club
-    excerpt: String,     // Text scurt
-    content: String,     // Interviul full
+    title: String,
+    role: String,
+    organization: String,
+    excerpt: String,
+    content: String,
     date: String,
     postedAt: { type: Date, default: Date.now }
 });
@@ -109,98 +104,63 @@ const startServer = async () => {
 
         // --- RUTE AUTHENTICARE ---
 
-        // LOGIN
         app.post('/api/users/login', async (req, res) => {
             try {
                 const { email, password } = req.body;
                 const user = await User.findOne({ email });
                 
                 if (!user) return res.status(401).json({ success: false, message: "Utilizator inexistent." });
-                
-                // VERIFICARE BAN
-                if (user.isBanned) return res.status(403).json({ success: false, message: "Acest cont a fost blocat de administrator." });
+                if (user.isBanned) return res.status(403).json({ success: false, message: "Cont blocat." });
 
                 const isMatch = await bcrypt.compare(password, user.password);
                 if (!isMatch) return res.status(401).json({ success: false, message: "Parolă incorectă." });
 
-                // Trimitem toate datele necesare profilului
                 res.status(200).json({ 
                     success: true, 
-                    user: { 
-                        name: user.name, 
-                        email: user.email, 
-                        role: user.role, 
-                        avatar: user.avatar 
-                    } 
+                    user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } 
                 });
-            } catch (err) { 
-                res.status(500).json({ error: "Eroare server." }); 
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
-       // REGISTER
         app.post('/api/users/register', async (req, res) => {
             try {
                 const { name, email, password } = req.body;
                 if (await User.findOne({ email })) return res.status(400).json({ success: false, message: "Email folosit." });
 
-                // MODIFICARE: Folosește ACEASTĂ adresă exactă pentru admin
+                // Asigură-te că folosești ACEEAȘI adresă ca în App.tsx
                 const role = email === 'admin.nou@scout.ro' ? 'admin' : 'user';
 
                 const newUser = new User({ name, email, password, role });
                 await newUser.save();
                 
                 res.status(201).json({ success: true, user: { name: newUser.name, email: newUser.email, role: newUser.role } });
-            } catch (err) { 
-                res.status(500).json({ error: "Eroare server." }); 
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
-        // --- RUTE PROFIL & SECURITATE (NOI) ---
+        // --- RUTE PROFIL ---
 
-        // UPDATE PROFIL (Cu propagare nume ȘI AVATAR în anunțuri)
         app.put('/api/users/profile', async (req, res) => {
             try {
                 const { email, name, avatar } = req.body;
-                
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
 
-                // Pregătim datele de actualizat în anunțuri
                 let updates = {};
                 if (name && name !== user.name) updates.seller = name;
                 if (avatar && avatar !== user.avatar) updates.sellerAvatar = avatar;
 
-                // Dacă avem ce actualiza, o facem în toate anunțurile acestui user
                 if (Object.keys(updates).length > 0) {
-                    console.log(`🔄 Actualizez datele vânzătorului în anunțuri...`);
-                    await Listing.updateMany(
-                        { sellerEmail: email }, 
-                        { $set: updates }
-                    );
+                    await Listing.updateMany({ sellerEmail: email }, { $set: updates });
                 }
 
-                // Actualizăm userul
                 user.name = name || user.name;
                 user.avatar = avatar || user.avatar;
                 await user.save();
 
-                res.json({ 
-                    success: true, 
-                    user: { 
-                        name: user.name, 
-                        email: user.email, 
-                        role: user.role, 
-                        avatar: user.avatar 
-                    }
-                });
-            } catch (err) {
-                console.error(err);
-                res.status(500).json({ error: "Eroare la actualizare." });
-            }
+                res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+            } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
-        // SCHIMBARE PAROLĂ
         app.put('/api/users/change-password', async (req, res) => {
             try {
                 const { email, currentPassword, newPassword } = req.body;
@@ -210,40 +170,29 @@ const startServer = async () => {
                 const isMatch = await bcrypt.compare(currentPassword, user.password);
                 if (!isMatch) return res.status(400).json({ success: false, message: "Parola curentă incorectă." });
 
-                // Bcrypt hash se face automat in schema 'pre save', deci doar setăm parola nouă
                 user.password = newPassword;
                 await user.save();
-
                 res.json({ success: true, message: "Parolă schimbată." });
-            } catch (err) {
-                res.status(500).json({ error: "Eroare server." });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
-        // --- RUTE ADMIN DASHBOARD (NOI) ---
+        // --- RUTE ADMIN ---
 
-        // GET ALL USERS
         app.get('/api/admin/users', async (req, res) => {
-            // În producție ar trebui verificat token-ul de admin aici
             const users = await User.find().select('-password').limit(100);
             res.json(users);
         });
 
-        // BAN / UNBAN USER
         app.put('/api/admin/users/:id/ban', async (req, res) => {
             try {
                 const user = await User.findById(req.params.id);
                 if (!user) return res.status(404).json({ error: "User inexistent" });
-                
-                user.isBanned = !user.isBanned; // Toggle
+                user.isBanned = !user.isBanned; 
                 await user.save();
                 res.json({ success: true, status: user.isBanned ? 'banned' : 'active' });
-            } catch (err) {
-                res.status(500).json({ error: "Eroare server" });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
-        // ADD STORY (Unsung Heroes)
         app.post('/api/admin/stories', async (req, res) => {
             try {
                 const newStory = new Story(req.body);
@@ -252,14 +201,12 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
-        // GET STORIES (Public)
+        // --- RUTE PUBLICE ---
+
         app.get('/api/stories', async (req, res) => {
             const stories = await Story.find().sort({ postedAt: -1 });
             res.json(stories);
         });
-
-
-        // --- RUTE STANDARD (Jucători & Listings) ---
 
         app.get('/api/sport/players', async (req, res) => {
             const players = await Player.find().limit(5000); 
@@ -276,24 +223,23 @@ const startServer = async () => {
                 const newListing = new Listing(req.body);
                 await newListing.save();
                 res.status(201).json(newListing);
-            } catch (err) {
-                res.status(500).json({ error: "Nu s-a putut salva produsul." });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
-        // DELETE LISTING (Modificat pentru ADMIN)
+        // --- DELETE LISTING (FIX ADMIN) ---
         app.delete('/api/listings/:id', async (req, res) => {
             try {
                 const { email } = req.body; 
-                
                 const user = await User.findOne({ email });
                 const listing = await Listing.findById(req.params.id);
                 
                 if (!listing) return res.status(404).json({ error: "Produsul nu există" });
 
-                // PERMISIUNI: Proprietar SAU Admin
                 const isOwner = listing.sellerEmail === email;
-                const isAdmin = user && user.role === 'admin';
+                
+                // MODIFICARE AICI: Permitem ștergerea dacă email-ul este cel de admin, 
+                // chiar dacă DB-ul nu are rolul actualizat.
+                const isAdmin = (user && user.role === 'admin') || email === 'admin.nou@scout.ro';
 
                 if (!isOwner && !isAdmin) {
                     return res.status(403).json({ error: "Nu ai permisiunea să ștergi acest produs." });
@@ -306,18 +252,13 @@ const startServer = async () => {
             }
         });
 
-        // ============================================================
-        // 3. ADMIN TOOLS & CRON
-        // ============================================================
-
+        // --- ADMIN TOOLS ---
         app.get('/api/admin/hard-reset', async (req, res) => {
-            console.log("⚠️  HARD RESET!");
             hardResetAndLoad(); 
             res.send("Reset initiated.");
         });
 
         cron.schedule('10 16 * * *', async () => {
-            console.log('⏰ CRON Sync...');
             await runDailySmartSync(); 
         }, { timezone: "Europe/Bucharest" });
 
