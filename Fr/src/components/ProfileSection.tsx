@@ -1,32 +1,104 @@
-import React, { useState } from 'react';
-import { User, Lock, Save, Camera, Mail, Shield } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { User, Lock, Save, Camera, Mail, Shield, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function ProfileSection({ user, onUpdateUser }: { user: any, onUpdateUser: (u: any) => void }) {
   const [activeTab, setActiveTab] = useState<'details' | 'security'>('details');
+  const [loading, setLoading] = useState(false);
+  
+  // Referință pentru input-ul ascuns de fișiere
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
       name: user.name,
       email: user.email,
+      avatar: user.avatar || '',
       currentPassword: '',
       newPassword: ''
   });
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-      e.preventDefault();
-      // AICI AR TREBUI SĂ FACI FETCH CĂTRE BACKEND (PUT /api/users/profile)
-      // Simulare:
-      setTimeout(() => {
-          onUpdateUser({ ...user, name: formData.name });
-          toast.success("Profil actualizat cu succes!");
-      }, 1000);
+  // --- 1. LOGICA PENTRU POZĂ (Upload din Galerie) ---
+  const handleImageClick = () => {
+      fileInputRef.current?.click(); // Deschide fereastra de fișiere
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          // Validare mărime (Max 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+              return toast.error("Imaginea e prea mare! (Max 5MB)");
+          }
+
+          // Convertire în Base64
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              setFormData(prev => ({ ...prev, avatar: reader.result as string }));
+          };
+          reader.readAsDataURL(file);
+      }
+  };
+
+  // --- 2. UPDATE PROFIL (Conectat la Server) ---
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoading(true);
+
+      try {
+          const response = await fetch('https://football-backend-m2a4.onrender.com/api/users/profile', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  email: user.email, // Email-ul e cheia de căutare
+                  name: formData.name,
+                  avatar: formData.avatar
+              })
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+              onUpdateUser(data.user); // Actualizează starea globală în App
+              toast.success("Profil actualizat! Numele s-a schimbat și în anunțuri.");
+          } else {
+              toast.error(data.message || "Eroare la actualizare.");
+          }
+      } catch (err) {
+          toast.error("Eroare server.");
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  // --- 3. SCHIMBARE PAROLĂ ---
   const handleChangePassword = async (e: React.FormEvent) => {
       e.preventDefault();
       if(formData.newPassword.length < 6) return toast.error("Parola nouă e prea scurtă!");
-      // Simulare Backend Call
-      toast.success("Parola a fost schimbată!");
-      setFormData({...formData, currentPassword: '', newPassword: ''});
+      
+      setLoading(true);
+      try {
+          const response = await fetch('https://football-backend-m2a4.onrender.com/api/users/change-password', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  email: user.email,
+                  currentPassword: formData.currentPassword,
+                  newPassword: formData.newPassword
+              })
+          });
+          
+          const data = await response.json();
+          if(data.success) {
+              toast.success("Parola a fost schimbată!");
+              setFormData({...formData, currentPassword: '', newPassword: ''});
+          } else {
+              toast.error(data.message || "Eroare.");
+          }
+      } catch (err) {
+          toast.error("Eroare server.");
+      } finally {
+          setLoading(false);
+      }
   };
 
   return (
@@ -36,13 +108,33 @@ export function ProfileSection({ user, onUpdateUser }: { user: any, onUpdateUser
         <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-10"></div>
             
-            <div className="relative group cursor-pointer">
-                <div className="w-32 h-32 rounded-full bg-blue-100 dark:bg-slate-700 flex items-center justify-center text-4xl font-bold text-blue-600 dark:text-blue-400 border-4 border-white dark:border-slate-800 shadow-lg">
-                    {user.avatar ? <img src={user.avatar} className="w-full h-full rounded-full object-cover"/> : user.name.charAt(0)}
+            {/* ZONA POZĂ DE PROFIL */}
+            <div className="relative group cursor-pointer" onClick={handleImageClick}>
+                <div className="w-32 h-32 rounded-full bg-blue-100 dark:bg-slate-700 flex items-center justify-center text-4xl font-bold text-blue-600 dark:text-blue-400 border-4 border-white dark:border-slate-800 shadow-lg overflow-hidden">
+                    {/* Afișăm poza (Preview sau cea salvată) */}
+                    {formData.avatar ? (
+                        <img src={formData.avatar} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                        user.name.charAt(0).toUpperCase()
+                    )}
+                </div>
+                
+                {/* Overlay la hover + Iconiță */}
+                <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Camera className="w-8 h-8 text-white" />
                 </div>
                 <div className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full shadow-md group-hover:scale-110 transition-transform">
                     <Camera className="w-4 h-4" />
                 </div>
+
+                {/* INPUT ASCUNS */}
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleFileChange}
+                />
             </div>
 
             <div className="text-center md:text-left z-10">
@@ -61,7 +153,6 @@ export function ProfileSection({ user, onUpdateUser }: { user: any, onUpdateUser
 
         {/* Formulare */}
         <div className="grid md:grid-cols-3 gap-8">
-            {/* Sidebar Meniu */}
             <div className="md:col-span-1 space-y-2">
                 <button 
                     onClick={() => setActiveTab('details')}
@@ -77,7 +168,6 @@ export function ProfileSection({ user, onUpdateUser }: { user: any, onUpdateUser
                 </button>
             </div>
 
-            {/* Zona Activă */}
             <div className="md:col-span-2 bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-slate-700">
                 {activeTab === 'details' ? (
                     <form onSubmit={handleUpdateProfile} className="space-y-6">
@@ -90,6 +180,7 @@ export function ProfileSection({ user, onUpdateUser }: { user: any, onUpdateUser
                                 onChange={e => setFormData({...formData, name: e.target.value})}
                                 className="w-full p-3 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-900 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
                             />
+                            <p className="text-xs text-blue-500 mt-1">* Schimbarea numelui va actualiza automat toate anunțurile tale.</p>
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Email</label>
@@ -99,10 +190,10 @@ export function ProfileSection({ user, onUpdateUser }: { user: any, onUpdateUser
                                 disabled 
                                 className="w-full p-3 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-100 dark:bg-slate-700 text-gray-500 cursor-not-allowed"
                             />
-                            <p className="text-xs text-gray-400 mt-1">Email-ul nu poate fi schimbat.</p>
                         </div>
-                        <button className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2">
-                            <Save className="w-4 h-4" /> Salvează Modificările
+                        <button disabled={loading} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50">
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4" />}
+                            Salvează Modificările
                         </button>
                     </form>
                 ) : (
@@ -128,16 +219,9 @@ export function ProfileSection({ user, onUpdateUser }: { user: any, onUpdateUser
                                 className="w-full p-3 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-900 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                         </div>
-                        <button className="bg-slate-900 dark:bg-slate-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition-colors flex items-center gap-2">
-                            Update Parolă
+                        <button disabled={loading} className="bg-slate-900 dark:bg-slate-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition-colors flex items-center gap-2 disabled:opacity-50">
+                             {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Update Parolă'}
                         </button>
-                        
-                        <div className="mt-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800/30">
-                            <h4 className="text-sm font-bold text-yellow-800 dark:text-yellow-200 mb-1">Ai uitat parola?</h4>
-                            <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                                Dacă nu îți amintești parola curentă, dă Logout și folosește opțiunea "Resetare Parolă" din pagina de autentificare.
-                            </p>
-                        </div>
                     </form>
                 )}
             </div>

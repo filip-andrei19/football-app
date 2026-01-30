@@ -155,18 +155,41 @@ const startServer = async () => {
         // --- RUTE PROFIL & SECURITATE (NOI) ---
 
         // UPDATE PROFIL (Nume, Avatar)
+       // UPDATE PROFIL (Cu propagare nume în anunțuri)
         app.put('/api/users/profile', async (req, res) => {
             try {
                 const { email, name, avatar } = req.body;
+                
+                // 1. Găsim userul
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
 
+                // 2. Dacă numele s-a schimbat, actualizăm toate anunțurile acestui vânzător
+                if (name && name !== user.name) {
+                    console.log(`🔄 Actualizez numele vânzătorului din '${user.name}' în '${name}' pentru toate produsele...`);
+                    await Listing.updateMany(
+                        { sellerEmail: email }, // Găsește după email (care e unic și constant)
+                        { $set: { seller: name } } // Setează noul nume
+                    );
+                }
+
+                // 3. Actualizăm datele userului
                 user.name = name || user.name;
                 user.avatar = avatar || user.avatar;
                 await user.save();
 
-                res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+                res.json({ 
+                    success: true, 
+                    user: { 
+                        name: user.name, 
+                        email: user.email, 
+                        role: user.role, 
+                        avatar: user.avatar 
+                    },
+                    message: "Profil și anunțuri actualizate!"
+                });
             } catch (err) {
+                console.error(err);
                 res.status(500).json({ error: "Eroare la actualizare." });
             }
         });
