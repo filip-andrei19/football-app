@@ -1,22 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, AlertTriangle, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast'; // <--- IMPORT
-import { SkeletonCard } from './SkeletonCard'; // <--- IMPORT
+import toast from 'react-hot-toast'; 
+import { SkeletonCard } from './SkeletonCard'; 
 
+// --- MODIFICARE INTERFAȚĂ PRODUCT ---
+// Adăugăm sellerAvatar (opțional)
 interface Product {
-  _id: string; title: string; price: string; category: string; images: string[]; description: string; seller: string; sellerEmail: string; sellerPhone: string; posted: string; 
+  _id: string; 
+  title: string; 
+  price: string; 
+  category: string; 
+  images: string[]; 
+  description: string; 
+  seller: string; 
+  sellerEmail: string; 
+  sellerPhone: string; 
+  sellerAvatar?: string; // <--- NOU: Avatarul vânzătorului
+  posted: string; 
 }
 
-interface CollectorsHubProps { user: { name: string; email: string; }; }
+// --- MODIFICARE PROPS ---
+// Adăugăm avatar la user
+interface CollectorsHubProps { 
+    user: { 
+        name: string; 
+        email: string; 
+        avatar?: string; // <--- NOU: Avatarul userului curent
+    }; 
+}
 
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
 const API_URL = 'https://football-backend-m2a4.onrender.com/api/listings'; 
 
-// --- COMPONENTE AJUTĂTOARE (Păstrate exact cum erau) ---
+// --- COMPONENTE AJUTĂTOARE ---
+
 const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void }) => {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const images = product.images || [];
   const sellerName = product.seller || "Necunoscut";
+
+  // State pentru a gestiona erorile de încărcare a avatarului
+  const [avatarError, setAvatarError] = useState(false);
 
   return (
     <div onClick={() => onClick(product)} className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full cursor-pointer relative">
@@ -38,11 +62,31 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex justify-between items-start mb-2"><h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">{product.title || "Fără Titlu"}</h3><span className="bg-green-50 text-green-700 px-2 py-1 rounded-lg text-sm font-bold whitespace-nowrap">{product.price || "N/A"}</span></div>
         <p className="text-gray-500 text-sm mb-4 line-clamp-2 flex-1">{product.description || "Fără descriere."}</p>
+        
+        {/* Footer Card: Avatar & Nume */}
         <div className="pt-4 border-t border-gray-50 mt-auto flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase shadow-sm border border-white">{sellerName.charAt(0)}</div>
-              <div className="flex flex-col leading-none"><span className="text-[10px] text-gray-400">Vânzător</span><span className="font-medium truncate max-w-[100px]">{sellerName}</span></div>
+            <div className="flex items-center gap-3 text-sm text-gray-500">
+              
+              {/* --- AICI AFIȘĂM POZA DACĂ EXISTĂ --- */}
+              {product.sellerAvatar && !avatarError ? (
+                  <img 
+                      src={product.sellerAvatar} 
+                      alt={sellerName} 
+                      className="w-9 h-9 rounded-full object-cover border border-gray-200 shadow-sm"
+                      onError={() => setAvatarError(true)} // Fallback la eroare
+                  />
+              ) : (
+                  <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase shadow-sm border border-white">
+                    {sellerName.charAt(0)}
+                  </div>
+              )}
+
+              <div className="flex flex-col leading-none">
+                 <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Vânzător</span>
+                 <span className="font-medium truncate max-w-[100px] text-gray-900">{sellerName}</span>
+              </div>
             </div>
+
             {(product.sellerEmail === user.email || !product.sellerEmail) && (
               <button onClick={(e) => { e.stopPropagation(); onDelete(product._id); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors z-20 relative"><Trash2 className="w-4 h-4" /></button>
             )}
@@ -57,6 +101,7 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
     const [isZoomed, setIsZoomed] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const images = product.images || [];
+    const [avatarError, setAvatarError] = useState(false); // State eroare avatar modal
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!isZoomed) return;
@@ -77,7 +122,34 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                 <div className="w-full md:w-2/5 p-8 flex flex-col overflow-y-auto bg-white">
                     <div className="mb-6"><span className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase">{product.category || "General"}</span><h2 className="text-3xl font-black text-gray-900 leading-tight mb-2">{product.title}</h2><div className="text-2xl font-bold text-green-600">{product.price}</div></div>
                     <div className="prose prose-sm text-gray-600 mb-8 border-t border-b border-gray-100 py-6"><h4 className="text-gray-900 font-bold mb-2">Descriere:</h4><p className="whitespace-pre-wrap">{product.description}</p></div>
-                    <div className="mt-auto bg-gray-50 rounded-2xl p-6 border border-gray-100"><h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><User className="w-5 h-5 text-blue-600" /> Detalii Contact</h3><div className="space-y-4"><div><div className="text-xs font-bold text-gray-400 uppercase">Vânzător</div><div className="font-medium text-lg text-gray-900">{product.seller}</div></div>{product.sellerPhone && (<div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm"><div className="bg-green-100 p-2 rounded-full text-green-700"><Phone className="w-5 h-5" /></div><div><div className="text-xs font-bold text-gray-400 uppercase">Telefon</div><a href={`tel:${product.sellerPhone}`} className="font-mono text-lg font-bold text-gray-900">{product.sellerPhone}</a></div></div>)}</div></div>
+                    
+                    {/* Contact Vânzător în Modal */}
+                    <div className="mt-auto bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><User className="w-5 h-5 text-blue-600" /> Detalii Contact</h3>
+                        <div className="space-y-4">
+                            
+                            {/* --- AFIȘARE POZĂ ÎN MODAL --- */}
+                            <div className="flex items-center gap-4 mb-4">
+                                {product.sellerAvatar && !avatarError ? (
+                                    <img 
+                                        src={product.sellerAvatar} 
+                                        className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" 
+                                        onError={() => setAvatarError(true)}
+                                    />
+                                ) : (
+                                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl uppercase border-2 border-white shadow-sm">
+                                        {product.seller.charAt(0)}
+                                    </div>
+                                )}
+                                <div>
+                                    <div className="text-xs font-bold text-gray-400 uppercase">Vânzător</div>
+                                    <div className="font-medium text-lg text-gray-900">{product.seller}</div>
+                                </div>
+                            </div>
+
+                            {product.sellerPhone && (<div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm"><div className="bg-green-100 p-2 rounded-full text-green-700"><Phone className="w-5 h-5" /></div><div><div className="text-xs font-bold text-gray-400 uppercase">Telefon</div><a href={`tel:${product.sellerPhone}`} className="font-mono text-lg font-bold text-gray-900">{product.sellerPhone}</a></div></div>)}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -115,12 +187,12 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     const files = e.target.files;
     if (files && files.length > 0) {
       if (newProduct.images.length + files.length > 5) {
-        toast.error("Poți încărca maxim 5 poze!"); // TOAST
+        toast.error("Poți încărca maxim 5 poze!"); 
         return;
       }
       Array.from(files).forEach(file => {
         if (file.size > 2 * 1024 * 1024) {
-          toast.error(`Fișierul ${file.name} este prea mare (Max 2MB).`); // TOAST
+          toast.error(`Fișierul ${file.name} este prea mare (Max 2MB).`); 
           return;
         }
         const reader = new FileReader();
@@ -143,7 +215,14 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     const promise = fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newProduct, seller: user.name, sellerEmail: user.email, sellerPhone: newProduct.phone })
+        // --- AICI TRIMITEM ȘI AVATARUL ---
+        body: JSON.stringify({ 
+            ...newProduct, 
+            seller: user.name, 
+            sellerEmail: user.email, 
+            sellerPhone: newProduct.phone,
+            sellerAvatar: user.avatar // <--- TRIMITEM POZA CURENTĂ A USERULUI
+        })
     });
 
     toast.promise(promise, {
@@ -205,7 +284,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
       </div>
 
       {loading ? (
-          /* AICI E SKELETON-UL NOU */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{[1, 2, 3, 4, 5, 6].map(i => <SkeletonCard key={i} />)}</div>
       ) : filteredProducts.length === 0 ? (
         <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200"><Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" /><h3 className="text-lg font-bold text-gray-500">Niciun produs găsit.</h3></div>
@@ -234,6 +312,16 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
                 </div>
               </div>
               <div><label className="block text-sm font-bold text-gray-700 mb-1">Descriere <span className="text-red-500">*</span></label><textarea className="w-full p-3 border rounded-xl h-24 resize-none outline-none focus:ring-2 focus:ring-blue-500" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})}></textarea></div>
+              
+              {/* Afișare user curent în modal (preview) */}
+              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                  {user.avatar ? <img src={user.avatar} className="w-8 h-8 rounded-full object-cover border border-white shadow-sm"/> : <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">{user.name.charAt(0)}</div>}
+                  <div className="flex flex-col">
+                      <span className="text-xs text-gray-400 font-bold uppercase">Postat de</span>
+                      <span className="text-sm font-bold text-gray-800">{user.name}</span>
+                  </div>
+              </div>
+
               <button type="button" onClick={handleAddProduct} disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg flex justify-center items-center gap-2">{isSubmitting ? <Loader2 className="animate-spin w-4 h-4"/> : 'Publică Anunțul'}</button>
             </div>
           </div>

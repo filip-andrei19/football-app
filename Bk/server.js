@@ -75,9 +75,13 @@ const listingSchema = new mongoose.Schema({
     price: { type: String, required: true },
     images: [{ type: String }], 
     description: { type: String, required: true },
+    
+    // Detalii Vânzător
     seller: { type: String, required: true },
     sellerEmail: { type: String, required: true },
     sellerPhone: { type: String },
+    sellerAvatar: { type: String, default: '' }, // <--- CÂMP NOU
+    
     posted: { type: Date, default: Date.now }
 });
 const Listing = mongoose.models.Listing || mongoose.model('Listing', listingSchema);
@@ -154,26 +158,29 @@ const startServer = async () => {
 
         // --- RUTE PROFIL & SECURITATE (NOI) ---
 
-        // UPDATE PROFIL (Nume, Avatar)
-       // UPDATE PROFIL (Cu propagare nume în anunțuri)
+        // UPDATE PROFIL (Cu propagare nume ȘI AVATAR în anunțuri)
         app.put('/api/users/profile', async (req, res) => {
             try {
                 const { email, name, avatar } = req.body;
                 
-                // 1. Găsim userul
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
 
-                // 2. Dacă numele s-a schimbat, actualizăm toate anunțurile acestui vânzător
-                if (name && name !== user.name) {
-                    console.log(`🔄 Actualizez numele vânzătorului din '${user.name}' în '${name}' pentru toate produsele...`);
+                // Pregătim datele de actualizat în anunțuri
+                let updates = {};
+                if (name && name !== user.name) updates.seller = name;
+                if (avatar && avatar !== user.avatar) updates.sellerAvatar = avatar;
+
+                // Dacă avem ce actualiza, o facem în toate anunțurile acestui user
+                if (Object.keys(updates).length > 0) {
+                    console.log(`🔄 Actualizez datele vânzătorului în anunțuri...`);
                     await Listing.updateMany(
-                        { sellerEmail: email }, // Găsește după email (care e unic și constant)
-                        { $set: { seller: name } } // Setează noul nume
+                        { sellerEmail: email }, 
+                        { $set: updates }
                     );
                 }
 
-                // 3. Actualizăm datele userului
+                // Actualizăm userul
                 user.name = name || user.name;
                 user.avatar = avatar || user.avatar;
                 await user.save();
@@ -185,8 +192,7 @@ const startServer = async () => {
                         email: user.email, 
                         role: user.role, 
                         avatar: user.avatar 
-                    },
-                    message: "Profil și anunțuri actualizate!"
+                    }
                 });
             } catch (err) {
                 console.error(err);
