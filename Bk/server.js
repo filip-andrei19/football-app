@@ -20,11 +20,10 @@ const PORT = process.env.PORT || 3000;
 // ==========================================
 // CONFIGURĂRI MIDDLEWARE
 // ==========================================
-app.use(helmet());      // Securitate Headere
-app.use(compression()); // Compresie Gzip
+app.use(helmet());
+app.use(compression());
 app.use(cors());
 
-// Limită Anti-Spam (200 req / 15 min)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
     max: 200, 
@@ -32,7 +31,6 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Limită date (pentru poze base64 mari)
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -122,12 +120,27 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
+        // RUTA NOUĂ PENTRU SINCRONIZARE (REFRESH DATE)
+        app.post('/api/users/refresh', async (req, res) => {
+            try {
+                const { email } = req.body;
+                const user = await User.findOne({ email });
+                if (!user) return res.status(404).json({ error: "User not found" });
+
+                // Returnăm datele proaspete (inclusiv noul avatar/nume)
+                res.json({ 
+                    success: true, 
+                    user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } 
+                });
+            } catch (err) { res.status(500).json({ error: "Eroare server." }); }
+        });
+
         app.post('/api/users/register', async (req, res) => {
             try {
                 const { name, email, password } = req.body;
                 if (await User.findOne({ email })) return res.status(400).json({ success: false, message: "Email folosit." });
 
-                // Asigură-te că folosești ACEEAȘI adresă ca în App.tsx
+                // HACK: Admin specificat
                 const role = email === 'admin.nou@scout.ro' ? 'admin' : 'user';
 
                 const newUser = new User({ name, email, password, role });
@@ -193,11 +206,20 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
+        // ADMIN: ADAUGĂ ȘTIRE
         app.post('/api/admin/stories', async (req, res) => {
             try {
                 const newStory = new Story(req.body);
                 await newStory.save();
                 res.status(201).json(newStory);
+            } catch (err) { res.status(500).json({ error: "Eroare" }); }
+        });
+
+        // ADMIN: ȘTERGE ȘTIRE (NOU)
+        app.delete('/api/admin/stories/:id', async (req, res) => {
+            try {
+                await Story.findByIdAndDelete(req.params.id);
+                res.json({ success: true, message: "Știre ștearsă." });
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
@@ -236,9 +258,6 @@ const startServer = async () => {
                 if (!listing) return res.status(404).json({ error: "Produsul nu există" });
 
                 const isOwner = listing.sellerEmail === email;
-                
-                // MODIFICARE AICI: Permitem ștergerea dacă email-ul este cel de admin, 
-                // chiar dacă DB-ul nu are rolul actualizat.
                 const isAdmin = (user && user.role === 'admin') || email === 'admin.nou@scout.ro';
 
                 if (!isOwner && !isAdmin) {

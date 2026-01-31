@@ -30,14 +30,46 @@ export default function App() {
   const [user, setUser] = useState<{name: string, email: string, role?: string, avatar?: string} | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
+  // --- SINCRONIZARE AUTOMATĂ (Fix pentru Desktop -> Mobile) ---
   useEffect(() => {
-    const savedUser = localStorage.getItem('footballAppUser');
-    if (savedUser) setUser(JSON.parse(savedUser));
-    const savedTheme = localStorage.getItem('footballAppTheme') as 'light' | 'dark';
-    if (savedTheme) {
-        setTheme(savedTheme);
-        if (savedTheme === 'dark') document.documentElement.classList.add('dark');
-    }
+    const syncUserData = async () => {
+        const savedUser = localStorage.getItem('footballAppUser');
+        if (savedUser) {
+            const localUser = JSON.parse(savedUser);
+            // 1. Setăm inițial ce avem în local (ca să se încarce rapid)
+            setUser(localUser);
+
+            // 2. Cerem datele NOI de la server (în background)
+            try {
+                const res = await fetch('https://football-backend-m2a4.onrender.com/api/users/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: localUser.email })
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) {
+                        console.log("🔄 Date sincronizate cu serverul:", data.user);
+                        // 3. Actualizăm interfața și memoria telefonului
+                        setUser(data.user);
+                        localStorage.setItem('footballAppUser', JSON.stringify(data.user));
+                    }
+                }
+            } catch (err) {
+                console.error("Nu s-a putut sincroniza profilul:", err);
+            }
+        }
+
+        // Tema
+        const savedTheme = localStorage.getItem('footballAppTheme') as 'light' | 'dark';
+        if (savedTheme) {
+            setTheme(savedTheme);
+            if (savedTheme === 'dark') document.documentElement.classList.add('dark');
+        }
+    };
+
+    syncUserData();
   }, []);
 
   const toggleTheme = () => {
@@ -49,7 +81,7 @@ export default function App() {
   };
 
   const handleLoginSuccess = (userData: any) => {
-      console.log("LOGIN SUCCESS. User data:", userData); // DEBUG
+      console.log("LOGIN SUCCESS:", userData);
       setUser(userData);
       localStorage.setItem('footballAppUser', JSON.stringify(userData));
   };
@@ -60,8 +92,6 @@ export default function App() {
       localStorage.removeItem('footballAppUser');
   };
 
-  // --- LOGICA DE ADMIN CENTRALIZATĂ ---
-  // Aici verificăm dacă userul are rolul 'admin' SAU dacă are email-ul specific (fallback)
   const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
 
   const navigation = [
@@ -80,7 +110,6 @@ export default function App() {
       case 'heroes': return <UnsungHeroesSection />;
       case 'collectors': return <CollectorsHubSection user={user!} />;
       case 'profile': return <ProfileSection user={user!} onUpdateUser={handleLoginSuccess} onLogout={handleLogout} />; 
-      // Doar adminul poate vedea dashboard-ul
       case 'admin': return isAdmin ? <AdminDashboard user={user!} /> : <HomeSection user={user!} onNavigate={setActiveSection} />;
       default: return <HomeSection user={user!} onNavigate={setActiveSection} />;
     }
@@ -119,7 +148,6 @@ export default function App() {
 
               <div className="hidden md:flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-slate-700">
                  
-                 {/* BUTON ADMIN - Vizibil doar dacă ești admin */}
                  {isAdmin && (
                      <Button variant={activeSection === 'admin' ? 'default' : 'ghost'} onClick={() => setActiveSection('admin')} className="text-red-600 hover:text-red-700 font-bold border border-red-100 dark:border-red-900/30">
                         <ShieldAlert className="h-4 w-4 mr-1" /> Admin
@@ -154,7 +182,6 @@ export default function App() {
               </Button>
             ))}
             
-            {/* Buton Admin Mobil */}
             {isAdmin && (
                 <Button variant="destructive" onClick={() => { setActiveSection('admin'); setMobileMenuOpen(false); }} className="w-full justify-start gap-3 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200">
                     <ShieldAlert className="h-5 w-5" /> Panou Administrator
