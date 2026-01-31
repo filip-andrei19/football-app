@@ -4,8 +4,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
-
-// --- IMPORTURI SECURITATE & PERFORMANȚĂ ---
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
@@ -100,38 +98,51 @@ const startServer = async () => {
         await mongoose.connect(process.env.MONGO_URI);
         console.log('✅ Conectat la MongoDB.');
 
-        // --- RUTE AUTHENTICARE ---
+        // --- POPULARE AUTOMATĂ CU EROII CERUȚI (Dacă nu există) ---
+        const storyCount = await Story.countDocuments();
+        if (storyCount === 0) {
+            console.log("📂 Seeding stories...");
+            await Story.insertMany([
+                {
+                    title: 'Gheorghe "Gică" Popescu',
+                    role: 'Șef Departament Scouting',
+                    organization: 'Academia FC Viitorul / Farul',
+                    excerpt: 'După 30 de ani de descoperit talente, ne împărtășește secretele prin care identifică viitoarele stele ale României.',
+                    content: 'Un interviu exclusiv despre criteriile de selecție la cel mai înalt nivel, importanța mentalității și cum vede viitorul echipei naționale.',
+                    date: 'Decembrie 2025'
+                },
+                {
+                    title: 'Alexandru Andrași',
+                    role: 'Fost Atacant',
+                    organization: 'Steaua / Rapid București',
+                    excerpt: 'Povestea plecării de la Steaua și golul memorabil marcat pe San Siro împotriva lui Inter Milano.',
+                    content: 'Amintiri din perioada de aur a fotbalului românesc, rivalitățile din București și emoția de a marca pe unul dintre cele mai mari stadioane ale lumii.',
+                    date: 'Ianuarie 2026'
+                }
+            ]);
+            console.log("✅ Știri inițiale adăugate!");
+        }
+
+        // --- RUTE API ---
 
         app.post('/api/users/login', async (req, res) => {
             try {
                 const { email, password } = req.body;
                 const user = await User.findOne({ email });
-                
                 if (!user) return res.status(401).json({ success: false, message: "Utilizator inexistent." });
                 if (user.isBanned) return res.status(403).json({ success: false, message: "Cont blocat." });
-
                 const isMatch = await bcrypt.compare(password, user.password);
                 if (!isMatch) return res.status(401).json({ success: false, message: "Parolă incorectă." });
-
-                res.status(200).json({ 
-                    success: true, 
-                    user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } 
-                });
+                res.status(200).json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
-        // RUTA NOUĂ PENTRU SINCRONIZARE (REFRESH DATE)
         app.post('/api/users/refresh', async (req, res) => {
             try {
                 const { email } = req.body;
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
-
-                // Returnăm datele proaspete (inclusiv noul avatar/nume)
-                res.json({ 
-                    success: true, 
-                    user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } 
-                });
+                res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
@@ -139,37 +150,25 @@ const startServer = async () => {
             try {
                 const { name, email, password } = req.body;
                 if (await User.findOne({ email })) return res.status(400).json({ success: false, message: "Email folosit." });
-
-                // HACK: Admin specificat
                 const role = email === 'admin.nou@scout.ro' ? 'admin' : 'user';
-
                 const newUser = new User({ name, email, password, role });
                 await newUser.save();
-                
                 res.status(201).json({ success: true, user: { name: newUser.name, email: newUser.email, role: newUser.role } });
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
-
-        // --- RUTE PROFIL ---
 
         app.put('/api/users/profile', async (req, res) => {
             try {
                 const { email, name, avatar } = req.body;
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
-
                 let updates = {};
                 if (name && name !== user.name) updates.seller = name;
                 if (avatar && avatar !== user.avatar) updates.sellerAvatar = avatar;
-
-                if (Object.keys(updates).length > 0) {
-                    await Listing.updateMany({ sellerEmail: email }, { $set: updates });
-                }
-
+                if (Object.keys(updates).length > 0) await Listing.updateMany({ sellerEmail: email }, { $set: updates });
                 user.name = name || user.name;
                 user.avatar = avatar || user.avatar;
                 await user.save();
-
                 res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
@@ -179,17 +178,13 @@ const startServer = async () => {
                 const { email, currentPassword, newPassword } = req.body;
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
-
                 const isMatch = await bcrypt.compare(currentPassword, user.password);
                 if (!isMatch) return res.status(400).json({ success: false, message: "Parola curentă incorectă." });
-
                 user.password = newPassword;
                 await user.save();
                 res.json({ success: true, message: "Parolă schimbată." });
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
-
-        // --- RUTE ADMIN ---
 
         app.get('/api/admin/users', async (req, res) => {
             const users = await User.find().select('-password').limit(100);
@@ -206,7 +201,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
-        // ADMIN: ADAUGĂ ȘTIRE
         app.post('/api/admin/stories', async (req, res) => {
             try {
                 const newStory = new Story(req.body);
@@ -215,15 +209,12 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
-        // ADMIN: ȘTERGE ȘTIRE (NOU)
         app.delete('/api/admin/stories/:id', async (req, res) => {
             try {
                 await Story.findByIdAndDelete(req.params.id);
                 res.json({ success: true, message: "Știre ștearsă." });
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
-
-        // --- RUTE PUBLICE ---
 
         app.get('/api/stories', async (req, res) => {
             const stories = await Story.find().sort({ postedAt: -1 });
@@ -248,22 +239,17 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
-        // --- DELETE LISTING (FIX ADMIN) ---
         app.delete('/api/listings/:id', async (req, res) => {
             try {
                 const { email } = req.body; 
                 const user = await User.findOne({ email });
                 const listing = await Listing.findById(req.params.id);
-                
                 if (!listing) return res.status(404).json({ error: "Produsul nu există" });
-
                 const isOwner = listing.sellerEmail === email;
                 const isAdmin = (user && user.role === 'admin') || email === 'admin.nou@scout.ro';
-
                 if (!isOwner && !isAdmin) {
                     return res.status(403).json({ error: "Nu ai permisiunea să ștergi acest produs." });
                 }
-
                 await Listing.findByIdAndDelete(req.params.id);
                 res.json({ success: true, message: "Produs șters." });
             } catch (err) {
@@ -271,7 +257,6 @@ const startServer = async () => {
             }
         });
 
-        // --- ADMIN TOOLS ---
         app.get('/api/admin/hard-reset', async (req, res) => {
             hardResetAndLoad(); 
             res.send("Reset initiated.");
