@@ -101,17 +101,26 @@ const startServer = async () => {
         console.log('✅ Conectat la MongoDB.');
 
         // --- POPULARE AUTOMATĂ (SEEDING) ---
-        // Adăugăm poveștile inițiale dacă baza de date este goală
         const storyCount = await Story.countDocuments();
         if (storyCount === 0) {
-            console.log("📂 Baza de date Eroi goală. Se adaugă interviurile inițiale...");
+            console.log("📂 Seeding stories...");
             await Story.insertMany([
                 {
                     title: 'Gheorghe "Gică" Popescu',
                     role: 'Șef Departament Scouting',
                     organization: 'Academia FC Viitorul / Farul',
                     excerpt: 'După 30 de ani de descoperit talente, ne împărtășește secretele prin care identifică viitoarele stele ale României.',
-                    content: 'Într-un interviu exclusiv, "Baciul" vorbește despre criteriile invizibile pe care le caută la un junior: mentalitatea de învingător, disciplina tactică și inteligența în joc. Popescu detaliază structura Academiei de la Ovidiu și cum tehnologia modernă ajută scouterii să monitorizeze mii de copii anual.',
+                    content: `REPORTER: Domnule Popescu, după o carieră impresionantă la Barcelona și Galatasaray, cum vedeți tranziția către munca de birou și scouting?
+
+GICĂ POPESCU: Tranziția a fost naturală. La Academie, nu căutăm doar jucători care știu să lovească mingea. Asta e partea ușoară. Căutăm caracter. Când merg la un meci de juniori, mă uit la cum reacționează un copil când pierde mingea. Se oprește? Dă din mâini? Sau face sprint imediat să o recupereze?
+
+REPORTER: Care este cel mai important criteriu invizibil?
+
+GICĂ POPESCU: Inteligența în joc. Viteza de gândire. Fotbalul modern se joacă în fracțiuni de secundă. Dacă un jucător are nevoie de 3 secunde să decidă cui pasează, e deja prea târziu pentru nivelul înalt, indiferent cât de talentat e tehnic.
+
+REPORTER: Ce planuri aveți pentru viitorul academiei?
+
+GICĂ POPESCU: Vrem să implementăm un sistem de monitorizare bazat pe date fizice și medicale încă de la 12 ani. Avem nevoie de atleți, nu doar de fotbaliști.`,
                     date: 'Decembrie 2025'
                 },
                 {
@@ -119,11 +128,21 @@ const startServer = async () => {
                     role: 'Fost Atacant',
                     organization: 'Steaua / Rapid București',
                     excerpt: 'Povestea plecării de la Steaua și golul memorabil marcat pe San Siro împotriva lui Inter Milano.',
-                    content: 'O călătorie emoționantă în timp, rememorând perioada romantică a fotbalului românesc. Andrași povestește despre presiunea de a juca în Ghencea, rivalitatea intensă cu Dinamo și Rapid, și sentimentul unic de a înscrie pe unul dintre cele mai mari stadioane ale Europei într-un meci de cupă europeană.',
+                    content: `REPORTER: Domnule Andrași, lumea vă asociază mereu cu acel gol fabulos de pe San Siro. Ce vă mai amintiți de atunci?
+
+ALEXANDRU ANDRAȘI: Îmi amintesc vuietul stadionului. Era un meci de Cupă UEFA cu Inter Milano. Când am primit mingea la marginea careului, nu m-am gândit nicio secundă. Am șutat din instinct. Când am văzut plasa tremurând, pentru o secundă s-a făcut liniște pe San Siro. A fost momentul carierei mele.
+
+REPORTER: Cum a fost rivalitatea Steaua - Rapid în acea perioadă?
+
+ALEXANDRU ANDRAȘI: Era altceva. Nu era ură, era pasiune. Stadionul Giulești vibra la propriu. Jucam pentru suporteri, nu pentru contracte de milioane. Plecarea mea de la Steaua a fost dureroasă, dar Rapidul m-a adoptat imediat.
+
+REPORTER: Ce sfat aveți pentru tinerii atacanți de azi?
+
+ALEXANDRU ANDRAȘI: Să nu le fie frică să greșească. Un atacant care nu ratează e un atacant care nu încearcă. Curajul face diferența între un jucător bun și unul memorabil.`,
                     date: 'Ianuarie 2026'
                 }
             ]);
-            console.log("✅ Interviuri inițiale adăugate!");
+            console.log("✅ Știri detaliate adăugate!");
         }
 
         // --- RUTE API ---
@@ -140,7 +159,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
-        // RUTA SINCRONIZARE
         app.post('/api/users/refresh', async (req, res) => {
             try {
                 const { email } = req.body;
@@ -206,6 +224,7 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
+        // ADMIN: ADAUGĂ ȘTIRE
         app.post('/api/admin/stories', async (req, res) => {
             try {
                 const newStory = new Story(req.body);
@@ -214,6 +233,19 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
+        // ADMIN: MODIFICĂ ȘTIRE (NOU)
+        app.put('/api/admin/stories/:id', async (req, res) => {
+            try {
+                const updatedStory = await Story.findByIdAndUpdate(
+                    req.params.id,
+                    req.body,
+                    { new: true }
+                );
+                res.json(updatedStory);
+            } catch (err) { res.status(500).json({ error: "Eroare update" }); }
+        });
+
+        // ADMIN: ȘTERGE ȘTIRE
         app.delete('/api/admin/stories/:id', async (req, res) => {
             try {
                 await Story.findByIdAndDelete(req.params.id);

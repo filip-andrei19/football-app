@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Users, Newspaper, Ban, CheckCircle, Search, Loader2, Plus, Trash2, ShoppingBag, X, Save, FileText } from 'lucide-react';
+import { ShieldCheck, Users, Newspaper, Ban, CheckCircle, Search, Loader2, Plus, Trash2, ShoppingBag, X, Save, FileText, Edit } from 'lucide-react'; // Am importat Edit
 import toast from 'react-hot-toast';
 
 // --- INTERFEȚE ---
 interface UserData { _id: string; name: string; email: string; role: string; isBanned: boolean; avatar?: string; }
 interface ListingData { _id: string; title: string; category: string; price: string; seller: string; sellerEmail: string; images: string[]; posted: string; }
-interface StoryData { _id: string; title: string; role: string; organization: string; excerpt: string; postedAt: string; }
+interface StoryData { _id: string; title: string; role: string; organization: string; excerpt: string; content: string; date: string; postedAt: string; }
 
 const API_URL = 'https://football-backend-m2a4.onrender.com/api';
 
@@ -15,13 +15,14 @@ export function AdminDashboard({ user }: { user: any }) {
   // State-uri Date
   const [users, setUsers] = useState<UserData[]>([]);
   const [listings, setListings] = useState<ListingData[]>([]);
-  const [stories, setStories] = useState<StoryData[]>([]); // <--- STATE PENTRU ȘTIRI
+  const [stories, setStories] = useState<StoryData[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // State pentru Modal Adăugare Știre
+  // State pentru Modal Știre (Adăugare / Editare)
   const [showStoryModal, setShowStoryModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null); // NOU: ID-ul știrii pe care o edităm
   const [newStory, setNewStory] = useState({ title: '', role: '', organization: '', excerpt: '', content: '', date: '' });
 
   // --- 1. FETCH DATA ---
@@ -30,13 +31,12 @@ export function AdminDashboard({ user }: { user: any }) {
   const fetchInitialData = async () => {
     try {
         setLoading(true);
-        // Useri
         const resUsers = await fetch(`${API_URL}/admin/users`);
         if (resUsers.ok) setUsers(await resUsers.json());
-        // Anunțuri
+        
         const resListings = await fetch(`${API_URL}/listings`);
         if (resListings.ok) setListings(await resListings.json());
-        // Știri / Eroi
+        
         const resStories = await fetch(`${API_URL}/stories`);
         if (resStories.ok) setStories(await resStories.json());
 
@@ -68,25 +68,66 @@ export function AdminDashboard({ user }: { user: any }) {
       } catch (err) { toast.error("Eroare server."); }
   };
 
-  // --- LOGICA ȘTIRI (NOU) ---
-  const handleAddStory = async () => {
-      if(!newStory.title || !newStory.excerpt) return toast.error("Completează titlul și rezumatul!");
-      try {
-          const res = await fetch(`${API_URL}/admin/stories`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(newStory)
-          });
-          if(res.ok) {
-              const savedStory = await res.json();
-              setStories([savedStory, ...stories]);
-              setShowStoryModal(false);
-              setNewStory({ title: '', role: '', organization: '', excerpt: '', content: '', date: '' });
-              toast.success("Articol publicat!");
-          }
-      } catch(err) { toast.error("Eroare la publicare."); }
+  // --- LOGICA ȘTIRI (CRUD COMPLET) ---
+  
+  // 1. Deschide modal pentru ADĂUGARE
+  const openAddModal = () => {
+      setEditingId(null);
+      setNewStory({ title: '', role: '', organization: '', excerpt: '', content: '', date: '' });
+      setShowStoryModal(true);
   };
 
+  // 2. Deschide modal pentru EDITARE (populează câmpurile)
+  const openEditModal = (story: StoryData) => {
+      setEditingId(story._id);
+      setNewStory({
+          title: story.title,
+          role: story.role,
+          organization: story.organization,
+          excerpt: story.excerpt,
+          content: story.content,
+          date: story.date
+      });
+      setShowStoryModal(true);
+  };
+
+  // 3. Salvare (Adăugare SAU Update)
+  const handleSaveStory = async () => {
+      if(!newStory.title || !newStory.excerpt) return toast.error("Completează titlul și rezumatul!");
+      
+      try {
+          let res;
+          if (editingId) {
+              // UPDATE (PUT)
+              res = await fetch(`${API_URL}/admin/stories/${editingId}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(newStory)
+              });
+          } else {
+              // CREATE (POST)
+              res = await fetch(`${API_URL}/admin/stories`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(newStory)
+              });
+          }
+
+          if(res.ok) {
+              const savedStory = await res.json();
+              if (editingId) {
+                  setStories(prev => prev.map(s => s._id === editingId ? savedStory : s));
+                  toast.success("Articol actualizat!");
+              } else {
+                  setStories([savedStory, ...stories]);
+                  toast.success("Articol publicat!");
+              }
+              setShowStoryModal(false);
+          }
+      } catch(err) { toast.error("Eroare la salvare."); }
+  };
+
+  // 4. Ștergere
   const handleDeleteStory = async (id: string) => {
       if(!window.confirm("Ștergi acest articol?")) return;
       try {
@@ -172,12 +213,12 @@ export function AdminDashboard({ user }: { user: any }) {
                     </div>
                 )}
 
-                {/* 3. NEWS / HEROES TAB (COMPLET) */}
+                {/* 3. NEWS / HEROES TAB (COMPLET CU EDITARE) */}
                 {activeTab === 'news' && (
                     <div>
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-xl">Articole Publicate</h3>
-                            <button onClick={() => setShowStoryModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 shadow-lg"><Plus className="w-4 h-4" /> Adaugă Erou</button>
+                            <button onClick={openAddModal} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 shadow-lg"><Plus className="w-4 h-4" /> Adaugă Erou</button>
                         </div>
 
                         <div className="grid gap-4">
@@ -193,7 +234,13 @@ export function AdminDashboard({ user }: { user: any }) {
                                             </div>
                                         </div>
                                     </div>
-                                    <button onClick={() => handleDeleteStory(story._id)} className="text-red-500 hover:bg-red-100 p-2 rounded-lg transition-colors"><Trash2 className="w-5 h-5"/></button>
+                                    <div className="flex gap-2">
+                                        {/* BUTON EDITARE */}
+                                        <button onClick={() => openEditModal(story)} className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-colors"><Edit className="w-5 h-5"/></button>
+                                        
+                                        {/* BUTON ȘTERGERE */}
+                                        <button onClick={() => handleDeleteStory(story._id)} className="text-red-500 hover:bg-red-100 p-2 rounded-lg transition-colors"><Trash2 className="w-5 h-5"/></button>
+                                    </div>
                                 </div>
                             ))}
                             {filteredStories.length === 0 && <div className="text-center py-10 text-gray-400">Nu există articole. Adaugă unul!</div>}
@@ -204,12 +251,15 @@ export function AdminDashboard({ user }: { user: any }) {
             )}
         </div>
 
-        {/* MODAL ADĂUGARE ȘTIRE */}
+        {/* MODAL ADĂUGARE / EDITARE ȘTIRE */}
         {showStoryModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                     <div className="p-6 border-b dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800">
-                        <h3 className="text-xl font-bold flex items-center gap-2"><FileText className="text-blue-600"/> Publică Articol Nou</h3>
+                        <h3 className="text-xl font-bold flex items-center gap-2">
+                            <FileText className="text-blue-600"/> 
+                            {editingId ? 'Editează Articol' : 'Publică Articol Nou'}
+                        </h3>
                         <button onClick={() => setShowStoryModal(false)}><X className="w-6 h-6 text-gray-500"/></button>
                     </div>
                     <div className="p-6 overflow-y-auto space-y-4">
@@ -225,7 +275,9 @@ export function AdminDashboard({ user }: { user: any }) {
                         <div><label className="block text-xs font-bold uppercase mb-1">Povestea Completă</label><textarea className="w-full p-3 border rounded-xl h-40 dark:bg-slate-800 dark:border-slate-600" value={newStory.content} onChange={e => setNewStory({...newStory, content: e.target.value})} ></textarea></div>
                     </div>
                     <div className="p-4 border-t dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
-                        <button onClick={handleAddStory} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 flex justify-center gap-2"><Save className="w-5 h-5"/> Publică</button>
+                        <button onClick={handleSaveStory} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 flex justify-center gap-2">
+                            <Save className="w-5 h-5"/> {editingId ? 'Salvează Modificările' : 'Publică'}
+                        </button>
                     </div>
                 </div>
             </div>
