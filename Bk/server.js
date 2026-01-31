@@ -4,6 +4,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken'); // [1] JWT Import
+const crypto = require('crypto');    // [5] Pentru token resetare parola
+const nodemailer = require('nodemailer'); // [5] Pentru trimitere email
 
 // --- IMPORTURI SECURITATE & PERFORMANȚĂ ---
 const helmet = require('helmet');
@@ -16,6 +19,7 @@ const { runDailySmartSync } = require('./services/smartSync');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const TOKEN_SECRET = process.env.TOKEN_SECRET || 'cheie_secreta_foarte_lunga_si_sigura'; // Pune asta in .env!
 
 // ==========================================
 // CONFIGURĂRI MIDDLEWARE
@@ -34,6 +38,30 @@ app.use(limiter);
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// [1] MIDDLEWARE VERIFICARE TOKEN JWT
+const verifyToken = (req, res, next) => {
+    const token = req.header('auth-token');
+    if (!token) return res.status(401).json({ error: 'Acces interzis. Lipsă Token.' });
+
+    try {
+        const verified = jwt.verify(token, TOKEN_SECRET);
+        req.user = verified; // Adăugăm datele userului în request
+        next();
+    } catch (err) {
+        res.status(400).json({ error: 'Token Invalid' });
+    }
+};
+
+// [5] CONFIGURARE EMAIL (NODEMAILER)
+// ATENȚIE: În producție, folosește variabile de mediu (.env)!
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // Sau alt serviciu
+    auth: {
+        user: process.env.EMAIL_USER || 'adresa.ta@gmail.com', // MODIFICĂ AICI
+        pass: process.env.EMAIL_PASS || 'parola_ta_de_aplicatie' // MODIFICĂ AICI
+    }
+});
+
 // ==========================================
 // 1. MODELE BAZA DE DATE
 // ==========================================
@@ -46,6 +74,9 @@ const userSchema = new mongoose.Schema({
     role: { type: String, default: 'user', enum: ['user', 'admin'] }, 
     avatar: { type: String, default: '' }, 
     isBanned: { type: Boolean, default: false },
+    // [5] Câmpuri pentru resetare parolă
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -77,9 +108,12 @@ const listingSchema = new mongoose.Schema({
     sellerAvatar: { type: String, default: '' },
     posted: { type: Date, default: Date.now }
 });
+// Index pentru căutare rapidă [6]
+listingSchema.index({ title: 'text', description: 'text' }); 
+
 const Listing = mongoose.models.Listing || mongoose.model('Listing', listingSchema);
 
-// D. STORY (MODEL PENTRU EROI)
+// D. STORY
 const storySchema = new mongoose.Schema({
     title: String,
     role: String,
@@ -110,17 +144,7 @@ const startServer = async () => {
                     role: 'Șef Departament Scouting',
                     organization: 'Academia FC Viitorul / Farul',
                     excerpt: 'După 30 de ani de descoperit talente, ne împărtășește secretele prin care identifică viitoarele stele ale României.',
-                    content: `REPORTER: Domnule Popescu, după o carieră impresionantă la Barcelona și Galatasaray, cum vedeți tranziția către munca de birou și scouting?
-
-GICĂ POPESCU: Tranziția a fost naturală. La Academie, nu căutăm doar jucători care știu să lovească mingea. Asta e partea ușoară. Căutăm caracter. Când merg la un meci de juniori, mă uit la cum reacționează un copil când pierde mingea. Se oprește? Dă din mâini? Sau face sprint imediat să o recupereze?
-
-REPORTER: Care este cel mai important criteriu invizibil?
-
-GICĂ POPESCU: Inteligența în joc. Viteza de gândire. Fotbalul modern se joacă în fracțiuni de secundă. Dacă un jucător are nevoie de 3 secunde să decidă cui pasează, e deja prea târziu pentru nivelul înalt, indiferent cât de talentat e tehnic.
-
-REPORTER: Ce planuri aveți pentru viitorul academiei?
-
-GICĂ POPESCU: Vrem să implementăm un sistem de monitorizare bazat pe date fizice și medicale încă de la 12 ani. Avem nevoie de atleți, nu doar de fotbaliști.`,
+                    content: `REPORTER: Domnule Popescu, după o carieră impresionantă la Barcelona și Galatasaray, cum vedeți tranziția către munca de birou și scouting?\n\nGICĂ POPESCU: Tranziția a fost naturală. La Academie, nu căutăm doar jucători care știu să lovească mingea. Asta e partea ușoară. Căutăm caracter. Când merg la un meci de juniori, mă uit la cum reacționează un copil când pierde mingea. Se oprește? Dă din mâini? Sau face sprint imediat să o recupereze?\n\nREPORTER: Care este cel mai important criteriu invizibil?\n\nGICĂ POPESCU: Inteligența în joc. Viteza de gândire. Fotbalul modern se joacă în fracțiuni de secundă. Dacă un jucător are nevoie de 3 secunde să decidă cui pasează, e deja prea târziu pentru nivelul înalt, indiferent cât de talentat e tehnic.`,
                     date: 'Decembrie 2025'
                 },
                 {
@@ -128,24 +152,14 @@ GICĂ POPESCU: Vrem să implementăm un sistem de monitorizare bazat pe date fiz
                     role: 'Fost Atacant',
                     organization: 'Steaua / Rapid București',
                     excerpt: 'Povestea plecării de la Steaua și golul memorabil marcat pe San Siro împotriva lui Inter Milano.',
-                    content: `REPORTER: Domnule Andrași, lumea vă asociază mereu cu acel gol fabulos de pe San Siro. Ce vă mai amintiți de atunci?
-
-ALEXANDRU ANDRAȘI: Îmi amintesc vuietul stadionului. Era un meci de Cupă UEFA cu Inter Milano. Când am primit mingea la marginea careului, nu m-am gândit nicio secundă. Am șutat din instinct. Când am văzut plasa tremurând, pentru o secundă s-a făcut liniște pe San Siro. A fost momentul carierei mele.
-
-REPORTER: Cum a fost rivalitatea Steaua - Rapid în acea perioadă?
-
-ALEXANDRU ANDRAȘI: Era altceva. Nu era ură, era pasiune. Stadionul Giulești vibra la propriu. Jucam pentru suporteri, nu pentru contracte de milioane. Plecarea mea de la Steaua a fost dureroasă, dar Rapidul m-a adoptat imediat.
-
-REPORTER: Ce sfat aveți pentru tinerii atacanți de azi?
-
-ALEXANDRU ANDRAȘI: Să nu le fie frică să greșească. Un atacant care nu ratează e un atacant care nu încearcă. Curajul face diferența între un jucător bun și unul memorabil.`,
+                    content: `REPORTER: Domnule Andrași, lumea vă asociază mereu cu acel gol fabulos de pe San Siro. Ce vă mai amintiți de atunci?\n\nALEXANDRU ANDRAȘI: Îmi amintesc vuietul stadionului. Era un meci de Cupă UEFA cu Inter Milano. Când am primit mingea la marginea careului, nu m-am gândit nicio secundă. Am șutat din instinct. Când am văzut plasa tremurând, pentru o secundă s-a făcut liniște pe San Siro. A fost momentul carierei mele.\n\nREPORTER: Cum a fost rivalitatea Steaua - Rapid în acea perioadă?\n\nALEXANDRU ANDRAȘI: Era altceva. Nu era ură, era pasiune. Stadionul Giulești vibra la propriu. Jucam pentru suporteri, nu pentru contracte de milioane.`,
                     date: 'Ianuarie 2026'
                 }
             ]);
             console.log("✅ Știri detaliate adăugate!");
         }
 
-        // --- RUTE API ---
+        // --- RUTE AUTHENTICARE & SECURITY ---
 
         app.post('/api/users/login', async (req, res) => {
             try {
@@ -153,9 +167,67 @@ ALEXANDRU ANDRAȘI: Să nu le fie frică să greșească. Un atacant care nu rat
                 const user = await User.findOne({ email });
                 if (!user) return res.status(401).json({ success: false, message: "Utilizator inexistent." });
                 if (user.isBanned) return res.status(403).json({ success: false, message: "Cont blocat." });
+                
                 const isMatch = await bcrypt.compare(password, user.password);
                 if (!isMatch) return res.status(401).json({ success: false, message: "Parolă incorectă." });
-                res.status(200).json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+
+                // [1] Generare Token JWT
+                const token = jwt.sign({ _id: user._id, role: user.role }, TOKEN_SECRET);
+
+                res.status(200).json({ 
+                    success: true, 
+                    token: token, // Trimitem token-ul la frontend
+                    user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } 
+                });
+            } catch (err) { res.status(500).json({ error: "Eroare server." }); }
+        });
+
+        // [5] RECUPERARE PAROLĂ - Pasul 1: Cere link
+        app.post('/api/users/forgot-password', async (req, res) => {
+            try {
+                const { email } = req.body;
+                const user = await User.findOne({ email });
+                if (!user) return res.status(404).json({ message: "Email necunoscut." });
+
+                // Generăm token unic
+                const token = crypto.randomBytes(20).toString('hex');
+                user.resetPasswordToken = token;
+                user.resetPasswordExpires = Date.now() + 3600000; // 1 oră valabilitate
+                await user.save();
+
+                // Trimitem email (Simulare în consolă dacă nu e configurat SMTP)
+                const resetUrl = `http://localhost:5173/reset-password/${token}`;
+                console.log(`📧 [EMAIL SIMULAT] Link resetare pentru ${email}: ${resetUrl}`);
+
+                // Decomentează liniile de mai jos dacă ai configurat 'transporter' corect
+                /*
+                await transporter.sendMail({
+                    to: user.email,
+                    subject: 'Resetare Parolă - Scouting App',
+                    text: `Ai cerut resetarea parolei. Click aici: ${resetUrl}`
+                });
+                */
+
+                res.json({ success: true, message: "Link-ul de resetare a fost trimis pe email." });
+            } catch (err) { res.status(500).json({ error: "Eroare server." }); }
+        });
+
+        // [5] RECUPERARE PAROLĂ - Pasul 2: Resetează efectiv
+        app.post('/api/users/reset-password/:token', async (req, res) => {
+            try {
+                const user = await User.findOne({ 
+                    resetPasswordToken: req.params.token, 
+                    resetPasswordExpires: { $gt: Date.now() } 
+                });
+
+                if (!user) return res.status(400).json({ message: "Token invalid sau expirat." });
+
+                user.password = req.body.password; // Middleware-ul 'pre save' o va cripta
+                user.resetPasswordToken = undefined;
+                user.resetPasswordExpires = undefined;
+                await user.save();
+
+                res.json({ success: true, message: "Parola a fost schimbată!" });
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
@@ -172,10 +244,15 @@ ALEXANDRU ANDRAȘI: Să nu le fie frică să greșească. Un atacant care nu rat
             try {
                 const { name, email, password } = req.body;
                 if (await User.findOne({ email })) return res.status(400).json({ success: false, message: "Email folosit." });
+                
                 const role = email === 'admin.nou@scout.ro' ? 'admin' : 'user';
                 const newUser = new User({ name, email, password, role });
                 await newUser.save();
-                res.status(201).json({ success: true, user: { name: newUser.name, email: newUser.email, role: newUser.role } });
+                
+                // [1] Token și la register
+                const token = jwt.sign({ _id: newUser._id, role: newUser.role }, TOKEN_SECRET);
+
+                res.status(201).json({ success: true, token, user: { name: newUser.name, email: newUser.email, role: newUser.role } });
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
@@ -209,8 +286,13 @@ ALEXANDRU ANDRAȘI: Să nu le fie frică să greșească. Un atacant care nu rat
         });
 
         // --- RUTE ADMIN ---
+        // [2] Paginare Useri Admin
         app.get('/api/admin/users', async (req, res) => {
-            const users = await User.find().select('-password').limit(100);
+            const { page = 1, limit = 50 } = req.query; // Default 50 useri
+            const users = await User.find()
+                .select('-password')
+                .limit(limit * 1)
+                .skip((page - 1) * limit);
             res.json(users);
         });
 
@@ -224,7 +306,6 @@ ALEXANDRU ANDRAȘI: Să nu le fie frică să greșească. Un atacant care nu rat
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
-        // ADMIN: ADAUGĂ ȘTIRE
         app.post('/api/admin/stories', async (req, res) => {
             try {
                 const newStory = new Story(req.body);
@@ -233,19 +314,13 @@ ALEXANDRU ANDRAȘI: Să nu le fie frică să greșească. Un atacant care nu rat
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
-        // ADMIN: MODIFICĂ ȘTIRE (NOU)
         app.put('/api/admin/stories/:id', async (req, res) => {
             try {
-                const updatedStory = await Story.findByIdAndUpdate(
-                    req.params.id,
-                    req.body,
-                    { new: true }
-                );
+                const updatedStory = await Story.findByIdAndUpdate(req.params.id, req.body, { new: true });
                 res.json(updatedStory);
             } catch (err) { res.status(500).json({ error: "Eroare update" }); }
         });
 
-        // ADMIN: ȘTERGE ȘTIRE
         app.delete('/api/admin/stories/:id', async (req, res) => {
             try {
                 await Story.findByIdAndDelete(req.params.id);
@@ -253,7 +328,8 @@ ALEXANDRU ANDRAȘI: Să nu le fie frică să greșească. Un atacant care nu rat
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
-        // --- RUTE PUBLICE ---
+        // --- RUTE PUBLICE & MARKETPLACE ---
+
         app.get('/api/stories', async (req, res) => {
             const stories = await Story.find().sort({ postedAt: -1 });
             res.json(stories);
@@ -264,9 +340,34 @@ ALEXANDRU ANDRAȘI: Să nu le fie frică să greșească. Un atacant care nu rat
             res.json(players);
         });
 
+        // [2, 6] LISTINGS CU PAGINARE ȘI FILTRARE AVANSATĂ
         app.get('/api/listings', async (req, res) => {
-            const listings = await Listing.find().sort({ posted: -1 });
-            res.json(listings);
+            const { page = 1, limit = 50, search, category } = req.query;
+            
+            // Construim Query-ul dinamic
+            let query = {};
+            if (search) {
+                // Caută în titlu SAU descriere
+                query.$or = [
+                    { title: { $regex: search, $options: 'i' } },
+                    { description: { $regex: search, $options: 'i' } }
+                ];
+            }
+            if (category && category !== 'Toate') {
+                query.category = category;
+            }
+
+            try {
+                const listings = await Listing.find(query)
+                    .sort({ posted: -1 })
+                    .limit(limit * 1)
+                    .skip((page - 1) * limit);
+                
+                // Returnăm array-ul direct pentru compatibilitate cu frontend-ul tău actual
+                res.json(listings);
+            } catch (err) {
+                res.status(500).json({ error: "Eroare server" });
+            }
         });
 
         app.post('/api/listings', async (req, res) => {
