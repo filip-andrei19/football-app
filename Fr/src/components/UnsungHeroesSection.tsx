@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Newspaper, ChevronDown, Calendar, User, Loader2 } from 'lucide-react';
+import { Heart, ChevronDown, Calendar, Loader2 } from 'lucide-react'; // Am pus Heart în loc de Newspaper
 
 interface Story {
   _id: string;
@@ -36,9 +36,11 @@ export function UnsungHeroesSection() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+      
+      {/* HEADER CU INIMĂ */}
       <div className="text-center mb-12">
         <h2 className="text-4xl font-black text-gray-900 dark:text-white mb-4 flex items-center justify-center gap-3">
-          <Newspaper className="w-10 h-10 text-blue-600" />
+          <Heart className="w-10 h-10 text-red-600 fill-current" />
           Eroii din Spatele Cortinei
         </h2>
         <p className="text-xl text-gray-500 max-w-2xl mx-auto">
@@ -76,7 +78,7 @@ export function UnsungHeroesSection() {
                 </div>
               </div>
 
-              <div className="relative pl-6 border-l-4 border-green-500 mb-6">
+              <div className="relative pl-6 border-l-4 border-red-500 mb-6"> {/* Am schimbat border-ul in rosu */}
                 <p className="text-xl text-gray-600 dark:text-gray-300 italic font-medium">
                   "{story.excerpt}"
                 </p>
@@ -90,10 +92,10 @@ export function UnsungHeroesSection() {
 
               <button 
                 onClick={() => setExpandedStory(expandedStory === story._id ? null : story._id)}
-                className="w-full mt-2 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold uppercase tracking-wider text-gray-500 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all group"
+                className="w-full mt-2 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold uppercase tracking-wider text-gray-500 hover:text-red-600 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all group"
               >
                 {expandedStory === story._id ? 'Ascunde Povestea' : 'Citește Povestea Completă'}
-                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expandedStory === story._id ? 'rotate-180 text-blue-600' : 'group-hover:translate-y-1'}`} />
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expandedStory === story._id ? 'rotate-180 text-red-600' : 'group-hover:translate-y-1'}`} />
               </button>
             </div>
           ))}

@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
+
+// --- IMPORTURI SECURITATE & PERFORMANȚĂ ---
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
@@ -18,8 +20,8 @@ const PORT = process.env.PORT || 3000;
 // ==========================================
 // CONFIGURĂRI MIDDLEWARE
 // ==========================================
-app.use(helmet());
-app.use(compression());
+app.use(helmet());      
+app.use(compression()); 
 app.use(cors());
 
 const limiter = rateLimit({
@@ -77,7 +79,7 @@ const listingSchema = new mongoose.Schema({
 });
 const Listing = mongoose.models.Listing || mongoose.model('Listing', listingSchema);
 
-// D. STORY
+// D. STORY (MODEL PENTRU EROI)
 const storySchema = new mongoose.Schema({
     title: String,
     role: String,
@@ -98,17 +100,18 @@ const startServer = async () => {
         await mongoose.connect(process.env.MONGO_URI);
         console.log('✅ Conectat la MongoDB.');
 
-        // --- POPULARE AUTOMATĂ CU EROII CERUȚI (Dacă nu există) ---
+        // --- POPULARE AUTOMATĂ (SEEDING) ---
+        // Adăugăm poveștile inițiale dacă baza de date este goală
         const storyCount = await Story.countDocuments();
         if (storyCount === 0) {
-            console.log("📂 Seeding stories...");
+            console.log("📂 Baza de date Eroi goală. Se adaugă interviurile inițiale...");
             await Story.insertMany([
                 {
                     title: 'Gheorghe "Gică" Popescu',
                     role: 'Șef Departament Scouting',
                     organization: 'Academia FC Viitorul / Farul',
                     excerpt: 'După 30 de ani de descoperit talente, ne împărtășește secretele prin care identifică viitoarele stele ale României.',
-                    content: 'Un interviu exclusiv despre criteriile de selecție la cel mai înalt nivel, importanța mentalității și cum vede viitorul echipei naționale.',
+                    content: 'Într-un interviu exclusiv, "Baciul" vorbește despre criteriile invizibile pe care le caută la un junior: mentalitatea de învingător, disciplina tactică și inteligența în joc. Popescu detaliază structura Academiei de la Ovidiu și cum tehnologia modernă ajută scouterii să monitorizeze mii de copii anual.',
                     date: 'Decembrie 2025'
                 },
                 {
@@ -116,11 +119,11 @@ const startServer = async () => {
                     role: 'Fost Atacant',
                     organization: 'Steaua / Rapid București',
                     excerpt: 'Povestea plecării de la Steaua și golul memorabil marcat pe San Siro împotriva lui Inter Milano.',
-                    content: 'Amintiri din perioada de aur a fotbalului românesc, rivalitățile din București și emoția de a marca pe unul dintre cele mai mari stadioane ale lumii.',
+                    content: 'O călătorie emoționantă în timp, rememorând perioada romantică a fotbalului românesc. Andrași povestește despre presiunea de a juca în Ghencea, rivalitatea intensă cu Dinamo și Rapid, și sentimentul unic de a înscrie pe unul dintre cele mai mari stadioane ale Europei într-un meci de cupă europeană.',
                     date: 'Ianuarie 2026'
                 }
             ]);
-            console.log("✅ Știri inițiale adăugate!");
+            console.log("✅ Interviuri inițiale adăugate!");
         }
 
         // --- RUTE API ---
@@ -137,6 +140,7 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
+        // RUTA SINCRONIZARE
         app.post('/api/users/refresh', async (req, res) => {
             try {
                 const { email } = req.body;
@@ -186,6 +190,7 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
+        // --- RUTE ADMIN ---
         app.get('/api/admin/users', async (req, res) => {
             const users = await User.find().select('-password').limit(100);
             res.json(users);
@@ -212,10 +217,11 @@ const startServer = async () => {
         app.delete('/api/admin/stories/:id', async (req, res) => {
             try {
                 await Story.findByIdAndDelete(req.params.id);
-                res.json({ success: true, message: "Știre ștearsă." });
+                res.json({ success: true });
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
 
+        // --- RUTE PUBLICE ---
         app.get('/api/stories', async (req, res) => {
             const stories = await Story.find().sort({ postedAt: -1 });
             res.json(stories);
@@ -245,8 +251,10 @@ const startServer = async () => {
                 const user = await User.findOne({ email });
                 const listing = await Listing.findById(req.params.id);
                 if (!listing) return res.status(404).json({ error: "Produsul nu există" });
+                
                 const isOwner = listing.sellerEmail === email;
                 const isAdmin = (user && user.role === 'admin') || email === 'admin.nou@scout.ro';
+
                 if (!isOwner && !isAdmin) {
                     return res.status(403).json({ error: "Nu ai permisiunea să ștergi acest produs." });
                 }
