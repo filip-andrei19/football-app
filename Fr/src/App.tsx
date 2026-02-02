@@ -31,8 +31,9 @@ export default function App() {
   const [user, setUser] = useState<{name: string, email: string, role?: string, avatar?: string} | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-  // [NOU] State pentru camera de chat activă (Default: 'general_chat')
+  // --- [STATE PENTRU CHAT] ---
   const [activeChatRoom, setActiveChatRoom] = useState("general_chat");
+  const [activeChatPartner, setActiveChatPartner] = useState<{ name: string, avatar?: string } | null>(null);
 
   useEffect(() => {
     const syncUserData = async () => {
@@ -84,6 +85,13 @@ export default function App() {
       localStorage.removeItem('footballAppUser');
   };
 
+  // --- [FUNCȚIE HANDLER CHAT] ---
+  // Aceasta va fi apelată din CollectorsHub când dai click pe un vânzător
+  const handleOpenChat = (roomId: string, partner: { name: string, avatar?: string }) => {
+      setActiveChatRoom(roomId);
+      setActiveChatPartner(partner);
+  };
+
   const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
 
   const navigation = [
@@ -101,8 +109,8 @@ export default function App() {
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
       
-      // [NOU] Trimitem funcția de setare a chatului către CollectorsHub
-      case 'collectors': return <CollectorsHubSection user={user!} onOpenChat={(roomId: string) => setActiveChatRoom(roomId)} />;
+      // [NOU] Trimitem funcția extinsă 'handleOpenChat'
+      case 'collectors': return <CollectorsHubSection user={user!} onOpenChat={handleOpenChat} />;
       
       case 'profile': return <ProfileSection user={user!} onUpdateUser={handleLoginSuccess} onLogout={handleLogout} />; 
       case 'admin': return isAdmin ? <AdminDashboard user={user!} /> : <HomeSection user={user!} onNavigate={setActiveSection} />;
@@ -189,9 +197,15 @@ export default function App() {
         {renderSection()}
       </main>
 
-      {/* --- [MODIFICAT] CHAT WIDGET CU ID DINAMIC --- */}
-      {/* Când activeChatRoom se schimbă, chatul se conectează la noua cameră */}
-      {user && <ChatWidget key={activeChatRoom} user={user} roomID={activeChatRoom} />}
+      {/* --- [MODIFICAT] CHAT WIDGET - TRIMITEM ȘI PARTENERUL --- */}
+      {user && (
+          <ChatWidget 
+            key={activeChatRoom} 
+            user={user} 
+            roomID={activeChatRoom} 
+            chatPartner={activeChatPartner} // <--- AICI ESTE CHEIA
+          />
+      )}
     </div>
   );
 }
