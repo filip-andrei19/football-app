@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, AlertTriangle, Loader2 } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, AlertTriangle, Loader2, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast'; 
 import { SkeletonCard } from './SkeletonCard'; 
 
 // --- MODIFICARE INTERFAȚĂ PRODUCT ---
-// Adăugăm sellerAvatar (opțional)
 interface Product {
   _id: string; 
   title: string; 
@@ -15,18 +14,19 @@ interface Product {
   seller: string; 
   sellerEmail: string; 
   sellerPhone: string; 
-  sellerAvatar?: string; // <--- NOU: Avatarul vânzătorului
+  sellerAvatar?: string; 
   posted: string; 
 }
 
 // --- MODIFICARE PROPS ---
-// Adăugăm avatar la user
+// Am adăugat onOpenChat pentru a putea deschide fereastra de chat din App.tsx
 interface CollectorsHubProps { 
     user: { 
         name: string; 
         email: string; 
-        avatar?: string; // <--- NOU: Avatarul userului curent
+        avatar?: string; 
     }; 
+    onOpenChat: (roomId: string) => void; // <--- FUNCȚIA NOUĂ PENTRU CHAT
 }
 
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
@@ -34,12 +34,12 @@ const API_URL = 'https://football-backend-m2a4.onrender.com/api/listings';
 
 // --- COMPONENTE AJUTĂTOARE ---
 
-const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void }) => {
+// Am adăugat prop-ul 'onStartChat' la ProductCard
+const ProductCard = ({ product, user, onDelete, onClick, onStartChat }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void, onStartChat: (p: Product) => void }) => {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const images = product.images || [];
   const sellerName = product.seller || "Necunoscut";
 
-  // State pentru a gestiona erorile de încărcare a avatarului
   const [avatarError, setAvatarError] = useState(false);
 
   return (
@@ -67,13 +67,12 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
         <div className="pt-4 border-t border-gray-50 mt-auto flex items-center justify-between">
             <div className="flex items-center gap-3 text-sm text-gray-500">
               
-              {/* --- AICI AFIȘĂM POZA DACĂ EXISTĂ --- */}
               {product.sellerAvatar && !avatarError ? (
                   <img 
                       src={product.sellerAvatar} 
                       alt={sellerName} 
                       className="w-9 h-9 rounded-full object-cover border border-gray-200 shadow-sm"
-                      onError={() => setAvatarError(true)} // Fallback la eroare
+                      onError={() => setAvatarError(true)} 
                   />
               ) : (
                   <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase shadow-sm border border-white">
@@ -87,9 +86,23 @@ const ProductCard = ({ product, user, onDelete, onClick }: { product: Product, u
               </div>
             </div>
 
-            {(product.sellerEmail === user.email || !product.sellerEmail) && (
-              <button onClick={(e) => { e.stopPropagation(); onDelete(product._id); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors z-20 relative"><Trash2 className="w-4 h-4" /></button>
-            )}
+            <div className="flex gap-2">
+                {/* --- BUTON CHAT (NOU) --- */}
+                {/* Apare doar dacă produsul NU este al tău */}
+                {product.sellerEmail !== user.email && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onStartChat(product); }} 
+                        className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors z-20 relative" 
+                        title="Trimite mesaj vânzătorului"
+                    >
+                        <MessageCircle className="w-5 h-5" />
+                    </button>
+                )}
+
+                {(product.sellerEmail === user.email || !product.sellerEmail) && (
+                  <button onClick={(e) => { e.stopPropagation(); onDelete(product._id); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors z-20 relative"><Trash2 className="w-4 h-4" /></button>
+                )}
+            </div>
         </div>
       </div>
     </div>
@@ -101,7 +114,7 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
     const [isZoomed, setIsZoomed] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const images = product.images || [];
-    const [avatarError, setAvatarError] = useState(false); // State eroare avatar modal
+    const [avatarError, setAvatarError] = useState(false); 
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!isZoomed) return;
@@ -123,12 +136,10 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
                     <div className="mb-6"><span className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase">{product.category || "General"}</span><h2 className="text-3xl font-black text-gray-900 leading-tight mb-2">{product.title}</h2><div className="text-2xl font-bold text-green-600">{product.price}</div></div>
                     <div className="prose prose-sm text-gray-600 mb-8 border-t border-b border-gray-100 py-6"><h4 className="text-gray-900 font-bold mb-2">Descriere:</h4><p className="whitespace-pre-wrap">{product.description}</p></div>
                     
-                    {/* Contact Vânzător în Modal */}
                     <div className="mt-auto bg-gray-50 rounded-2xl p-6 border border-gray-100">
                         <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><User className="w-5 h-5 text-blue-600" /> Detalii Contact</h3>
                         <div className="space-y-4">
                             
-                            {/* --- AFIȘARE POZĂ ÎN MODAL --- */}
                             <div className="flex items-center gap-4 mb-4">
                                 {product.sellerAvatar && !avatarError ? (
                                     <img 
@@ -156,8 +167,8 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
     );
 };
 
-// --- LOGICA PRINCIPALĂ MODIFICATĂ ---
-export function CollectorsHubSection({ user }: CollectorsHubProps) {
+// --- LOGICA PRINCIPALĂ ---
+export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'market' | 'my_items'>('market');
@@ -215,13 +226,12 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     const promise = fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // --- AICI TRIMITEM ȘI AVATARUL ---
         body: JSON.stringify({ 
             ...newProduct, 
             seller: user.name, 
             sellerEmail: user.email, 
             sellerPhone: newProduct.phone,
-            sellerAvatar: user.avatar // <--- TRIMITEM POZA CURENTĂ A USERULUI
+            sellerAvatar: user.avatar 
         })
     });
 
@@ -259,6 +269,14 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
     }
   };
 
+  // --- FUNCȚIA PENTRU PORNIRE CHAT ---
+  const handleStartChat = (product: Product) => {
+      // Creăm un ID unic: "listing_ID_PRODUS"
+      const roomId = `listing_${product._id}`;
+      onOpenChat(roomId); // Apelăm funcția din părinte (App.tsx)
+      toast.success(`Chat deschis pentru: ${product.title}`);
+  };
+
   const filteredProducts = products.filter(p => {
     if (!p) return false;
     const titleMatch = (p.title || "").toLowerCase().includes(searchTerm.toLowerCase());
@@ -288,7 +306,7 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
       ) : filteredProducts.length === 0 ? (
         <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200"><Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" /><h3 className="text-lg font-bold text-gray-500">Niciun produs găsit.</h3></div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{filteredProducts.map((product) => (<ProductCard key={product._id} product={product} user={user} onDelete={handleDelete} onClick={setSelectedProduct} />))}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{filteredProducts.map((product) => (<ProductCard key={product._id} product={product} user={user} onDelete={handleDelete} onClick={setSelectedProduct} onStartChat={handleStartChat} />))}</div>
       )}
 
       {selectedProduct && <ProductViewModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
@@ -313,7 +331,6 @@ export function CollectorsHubSection({ user }: CollectorsHubProps) {
               </div>
               <div><label className="block text-sm font-bold text-gray-700 mb-1">Descriere <span className="text-red-500">*</span></label><textarea className="w-full p-3 border rounded-xl h-24 resize-none outline-none focus:ring-2 focus:ring-blue-500" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})}></textarea></div>
               
-              {/* Afișare user curent în modal (preview) */}
               <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
                   {user.avatar ? <img src={user.avatar} className="w-8 h-8 rounded-full object-cover border border-white shadow-sm"/> : <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">{user.name.charAt(0)}</div>}
                   <div className="flex flex-col">

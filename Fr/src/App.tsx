@@ -10,7 +10,7 @@ import { CollectorsHubSection } from './components/CollectorsHubSection';
 import { AuthPage } from './components/AuthPage';
 import { ProfileSection } from './components/ProfileSection'; 
 import { AdminDashboard } from './components/AdminDashboard'; 
-import { ChatWidget } from './components/ChatWidget'; // <--- [NOU] IMPORT CHAT
+import { ChatWidget } from './components/ChatWidget'; 
 
 const Button = ({ children, onClick, variant, className, disabled }: any) => {
   const baseStyle = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50";
@@ -31,16 +31,15 @@ export default function App() {
   const [user, setUser] = useState<{name: string, email: string, role?: string, avatar?: string} | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-  // --- SINCRONIZARE AUTOMATĂ (Fix pentru Desktop -> Mobile) ---
+  // [NOU] State pentru camera de chat activă (Default: 'general_chat')
+  const [activeChatRoom, setActiveChatRoom] = useState("general_chat");
+
   useEffect(() => {
     const syncUserData = async () => {
         const savedUser = localStorage.getItem('footballAppUser');
         if (savedUser) {
             const localUser = JSON.parse(savedUser);
-            // 1. Setăm inițial ce avem în local (ca să se încarce rapid)
             setUser(localUser);
-
-            // 2. Cerem datele NOI de la server (în background)
             try {
                 const res = await fetch('https://football-backend-m2a4.onrender.com/api/users/refresh', {
                     method: 'POST',
@@ -51,25 +50,18 @@ export default function App() {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.success) {
-                        console.log("🔄 Date sincronizate cu serverul:", data.user);
-                        // 3. Actualizăm interfața și memoria telefonului
                         setUser(data.user);
                         localStorage.setItem('footballAppUser', JSON.stringify(data.user));
                     }
                 }
-            } catch (err) {
-                console.error("Nu s-a putut sincroniza profilul:", err);
-            }
+            } catch (err) { console.error("Sync error", err); }
         }
-
-        // Tema
         const savedTheme = localStorage.getItem('footballAppTheme') as 'light' | 'dark';
         if (savedTheme) {
             setTheme(savedTheme);
             if (savedTheme === 'dark') document.documentElement.classList.add('dark');
         }
     };
-
     syncUserData();
   }, []);
 
@@ -82,7 +74,6 @@ export default function App() {
   };
 
   const handleLoginSuccess = (userData: any) => {
-      console.log("LOGIN SUCCESS:", userData);
       setUser(userData);
       localStorage.setItem('footballAppUser', JSON.stringify(userData));
   };
@@ -109,7 +100,10 @@ export default function App() {
       case 'diaspora': return <DiasporaSection />;
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
-      case 'collectors': return <CollectorsHubSection user={user!} />;
+      
+      // [NOU] Trimitem funcția de setare a chatului către CollectorsHub
+      case 'collectors': return <CollectorsHubSection user={user!} onOpenChat={(roomId: string) => setActiveChatRoom(roomId)} />;
+      
       case 'profile': return <ProfileSection user={user!} onUpdateUser={handleLoginSuccess} onLogout={handleLogout} />; 
       case 'admin': return isAdmin ? <AdminDashboard user={user!} /> : <HomeSection user={user!} onNavigate={setActiveSection} />;
       default: return <HomeSection user={user!} onNavigate={setActiveSection} />;
@@ -148,20 +142,17 @@ export default function App() {
               </button>
 
               <div className="hidden md:flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-slate-700">
-                 
                  {isAdmin && (
                      <Button variant={activeSection === 'admin' ? 'default' : 'ghost'} onClick={() => setActiveSection('admin')} className="text-red-600 hover:text-red-700 font-bold border border-red-100 dark:border-red-900/30">
                         <ShieldAlert className="h-4 w-4 mr-1" /> Admin
                      </Button>
                  )}
-
                  <Button variant={activeSection === 'profile' ? 'secondary' : 'ghost'} onClick={() => setActiveSection('profile')} className="gap-2">
                     <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-300 overflow-hidden">
                         {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover"/> : user.name.charAt(0)}
                     </div>
                     <span className="max-w-[100px] truncate">{user.name.split(' ')[0]}</span>
                  </Button>
-
                  <Button variant="destructive" onClick={handleLogout} className="gap-2 ml-1" title="Deconectare">
                      <LogOut className="h-4 w-4" />
                      <span className="hidden lg:inline">Ieșire</span>
@@ -182,13 +173,11 @@ export default function App() {
                 <item.icon className="h-5 w-5" /> {item.label}
               </Button>
             ))}
-            
             {isAdmin && (
                 <Button variant="destructive" onClick={() => { setActiveSection('admin'); setMobileMenuOpen(false); }} className="w-full justify-start gap-3 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200">
                     <ShieldAlert className="h-5 w-5" /> Panou Administrator
                 </Button>
             )}
-
             <div className="border-t border-gray-100 dark:border-slate-800 my-2"></div>
             <Button variant="ghost" onClick={() => { setActiveSection('profile'); setMobileMenuOpen(false); }} className="w-full justify-start gap-3"><Settings className="h-5 w-5" /> Profilul Meu</Button>
             <Button variant="destructive" onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="w-full justify-start gap-3"><LogOut className="h-5 w-5" /> Deconectare</Button>
@@ -200,8 +189,9 @@ export default function App() {
         {renderSection()}
       </main>
 
-      {/* --- [NOU] WIDGET CHAT GLOBAL --- */}
-      {user && <ChatWidget user={user} roomID="general_chat" />}
+      {/* --- [MODIFICAT] CHAT WIDGET CU ID DINAMIC --- */}
+      {/* Când activeChatRoom se schimbă, chatul se conectează la noua cameră */}
+      {user && <ChatWidget key={activeChatRoom} user={user} roomID={activeChatRoom} />}
     </div>
   );
 }
