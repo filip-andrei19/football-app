@@ -5,11 +5,11 @@ const cors = require('cors');
 const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
 
-// --- [NOU] IMPORTURI PENTRU CHAT, CLOUDINARY, VALIDARE ---
-const http = require('http');            // Necesar pentru a lega Socket.io
-const { Server } = require("socket.io"); // Chat
-const cloudinary = require('cloudinary').v2; // Poze
-const Joi = require('joi');              // Validare
+// --- IMPORTURI NOI (Chat, Cloudinary, Validare) ---
+const http = require('http');            
+const { Server } = require("socket.io"); 
+const cloudinary = require('cloudinary').v2; 
+const Joi = require('joi');              
 
 // --- IMPORTURI SECURITATE & PERFORMANȚĂ ---
 const helmet = require('helmet');
@@ -21,19 +21,19 @@ const { hardResetAndLoad } = require('./services/initialLoad');
 const { runDailySmartSync } = require('./services/smartSync'); 
 
 const app = express();
-// --- [MODIFICARE] CREĂM SERVERUL HTTP PENTRU A SUPORTA SI CHAT-UL ---
+// CREĂM SERVERUL HTTP PENTRU A SUPORTA SI CHAT-UL
 const server = http.createServer(app); 
 const PORT = process.env.PORT || 3000;
 const TOKEN_SECRET = process.env.JWT_SECRET || 'cheie_secreta_foarte_lunga_si_sigura';
 
-// --- [NOU] CONFIGURARE CLOUDINARY ---
+// CONFIGURARE CLOUDINARY
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_NAME, 
   api_key: process.env.CLOUDINARY_KEY, 
   api_secret: process.env.CLOUDINARY_SECRET
 });
 
-// --- [NOU] CONFIGURARE SOCKET.IO (CHAT) ---
+// CONFIGURARE SOCKET.IO (CHAT)
 const io = new Server(server, {
     cors: {
         origin: "*", 
@@ -58,14 +58,16 @@ app.use(limiter);
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// --- [NOU] SCHEME DE VALIDARE (JOI) ---
-const registerSchema = Joi.object({
+// --- SCHEME DE VALIDARE (JOI) ---
+// [MODIFICAT] Am redenumit variabila ca să nu se bată cap în cap cu cea din baza de date
+const registerValidationSchema = Joi.object({
     name: Joi.string().min(3).required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required()
 });
 
-const listingSchema = Joi.object({
+// [MODIFICAT] Am redenumit variabila (listingSchema -> listingValidationSchema)
+const listingValidationSchema = Joi.object({
     title: Joi.string().min(5).required(),
     category: Joi.string().required(),
     price: Joi.string().required(),
@@ -81,7 +83,7 @@ const listingSchema = Joi.object({
 // 1. MODELE BAZA DE DATE
 // ==========================================
 
-// A. USER (Păstrat intact)
+// A. USER
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -103,7 +105,7 @@ userSchema.pre('save', async function(next) {
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// --- [NOU] B. MESSAGE (PENTRU CHAT) ---
+// B. MESSAGE (PENTRU CHAT)
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
@@ -113,11 +115,11 @@ const messageSchema = new mongoose.Schema({
 });
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
 
-// C. PLAYER (Păstrat intact - critic pentru baza de date)
+// C. PLAYER
 const playerSchema = new mongoose.Schema({}, { strict: false });
 const Player = mongoose.models.Player || mongoose.model('Player', playerSchema);
 
-// D. LISTING (Păstrat intact structura, adăugat index text)
+// D. LISTING (Aici folosim numele 'listingSchema' pentru Baza de Date)
 const listingSchema = new mongoose.Schema({
     title: { type: String, required: true },
     category: { type: String, required: true },
@@ -130,10 +132,10 @@ const listingSchema = new mongoose.Schema({
     sellerAvatar: { type: String, default: '' },
     posted: { type: Date, default: Date.now }
 });
-listingSchema.index({ title: 'text', description: 'text' }); // [NOU] Pentru căutare rapidă
+listingSchema.index({ title: 'text', description: 'text' });
 const Listing = mongoose.models.Listing || mongoose.model('Listing', listingSchema);
 
-// E. STORY (Păstrat intact)
+// E. STORY
 const storySchema = new mongoose.Schema({
     title: String,
     role: String,
@@ -145,7 +147,7 @@ const storySchema = new mongoose.Schema({
 });
 const Story = mongoose.models.Story || mongoose.model('Story', storySchema);
 
-// --- [NOU] HELPER UPLOAD IMAGINE (CLOUDINARY) ---
+// --- HELPER UPLOAD IMAGINE ---
 const uploadImage = async (base64Str) => {
     try {
         if (!base64Str || !base64Str.startsWith('data:image')) return base64Str;
@@ -164,7 +166,7 @@ const uploadImage = async (base64Str) => {
 // 2. LOGICA SERVER & RUTE
 // ==========================================
 
-// --- [NOU] LOGICA DE SOCKET.IO (CHAT) ---
+// LOGICA CHAT (Socket.io)
 io.on("connection", (socket) => {
     console.log(`User Connected: ${socket.id}`);
 
@@ -216,8 +218,8 @@ const startServer = async () => {
 
         app.post('/api/users/register', async (req, res) => {
             try {
-                // [NOU] Validăm datele înainte de înregistrare
-                const { error } = registerSchema.validate(req.body);
+                // Validăm datele folosind schema redenumită
+                const { error } = registerValidationSchema.validate(req.body);
                 if (error) return res.status(400).json({ success: false, message: error.details[0].message });
 
                 const { name, email, password } = req.body;
@@ -232,7 +234,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
-        // Ruta Refresh User (pentru sync)
         app.post('/api/users/refresh', async (req, res) => {
             const user = await User.findOne({ email: req.body.email });
             if(user) res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
@@ -302,7 +303,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare" }); }
         });
         
-        // --- [NOU] Rute Admin extra (delete/update stories) ---
         app.delete('/api/admin/stories/:id', async (req, res) => {
              await Story.findByIdAndDelete(req.params.id); 
              res.json({success: true}); 
@@ -315,13 +315,12 @@ const startServer = async () => {
             res.json(stories);
         });
 
-        // --- [CRITIC] RUTA JUCĂTORI (PĂSTRATĂ) ---
         app.get('/api/sport/players', async (req, res) => {
             const players = await Player.find().limit(5000); 
             res.json(players);
         });
 
-        // [MODIFICAT] Ruta Listings (suportă filtrare și paginare)
+        // RUTA LISTINGS (Paginare + Căutare)
         app.get('/api/listings', async (req, res) => {
             const { page = 1, limit = 50, search, category } = req.query;
             let query = {};
@@ -332,11 +331,11 @@ const startServer = async () => {
             res.json(listings);
         });
 
-        // [MODIFICAT] Ruta POST Listings (Upload Cloudinary + Validare)
+        // RUTA POST LISTING (Upload + Validare)
         app.post('/api/listings', async (req, res) => {
             try {
-                // Validare
-                const { error } = listingSchema.validate(req.body);
+                // Validare cu Joi (schema redenumită)
+                const { error } = listingValidationSchema.validate(req.body);
                 if (error) return res.status(400).json({ error: error.details[0].message });
 
                 // Upload Poze
@@ -346,14 +345,14 @@ const startServer = async () => {
 
                 const newListing = new Listing({
                     ...req.body,
-                    images: validImages // Folosim URL-urile din Cloud
+                    images: validImages 
                 });
                 await newListing.save();
                 res.status(201).json(newListing);
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
-        // --- [CRITIC] DELETE LISTING (LOGICA VECHE PĂSTRATĂ PENTRU ADMIN) ---
+        // DELETE LISTING (Cu permisiuni)
         app.delete('/api/listings/:id', async (req, res) => {
             try {
                 const { email } = req.body; 
@@ -363,8 +362,6 @@ const startServer = async () => {
                 if (!listing) return res.status(404).json({ error: "Produsul nu există" });
 
                 const isOwner = listing.sellerEmail === email;
-                
-                // MODIFICARE AICI: Permitem ștergerea dacă email-ul este cel de admin
                 const isAdmin = (user && user.role === 'admin') || email === 'admin.nou@scout.ro';
 
                 if (!isOwner && !isAdmin) {
@@ -388,7 +385,7 @@ const startServer = async () => {
             await runDailySmartSync(); 
         }, { timezone: "Europe/Bucharest" });
 
-        // --- [MODIFICAT] FOLOSIM server.listen ÎN LOC DE app.listen ---
+        // PORNIRE SERVER
         server.listen(PORT, () => console.log(`🚀 Server + Chat pornit pe http://localhost:${PORT}`));
 
     } catch (error) { console.error("❌ Eroare critică:", error.message); }
