@@ -78,14 +78,14 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// [3] SCHEME DE VALIDARE JOI (REDENUMIRE PENTRU A EVITA CONFLICTE)
+// [3] SCHEME DE VALIDARE JOI
 const registerSchema = Joi.object({
     name: Joi.string().min(3).required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required()
 });
 
-// !!! AM REDENUMIT ASTA DIN 'listingSchema' IN 'listingValidationSchema' !!!
+// SCHEMĂ REDENUMITĂ PENTRU A EVITA CONFLICTE
 const listingValidationSchema = Joi.object({
     title: Joi.string().min(5).required(),
     category: Joi.string().required(),
@@ -124,7 +124,7 @@ userSchema.pre('save', async function(next) {
 });
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// B. MESSAGE (NOU PENTRU CHAT - ADĂUGAT)
+// B. MESSAGE (NOU PENTRU CHAT)
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
@@ -331,6 +331,55 @@ const startServer = async () => {
                 await user.save();
                 res.json({ success: true, message: "Parolă schimbată." });
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
+        });
+
+        // --- [NOU] RUTA PENTRU LISTA DE CONVERSAȚII (INBOX) ---
+        app.post('/api/messages/conversations', async (req, res) => {
+            try {
+                const { email, name } = req.body;
+
+                // 1. Găsim produsele tale (unde ești vânzător)
+                const myListings = await Listing.find({ sellerEmail: email });
+                const myListingIds = myListings.map(l => l._id.toString());
+                
+                // 2. Găsim mesajele scrise de tine
+                const myMessages = await Message.find({ author: name }).distinct('room');
+
+                // 3. Combinăm toate camerele relevante
+                const myListingRooms = myListingIds.map(id => `listing_${id}`);
+                const allRelevantRooms = [...new Set([...myListingRooms, ...myMessages])];
+                const listingRooms = allRelevantRooms.filter(r => r && r.startsWith('listing_'));
+
+                const conversations = [];
+
+                for (const room of listingRooms) {
+                    const listingId = room.split('_')[1];
+                    const listing = await Listing.findById(listingId);
+
+                    if (listing) {
+                        const lastMsg = await Message.findOne({ room }).sort({ timestamp: -1 });
+                        
+                        // Afișăm dacă există mesaje sau dacă e produsul tău
+                        if (lastMsg || myListingIds.includes(listingId)) {
+                            conversations.push({
+                                roomId: room,
+                                title: listing.title,
+                                image: listing.images[0] || '', 
+                                lastMessage: lastMsg ? lastMsg.message : "Începe conversația...",
+                                timestamp: lastMsg ? lastMsg.timestamp : listing.posted,
+                                isMyListing: listing.sellerEmail === email
+                            });
+                        }
+                    }
+                }
+                
+                // Sortăm după data ultimului mesaj
+                conversations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                res.json(conversations);
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ error: "Eroare la încărcarea conversațiilor." });
+            }
         });
 
         // RUTE MARKETPLACE (CU CLOUDINARY & VALIDARE)
