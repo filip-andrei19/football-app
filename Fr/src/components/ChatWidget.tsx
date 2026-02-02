@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
-import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users } from 'lucide-react';
+import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users, CheckCheck } from 'lucide-react';
 
 const socket = io("https://football-backend-m2a4.onrender.com");
 
@@ -22,18 +22,14 @@ interface Conversation {
 
 interface ChatWidgetProps {
   user: any;
-  roomID?: string; // Facem roomID opțional
-  chatPartner?: any; // Păstrăm compatibilitatea
+  roomID?: string; 
+  chatPartner?: any; 
   onClose?: () => void;
 }
 
 export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  
-  // VIEW: 'list' = lista de chat-uri, 'chat' = conversația deschisă
   const [view, setView] = useState<'list' | 'chat'>('list');
-  
-  // Date despre conversația curentă
   const [activeRoom, setActiveRoom] = useState(initialRoomID || "general_chat");
   const [activeTitle, setActiveTitle] = useState("Chat General");
   
@@ -43,17 +39,15 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-  // 1. Daca primim un roomID din exterior (din CollectorsHub), deschidem direct chat-ul
   useEffect(() => {
     if (initialRoomID && initialRoomID !== "general_chat") {
         setActiveRoom(initialRoomID);
-        setActiveTitle("Produs Selectat"); // Titlu temporar
+        setActiveTitle("Produs Selectat"); 
         setView('chat');
         setIsOpen(true);
     }
   }, [initialRoomID]);
 
-  // 2. Încarcă Lista de Conversații când deschizi widget-ul
   useEffect(() => {
       if (isOpen) {
           fetchConversations();
@@ -70,8 +64,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
           if (res.ok) {
               const data = await res.json();
               setConversations(data);
-              
-              // Actualizăm titlul dacă suntem într-o cameră specifică
               if (activeRoom.startsWith('listing_')) {
                   const currentConv = data.find((c: any) => c.roomId === activeRoom);
                   if (currentConv) setActiveTitle(currentConv.title);
@@ -80,15 +72,13 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
       } catch (e) { console.error("Err loading chats", e); }
   };
 
-  // 3. Conectare la Socket (doar când ești în view 'chat')
   useEffect(() => {
     if (isOpen && view === 'chat' && activeRoom) {
       socket.emit("join_room", activeRoom);
-      setMessageList([]); // Curățăm lista vizuală înainte de a încărca istoricul
+      setMessageList([]); 
     }
   }, [isOpen, view, activeRoom]);
 
-  // 4. Ascultă mesajele
   useEffect(() => {
     socket.on("receive_message", (data: Message) => {
       if (data.room === activeRoom) {
@@ -121,22 +111,19 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
     }
   };
 
-  // Navigare: Intră în chat
   const enterChat = (roomId: string, title: string) => {
       setActiveRoom(roomId);
       setActiveTitle(title);
       setView('chat');
   };
 
-  // Navigare: Înapoi la listă
   const goBack = () => {
       setView('list');
-      fetchConversations(); // Reîmprospătăm lista pentru a vedea mesajele noi
+      fetchConversations(); 
   };
 
   return (
     <div className="fixed bottom-4 right-4 z-[100] flex flex-col items-end font-sans">
-        {/* BUTON FLOTANT */}
         {!isOpen && (
             <button onClick={() => setIsOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-xl transition-transform hover:scale-110 flex items-center gap-2">
                 <MessageCircle className="w-6 h-6" />
@@ -144,11 +131,9 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
             </button>
         )}
 
-        {/* FEREASTRA PRINCIPALĂ */}
         {isOpen && (
             <div className="bg-white dark:bg-slate-900 w-80 md:w-96 h-[500px] rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
                 
-                {/* HEADER ALBASTRU */}
                 <div className="bg-blue-600 p-4 flex justify-between items-center text-white shadow-md shrink-0">
                     <div className="flex items-center gap-2">
                         {view === 'chat' && (
@@ -163,13 +148,10 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                     <button onClick={() => setIsOpen(false)} className="hover:bg-blue-500 p-1 rounded-full"><X className="w-5 h-5"/></button>
                 </div>
 
-                {/* CONTENT */}
                 <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-950/50 relative">
                     
-                    {/* --- VIEW 1: LISTA DE CHATURI --- */}
                     {view === 'list' && (
                         <div className="p-2 space-y-2">
-                            {/* Chat General Fix */}
                             <div onClick={() => enterChat("general_chat", "Chat General")} className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-gray-100 dark:border-slate-700 cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><Users className="w-5 h-5"/></div>
                                 <div>
@@ -195,7 +177,10 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                                 <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate max-w-[150px]">{conv.title}</h4>
                                                 {conv.isMyListing && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold">VÂND</span>}
                                             </div>
-                                            <p className="text-xs text-gray-500 truncate w-full mt-0.5">{conv.lastMessage}</p>
+                                            <div className="flex justify-between items-center mt-0.5">
+                                                <p className="text-xs text-gray-500 truncate w-32">{conv.lastMessage}</p>
+                                                <span className="text-[10px] text-gray-400">{new Date(conv.timestamp).toLocaleDateString()}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 ))
@@ -203,32 +188,47 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                         </div>
                     )}
 
-                    {/* --- VIEW 2: CONVERSAȚIA ACTIVĂ --- */}
                     {view === 'chat' && (
                         <div className="flex flex-col h-full">
-                            <div className="flex-1 p-4 space-y-3 overflow-y-auto">
+                            <div className="flex-1 p-4 space-y-4 overflow-y-auto">
                                 {messageList.length === 0 && (
-                                    <div className="text-center text-gray-400 text-xs mt-10">Începe conversația...</div>
+                                    <div className="text-center text-gray-400 text-xs mt-10 p-4 bg-white/50 rounded-xl mx-4">
+                                        👋 Începe conversația despre <b>{activeTitle}</b>.
+                                    </div>
                                 )}
                                 {messageList.map((msg, idx) => {
                                     const isMe = msg.author === user.name;
                                     return (
                                         <div key={idx} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                                            <div className={`px-4 py-2 rounded-2xl text-sm max-w-[85%] break-words shadow-sm ${
+                                            
+                                            {/* --- [NOU] NUMELE VÂNZĂTORULUI EVIDENȚIAT --- */}
+                                            {!isMe && (
+                                                <div className="ml-3 mb-1 flex items-center gap-1">
+                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">
+                                                        {msg.author}
+                                                    </span>
+                                                    {/* Badge opțional dacă vrei să marchezi clar */}
+                                                    <span className="text-[9px] bg-gray-200 dark:bg-slate-700 px-1 rounded text-gray-500">Vânzător</span>
+                                                </div>
+                                            )}
+
+                                            <div className={`px-4 py-2.5 rounded-2xl text-sm max-w-[85%] break-words shadow-sm relative group ${
                                                 isMe 
                                                 ? "bg-blue-600 text-white rounded-br-none" 
                                                 : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-slate-700 rounded-bl-none"
                                             }`}>
                                                 {msg.message}
+                                                <div className={`text-[9px] text-right mt-1 opacity-70 flex justify-end items-center gap-1 ${isMe ? "text-blue-100" : "text-gray-400"}`}>
+                                                    {msg.time}
+                                                    {isMe && <CheckCheck className="w-3 h-3"/>}
+                                                </div>
                                             </div>
-                                            <span className="text-[10px] text-gray-400 mt-1 ml-1 mr-1">{msg.time} • {msg.author.split(' ')[0]}</span>
                                         </div>
                                     );
                                 })}
                                 <div ref={messagesEndRef} />
                             </div>
                             
-                            {/* ZONA DE INPUT */}
                             <div className="p-3 border-t dark:border-slate-800 bg-white dark:bg-slate-900 flex gap-2 items-center shrink-0">
                                 <input 
                                     type="text" 
