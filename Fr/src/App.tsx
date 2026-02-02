@@ -10,6 +10,7 @@ import { CollectorsHubSection } from './components/CollectorsHubSection';
 import { AuthPage } from './components/AuthPage';
 import { ProfileSection } from './components/ProfileSection'; 
 import { AdminDashboard } from './components/AdminDashboard'; 
+import { ChatWidget } from './components/ChatWidget'; // <--- [NOU] IMPORT CHAT
 
 const Button = ({ children, onClick, variant, className, disabled }: any) => {
   const baseStyle = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50";
@@ -198,6 +199,9 @@ export default function App() {
       <main className="flex-1 container mx-auto px-4 py-8 relative">
         {renderSection()}
       </main>
+
+      {/* --- [NOU] WIDGET CHAT GLOBAL --- */}
+      {user && <ChatWidget user={user} roomID="general_chat" />}
     </div>
   );
 }
