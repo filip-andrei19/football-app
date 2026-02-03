@@ -124,12 +124,13 @@ userSchema.pre('save', async function(next) {
 });
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// B. MESSAGE (NOU PENTRU CHAT)
+// B. MESSAGE (NOU - ADĂUGAT isDeleted)
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
     message: String,
     time: String,
+    isDeleted: { type: Boolean, default: false }, // <--- PENTRU SOFT DELETE
     timestamp: { type: Date, default: Date.now }
 });
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
@@ -203,7 +204,6 @@ io.on("connection", (socket) => {
             await newMessage.save();
             
             // [MODIFICAT] Trimitem obiectul SALVAT (care conține _id), nu datele brute
-            // Asta e esențial pentru ca frontend-ul să aibă ID-ul necesar ștergerii
             io.in(data.room).emit("receive_message", newMessage);
         } catch(e) { console.error(e); }
     });
@@ -341,14 +341,11 @@ const startServer = async () => {
             try {
                 const { email, name } = req.body;
 
-                // 1. Găsim produsele tale (unde ești vânzător)
                 const myListings = await Listing.find({ sellerEmail: email });
                 const myListingIds = myListings.map(l => l._id.toString());
                 
-                // 2. Găsim mesajele scrise de tine
                 const myMessages = await Message.find({ author: name }).distinct('room');
 
-                // 3. Combinăm toate camerele relevante
                 const myListingRooms = myListingIds.map(id => `listing_${id}`);
                 const allRelevantRooms = [...new Set([...myListingRooms, ...myMessages])];
                 const listingRooms = allRelevantRooms.filter(r => r && r.startsWith('listing_'));
@@ -362,7 +359,6 @@ const startServer = async () => {
                     if (listing) {
                         const lastMsg = await Message.findOne({ room }).sort({ timestamp: -1 });
                         
-                        // Afișăm dacă există mesaje sau dacă e produsul tău
                         if (lastMsg || myListingIds.includes(listingId)) {
                             conversations.push({
                                 roomId: room,
@@ -376,7 +372,6 @@ const startServer = async () => {
                     }
                 }
                 
-                // Sortăm după data ultimului mesaj
                 conversations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 res.json(conversations);
             } catch (err) {
@@ -399,7 +394,6 @@ const startServer = async () => {
                 });
                 await newMessage.save();
 
-                // Notificăm socket-ul
                 io.in(room).emit("receive_message", newMessage);
 
                 res.json({ success: true, message: "Mesaj trimis!" });
@@ -409,25 +403,28 @@ const startServer = async () => {
             }
         });
 
-        // --- [NOU] RUTA PENTRU ȘTERGERE MESAJ ---
+        // --- [NOU] RUTA PENTRU ȘTERGERE MESAJ (SOFT DELETE) ---
         app.delete('/api/messages/:id', async (req, res) => {
             try {
                 const messageId = req.params.id;
-                const { user } = req.body; // Numele celui care cere ștergerea
+                const { user } = req.body; 
 
                 const msg = await Message.findById(messageId);
                 
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
 
-                // Verificare de securitate: Poți șterge doar mesajul tău!
+                // Verificare de securitate
                 if (msg.author !== user) {
                     return res.status(403).json({ error: "Nu poți șterge mesajele altora." });
                 }
 
-                await Message.findByIdAndDelete(messageId);
+                // SOFT DELETE - Marcam ca șters și golim textul
+                msg.isDeleted = true;
+                msg.message = ""; // Golim mesajul pentru privacy
+                await msg.save();
 
-                // Anunțăm socket-ul că s-a șters un mesaj (ca să dispară instant la ambii)
-                io.in(msg.room).emit("message_deleted", messageId);
+                // Anunțăm socket-ul că s-a actualizat mesajul (nu șters de tot)
+                io.in(msg.room).emit("message_updated", msg);
 
                 res.json({ success: true });
             } catch (err) {
@@ -439,11 +436,9 @@ const startServer = async () => {
         // RUTE MARKETPLACE (CU CLOUDINARY & VALIDARE)
         app.post('/api/listings', async (req, res) => {
             try {
-                // [3] Validare
                 const { error } = listingValidationSchema.validate(req.body);
                 if (error) return res.status(400).json({ error: error.details[0].message });
 
-                // [2] Upload Imagini în Cloud
                 const imagePromises = req.body.images.map(img => uploadImage(img));
                 const uploadedImages = await Promise.all(imagePromises);
                 const validImages = uploadedImages.filter(img => img !== null);

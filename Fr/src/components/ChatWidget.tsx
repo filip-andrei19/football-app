@@ -11,7 +11,7 @@ interface Message {
   author: string;
   message: string;
   time: string;
-  isDeleted?: boolean; // <--- NOU
+  isDeleted?: boolean;
 }
 
 interface Conversation {
@@ -42,9 +42,8 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-  // --- LOGICĂ DETECTARE ȘI SCURTARE LINK-URI ---
+  // --- LOGICĂ NOUĂ PENTRU TEXTE LUNGI ---
   const renderMessageContent = (msg: Message) => {
-    // 1. Dacă e șters, afișăm stilul "WhatsApp Deleted"
     if (msg.isDeleted) {
         return (
             <span className="italic flex items-center gap-1.5 opacity-60 text-[13px]">
@@ -53,12 +52,15 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
         );
     }
 
-    // 2. Altfel, randăm textul normal cu link-uri
     const text = msg.message;
+    // Regex pentru link-uri care încep cu http/https
     const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    // 1. Spargem textul după URL-uri
     const parts = text.split(urlRegex);
 
     return parts.map((part, index) => {
+        // CAZUL 1: Este un LINK valid (începe cu http)
         if (part.match(urlRegex)) {
             const displayText = part.length > 30 ? part.substring(0, 27) + "..." : part;
             return (
@@ -66,8 +68,26 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                     {displayText} <ExternalLink className="w-3 h-3"/>
                 </a>
             );
-        } else {
-            return <span key={index}>{part}</span>;
+        } 
+        // CAZUL 2: Este TEXT normal (dar poate fi un cod lung fără spații)
+        else {
+            // Spargem după spații ca să analizăm fiecare cuvânt
+            const words = part.split(' ');
+            return (
+                <span key={index}>
+                    {words.map((word, wIdx) => {
+                        // Dacă un cuvânt e mai lung de 30 caractere, îl tăiem forțat
+                        if (word.length > 30) {
+                            return (
+                                <span key={wIdx} title={word} className="break-all cursor-help">
+                                    {word.substring(0, 27)}...{' '}
+                                </span>
+                            );
+                        }
+                        return <span key={wIdx}>{word} </span>;
+                    })}
+                </span>
+            );
         }
     });
   };
@@ -123,8 +143,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
         setTimeout(scrollToBottom, 100);
     });
 
-    // [NOU] Ascultăm actualizarea mesajului (pentru ștergere)
-    // Când serverul zice "message_updated", noi înlocuim mesajul vechi cu cel nou (șters)
     socket.on("message_updated", (updatedMsg: Message) => {
         setMessageList((currentList) => 
             currentList.map(m => m._id === updatedMsg._id ? updatedMsg : m)
@@ -238,7 +256,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                             </div>
                                             <div className="flex justify-between items-center mt-0.5">
                                                 <p className="text-xs text-gray-500 truncate w-32">
-                                                    {/* Dacă e șters în preview, afișăm text specific */}
                                                     {conv.lastMessage === "" ? <i>Mesaj șters</i> : conv.lastMessage}
                                                 </p>
                                                 <span className="text-[10px] text-gray-400">{new Date(conv.timestamp).toLocaleDateString()}</span>
@@ -278,7 +295,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                                 : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-slate-700 rounded-bl-none"
                                             } ${msg.isDeleted ? "opacity-80" : ""}`}>
                                                 
-                                                {/* RANDAREA CONȚINUTULUI */}
+                                                {/* AICI ESTE FIX-UL VIZUAL */}
                                                 <div>{renderMessageContent(msg)}</div>
 
                                                 <div className={`text-[9px] text-right mt-1 opacity-70 flex justify-end items-center gap-1 ${isMe ? "text-blue-100" : "text-gray-400"}`}>
@@ -286,11 +303,11 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                                     {isMe && !msg.isDeleted && <CheckCheck className="w-3 h-3"/>}
                                                 </div>
 
-                                                {/* --- BUTON ȘTERGERE (Doar dacă nu e deja șters) --- */}
+                                                {/* BUTON ȘTERGERE FIXAT SUS-STÂNGA */}
                                                 {isMe && !msg.isDeleted && (
                                                     <button 
                                                         onClick={() => handleDeleteMessage(msg._id)}
-                                                        className="absolute -left-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                                        className="absolute -left-8 top-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
                                                         title="Șterge mesaj"
                                                     >
                                                         <Trash2 className="w-4 h-4"/>
