@@ -333,7 +333,7 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
-        // --- [NOU] RUTA PENTRU LISTA DE CONVERSAȚII (INBOX) ---
+        // --- RUTA PENTRU LISTA DE CONVERSAȚII (INBOX) ---
         app.post('/api/messages/conversations', async (req, res) => {
             try {
                 const { email, name } = req.body;
@@ -379,6 +379,32 @@ const startServer = async () => {
             } catch (err) {
                 console.error(err);
                 res.status(500).json({ error: "Eroare la încărcarea conversațiilor." });
+            }
+        });
+
+        // --- [NOU] RUTA PENTRU TRIMITERE MESAJ (API HTTP -> SOCKET) ---
+        // Aceasta permite trimiterea unui mesaj fără a deschide conexiunea socket dedicată (folosit la Share)
+        app.post('/api/messages/send', async (req, res) => {
+            try {
+                const { room, author, message, time } = req.body;
+                
+                // 1. Salvăm mesajul în baza de date
+                const newMessage = new Message({
+                    room,
+                    author,
+                    message,
+                    time,
+                    timestamp: new Date()
+                });
+                await newMessage.save();
+
+                // 2. Trimitem notificarea prin Socket.io către toți cei conectați la acea cameră
+                io.in(room).emit("receive_message", newMessage);
+
+                res.json({ success: true, message: "Mesaj trimis!" });
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ error: "Eroare la trimiterea mesajului." });
             }
         });
 
