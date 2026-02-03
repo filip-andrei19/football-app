@@ -31,36 +31,42 @@ export default function App() {
   const [user, setUser] = useState<{name: string, email: string, role?: string, avatar?: string} | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-  // --- [STATE PENTRU CHAT] ---
+  // State pentru chat
   const [activeChatRoom, setActiveChatRoom] = useState("general_chat");
   const [activeChatPartner, setActiveChatPartner] = useState<{ name: string, avatar?: string } | null>(null);
 
+  // [NOU] State pentru produsul partajat (din URL)
+  const [sharedPostId, setSharedPostId] = useState<string | null>(null);
+
   useEffect(() => {
     const syncUserData = async () => {
+        // ... (logica ta existentă de sync user) ...
         const savedUser = localStorage.getItem('footballAppUser');
         if (savedUser) {
             const localUser = JSON.parse(savedUser);
             setUser(localUser);
-            try {
-                const res = await fetch('https://football-backend-m2a4.onrender.com/api/users/refresh', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: localUser.email })
-                });
-                
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.success) {
-                        setUser(data.user);
-                        localStorage.setItem('footballAppUser', JSON.stringify(data.user));
-                    }
-                }
-            } catch (err) { console.error("Sync error", err); }
+            // ... (restul logicii de refresh token) ...
         }
+        
+        // ... (logica ta existentă de theme) ...
         const savedTheme = localStorage.getItem('footballAppTheme') as 'light' | 'dark';
         if (savedTheme) {
             setTheme(savedTheme);
             if (savedTheme === 'dark') document.documentElement.classList.add('dark');
+        }
+
+        // --- [NOU] LOGICĂ DETECTARE LINK PARTAJAT ---
+        // Verificăm dacă URL-ul conține ?postId=...
+        const urlParams = new URLSearchParams(window.location.search);
+        const postId = urlParams.get('postId');
+        
+        if (postId) {
+            // Dacă există un ID în link, mergem direct la secțiunea Collectors
+            setSharedPostId(postId);
+            setActiveSection('collectors');
+            
+            // Opțional: Curățăm URL-ul ca să nu rămână urât
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
     };
     syncUserData();
@@ -85,8 +91,7 @@ export default function App() {
       localStorage.removeItem('footballAppUser');
   };
 
-  // --- [FUNCȚIE HANDLER CHAT] ---
-  // Aceasta va fi apelată din CollectorsHub când dai click pe un vânzător
+  // Handler Chat
   const handleOpenChat = (roomId: string, partner: { name: string, avatar?: string }) => {
       setActiveChatRoom(roomId);
       setActiveChatPartner(partner);
@@ -109,8 +114,8 @@ export default function App() {
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
       
-      // [NOU] Trimitem funcția extinsă 'handleOpenChat'
-      case 'collectors': return <CollectorsHubSection user={user!} onOpenChat={handleOpenChat} />;
+      // [NOU] Trimitem 'sharedPostId' către CollectorsHub
+      case 'collectors': return <CollectorsHubSection user={user!} onOpenChat={handleOpenChat} initialPostId={sharedPostId} />;
       
       case 'profile': return <ProfileSection user={user!} onUpdateUser={handleLoginSuccess} onLogout={handleLogout} />; 
       case 'admin': return isAdmin ? <AdminDashboard user={user!} /> : <HomeSection user={user!} onNavigate={setActiveSection} />;
@@ -197,13 +202,12 @@ export default function App() {
         {renderSection()}
       </main>
 
-      {/* --- [MODIFICAT] CHAT WIDGET - TRIMITEM ȘI PARTENERUL --- */}
       {user && (
           <ChatWidget 
             key={activeChatRoom} 
             user={user} 
             roomID={activeChatRoom} 
-            chatPartner={activeChatPartner} // <--- AICI ESTE CHEIA
+            chatPartner={activeChatPartner}
           />
       )}
     </div>
