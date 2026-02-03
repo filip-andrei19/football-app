@@ -211,6 +211,14 @@ io.on("connection", (socket) => {
     socket.on("disconnect", () => {
         console.log("User Disconnected", socket.id);
     });
+    socket.on("typing", (room) => {
+        // Trimitem doar celorlalți din cameră, nu și celui care scrie
+        socket.to(room).emit("display_typing", { isTyping: true });
+    });
+
+    socket.on("stop_typing", (room) => {
+        socket.to(room).emit("display_typing", { isTyping: false });
+    });
 });
 
 const startServer = async () => {
