@@ -201,7 +201,10 @@ io.on("connection", (socket) => {
         try {
             const newMessage = new Message(data);
             await newMessage.save();
-            io.in(data.room).emit("receive_message", data);
+            
+            // [MODIFICAT] Trimitem obiectul SALVAT (care conține _id), nu datele brute
+            // Asta e esențial pentru ca frontend-ul să aibă ID-ul necesar ștergerii
+            io.in(data.room).emit("receive_message", newMessage);
         } catch(e) { console.error(e); }
     });
 
@@ -382,13 +385,11 @@ const startServer = async () => {
             }
         });
 
-        // --- [NOU] RUTA PENTRU TRIMITERE MESAJ (API HTTP -> SOCKET) ---
-        // Aceasta permite trimiterea unui mesaj fără a deschide conexiunea socket dedicată (folosit la Share)
+        // --- RUTA PENTRU TRIMITERE MESAJ (API HTTP -> SOCKET) ---
         app.post('/api/messages/send', async (req, res) => {
             try {
                 const { room, author, message, time } = req.body;
                 
-                // 1. Salvăm mesajul în baza de date
                 const newMessage = new Message({
                     room,
                     author,
@@ -398,13 +399,40 @@ const startServer = async () => {
                 });
                 await newMessage.save();
 
-                // 2. Trimitem notificarea prin Socket.io către toți cei conectați la acea cameră
+                // Notificăm socket-ul
                 io.in(room).emit("receive_message", newMessage);
 
                 res.json({ success: true, message: "Mesaj trimis!" });
             } catch (err) {
                 console.error(err);
                 res.status(500).json({ error: "Eroare la trimiterea mesajului." });
+            }
+        });
+
+        // --- [NOU] RUTA PENTRU ȘTERGERE MESAJ ---
+        app.delete('/api/messages/:id', async (req, res) => {
+            try {
+                const messageId = req.params.id;
+                const { user } = req.body; // Numele celui care cere ștergerea
+
+                const msg = await Message.findById(messageId);
+                
+                if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
+
+                // Verificare de securitate: Poți șterge doar mesajul tău!
+                if (msg.author !== user) {
+                    return res.status(403).json({ error: "Nu poți șterge mesajele altora." });
+                }
+
+                await Message.findByIdAndDelete(messageId);
+
+                // Anunțăm socket-ul că s-a șters un mesaj (ca să dispară instant la ambii)
+                io.in(msg.room).emit("message_deleted", messageId);
+
+                res.json({ success: true });
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ error: "Eroare la ștergere." });
             }
         });
 
