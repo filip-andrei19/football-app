@@ -1,6 +1,5 @@
-// ... (Importurile rămân la fel) ...
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, AlertTriangle, Loader2, MessageCircle } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, AlertTriangle, Loader2, MessageCircle, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast'; 
 import { SkeletonCard } from './SkeletonCard'; 
 
@@ -19,30 +18,42 @@ interface Product {
   posted: string; 
 }
 
-// [MODIFICAT] Acum onOpenChat primește și un obiect partner
 interface CollectorsHubProps { 
     user: { 
         name: string; 
         email: string; 
         avatar?: string; 
     }; 
-    onOpenChat: (roomId: string, partner: { name: string, avatar?: string }) => void; // <--- MODIFICARE AICI
+    onOpenChat: (roomId: string, partner: { name: string, avatar?: string }) => void;
 }
 
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
 const API_URL = 'https://football-backend-m2a4.onrender.com/api/listings'; 
 
-// ... (Componentele ProductCard și ProductViewModal rămân IDENTICE cu ce ți-am dat anterior) ...
-// (Doar asigură-te că ProductCard primește onStartChat și îl apelează la click pe butonul de mesaj)
-// Voi pune aici doar definirea ProductCard pentru referință, restul e identic:
+// --- [NOU] FUNCȚIE HELPER PENTRU SHARE ---
+const handleShareProduct = async (product: Product) => {
+    const shareData = {
+        title: `Romania Scout: ${product.title}`,
+        text: `Salut! Uite ce am găsit pe Romania Scout:\n\n⚽ ${product.title}\n💰 Preț: ${product.price}\n\nDescriere: ${product.description.substring(0, 100)}...`,
+        url: window.location.href // Sau link direct către produs dacă ai routing (ex: /listing/id)
+    };
+
+    try {
+        if (navigator.share) {
+            await navigator.share(shareData);
+        } else {
+            // Fallback pentru desktop-uri vechi: Copiere în clipboard
+            await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+            toast.success("Detaliile au fost copiate în clipboard!", { icon: '📋' });
+        }
+    } catch (err) {
+        console.log("Share anulat sau eroare:", err);
+    }
+};
+
+// --- COMPONENTE ---
 
 const ProductCard = ({ product, user, onDelete, onClick, onStartChat }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void, onStartChat: (p: Product) => void }) => {
-  // ... codul din interior e la fel ca în răspunsul anterior ...
-  // DOAR ASIGURĂ-TE CĂ BUTONUL DE MESAJ FACE ASTA:
-  // onClick={(e) => { e.stopPropagation(); onStartChat(product); }}
-  
-  // (Pentru a nu repeta 100 de linii inutile, poți păstra ProductCard din răspunsul meu anterior, este perfect compatibil)
-  
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const images = product.images || [];
   const sellerName = product.seller || "Necunoscut";
@@ -83,6 +94,11 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat }: { produc
             </div>
 
             <div className="flex gap-2">
+                {/* [NOU] BUTON SHARE PE CARD */}
+                <button onClick={(e) => { e.stopPropagation(); handleShareProduct(product); }} className="text-gray-500 hover:bg-gray-100 p-2 rounded-lg transition-colors z-20 relative" title="Partajează">
+                    <Share2 className="w-5 h-5" />
+                </button>
+
                 {product.sellerEmail !== user.email && (
                     <button onClick={(e) => { e.stopPropagation(); onStartChat(product); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors z-20 relative" title="Trimite Mesaj">
                         <MessageCircle className="w-5 h-5" />
@@ -99,7 +115,6 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat }: { produc
   );
 };
 
-// ... ProductViewModal (identic cu ce aveai) ...
 const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () => void }) => {
     const [activeIdx, setActiveIdx] = useState(0);
     const [isZoomed, setIsZoomed] = useState(false);
@@ -116,7 +131,18 @@ const ProductViewModal = ({ product, onClose }: { product: Product, onClose: () 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl animate-in zoom-in-95 relative">
-                <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg"><X className="w-6 h-6" /></button>
+                
+                {/* Butoane Header Modal */}
+                <div className="absolute top-4 right-4 z-50 flex gap-2">
+                    {/* [NOU] BUTON SHARE ÎN MODAL */}
+                    <button onClick={() => handleShareProduct(product)} className="bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg transition-transform hover:scale-110" title="Partajează">
+                        <Share2 className="w-6 h-6" />
+                    </button>
+                    <button onClick={onClose} className="bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg transition-transform hover:scale-110">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+
                 <div className="w-full md:w-3/5 bg-gray-100 flex flex-col relative h-[50vh] md:h-auto border-r border-gray-100">
                     <div className={`flex-1 relative overflow-hidden flex items-center justify-center bg-white ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`} onMouseMove={handleMouseMove} onClick={() => setIsZoomed(!isZoomed)} onMouseLeave={() => setIsZoomed(false)}>
                         {images.length > 0 ? (<img src={images[activeIdx]} className="max-w-full max-h-full object-contain transition-transform duration-200" style={{ transformOrigin: `${mousePos.x}% ${mousePos.y}%`, transform: isZoomed ? 'scale(2.5)' : 'scale(1)' }} />) : (<div className="text-gray-400 flex flex-col items-center"><AlertTriangle className="mb-2"/> Fără imagine</div>)}
@@ -185,15 +211,15 @@ export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
       }
   };
 
-  // ... (handleImageUpload, removeImage, handleAddProduct, handleDelete - exact ca înainte) ...
-  // Pentru a nu ocupa spațiu enorm, acestea sunt identice cu codul tău curent.
-  // Dacă vrei să le rescriu și pe ele, spune-mi, dar sunt 100% la fel.
-  
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       if (newProduct.images.length + files.length > 5) return toast.error("Maxim 5 poze!");
       Array.from(files).forEach(file => {
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error(`Fișierul ${file.name} e prea mare (Max 2MB)`);
+            return;
+        }
         const reader = new FileReader();
         reader.onloadend = () => setNewProduct(prev => ({ ...prev, images: [...prev.images, reader.result as string] }));
         reader.readAsDataURL(file);
@@ -205,6 +231,10 @@ export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
 
   const handleAddProduct = async () => {
     if (!newProduct.title) return toast.error("Titlu obligatoriu");
+    if (!newProduct.price) return toast.error("Preț obligatoriu");
+    if (!newProduct.phone) return toast.error("Telefon obligatoriu");
+    if (newProduct.images.length === 0) return toast.error("Adaugă o poză!");
+
     setIsSubmitting(true);
     try {
         const res = await fetch(API_URL, {
@@ -217,8 +247,11 @@ export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
             setShowAddModal(false);
             setNewProduct({ title: '', price: '', category: 'Tricouri', images: [], description: '', phone: '' });
             toast.success("Anunț adăugat!");
+        } else {
+            const data = await res.json();
+            toast.error(data.error || "Eroare la adăugare");
         }
-    } catch (e) { toast.error("Eroare"); } finally { setIsSubmitting(false); }
+    } catch (e) { toast.error("Eroare conexiune"); } finally { setIsSubmitting(false); }
   };
 
   const handleDelete = async (id: string) => {
@@ -227,15 +260,9 @@ export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
       setProducts(products.filter(p => p._id !== id));
   };
 
-  // --- [NOU] LOGICA PENTRU DESCHIDERE CHAT ---
   const handleStartChat = (product: Product) => {
       const roomId = `listing_${product._id}`;
-      // Trimitem și obiectul PARTNER (vânzătorul)
-      const partner = {
-          name: product.seller,
-          avatar: product.sellerAvatar
-      };
-      
+      const partner = { name: product.seller, avatar: product.sellerAvatar };
       onOpenChat(roomId, partner);
       toast.success(`Chat deschis cu ${product.seller}`);
   };
@@ -260,7 +287,7 @@ export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
       </div>
 
       <div className="space-y-4">
-        <div className="relative"><Search className="absolute left-4 top-3.5 text-gray-400 w-5 h-5" /><input type="text" placeholder="Caută..." className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+        <div className="relative"><Search className="absolute left-4 top-3.5 text-gray-400 w-5 h-5" /><input type="text" placeholder="Caută..." className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">{CATEGORIES.map((cat) => (<button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap border transition-all ${selectedCategory === cat ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{cat}</button>))}</div>
       </div>
 
