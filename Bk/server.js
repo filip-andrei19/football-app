@@ -341,11 +341,14 @@ const startServer = async () => {
             try {
                 const { email, name } = req.body;
 
+                // 1. Găsim produsele tale (unde ești vânzător)
                 const myListings = await Listing.find({ sellerEmail: email });
                 const myListingIds = myListings.map(l => l._id.toString());
                 
+                // 2. Găsim mesajele scrise de tine
                 const myMessages = await Message.find({ author: name }).distinct('room');
 
+                // 3. Combinăm toate camerele relevante
                 const myListingRooms = myListingIds.map(id => `listing_${id}`);
                 const allRelevantRooms = [...new Set([...myListingRooms, ...myMessages])];
                 const listingRooms = allRelevantRooms.filter(r => r && r.startsWith('listing_'));
@@ -359,6 +362,7 @@ const startServer = async () => {
                     if (listing) {
                         const lastMsg = await Message.findOne({ room }).sort({ timestamp: -1 });
                         
+                        // Afișăm dacă există mesaje sau dacă e produsul tău
                         if (lastMsg || myListingIds.includes(listingId)) {
                             conversations.push({
                                 roomId: room,
@@ -372,6 +376,7 @@ const startServer = async () => {
                     }
                 }
                 
+                // Sortăm după data ultimului mesaj
                 conversations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 res.json(conversations);
             } catch (err) {
@@ -394,6 +399,7 @@ const startServer = async () => {
                 });
                 await newMessage.save();
 
+                // Notificăm socket-ul
                 io.in(room).emit("receive_message", newMessage);
 
                 res.json({ success: true, message: "Mesaj trimis!" });
@@ -436,9 +442,11 @@ const startServer = async () => {
         // RUTE MARKETPLACE (CU CLOUDINARY & VALIDARE)
         app.post('/api/listings', async (req, res) => {
             try {
+                // [3] Validare
                 const { error } = listingValidationSchema.validate(req.body);
                 if (error) return res.status(400).json({ error: error.details[0].message });
 
+                // [2] Upload Imagini în Cloud
                 const imagePromises = req.body.images.map(img => uploadImage(img));
                 const uploadedImages = await Promise.all(imagePromises);
                 const validImages = uploadedImages.filter(img => img !== null);

@@ -3,7 +3,6 @@ import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, C
 import toast from 'react-hot-toast'; 
 import { SkeletonCard } from './SkeletonCard'; 
 
-// --- INTERFEȚE ---
 interface Product {
   _id: string; 
   title: string; 
@@ -27,18 +26,14 @@ interface Conversation {
 }
 
 interface CollectorsHubProps { 
-    user: { 
-        name: string; 
-        email: string; 
-        avatar?: string; 
-    }; 
+    user: { name: string; email: string; avatar?: string; }; 
     onOpenChat: (roomId: string, partner: { name: string, avatar?: string }) => void;
 }
 
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
 const API_URL = 'https://football-backend-m2a4.onrender.com/api/listings'; 
 
-// --- MODAL PARTAJARE (NOU) ---
+// --- MODAL PARTAJARE ---
 const ShareModal = ({ product, user, onClose }: { product: Product, user: any, onClose: () => void }) => {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [loading, setLoading] = useState(true);
@@ -54,9 +49,7 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: user.email, name: user.name })
             });
-            if (res.ok) {
-                setConversations(await res.json());
-            }
+            if (res.ok) setConversations(await res.json());
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
@@ -75,8 +68,13 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
         } catch (e) {}
     };
 
+    // --- [MODIFICAT] TRIMITERE CURATĂ CĂTRE CHAT ---
     const handleSendToChat = async (roomId: string, chatTitle: string) => {
-        const messageText = `👀 Uite ce am găsit:\n**${product.title}**\nPreț: ${product.price}\n${product.images[0] || ''}`;
+        // NU mai trimitem imaginea brută (product.images[0]) pentru că blochează chatul dacă e Base64.
+        // Trimitem un link curat către site.
+        const siteLink = window.location.origin; // Link-ul site-ului tău
+        
+        const messageText = `👀 Uite ce am găsit:\n**${product.title}**\nPreț: ${product.price}\nVezi anunțul aici: ${siteLink}`;
         const time = new Date().getHours() + ":" + (new Date().getMinutes() < 10 ? '0' : '') + new Date().getMinutes();
 
         try {
@@ -107,7 +105,6 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
                 </div>
                 
                 <div className="p-4 space-y-4">
-                    {/* Produs Preview */}
                     <div className="flex gap-3 bg-gray-50 dark:bg-slate-800 p-3 rounded-xl">
                         {product.images[0] && <img src={product.images[0]} className="w-12 h-12 rounded-lg object-cover"/>}
                         <div>
@@ -116,7 +113,6 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
                         </div>
                     </div>
 
-                    {/* Optiune Externa */}
                     <button onClick={handleExternalShare} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl transition-colors border border-gray-100 dark:border-slate-700">
                         <div className="bg-blue-100 text-blue-600 p-2 rounded-full"><Copy className="w-4 h-4"/></div>
                         <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Copiază Link / Alte Aplicații</span>
@@ -125,7 +121,6 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
                     <div className="border-t border-gray-100 dark:border-slate-800 my-2"></div>
                     <div className="text-xs font-bold text-gray-400 uppercase">Trimite în Chat-urile tale</div>
 
-                    {/* Lista Conversatii */}
                     <div className="max-h-60 overflow-y-auto space-y-2">
                         {loading ? <div className="text-center text-xs text-gray-400 py-4"><Loader2 className="w-4 h-4 animate-spin mx-auto"/></div> :
                          conversations.length === 0 ? <div className="text-center text-xs text-gray-400 py-4">Nu ai conversații active.</div> :
@@ -146,7 +141,6 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
     );
 };
 
-// --- COMPONENTA CARD (Modificată pentru a deschide ShareModal) ---
 const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void, onStartChat: (p: Product) => void, onShare: (p: Product) => void }) => {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const images = product.images || [];
@@ -181,7 +175,6 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }:
             </div>
 
             <div className="flex gap-2">
-                {/* BUTTON SHARE - Deschide Modalul */}
                 <button onClick={(e) => { e.stopPropagation(); onShare(product); }} className="text-gray-500 hover:bg-gray-100 p-2 rounded-lg transition-colors z-20 relative" title="Partajează">
                     <Share2 className="w-5 h-5" />
                 </button>
@@ -202,9 +195,7 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }:
   );
 };
 
-// ... (ProductViewModal rămâne neschimbat, doar adaugă onShare ca prop dacă vrei și acolo) ...
 const ProductViewModal = ({ product, onClose, onShare }: { product: Product, onClose: () => void, onShare: (p: Product) => void }) => {
-    // ... restul logicii modalului ...
     const images = product.images || [];
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
@@ -213,7 +204,6 @@ const ProductViewModal = ({ product, onClose, onShare }: { product: Product, onC
                     <button onClick={() => onShare(product)} className="bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg"><Share2 className="w-6 h-6" /></button>
                     <button onClick={onClose} className="bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg"><X className="w-6 h-6" /></button>
                 </div>
-                {/* ... restul conținutului modal (imagini, text) ... */}
                 <div className="w-full md:w-3/5 bg-gray-100 flex flex-col items-center justify-center">
                     {images.length > 0 && <img src={images[0]} className="max-w-full max-h-full object-contain" />}
                 </div>
@@ -227,7 +217,6 @@ const ProductViewModal = ({ product, onClose, onShare }: { product: Product, onC
     );
 };
 
-// --- LOGICA PRINCIPALĂ ---
 export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,7 +228,6 @@ export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
   const [selectedCategory, setSelectedCategory] = useState("Toate");
   const [newProduct, setNewProduct] = useState({ title: '', price: '', category: 'Tricouri', images: [] as string[], description: '', phone: '' });
   
-  // [NOU] State pentru Share Modal
   const [productToShare, setProductToShare] = useState<Product | null>(null);
 
   useEffect(() => { fetchProducts(); }, []);
@@ -253,16 +241,35 @@ export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
       } catch (err) { toast.error("Nu am putut încărca produsele."); } finally { setLoading(false); }
   };
 
-  // ... (handleImageUpload, removeImage, handleAddProduct, handleDelete rămân la fel) ...
-  // (Pentru scurtare, am sărit peste ele aici, dar tu le păstrezi pe cele vechi)
-  
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) { Array.from(files).forEach(file => { const reader = new FileReader(); reader.onloadend = () => setNewProduct(p => ({ ...p, images: [...p.images, reader.result as string] })); reader.readAsDataURL(file); }); }
   };
   const removeImage = (i: number) => setNewProduct(p => ({...p, images: p.images.filter((_, idx) => idx !== i)}));
-  const handleAddProduct = async () => { /* Logica ta de add */ };
-  const handleDelete = async (id: string) => { /* Logica ta de delete */ };
+  
+  const handleAddProduct = async () => {
+    if (!newProduct.title) return toast.error("Titlu obligatoriu");
+    setIsSubmitting(true);
+    try {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...newProduct, seller: user.name, sellerEmail: user.email, sellerPhone: newProduct.phone, sellerAvatar: user.avatar })
+        });
+        if (res.ok) {
+            setProducts([await res.json(), ...products]);
+            setShowAddModal(false);
+            setNewProduct({ title: '', price: '', category: 'Tricouri', images: [], description: '', phone: '' });
+            toast.success("Anunț adăugat!");
+        }
+    } catch (e) { toast.error("Eroare"); } finally { setIsSubmitting(false); }
+  };
+
+  const handleDelete = async (id: string) => {
+      if(!window.confirm("Ștergi?")) return;
+      await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email }) });
+      setProducts(products.filter(p => p._id !== id));
+  };
 
   const handleStartChat = (product: Product) => {
       const roomId = `listing_${product._id}`;
@@ -302,29 +309,14 @@ export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProducts.map((product) => (
-                <ProductCard 
-                    key={product._id} 
-                    product={product} 
-                    user={user} 
-                    onDelete={handleDelete} 
-                    onClick={setSelectedProduct} 
-                    onStartChat={handleStartChat} 
-                    onShare={(p) => setProductToShare(p)} // Setăm produsul pt share
-                />
+                <ProductCard key={product._id} product={product} user={user} onDelete={handleDelete} onClick={setSelectedProduct} onStartChat={handleStartChat} onShare={(p) => setProductToShare(p)} />
             ))}
         </div>
       )}
 
       {selectedProduct && <ProductViewModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onShare={(p) => setProductToShare(p)} />}
 
-      {/* [NOU] MODALUL DE SHARE */}
-      {productToShare && (
-          <ShareModal 
-            product={productToShare} 
-            user={user} 
-            onClose={() => setProductToShare(null)} 
-          />
-      )}
+      {productToShare && <ShareModal product={productToShare} user={user} onClose={() => setProductToShare(null)} />}
 
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
@@ -345,15 +337,6 @@ export function CollectorsHubSection({ user, onOpenChat }: CollectorsHubProps) {
                 </div>
               </div>
               <div><label className="block text-sm font-bold text-gray-700 mb-1">Descriere <span className="text-red-500">*</span></label><textarea className="w-full p-3 border rounded-xl h-24 resize-none outline-none focus:ring-2 focus:ring-blue-500" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})}></textarea></div>
-              
-              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                  {user.avatar ? <img src={user.avatar} className="w-8 h-8 rounded-full object-cover border border-white shadow-sm"/> : <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">{user.name.charAt(0)}</div>}
-                  <div className="flex flex-col">
-                      <span className="text-xs text-gray-400 font-bold uppercase">Postat de</span>
-                      <span className="text-sm font-bold text-gray-800">{user.name}</span>
-                  </div>
-              </div>
-
               <button type="button" onClick={handleAddProduct} disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg flex justify-center items-center gap-2">{isSubmitting ? <Loader2 className="animate-spin w-4 h-4"/> : 'Publică Anunțul'}</button>
             </div>
           </div>
