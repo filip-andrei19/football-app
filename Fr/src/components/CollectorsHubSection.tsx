@@ -26,7 +26,6 @@ interface Conversation {
     timestamp: string;
 }
 
-// [MODIFICAT] Props extinse pentru Chat și Deep Link
 interface CollectorsHubProps { 
     user: { 
         name: string; 
@@ -40,7 +39,7 @@ interface CollectorsHubProps {
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
 const API_URL = 'https://football-backend-m2a4.onrender.com/api/listings'; 
 
-// --- [NOU] COMPONENTA SHARE MODAL ---
+// --- MODAL PARTAJARE ---
 const ShareModal = ({ product, user, onClose }: { product: Product, user: any, onClose: () => void }) => {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [loading, setLoading] = useState(true);
@@ -139,8 +138,7 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
     );
 };
 
-// --- COMPONENTE EXISTENTE PĂSTRATE INTEGRAL ---
-
+// --- CARD PRODUS (COMPLET) ---
 const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void, onStartChat: (p: Product) => void, onShare: (p: Product) => void }) => {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const images = product.images || [];
@@ -168,6 +166,7 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }:
         <div className="flex justify-between items-start mb-2"><h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">{product.title || "Fără Titlu"}</h3><span className="bg-green-50 text-green-700 px-2 py-1 rounded-lg text-sm font-bold whitespace-nowrap">{product.price || "N/A"}</span></div>
         <p className="text-gray-500 text-sm mb-4 line-clamp-2 flex-1">{product.description || "Fără descriere."}</p>
         
+        {/* FOOTER CU AVATAR, NUME ȘI BUTOANE */}
         <div className="pt-4 border-t border-gray-50 mt-auto flex items-center justify-between">
             <div className="flex items-center gap-3 text-sm text-gray-500">
               {product.sellerAvatar && !avatarError ? (
@@ -182,12 +181,10 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }:
             </div>
 
             <div className="flex gap-2">
-                {/* BUTTON SHARE */}
                 <button onClick={(e) => { e.stopPropagation(); onShare(product); }} className="text-gray-500 hover:bg-gray-100 p-2 rounded-lg transition-colors z-20 relative" title="Partajează">
                     <Share2 className="w-5 h-5" />
                 </button>
 
-                {/* BUTTON CHAT */}
                 {product.sellerEmail !== user.email && (
                     <button onClick={(e) => { e.stopPropagation(); onStartChat(product); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors z-20 relative" title="Trimite Mesaj">
                         <MessageCircle className="w-5 h-5" />
@@ -204,6 +201,7 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }:
   );
 };
 
+// --- MODAL VIZUALIZARE (CU DETALII CONTACT REPUSE) ---
 const ProductViewModal = ({ product, onClose, onShare }: { product: Product, onClose: () => void, onShare: (p: Product) => void }) => {
     const [activeIdx, setActiveIdx] = useState(0);
     const [isZoomed, setIsZoomed] = useState(false);
@@ -220,20 +218,27 @@ const ProductViewModal = ({ product, onClose, onShare }: { product: Product, onC
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl animate-in zoom-in-95 relative">
+                
+                {/* Header Butoane Modal */}
                 <div className="absolute top-4 right-4 z-50 flex gap-2">
                     <button onClick={() => onShare(product)} className="bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg"><Share2 className="w-6 h-6" /></button>
                     <button onClick={onClose} className="bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg"><X className="w-6 h-6" /></button>
                 </div>
+
+                {/* Zona Imagini */}
                 <div className="w-full md:w-3/5 bg-gray-100 flex flex-col relative h-[50vh] md:h-auto border-r border-gray-100">
                     <div className={`flex-1 relative overflow-hidden flex items-center justify-center bg-white ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`} onMouseMove={handleMouseMove} onClick={() => setIsZoomed(!isZoomed)} onMouseLeave={() => setIsZoomed(false)}>
                         {images.length > 0 ? (<img src={images[activeIdx]} className="max-w-full max-h-full object-contain transition-transform duration-200" style={{ transformOrigin: `${mousePos.x}% ${mousePos.y}%`, transform: isZoomed ? 'scale(2.5)' : 'scale(1)' }} />) : (<div className="text-gray-400 flex flex-col items-center"><AlertTriangle className="mb-2"/> Fără imagine</div>)}
                     </div>
                     {images.length > 1 && (<div className="p-4 bg-white border-t border-gray-100 flex gap-3 overflow-x-auto justify-center z-40 relative">{images.map((img, idx) => (<button key={idx} onClick={() => { setActiveIdx(idx); setIsZoomed(false); }} className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 shrink-0 ${activeIdx === idx ? 'border-blue-600' : 'border-transparent opacity-60'}`}><img src={img} className="w-full h-full object-cover" /></button>))}</div>)}
                 </div>
+
+                {/* Zona Detalii */}
                 <div className="w-full md:w-2/5 p-8 flex flex-col overflow-y-auto bg-white">
                     <div className="mb-6"><span className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase">{product.category || "General"}</span><h2 className="text-3xl font-black text-gray-900 leading-tight mb-2">{product.title}</h2><div className="text-2xl font-bold text-green-600">{product.price}</div></div>
                     <div className="prose prose-sm text-gray-600 mb-8 border-t border-b border-gray-100 py-6"><h4 className="text-gray-900 font-bold mb-2">Descriere:</h4><p className="whitespace-pre-wrap">{product.description}</p></div>
                     
+                    {/* --- ZONA CONTACT VÂNZĂTOR RESTAURATĂ --- */}
                     <div className="mt-auto bg-gray-50 rounded-2xl p-6 border border-gray-100">
                         <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><User className="w-5 h-5 text-blue-600" /> Detalii Contact</h3>
                         <div className="space-y-4">
@@ -245,7 +250,17 @@ const ProductViewModal = ({ product, onClose, onShare }: { product: Product, onC
                                 )}
                                 <div><div className="text-xs font-bold text-gray-400 uppercase">Vânzător</div><div className="font-medium text-lg text-gray-900">{product.seller}</div></div>
                             </div>
-                            {product.sellerPhone && (<div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm"><div className="bg-green-100 p-2 rounded-full text-green-700"><Phone className="w-5 h-5" /></div><div><div className="text-xs font-bold text-gray-400 uppercase">Telefon</div><a href={`tel:${product.sellerPhone}`} className="font-mono text-lg font-bold text-gray-900">{product.sellerPhone}</a></div></div>)}
+                            
+                            {/* Numărul de telefon vizibil */}
+                            {product.sellerPhone && (
+                                <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+                                    <div className="bg-green-100 p-2 rounded-full text-green-700"><Phone className="w-5 h-5" /></div>
+                                    <div>
+                                        <div className="text-xs font-bold text-gray-400 uppercase">Telefon</div>
+                                        <a href={`tel:${product.sellerPhone}`} className="font-mono text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors">{product.sellerPhone}</a>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -266,12 +281,10 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
   const [selectedCategory, setSelectedCategory] = useState("Toate");
   const [newProduct, setNewProduct] = useState({ title: '', price: '', category: 'Tricouri', images: [] as string[], description: '', phone: '' });
   
-  // State pentru Share
   const [productToShare, setProductToShare] = useState<Product | null>(null);
 
   useEffect(() => { fetchProducts(); }, []);
 
-  // --- LOGICA AUTO-DESCHIDERE PRODUS ---
   useEffect(() => {
       if (initialPostId && products.length > 0) {
           const foundProduct = products.find(p => p._id === initialPostId);
@@ -293,15 +306,7 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files && files.length > 0) {
-      if (newProduct.images.length + files.length > 5) return toast.error("Maxim 5 poze!");
-      Array.from(files).forEach(file => {
-        if (file.size > 2 * 1024 * 1024) return toast.error(`Fișierul ${file.name} e prea mare (Max 2MB)`);
-        const reader = new FileReader();
-        reader.onloadend = () => setNewProduct(prev => ({ ...prev, images: [...prev.images, reader.result as string] }));
-        reader.readAsDataURL(file);
-      });
-    }
+    if (files) { Array.from(files).forEach(file => { const reader = new FileReader(); reader.onloadend = () => setNewProduct(p => ({ ...p, images: [...p.images, reader.result as string] })); reader.readAsDataURL(file); }); }
   };
   const removeImage = (i: number) => setNewProduct(p => ({...p, images: p.images.filter((_, idx) => idx !== i)}));
 
@@ -336,7 +341,6 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
       setProducts(products.filter(p => p._id !== id));
   };
 
-  // --- START CHAT ---
   const handleStartChat = (product: Product) => {
       const roomId = `listing_${product._id}`;
       const partner = { name: product.seller, avatar: product.sellerAvatar };
