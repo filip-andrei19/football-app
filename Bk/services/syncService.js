@@ -1,96 +1,117 @@
 const axios = require('axios');
-const mongoose = require('mongoose');
 const Player = require('../models/player'); 
 
-// --- CONFIGURARE ---
-const NEW_API_URL = "https://v3.football.api-sports.io/players?league=283&season=2023"; 
-const API_KEY = process.env.API_KEY; 
+// --- CONFIGURARE SPORTMONKS ---
+// ID-uri: 632 (Superliga), 8 (Premier League), 564 (La Liga), 384 (Serie A), 82 (Bundesliga), 301 (Ligue 1)
+const LEAGUES = "632,8,564,384,82,301";
+const API_TOKEN = process.env.SPORTMONKS_API_KEY; // Schimbă în .env din API_KEY în SPORTMONKS_API_KEY pentru claritate
 
-const resetAndSyncPlayers = async () => {
-  console.log("🚀 [SYNC] Începe verificarea API-ului...");
+const syncPlayers = async () => {
+  console.log("🚀 [SYNC] Începe sincronizarea cu Sportmonks...");
 
+  // Construim URL-ul inițial cu include-urile necesare pentru statisticile sezonului curent
+  let url = `https://api.sportmonks.com/v3/football/players?filter=league_ids:${LEAGUES}&include=statistics.season;teams`;
+  
   try {
-    // --- PASUL 1: DESCĂRCARE ---
-    console.log("🌍 [1/3] Contactez API-ul extern...");
-    
-    const config = {
-      headers: {
-        'x-rapidapi-key': API_KEY,
-        'x-rapidapi-host': 'v3.football.api-sports.io'
-      }
-    };
-
-    const response = await axios.get(NEW_API_URL, config);
-    const playersList = response.data.response; 
-
-    // --- VERIFICARE DE SIGURANȚĂ ---
-    if (!playersList || playersList.length === 0) {
-      console.error("⚠️  STOP! API-ul nu a returnat niciun jucător.");
-      console.log("🛡️  Datele vechi NU au fost șterse.");
-      
-      if (response.data.errors && Object.keys(response.data.errors).length > 0) {
-          console.log("Erori API:", response.data.errors);
-      }
-      return; 
-    }
-
-    console.log(`📦 API-ul a răspuns corect cu ${playersList.length} jucători.`);
-
-    // --- PASUL 2: CURĂȚENIE ---
-    console.log("🗑️  [2/3] Șterg datele vechi...");
-    await Player.deleteMany({}); 
-    console.log("✅ Baza de date a fost curățată.");
-
-    // --- PASUL 3: SALVARE ÎN MONGO ---
-    console.log("💾 [3/3] Salvez noile date extinse...");
     let savedCount = 0;
-    
-    for (const item of playersList) {
-      const p = item.player; 
-      const stats = item.statistics[0];
+    let page = 1;
 
-      if (p && stats) {
-          const newPlayer = new Player({
-            // 1. Date Personale de bază
-            name: p.name,
-            age: p.age,
-            nationality: p.nationality,
-            
-            // 2. DETALII FIZICE & BIO (NOI)
-            birth_date: p.birth.date,      // ex: "1998-05-22"
-            birth_place: p.birth.place,    // ex: "București"
-            height: p.height,              // ex: "185 cm"
-            weight: p.weight,              // ex: "78 kg"
+    // --- PASUL 1 & 2: LOOP PENTRU PAGINARE ---
+    while (url) {
+      console.log(`🌍 [PAGINA ${page}] Contactez Sportmonks...`);
+      
+      const response = await axios.get(url, {
+        headers: { 'Authorization': API_TOKEN }
+      });
 
-            // 3. Poziție & Echipă
-            position: stats.games.position,
-            image: p.photo,
-            team_name: stats.team.name, 
-            
-            // 4. Statistici Extinse
-            statistics_summary: {
-                team_name: stats.team.name,
-                total_goals: stats.goals.total || 0,
-                total_assists: stats.goals.assists || 0,
-                
-                // Câmpuri noi pentru Frontend:
-                total_appearances: stats.games.appearences || 0, // Meciuri
-                minutes_played: stats.games.minutes || 0,        // Minute
-                rating: stats.games.rating || null               // Nota (poate fi null)
+      const playersList = response.data.data; 
+      const pagination = response.data.pagination;
+
+      if (!playersList || playersList.length === 0) {
+        console.warn("⚠️ API-ul nu a returnat jucători pe această pagină.");
+        break;
+      }
+
+      // --- PASUL 3: SALVARE ATOMICĂ (UPSERT) ---
+      // Nu mai ștergem baza de date (deleteMany). Modificăm doar ce s-a schimbat.
+      for (const p of playersList) {
+        // Luăm statisticile primului sezon găsit în include (cel curent)
+        const stats = p.statistics && p.statistics[0];
+        const team = p.teams && p.teams[0];
+
+        if (p) {
+          await Player.findOneAndUpdate(
+            { api_player_id: p.id }, // Căutăm după ID-ul unic de la API
+            {
+              // Date Personale
+              name: p.display_name || p.name,
+              age: p.date_of_birth ? calculateAge(p.date_of_birth) : null,
+              nationality: p.nationality?.name || "Unknown",
+              
+              // Detalii Fizice
+              birth_date: p.date_of_birth,
+              height: p.height ? `${p.height} cm` : "N/A",
+              weight: p.weight ? `${p.weight} kg` : "N/A",
+
+              // Poziție & Echipă
+              position: mapPosition(p.position_id), // Sportmonks folosește ID-uri pt poziții
+              image: p.image_path,
+              team_name: team ? team.name : "N/A", 
+              
+              // Statistici Extinse
+              statistics_summary: {
+                  team_name: team ? team.name : "N/A",
+                  total_goals: stats?.goals || 0,
+                  total_assists: stats?.assists || 0,
+                  total_appearances: stats?.appearances || 0,
+                  minutes_played: stats?.minutes_played || 0,
+                  rating: stats?.rating || null
+              },
+              last_sync: new Date()
             },
-            api_player_id: p.id
-          });
-
-          await newPlayer.save();
+            { upsert: true, new: true } // Creează dacă nu există, update dacă există
+          );
           savedCount++;
+        }
+      }
+
+      console.log(`✅ Pagina ${page} procesată. (${savedCount} jucători în total)`);
+
+      // Trecem la pagina următoare dacă există
+      if (pagination && pagination.has_more) {
+        url = pagination.next_page;
+        page++;
+        // Mică pauză pentru a respecta Rate Limit-ul (ex: 30 req/min)
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        url = null; // Am terminat toate paginile
       }
     }
 
-    console.log(`✅ [SYNC COMPLET] S-au salvat ${savedCount} jucători cu detalii complete.`);
+    console.log(`✅ [SYNC COMPLET] S-au sincronizat ${savedCount} jucători.`);
 
   } catch (error) {
-    console.error("❌ EROARE CRITICĂ LA SINCRONIZARE:", error.message);
+    if (error.response && error.response.status === 429) {
+        console.error("❌ RATE LIMIT: Sportmonks te-a blocat temporar. Mărește timpul de pauză între pagini.");
+    } else {
+        console.error("❌ EROARE CRITICĂ LA SINCRONIZARE:", error.message);
+    }
   }
 };
 
-module.exports = { syncPlayers: resetAndSyncPlayers };
+// Funcții Ajutătoare (Helper Functions)
+function calculateAge(birthDate) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+}
+
+function mapPosition(id) {
+    const positions = { 1: "Goalkeeper", 2: "Defender", 3: "Midfielder", 4: "Forward" };
+    return positions[id] || "N/A";
+}
+
+module.exports = { syncPlayers };
