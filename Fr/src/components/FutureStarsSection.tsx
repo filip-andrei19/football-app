@@ -75,7 +75,7 @@ export function FutureStarsSection() {
     fetchYoungTalents();
   }, []);
 
-  // --- LOGICA DE FILTRARE PE POZIȚII (CORECATĂ) ---
+  // --- LOGICA DE FILTRARE PE POZIȚII ---
   const getFilteredPlayers = () => {
       if (activeFilter === "Toate") return players;
 
@@ -85,8 +85,6 @@ export function FutureStarsSection() {
           if (activeFilter === "Portari") return pos.includes("goalkeeper") || pos.includes("portar");
           if (activeFilter === "Fundași") return pos.includes("defender") || pos.includes("back") || pos.includes("funda");
           if (activeFilter === "Mijlocași") return pos.includes("midfield") || pos.includes("mijloca");
-          
-          // AICI AM ADĂUGAT "ATTACK" PENTRU A PRINDE ȘI "ATTACKER"
           if (activeFilter === "Atacanți") return pos.includes("forward") || pos.includes("striker") || pos.includes("wing") || pos.includes("ataca") || pos.includes("attack");
           
           return false;
@@ -105,8 +103,8 @@ export function FutureStarsSection() {
       
       {/* FUNDAL "GOLDEN MESH" */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-50">
-          <div className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 w-[600px] h-[600px] rounded-full bg-amber-400/20 blur-[100px] animate-pulse-slow"></div>
-          <div className="absolute bottom-0 left-0 -translate-x-1/4 translate-y-1/4 w-[500px] h-[500px] rounded-full bg-yellow-200/30 blur-[120px] animate-pulse-slow delay-1000"></div>
+          <div className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 w-[600px] h-[600px] rounded-full bg-amber-400/20 blur-[100px]"></div>
+          <div className="absolute bottom-0 left-0 -translate-x-1/4 translate-y-1/4 w-[500px] h-[500px] rounded-full bg-yellow-200/30 blur-[120px]"></div>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-orange-100/20 blur-[100px]"></div>
       </div>
 
@@ -114,7 +112,7 @@ export function FutureStarsSection() {
       <section className="text-center space-y-6 px-4 relative z-10 mb-8">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50/80 backdrop-blur text-amber-700 text-sm font-bold mb-2 border border-amber-200 shadow-sm">
           <Sparkles className="h-4 w-4 text-amber-500" />
-          Scouting Report 2024/2025
+          Scouting Report 2026
         </div>
         
         <h1 className="text-4xl font-black tracking-tighter lg:text-7xl uppercase text-slate-900 dark:text-white drop-shadow-sm">
@@ -124,7 +122,7 @@ export function FutureStarsSection() {
         </h1>
         
         <p className="max-w-2xl mx-auto text-slate-600 dark:text-slate-400 text-lg font-medium">
-           Cele mai promițătoare talente U21 din fotbalul românesc.
+            Cele mai promițătoare talente U21 din fotbalul intern și internațional.
         </p>
       </section>
 

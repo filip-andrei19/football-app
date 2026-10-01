@@ -4,7 +4,7 @@ const axios = require('axios');
 const Player = require('./models/player'); 
 
 // --- CONFIGURARE ---
-const CURRENT_SEASON = 2024; 
+const CURRENT_SEASON = 2026;         // Actualizat la sezonul curent 2026
 const ROMANIA_LEAGUE_ID = 283;       // SuperLiga
 const ROMANIA_NATIONAL_TEAM_ID = 119; // Echipa Națională
 
@@ -31,41 +31,44 @@ const savePlayers = async (playersList, leagueId, isPriority = false) => {
   
   for (const item of playersList) {
     const p = item.player;
+    if (!p) continue;
     
     // Căutăm statistica potrivită
-    let stats = item.statistics[0];
-    if (leagueId) {
+    let stats = item.statistics?.[0];
+    if (leagueId && item.statistics) {
         stats = item.statistics.find(s => s.league.id === leagueId) || item.statistics[0];
     }
+
+    if (!stats || !stats.games) continue;
 
     const app = stats.games.appearences || 0;
 
     // --- FILTRU DE CALITATE ---
-    // Păstrăm jucătorul DOAR DACĂ:
-    // 1. Este "Prioritate" (Națională sau Top Scorer internațional).
-    // 2. SAU are măcar 1 meci jucat (pentru SuperLigă).
-    // 3. SAU este portar (portarii de rezervă merită păstrați).
     if (!isPriority && app < 1 && p.position !== "Goalkeeper") {
         continue; // Sărim peste juniorii fără meciuri
     }
 
-    // UPSERT: Actualizăm sau Adăugăm
+    // UPSERT: Actualizăm sau Adăugăm folosind api_id (compatibil cu server.js)
     await Player.updateOne(
-      { api_player_id: p.id },
+      { api_id: p.id },
       {
+          api_id: p.id,
           name: p.name,
+          firstname: p.firstname,
+          lastname: p.lastname,
           age: p.age,
           nationality: p.nationality,
-          position: stats.games.position,
+          position: stats.games.position || p.position,
           image: p.photo,
-          team_name: stats.team.name,
+          team: stats.team?.name || "",
+          team_logo: stats.team?.logo || "",
           statistics_summary: {
-            team_name: stats.team.name,
-            total_goals: stats.goals.total || 0,
-            total_assists: stats.goals.assists || 0,
+            team_name: stats.team?.name || "",
+            total_goals: stats.goals?.total || 0,
+            total_assists: stats.goals?.assists || 0,
             total_appearances: app
           },
-          api_player_id: p.id
+          updatedAt: new Date()
       },
       { upsert: true }
     );
@@ -95,7 +98,7 @@ const fetchTeamPlayers = async (teamId, season, contextName) => {
             const list = response.data.response;
             if (list && list.length > 0) {
                 allPlayers = [...allPlayers, ...list];
-                if (response.data.paging.current < response.data.paging.total) {
+                if (response.data.paging && response.data.paging.current < response.data.paging.total) {
                     currentPage++;
                 } else {
                     hasNext = false;
@@ -103,7 +106,10 @@ const fetchTeamPlayers = async (teamId, season, contextName) => {
             } else {
                 hasNext = false;
             }
-        } catch (err) { hasNext = false; }
+        } catch (err) { 
+            console.error(`Eroare fetch echipa ${contextName}:`, err.message);
+            hasNext = false; 
+        }
     }
     return allPlayers;
 };
@@ -112,46 +118,45 @@ const runImport = async () => {
   try {
     console.log("🔌 Conectare la MongoDB...");
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("ℹ️  Nu șterg baza de date, doar adaug/actualizez.");
+    console.log(`ℹ️ Sincronizare pornită pentru sezonul ${CURRENT_SEASON}. Nu șterg baza de date, doar adaug/actualizez.`);
 
     // --- 1. ECHIPA NAȚIONALĂ (VIP) ---
-    console.log(`\n🇹🇩 Pasul 1: ECHIPA NAȚIONALĂ...`);
+    console.log(`\n🇹🇩 Pasul 1: ECHIPA NAȚIONALĂ (${CURRENT_SEASON})...`);
     const natPlayers = await fetchTeamPlayers(ROMANIA_NATIONAL_TEAM_ID, CURRENT_SEASON, "Romania");
     if (natPlayers.length > 0) {
-        // isPriority = true -> Îi luăm pe toți, nu filtrăm
         const count = await savePlayers(natPlayers, null, true); 
         console.log(`✅ ${count} tricolori actualizați.`);
     }
 
     // --- 2. SUPERLIGA (Filtru Activ) ---
-    console.log(`\n🇷🇴 Pasul 2: SuperLiga (Echipe)...`);
+    console.log(`\n🇷🇴 Pasul 2: SuperLiga - Sezonul ${CURRENT_SEASON} (Echipe)...`);
     const teamsResponse = await axios.get(`https://v3.football.api-sports.io/teams?league=${ROMANIA_LEAGUE_ID}&season=${CURRENT_SEASON}`, { headers: API_HEADERS });
     
-    for (const t of teamsResponse.data.response) {
-        process.stdout.write(`⚽ ${t.team.name}: `);
-        const players = await fetchTeamPlayers(t.team.id, CURRENT_SEASON, t.team.name);
-        
-        if (players.length > 0) {
-            // isPriority = false -> Aplicăm filtrul (fără jucători cu 0 meciuri)
-            const count = await savePlayers(players, ROMANIA_LEAGUE_ID, false);
-            console.log(`✅ ${count} jucători.`);
-        } else {
-            console.log(`-`);
+    if (teamsResponse.data && teamsResponse.data.response) {
+        for (const t of teamsResponse.data.response) {
+            process.stdout.write(`⚽ ${t.team.name}: `);
+            const players = await fetchTeamPlayers(t.team.id, CURRENT_SEASON, t.team.name);
+            
+            if (players.length > 0) {
+                const count = await savePlayers(players, ROMANIA_LEAGUE_ID, false);
+                console.log(`✅ ${count} jucători.`);
+            } else {
+                console.log(`-`);
+            }
         }
     }
 
     // --- 3. VEDETELE INTERNAȚIONALE (Top Scorers) ---
-    console.log(`\n⭐ Pasul 3: Top 20 din Marile Ligi...`);
+    console.log(`\n⭐ Pasul 3: Top Scorers din Marile Ligi (${CURRENT_SEASON})...`);
     
     for (const league of TOP_LEAGUES) {
-        await wait(4000); // Pauză înainte de fiecare ligă
+        await wait(4000); 
         try {
             console.log(`🌍 Descarc Top Scorers din ${league.name}...`);
             const url = `https://v3.football.api-sports.io/players/topscorers?league=${league.id}&season=${CURRENT_SEASON}`;
             const response = await axios.get(url, { headers: API_HEADERS });
             
             if (response.data.response && response.data.response.length > 0) {
-                // isPriority = true -> Îi luăm pe toți, sunt vedete
                 const count = await savePlayers(response.data.response, league.id, true);
                 console.log(`   ✅ Adăugați ${count} jucători de top.`);
             }
@@ -160,7 +165,7 @@ const runImport = async () => {
         }
     }
 
-    console.log(`\n🎉 GATA! Baza de date e completă.`);
+    console.log(`\n🎉 GATA! Baza de date e completă pentru sezonul ${CURRENT_SEASON}.`);
     process.exit(0);
 
   } catch (error) {

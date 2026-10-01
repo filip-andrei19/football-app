@@ -1,22 +1,21 @@
 const mongoose = require('mongoose');
 
 const playerSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  position: String,
-  age: Number,
-  nationality: String,
-  image: String,
+    api_id: { type: Number, unique: true, sparse: true },
+    name: { type: String, required: true },
+    firstname: String,
+    lastname: String,
+    age: Number,
+    position: String,
+    team: String,
+    team_logo: String,
+    image: String,
+    statistics_summary: {
+        total_appearances: { type: Number, default: 0 },
+        total_goals: { type: Number, default: 0 },
+        total_assists: { type: Number, default: 0 }
+    },
+    updatedAt: { type: Date, default: Date.now }
+});
 
-  // --- SOLUȚIA PENTRU ECHIPĂ ---
-  // Definim simplu, exact ce ai în poză
-  team_name: String, 
-  current_team_id: mongoose.Schema.Types.ObjectId, // Păstrăm ID-ul, dar fără ref complicat momentan
-
-  // --- SOLUȚIA PENTRU GOLURI (WILDCARD) ---
-  // "Mixed" îi spune lui Mongoose: "Nu valida nimic, ia tot ce găsești aici!"
-  statistics_summary: { type: mongoose.Schema.Types.Mixed },
-
-  api_player_id: Number
-}, { strict: false }); // Permitem orice alte câmpuri extra
-
-module.exports = mongoose.models.Player || mongoose.model('Player', playerSchema);
+module.exports = mongoose.model('Player', playerSchema);

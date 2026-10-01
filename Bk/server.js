@@ -124,7 +124,7 @@ userSchema.pre('save', async function(next) {
 });
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// B. MESSAGE (NOU - ADĂUGAT isDeleted)
+// B. MESSAGE (NOU - ADAUGAT isDeleted)
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
@@ -137,6 +137,7 @@ const Message = mongoose.models.Message || mongoose.model('Message', messageSche
 
 // C. PLAYER
 const playerSchema = new mongoose.Schema({}, { strict: false });
+playerSchema.index({ name: 'text', firstname: 'text', lastname: 'text' });
 const Player = mongoose.models.Player || mongoose.model('Player', playerSchema);
 
 // D. LISTING
@@ -475,7 +476,7 @@ const startServer = async () => {
         app.get('/api/listings', async (req, res) => {
             const { page = 1, limit = 50, search, category } = req.query;
             let query = {};
-            if (search) query.$or = [{ title: { $regex: search, $options: 'i' } }, { description: { $regex: search, $options: 'i' } }];
+            if (search) query.$or = [{ title: { $regex: search,$options: 'i' } }, { description: { $regex: search,$options: 'i' } }];
             if (category && category !== 'Toate') query.category = category;
 
             const listings = await Listing.find(query).sort({ posted: -1 }).limit(limit * 1).skip((page - 1) * limit);
@@ -502,9 +503,26 @@ const startServer = async () => {
             }
         });
 
+        // RUTĂ OPTIMIZATĂ PENTRU JUCĂTORI (SUPORTĂ CĂUTARE DUPĂ NUME)
         app.get('/api/sport/players', async (req, res) => {
-            const players = await Player.find().limit(5000); 
-            res.json(players);
+            try {
+                const { search } = req.query;
+                let query = {};
+                
+                if (search) {
+                    // Căutare flexibilă (case-insensitive) după 'name', 'firstname' sau 'lastname'
+                    query.$or = [
+                        { name: { $regex: search,$options: 'i' } },
+                        { firstname: { $regex: search,$options: 'i' } },
+                        { lastname: { $regex: search,$options: 'i' } }
+                    ];
+                }
+
+                const players = await Player.find(query).limit(500); 
+                res.json(players);
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la preluarea jucătorilor." });
+            }
         });
 
         // RUTE ADMIN & STORIES
