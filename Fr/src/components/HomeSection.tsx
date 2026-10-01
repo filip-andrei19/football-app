@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-// 1. INTERFAȚA PLAYER
+// 1. INTERFAȚA PLAYER (Actualizată cu noile câmpuri din DB)
 interface Player {
   _id: string;
   name: string;
@@ -13,6 +13,8 @@ interface Player {
   weight?: string;
   image?: string;
   team_name?: string;
+  team?: string; // Adăugat pentru compatibilitate cu baza de date
+  team_logo?: string; // Adăugat pentru logo-ul echipei
   statistics_summary?: {
     team_name?: string;
     total_goals: number;
@@ -151,10 +153,11 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             {showResults && !loading && players.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {players.map((player) => {
-                const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
+                const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0 };
+                const hasBioData = player.age || player.birth_date || player.birth_place || player.height || player.weight;
                 
                 return (
-                    <div key={player._id} className="bg-white/95 backdrop-blur-sm border border-white/40 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all hover:-translate-y-2 group">
+                    <div key={player._id} className="bg-white/95 backdrop-blur-sm border border-white/40 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all hover:-translate-y-2 group flex flex-col">
                     
                     {/* HEADER CARD */}
                     <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 flex items-center gap-5 border-b border-slate-100">
@@ -170,12 +173,20 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                             )}
                         </div>
                         <div className="min-w-0 flex-1">
-                            <h4 className="font-black text-2xl text-slate-900 truncate mb-1 tracking-tight">
+                            <h4 className="font-black text-2xl text-slate-900 truncate mb-1 tracking-tight" title={player.name}>
                                 {player.name}
                             </h4>
-                            <div className="text-sm font-bold text-blue-600 uppercase mb-2 truncate">
-                                {player.team_name || "Fără Echipă"}
-                            </div>
+                            
+                            {/* ECHIPĂ - Afișează doar dacă există */}
+                            {(player.team || player.team_name) && (
+                                <div className="flex items-center gap-2 text-sm font-bold text-blue-600 uppercase mb-2 truncate">
+                                    {player.team_logo && (
+                                        <img src={player.team_logo} alt="Logo" className="w-5 h-5 object-contain" />
+                                    )}
+                                    <span className="truncate">{player.team || player.team_name}</span>
+                                </div>
+                            )}
+
                             <div className="flex flex-wrap gap-2">
                                 <span className="px-3 py-1 rounded-full text-[11px] font-black bg-slate-900 text-white shadow-sm uppercase tracking-wider">
                                     {player.position}
@@ -184,61 +195,79 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                         </div>
                     </div>
 
-                    {/* INFO BIO */}
-                    <div className="p-5 grid grid-cols-2 gap-y-4 gap-x-4 text-sm border-b border-slate-100 bg-slate-50/40">
-                        <div>
-                            <span className="text-slate-400 block text-[10px] uppercase tracking-widest font-bold mb-0.5">Vârstă</span>
-                            <span className="font-bold text-slate-800 text-base">{player.age ? `${player.age} ani` : '-'}</span>
-                        </div>
-                        <div>
-                            <span className="text-slate-400 block text-[10px] uppercase tracking-widest font-bold mb-0.5">Data Nașterii</span>
-                            <span className="font-bold text-slate-800 text-base">{formatDate(player.birth_date)}</span>
-                        </div>
-                        
-                        <div className="col-span-2">
-                            <span className="text-slate-400 block text-[10px] uppercase tracking-widest font-bold mb-0.5">Locul Nașterii</span>
-                            <span className="font-bold text-slate-800 text-base truncate">{player.birth_place || '-'}</span>
-                        </div>
+                    {/* INFO BIO - Afișează doar secțiunile care au date */}
+                    {hasBioData && (
+                        <div className="p-5 grid grid-cols-2 gap-y-4 gap-x-4 text-sm border-b border-slate-100 bg-slate-50/40">
+                            {player.age && (
+                                <div>
+                                    <span className="text-slate-400 block text-[10px] uppercase tracking-widest font-bold mb-0.5">Vârstă</span>
+                                    <span className="font-bold text-slate-800 text-base">{player.age} ani</span>
+                                </div>
+                            )}
+                            {player.birth_date && (
+                                <div>
+                                    <span className="text-slate-400 block text-[10px] uppercase tracking-widest font-bold mb-0.5">Data Nașterii</span>
+                                    <span className="font-bold text-slate-800 text-base">{formatDate(player.birth_date)}</span>
+                                </div>
+                            )}
+                            
+                            {player.birth_place && (
+                                <div className="col-span-2">
+                                    <span className="text-slate-400 block text-[10px] uppercase tracking-widest font-bold mb-0.5">Locul Nașterii</span>
+                                    <span className="font-bold text-slate-800 text-base truncate">{player.birth_place}</span>
+                                </div>
+                            )}
 
-                        <div>
-                            <span className="text-slate-400 block text-[10px] uppercase tracking-widest font-bold mb-0.5">Înălțime</span>
-                            <span className="font-bold text-slate-800 text-base">{player.height || '-'}</span>
-                        </div>
-                        <div>
-                            <span className="text-slate-400 block text-[10px] uppercase tracking-widest font-bold mb-0.5">Greutate</span>
-                            <span className="font-bold text-slate-800 text-base">{player.weight || '-'}</span>
-                        </div>
-                    </div>
-
-                    {/* STATISTICI MAJORE */}
-                    <div className="p-5">
-                        <div className="grid grid-cols-3 gap-3 text-center mb-5">
-                            <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100">
-                                <span className="block text-3xl font-black text-slate-800">{stats.total_appearances}</span>
-                                <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider">Meciuri</span>
-                            </div>
-                            <div className="p-3 bg-green-50/50 rounded-xl shadow-sm border border-green-100/50">
-                                <span className="block text-3xl font-black text-green-600">{stats.total_goals}</span>
-                                <span className="text-[10px] text-green-700 uppercase font-extrabold tracking-wider">Goluri</span>
-                            </div>
-                            <div className="p-3 bg-indigo-50/50 rounded-xl shadow-sm border border-indigo-100/50">
-                                <span className="block text-3xl font-black text-indigo-600">{stats.total_assists}</span>
-                                <span className="text-[10px] text-indigo-700 uppercase font-extrabold tracking-wider">Pase</span>
-                            </div>
-                        </div>
-                        
-                        <div className="flex justify-between items-center text-sm text-slate-600 px-2 pt-3 border-t border-slate-100">
-                            <div className="flex items-center gap-1.5 font-bold">
-                                <span className="text-lg">⏱️</span>
-                                <span>{stats.minutes_played || 0} <span className="text-xs font-normal text-slate-500">min. jucate</span></span>
-                            </div>
-                            {stats.rating && (
-                                <div className="flex items-center gap-1.5 font-black text-amber-600 bg-amber-50/80 px-3 py-1 rounded-full border border-amber-100 shadow-sm">
-                                    <span className="text-lg">⭐</span>
-                                    <span>{parseFloat(stats.rating).toFixed(2)}</span>
+                            {player.height && (
+                                <div>
+                                    <span className="text-slate-400 block text-[10px] uppercase tracking-widest font-bold mb-0.5">Înălțime</span>
+                                    <span className="font-bold text-slate-800 text-base">{player.height}</span>
+                                </div>
+                            )}
+                            {player.weight && (
+                                <div>
+                                    <span className="text-slate-400 block text-[10px] uppercase tracking-widest font-bold mb-0.5">Greutate</span>
+                                    <span className="font-bold text-slate-800 text-base">{player.weight}</span>
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {/* STATISTICI MAJORE */}
+                    <div className="p-5 mt-auto">
+                        <div className="grid grid-cols-3 gap-3 text-center mb-5">
+                            <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                                <span className="block text-3xl font-black text-slate-800">{stats.total_appearances}</span>
+                                <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider mt-1">Meciuri</span>
+                            </div>
+                            <div className="p-3 bg-green-50/50 rounded-xl shadow-sm border border-green-100/50 flex flex-col justify-center">
+                                <span className="block text-3xl font-black text-green-600">{stats.total_goals}</span>
+                                <span className="text-[10px] text-green-700 uppercase font-extrabold tracking-wider mt-1">Goluri</span>
+                            </div>
+                            <div className="p-3 bg-indigo-50/50 rounded-xl shadow-sm border border-indigo-100/50 flex flex-col justify-center">
+                                <span className="block text-3xl font-black text-indigo-600">{stats.total_assists}</span>
+                                <span className="text-[10px] text-indigo-700 uppercase font-extrabold tracking-wider mt-1">Pase</span>
+                            </div>
+                        </div>
+                        
+                        {/* FOOTER STATISTICI - Afișează doar dacă există minute jucate sau rating */}
+                        {(stats.minutes_played !== undefined || stats.rating) && (
+                            <div className="flex justify-between items-center text-sm text-slate-600 px-2 pt-3 border-t border-slate-100">
+                                {stats.minutes_played !== undefined ? (
+                                    <div className="flex items-center gap-1.5 font-bold">
+                                        <span className="text-lg">⏱️</span>
+                                        <span>{stats.minutes_played} <span className="text-xs font-normal text-slate-500">min. jucate</span></span>
+                                    </div>
+                                ) : <div />}
+                                
+                                {stats.rating && (
+                                    <div className="flex items-center gap-1.5 font-black text-amber-600 bg-amber-50/80 px-3 py-1 rounded-full border border-amber-100 shadow-sm ml-auto">
+                                        <span className="text-lg">⭐</span>
+                                        <span>{parseFloat(stats.rating).toFixed(2)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     </div>

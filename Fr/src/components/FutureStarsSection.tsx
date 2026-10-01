@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Sparkles, Star, MapPin, Ruler, Weight, Calendar, Clock, Zap, Filter } from 'lucide-react';
 
-// 1. INTERFAȚA ACTUALIZATĂ
+// 1. INTERFAȚA ACTUALIZATĂ (cu team și team_logo)
 interface Player {
   _id: string;
   name: string;
@@ -14,6 +14,8 @@ interface Player {
   weight?: string;
   image?: string;
   team_name?: string;
+  team?: string; // Adăugat pentru baza de date
+  team_logo?: string; // Adăugat pentru logo echipă
   statistics_summary?: {
     team_name?: string;
     total_goals: number;
@@ -164,6 +166,7 @@ export function FutureStarsSection() {
             {filteredPlayers.map((player) => {
                 const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
                 const rating = stats.rating ? parseFloat(stats.rating).toFixed(2) : null;
+                const hasBioData = player.birth_date || player.birth_place || player.height || player.weight || player.nationality;
                 
                 return (
                     <div key={player._id} className="group relative bg-white/90 backdrop-blur-md dark:bg-slate-800/90 border border-amber-100 dark:border-slate-700 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-amber-500/20 transition-all duration-300 hover:-translate-y-2 flex flex-col h-full">
@@ -197,37 +200,57 @@ export function FutureStarsSection() {
 
                         {/* 2. MAIN INFO */}
                         <div className="pt-14 pb-2 px-4 text-center">
-                            <h3 className="font-bold text-lg text-gray-900 dark:text-white leading-tight mb-1 truncate">
+                            <h3 className="font-bold text-lg text-gray-900 dark:text-white leading-tight mb-1 truncate" title={player.name}>
                                 {player.name}
                             </h3>
                             <div className="flex justify-center items-center gap-2 text-xs text-gray-500 font-semibold uppercase tracking-wider">
-                                <span className="truncate max-w-[100px]">{player.team_name}</span>
-                                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                {/* Afișare Echipă (dacă există) */}
+                                {(player.team || player.team_name) && (
+                                    <>
+                                        {player.team_logo && (
+                                            <img src={player.team_logo} alt="Logo" className="w-4 h-4 object-contain" />
+                                        )}
+                                        <span className="truncate max-w-[100px]">{player.team || player.team_name}</span>
+                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                    </>
+                                )}
                                 <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{player.position}</span>
                             </div>
                         </div>
 
-                        {/* 3. BIO GRID */}
-                        <div className="px-4 py-3 flex-1">
-                            <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-700/30 rounded-xl p-3 border border-slate-100 dark:border-slate-700">
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><Calendar className="w-3 h-3" /> Născut</div>
-                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{formatDate(player.birth_date)}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><MapPin className="w-3 h-3" /> Origine</div>
-                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate" title={player.birth_place}>{player.birth_place || player.nationality || '-'}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><Ruler className="w-3 h-3" /> Înălțime</div>
-                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{player.height || '-'}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><Weight className="w-3 h-3" /> Greutate</div>
-                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{player.weight || '-'}</span>
+                        {/* 3. BIO GRID (afișat condiționat) */}
+                        {hasBioData && (
+                            <div className="px-4 py-3 flex-1">
+                                <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-700/30 rounded-xl p-3 border border-slate-100 dark:border-slate-700">
+                                    {player.birth_date && (
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><Calendar className="w-3 h-3" /> Născut</div>
+                                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{formatDate(player.birth_date)}</span>
+                                        </div>
+                                    )}
+                                    {(player.birth_place || player.nationality) && (
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><MapPin className="w-3 h-3" /> Origine</div>
+                                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate" title={player.birth_place || player.nationality}>
+                                                {player.birth_place || player.nationality}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {player.height && (
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><Ruler className="w-3 h-3" /> Înălțime</div>
+                                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{player.height}</span>
+                                        </div>
+                                    )}
+                                    {player.weight && (
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><Weight className="w-3 h-3" /> Greutate</div>
+                                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{player.weight}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* 4. STATS FOOTER */}
                         <div className="mt-auto border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/50">
@@ -245,10 +268,18 @@ export function FutureStarsSection() {
                                     <span className="text-[9px] uppercase text-gray-400 font-bold">Gol / Pasă</span>
                                 </div>
                                 <div>
-                                    <div className="flex items-center justify-center gap-1 text-amber-600 font-bold">
-                                        <Clock className="w-3 h-3" /> {stats.minutes_played || 0}'
-                                    </div>
-                                    <span className="text-[9px] uppercase text-gray-400 font-bold">Minute</span>
+                                    {stats.minutes_played !== undefined ? (
+                                        <>
+                                            <div className="flex items-center justify-center gap-1 text-amber-600 font-bold">
+                                                <Clock className="w-3 h-3" /> {stats.minutes_played}'
+                                            </div>
+                                            <span className="text-[9px] uppercase text-gray-400 font-bold">Minute</span>
+                                        </>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full">
+                                            <span className="text-gray-400 font-bold">-</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
