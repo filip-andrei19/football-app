@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
-import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users, Check, CheckCheck, Trash2, ExternalLink, Ban, MoreVertical } from 'lucide-react';
+import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users, Check, CheckCheck, Trash2, ExternalLink, Ban, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const socket = io("https://football-backend-m2a4.onrender.com");
@@ -10,9 +10,10 @@ interface Message {
   room: string;
   author: string;
   message: string;
+  imageUrl?: string;
   time: string;
   isDeleted?: boolean;
-  timestamp: string; // Asigură-te că backend-ul trimite asta (modelul are 'timestamp')
+  timestamp: string;
 }
 
 interface Conversation {
@@ -53,7 +54,12 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   const [messageList, setMessageList] = useState<Message[]>([]);
   const [currentMessage, setCurrentMessage] = useState("");
   
-  // [NOU] State pentru Typing
+  // [NOU] State pentru imaginea atașată în chat
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // State pentru Typing
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const typingTimeoutRef = useRef<any>(null);
 
@@ -136,7 +142,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
     socket.on("receive_message", (data: Message) => {
       if (data.room === activeRoom) {
           setMessageList((list) => [...list, data]);
-          setIsPartnerTyping(false); // Oprește typing când primim mesaj
+          setIsPartnerTyping(false);
           scrollToBottom();
       }
     });
@@ -150,7 +156,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
         setMessageList((currentList) => currentList.map(m => m._id === updatedMsg._id ? updatedMsg : m));
     });
 
-    // [NOU] Listeners pentru Typing
     socket.on("display_typing", (data: { isTyping: boolean }) => {
         setIsPartnerTyping(data.isTyping);
         scrollToBottom();
@@ -166,14 +171,26 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
 
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); };
 
+  // --- ÎNCĂRCARE IMAGINE DE LA DEVICE ---
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          if (file.size > 5 * 1024 * 1024) {
+              return toast.error("Imaginea este prea mare! (Max 5MB)");
+          }
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              setSelectedImage(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+      }
+  };
+
   // --- LOGICĂ INPUT & TYPING ---
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setCurrentMessage(e.target.value);
-
-      // Emit Typing Event
       socket.emit("typing", activeRoom);
 
-      // Debounce Stop Typing (dacă nu mai scrie 2 secunde)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
           socket.emit("stop_typing", activeRoom);
@@ -181,16 +198,36 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   };
 
   const sendMessage = async () => {
-    if (currentMessage.trim() !== "") {
-      const messageData = {
-        room: activeRoom,
-        author: user.name,
-        message: currentMessage,
-        time: new Date().getHours() + ":" + (new Date().getMinutes() < 10 ? '0' : '') + new Date().getMinutes(),
-      };
-      await socket.emit("send_message", messageData);
-      socket.emit("stop_typing", activeRoom); // Oprim typing imediat ce trimitem
-      setCurrentMessage("");
+    if (currentMessage.trim() !== "" || selectedImage) {
+      setIsSending(true);
+      const timeStr = new Date().getHours() + ":" + (new Date().getMinutes() < 10 ? '0' : '') + new Date().getMinutes();
+      
+      try {
+          // Trimitem către noul endpoint HTTP care se ocupă și de Cloudcloudinary
+          const res = await fetch('https://football-backend-m2a4.onrender.com/api/messages/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  room: activeRoom,
+                  author: user.name,
+                  message: currentMessage,
+                  imageBase64: selectedImage || "",
+                  time: timeStr
+              })
+          });
+
+          if (res.ok) {
+              setCurrentMessage("");
+              setSelectedImage(null);
+              socket.emit("stop_typing", activeRoom);
+          } else {
+              toast.error("Eroare la trimiterea mesajului.");
+          }
+      } catch (e) {
+          toast.error("Eroare de conexiune.");
+      } finally {
+          setIsSending(false);
+      }
     }
   };
 
@@ -216,7 +253,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
       fetchConversations(); 
   };
 
-  // Grupăm mesajele pe zile pentru afișare
   const groupedMessages: { [key: string]: Message[] } = {};
   messageList.forEach(msg => {
       const dateKey = new Date(msg.timestamp).toDateString();
@@ -236,7 +272,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
         {isOpen && (
             <div className="bg-white dark:bg-slate-900 w-80 md:w-96 h-[550px] rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 ring-1 ring-black/5">
                 
-                {/* HEADER - Stil Instagram */}
+                {/* HEADER */}
                 <div className="bg-white dark:bg-slate-900 p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center z-10 sticky top-0 backdrop-blur-sm bg-opacity-90">
                     <div className="flex items-center gap-3">
                         {view === 'chat' && (
@@ -309,49 +345,50 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                     <div className="flex flex-col items-center justify-center h-full text-center p-6 opacity-60">
                                         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-3 text-blue-500"><MessageCircle className="w-8 h-8"/></div>
                                         <p className="text-sm font-bold">Începe conversația!</p>
-                                        <p className="text-xs text-gray-500">Scrie un mesaj prietenos.</p>
+                                        <p className="text-xs text-gray-500">Trimite un mesaj sau o poză.</p>
                                     </div>
                                 )}
 
-                                {/* Randare Grupata pe Zile */}
                                 {Object.keys(groupedMessages).map((dateKey) => (
                                     <div key={dateKey}>
-                                        {/* SEPARATOR DATĂ */}
                                         <div className="flex justify-center mb-4">
                                             <span className="bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-gray-300 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">
                                                 {formatDateSeparator(dateKey)}
                                             </span>
                                         </div>
 
-                                        {/* MESAJELE DIN ZIUA RESPECTIVĂ */}
                                         <div className="space-y-1">
                                             {groupedMessages[dateKey].map((msg, idx, arr) => {
                                                 const isMe = msg.author === user.name;
-                                                // Verificăm dacă mesajul anterior e de la același autor (pentru grupare vizuală)
                                                 const isFirstInGroup = idx === 0 || arr[idx - 1].author !== msg.author;
                                                 
                                                 return (
                                                     <div key={idx} className={`flex flex-col ${isMe ? "items-end" : "items-start"} group ${isFirstInGroup ? "mt-3" : "mt-0.5"}`}>
                                                         
-                                                        {/* Numele apare doar la primul mesaj din grup și doar pt partener */}
                                                         {!isMe && isFirstInGroup && !msg.isDeleted && (
                                                             <span className="text-[10px] text-gray-500 ml-3 mb-0.5 font-medium">{msg.author}</span>
                                                         )}
 
                                                         <div className={`relative px-4 py-2 text-[14px] max-w-[85%] break-words shadow-sm ${
                                                             isMe 
-                                                            ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl rounded-tr-md" // Stil Instagram Me
-                                                            : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-slate-700 rounded-2xl rounded-tl-md" // Stil Instagram Partner
+                                                            ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl rounded-tr-md" 
+                                                            : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-slate-700 rounded-2xl rounded-tl-md"
                                                         } ${msg.isDeleted ? "bg-none bg-gray-100 border-dashed border-gray-300 text-gray-400 shadow-none" : ""}`}>
                                                             
+                                                            {/* Dacă mesajul are o imagine */}
+                                                            {msg.imageUrl && !msg.isDeleted && (
+                                                                <div className="mb-2 rounded-lg overflow-hidden max-h-48">
+                                                                    <img src={msg.imageUrl} alt="Attachment" className="w-full h-full object-cover" />
+                                                                </div>
+                                                            )}
+
                                                             <div>{renderMessageContent(msg)}</div>
 
                                                             <div className={`text-[9px] flex justify-end items-center gap-1 mt-1 ${isMe ? "text-blue-100" : "text-gray-400 opacity-70"}`}>
                                                                 {msg.time}
-                                                                {isMe && !msg.isDeleted && <CheckCheck className="w-3.5 h-3.5 text-white/90" />} {/* Bife "Read" */}
+                                                                {isMe && !msg.isDeleted && <CheckCheck className="w-3.5 h-3.5 text-white/90" />}
                                                             </div>
 
-                                                            {/* Buton Ștergere (Hover) */}
                                                             {isMe && !msg.isDeleted && (
                                                                 <button 
                                                                     onClick={() => handleDeleteMessage(msg._id)}
@@ -369,7 +406,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                     </div>
                                 ))}
                                 
-                                {/* Animație Typing */}
                                 {isPartnerTyping && (
                                     <div className="flex items-center gap-2 mt-2 ml-2 animate-in fade-in slide-in-from-bottom-2">
                                         <div className="bg-gray-200 dark:bg-slate-700 px-4 py-3 rounded-2xl rounded-tl-none flex gap-1">
@@ -382,8 +418,30 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                 <div ref={messagesEndRef} />
                             </div>
                             
-                            {/* INPUT AREA MODERN */}
+                            {/* [NOU] PREVIEW IMAGINE SELECTATĂ ÎNAINTE DE TRIMITERE */}
+                            {selectedImage && (
+                                <div className="px-3 pt-2 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex items-center gap-2">
+                                    <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200">
+                                        <img src={selectedImage} className="w-full h-full object-cover" />
+                                        <button onClick={() => setSelectedImage(null)} className="absolute top-1 right-1 bg-red-500 text-white p-0.5 rounded-full"><X className="w-3 h-3"/></button>
+                                    </div>
+                                    <span className="text-xs text-gray-500 font-medium">Imagine pregătită pentru trimitere</span>
+                                </div>
+                            )}
+
+                            {/* INPUT AREA MODERN CU UPLOAD FOTO */}
                             <div className="p-3 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex gap-2 items-end">
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    className="hidden" 
+                                    accept="image/*" 
+                                    onChange={handleImageSelect} 
+                                />
+                                <button onClick={() => fileInputRef.current?.click()} className="text-gray-400 hover:text-blue-600 p-2.5 transition-colors" title="Atașază poză">
+                                    <ImageIcon className="w-6 h-6"/>
+                                </button>
+
                                 <div className="flex-1 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center px-4 py-1 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all border border-transparent focus-within:border-blue-500/50">
                                     <input 
                                         type="text" 
@@ -394,8 +452,8 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                         className="w-full bg-transparent border-none outline-none text-sm py-2.5 max-h-24"
                                     />
                                 </div>
-                                <button onClick={sendMessage} className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95 flex-shrink-0">
-                                    <Send className="w-5 h-5 ml-0.5"/>
+                                <button onClick={sendMessage} disabled={isSending} className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95 flex-shrink-0 disabled:opacity-50">
+                                    {isSending ? <Loader2 className="w-5 h-5 animate-spin"/> : <Send className="w-5 h-5 ml-0.5"/>}
                                 </button>
                             </div>
                         </div>

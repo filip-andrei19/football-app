@@ -123,11 +123,12 @@ userSchema.pre('save', async function(next) {
 });
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// B. MESSAGE
+// B. MESSAGE (Actualizat cu imageUrl)
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
     message: String,
+    imageUrl: { type: String, default: "" }, 
     time: String,
     isDeleted: { type: Boolean, default: false }, 
     timestamp: { type: Date, default: Date.now }
@@ -186,16 +187,14 @@ const deleteFromCloudinary = async (imageUrl) => {
     try {
         if (!imageUrl || !imageUrl.includes('cloudinary.com')) return;
         
-        // Extragem ID-ul public al pozei din URL
         const urlParts = imageUrl.split('/');
         const uploadIndex = urlParts.findIndex(part => part === 'upload');
         const partsToKeep = urlParts.slice(uploadIndex + 1);
         
-        // Eliminăm versiunea (ex: v1700000) dacă există
         if (partsToKeep[0].startsWith('v')) partsToKeep.shift(); 
         
         const publicIdWithExt = partsToKeep.join('/');
-        const publicId = publicIdWithExt.split('.')[0]; // Eliminăm extensia (.png, .jpg)
+        const publicId = publicIdWithExt.split('.')[0]; 
         
         await cloudinary.uploader.destroy(publicId);
         console.log(`🗑️ Imagine ștearsă din Cloudinary: ${publicId}`);
@@ -328,7 +327,7 @@ const startServer = async () => {
              } catch(err) { res.status(500).json({error: "Eroare"}); }
         });
 
-        // --- ACTUALIZARE PROFIL (CU UPLOAD ȘI ȘTERGERE VECHEA POZĂ) ---
+        // --- ACTUALIZARE PROFIL ---
         app.put('/api/users/profile', async (req, res) => {
             try {
                 const { email, name, avatar } = req.body;
@@ -337,13 +336,10 @@ const startServer = async () => {
 
                 let newAvatarUrl = user.avatar;
 
-                // Dacă s-a trimis o poză nouă (Base64) din frontend
                 if (avatar && avatar.startsWith('data:image')) {
-                    // 1. Dacă avea deja o poză veche în Cloudinary, o ștergem ca să nu ocupe spațiu aiurea
                     if (user.avatar && user.avatar.includes('cloudinary.com')) {
                         await deleteFromCloudinary(user.avatar);
                     }
-                    // 2. Încărcăm noua poză în Cloudinary
                     newAvatarUrl = await uploadImage(avatar);
                 }
 
@@ -351,7 +347,6 @@ const startServer = async () => {
                 if (name && name !== user.name) updates.seller = name;
                 if (newAvatarUrl && newAvatarUrl !== user.avatar) updates.sellerAvatar = newAvatarUrl;
                 
-                // Actualizăm automat toate anunțurile acestui user cu noua poză și nume
                 if (Object.keys(updates).length > 0) {
                     await Listing.updateMany({ sellerEmail: email }, { $set: updates });
                 }
@@ -399,7 +394,7 @@ const startServer = async () => {
                                 roomId: room,
                                 title: listing.title,
                                 image: listing.images[0] || '', 
-                                lastMessage: lastMsg ? lastMsg.message : "Începe conversația...",
+                                lastMessage: lastMsg ? (lastMsg.imageUrl ? '📷 Imagine' : lastMsg.message) : "Începe conversația...",
                                 timestamp: lastMsg ? lastMsg.timestamp : listing.posted,
                                 isMyListing: listing.sellerEmail === email
                             });
@@ -411,10 +406,25 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare la încărcarea conversațiilor." }); }
         });
 
+        // ACTUALIZAT: Permite primirea pozelor (imageBase64)
         app.post('/api/messages/send', async (req, res) => {
             try {
-                const { room, author, message, time } = req.body;
-                const newMessage = new Message({ room, author, message, time, timestamp: new Date() });
+                const { room, author, message, time, imageBase64 } = req.body;
+                
+                let imageUrl = "";
+                if (imageBase64 && imageBase64.startsWith('data:image')) {
+                    imageUrl = await uploadImage(imageBase64);
+                }
+
+                const newMessage = new Message({ 
+                    room, 
+                    author, 
+                    message: message || "", 
+                    time, 
+                    imageUrl,
+                    timestamp: new Date() 
+                });
+
                 await newMessage.save();
                 io.in(room).emit("receive_message", newMessage);
                 res.json({ success: true, message: "Mesaj trimis!" });
@@ -426,12 +436,20 @@ const startServer = async () => {
                 const messageId = req.params.id;
                 const { user } = req.body; 
                 const msg = await Message.findById(messageId);
+                
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
                 if (msg.author !== user) return res.status(403).json({ error: "Nu poți șterge mesajele altora." });
                 
+                // Ștergem poza de pe Cloudinary dacă avea una
+                if (msg.imageUrl && msg.imageUrl.includes('cloudinary.com')) {
+                    await deleteFromCloudinary(msg.imageUrl);
+                }
+
                 msg.isDeleted = true;
                 msg.message = ""; 
+                msg.imageUrl = ""; // Ștergem linkul pozei
                 await msg.save();
+                
                 io.in(msg.room).emit("message_updated", msg);
                 res.json({ success: true });
             } catch (err) { res.status(500).json({ error: "Eroare la ștergere." }); }
@@ -469,7 +487,6 @@ const startServer = async () => {
             res.json(listings);
         });
 
-        // --- ȘTERGERE ANUNȚ (CU ELIMINAREA POZELOR DIN CLOUDINARY) ---
         app.delete('/api/listings/:id', async (req, res) => {
             try {
                 const { email } = req.body; 
@@ -484,14 +501,12 @@ const startServer = async () => {
                     return res.status(403).json({ error: "Nu ai permisiunea să ștergi acest produs." });
                 }
 
-                // 1. Ștergem toate pozele acestui anunț din Cloudinary
                 if (listing.images && listing.images.length > 0) {
                     for (const imgUrl of listing.images) {
                         await deleteFromCloudinary(imgUrl);
                     }
                 }
 
-                // 2. Ștergem anunțul din MongoDB
                 await Listing.findByIdAndDelete(req.params.id);
                 res.json({ success: true, message: "Produs și imagini șterse definitiv." });
             } catch (err) {
