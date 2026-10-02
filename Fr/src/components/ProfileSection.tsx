@@ -1,8 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { User, Lock, Save, Camera, Mail, Shield, Loader2, LogOut } from 'lucide-react'; // MODIFICARE: Am importat LogOut
+import { User, Lock, Save, Camera, Mail, Shield, Loader2, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// MODIFICARE: Am adăugat onLogout în interfață și props
 export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, onUpdateUser: (u: any) => void, onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<'details' | 'security'>('details');
   const [loading, setLoading] = useState(false);
@@ -18,29 +17,59 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
       newPassword: ''
   });
 
-  // --- 1. LOGICA PENTRU POZĂ (Upload din Galerie) ---
+  // --- 1. LOGICA PENTRU POZĂ (Upload & Salvare Automată) ---
   const handleImageClick = () => {
-      fileInputRef.current?.click(); // Deschide fereastra de fișiere
+      fileInputRef.current?.click();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-          // Validare mărime (Max 5MB)
           if (file.size > 5 * 1024 * 1024) {
               return toast.error("Imaginea e prea mare! (Max 5MB)");
           }
 
-          // Convertire în Base64
           const reader = new FileReader();
-          reader.onloadend = () => {
-              setFormData(prev => ({ ...prev, avatar: reader.result as string }));
+          reader.onloadend = async () => {
+              const base64Image = reader.result as string;
+              
+              // 1. Actualizăm interfața vizual instant
+              setFormData(prev => ({ ...prev, avatar: base64Image }));
+              
+              // 2. Salvăm poza AUTOMAT în baza de date
+              setLoading(true);
+              const savingToast = toast.loading("Salvăm noua poză...");
+              
+              try {
+                  const response = await fetch('https://football-backend-m2a4.onrender.com/api/users/profile', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                          email: user.email,
+                          name: formData.name, 
+                          avatar: base64Image
+                      })
+                  });
+
+                  const data = await response.json();
+
+                  if (data.success) {
+                      onUpdateUser(data.user); // Actualizează și în restul aplicației
+                      toast.success("Poză de profil salvată permanent!", { id: savingToast });
+                  } else {
+                      toast.error(data.message || "Eroare la salvarea pozei.", { id: savingToast });
+                  }
+              } catch (err) {
+                  toast.error("Eroare server.", { id: savingToast });
+              } finally {
+                  setLoading(false);
+              }
           };
           reader.readAsDataURL(file);
       }
   };
 
-  // --- 2. UPDATE PROFIL (Conectat la Server) ---
+  // --- 2. UPDATE PROFIL (Pentru schimbarea numelui) ---
   const handleUpdateProfile = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoading(true);
@@ -50,7 +79,7 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                  email: user.email, // Email-ul e cheia de căutare
+                  email: user.email,
                   name: formData.name,
                   avatar: formData.avatar
               })
@@ -59,7 +88,7 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
           const data = await response.json();
 
           if (data.success) {
-              onUpdateUser(data.user); // Actualizează starea globală în App
+              onUpdateUser(data.user); 
               toast.success("Profil actualizat! Numele s-a schimbat și în anunțuri.");
           } else {
               toast.error(data.message || "Eroare la actualizare.");
@@ -112,7 +141,6 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
             {/* ZONA POZĂ DE PROFIL */}
             <div className="relative group cursor-pointer" onClick={handleImageClick}>
                 <div className="w-32 h-32 rounded-full bg-blue-100 dark:bg-slate-700 flex items-center justify-center text-4xl font-bold text-blue-600 dark:text-blue-400 border-4 border-white dark:border-slate-800 shadow-lg overflow-hidden">
-                    {/* Afișăm poza (Preview sau cea salvată) */}
                     {formData.avatar ? (
                         <img src={formData.avatar} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
@@ -168,7 +196,6 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
                     <Lock className="w-5 h-5" /> Securitate & Parolă
                 </button>
 
-                {/* MODIFICARE: ZONA DE LOGOUT ÎN SIDEBAR */}
                 <div className="pt-4 border-t border-gray-100 dark:border-slate-700 mt-4">
                     <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
                         <LogOut className="w-5 h-5" /> Deconectare
