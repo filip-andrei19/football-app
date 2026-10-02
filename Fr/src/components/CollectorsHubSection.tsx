@@ -318,10 +318,19 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
 
     setIsSubmitting(true);
     try {
+        // Excludem proprietatea "phone" din payload-ul principal și o trecem ca "sellerPhone"
+        const { phone, ...dataToSend } = newProduct;
+
         const res = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...newProduct, seller: user.name, sellerEmail: user.email, sellerPhone: newProduct.phone, sellerAvatar: user.avatar })
+            body: JSON.stringify({ 
+                ...dataToSend, 
+                seller: user.name, 
+                sellerEmail: user.email, 
+                sellerPhone: phone, 
+                sellerAvatar: user.avatar 
+            })
         });
         if (res.ok) {
             setProducts([await res.json(), ...products]);
