@@ -37,11 +37,14 @@ const hardResetAndLoad = async () => {
 
             for (const t of teams) {
                 const teamName = t.team.name;
-                const exists = await Player.findOne({ team_name: teamName });
-                if (exists) continue; // Sărim peste cluburile deja existente
+                const teamLogo = t.team.logo;
+                
+                // Opțional: sari dacă există deja clubul (comentat pt o actualizare forțată a tuturor)
+                // const exists = await Player.findOne({ team_name: teamName });
+                // if (exists) continue; 
 
-                console.log(`   📥 [DESCARC] ${teamName} lipsește.`);
-                await processTeam(t.team.id, teamName, league.id, false);
+                console.log(`   📥 [DESCARC/ACTUALIZEZ] ${teamName}...`);
+                await processTeam(t.team.id, teamName, teamLogo, league.id, false);
                 await wait(6000); 
             }
         } catch (error) { console.error(`⚠️ Eroare Liga:`, error.message); }
@@ -65,7 +68,7 @@ const hardResetAndLoad = async () => {
             console.log(`✅ GĂSITĂ: ${romaniaTeam.name}. Încep procesarea...`);
             
             // Procesăm lotul cu logica de actualizare forțată
-            await processTeam(romaniaTeam.id, "Romania (Nationala)", null, true);
+            await processTeam(romaniaTeam.id, "Romania (Nationala)", romaniaTeam.logo, null, true);
         } else {
             console.log("⚠️ Nu am găsit echipa națională.");
         }
@@ -78,7 +81,7 @@ const hardResetAndLoad = async () => {
 };
 
 // --- FUNCȚIE AJUTĂTOARE: AFLĂ CLUBUL REAL ---
-const getRealClubName = async (playerId, nationalTeamId) => {
+const getRealClubNameAndLogo = async (playerId, nationalTeamId) => {
     try {
         const res = await axios.get(`${BASE_URL}/players?id=${playerId}&season=${SEASON}`, {
             headers: { 'x-apisports-key': API_KEY }
@@ -92,7 +95,7 @@ const getRealClubName = async (playerId, nationalTeamId) => {
         const clubStat = statsList.find(s => s.team.id !== nationalTeamId);
 
         if (clubStat) {
-            return clubStat.team.name; 
+            return { name: clubStat.team.name, logo: clubStat.team.logo }; 
         }
         return null;
     } catch (err) {
@@ -101,7 +104,7 @@ const getRealClubName = async (playerId, nationalTeamId) => {
     }
 };
 
-const processTeam = async (teamId, teamName, leagueId, isNationalTeam) => {
+const processTeam = async (teamId, teamName, teamLogo, leagueId, isNationalTeam) => {
     let currentPage = 1;
     let totalPages = 1;
 
@@ -121,18 +124,21 @@ const processTeam = async (teamId, teamName, leagueId, isNationalTeam) => {
                 const stats = item.statistics[0]; 
 
                 let finalTeamName = teamName; 
+                let finalTeamLogo = stats?.team?.logo || teamLogo;
                 let shouldUpdate = true;
 
-                // --- LOGICA SPECIALĂ PENTRU STRANIERI (MODIFICATĂ) ---
+                // --- LOGICA SPECIALĂ PENTRU STRANIERI ---
                 if (isNationalTeam) {
-                    const existingPlayer = await Player.findOne({ api_player_id: p.id });
+                    const existingPlayer = await Player.findOne({ 
+                        $or: [ { api_player_id: p.id }, { api_id: p.id } ] 
+                    });
                     
                     if (existingPlayer) {
-                        // 1. Dacă joacă la un club din SuperLigă (ex: Olaru la FCSB), îl lăsăm în pace.
-                        if (existingPlayer.team_name !== "Romania (Nationala)") {
+                        // 1. Dacă joacă la un club din SuperLigă (ex: Olaru la FCSB), îl lăsăm în pace
+                        if (existingPlayer.team_name && existingPlayer.team_name !== "Romania (Nationala)") {
                              shouldUpdate = false;
                         } 
-                        // 2. Dacă e salvat ca "Romania (Nationala)", ÎL ACTUALIZĂM!
+                        // 2. Dacă e salvat ca "Romania (Nationala)", ÎL ACTUALIZĂM
                         else {
                              console.log(`      🔄 Actualizez clubul pentru: ${p.name}...`);
                              shouldUpdate = true;
@@ -144,13 +150,13 @@ const processTeam = async (teamId, teamName, leagueId, isNationalTeam) => {
                     }
 
                     if (shouldUpdate) {
-                        // Aflăm clubul real doar dacă trebuie să actualizăm/adăugăm
                         await wait(2000); // Pauză rate limit
-                        const realClub = await getRealClubName(p.id, teamId);
+                        const realClubInfo = await getRealClubNameAndLogo(p.id, teamId);
                         
-                        if (realClub) {
-                            console.log(`         ✅ Club găsit: ${realClub}`);
-                            finalTeamName = realClub; 
+                        if (realClubInfo) {
+                            console.log(`         ✅ Club găsit: ${realClubInfo.name}`);
+                            finalTeamName = realClubInfo.name; 
+                            finalTeamLogo = realClubInfo.logo;
                         } else {
                             console.log(`         ⚠️ Rămâne la Națională.`);
                         }
@@ -159,28 +165,34 @@ const processTeam = async (teamId, teamName, leagueId, isNationalTeam) => {
 
                 if (shouldUpdate) {
                     await Player.updateOne(
-                        { api_player_id: p.id },
+                        { $or: [ { api_player_id: p.id }, { api_id: p.id } ] },
                         {
                             $set: {
                                 name: p.name,
+                                firstname: p.firstname,
+                                lastname: p.lastname,
                                 age: p.age,
                                 nationality: p.nationality,
-                                birth_date: p.birth.date,
-                                birth_place: p.birth.place,
+                                birth_date: p.birth?.date,
+                                birth_place: p.birth?.place,
                                 height: p.height,
                                 weight: p.weight,
-                                position: stats.games.position,
+                                position: stats?.games?.position,
                                 image: p.photo,
-                                team_name: finalTeamName, // Numele corect (Club sau Romania)
+                                team_name: finalTeamName, 
+                                team: finalTeamName,
+                                team_logo: finalTeamLogo,
+                                league_id: leagueId,
                                 statistics_summary: {
                                     team_name: finalTeamName,
-                                    total_goals: stats.goals.total || 0,
-                                    total_assists: stats.goals.assists || 0,
-                                    total_appearances: stats.games.appearences || 0,
-                                    minutes_played: stats.games.minutes || 0,
-                                    rating: stats.games.rating || null
+                                    total_goals: stats?.goals?.total || 0,
+                                    total_assists: stats?.goals?.assists || 0,
+                                    total_appearances: stats?.games?.appearences || 0,
+                                    minutes_played: stats?.games?.minutes || 0,
+                                    rating: stats?.games?.rating || null
                                 },
-                                api_player_id: p.id
+                                api_player_id: p.id,
+                                api_id: p.id
                             }
                         },
                         { upsert: true }

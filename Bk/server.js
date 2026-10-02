@@ -7,10 +7,10 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const http = require('http');           // [1] Necesare pentru Socket.io
-const { Server } = require("socket.io");// [1] Socket.io
-const cloudinary = require('cloudinary').v2; // [2] Cloudinary
-const Joi = require('joi');             // [3] Joi Validation
+const http = require('http');           // Necesare pentru Socket.io
+const { Server } = require("socket.io");// Socket.io
+const cloudinary = require('cloudinary').v2; // Cloudinary
+const Joi = require('joi');             // Joi Validation
 
 // --- IMPORTURI SECURITATE & PERFORMANȚĂ ---
 const helmet = require('helmet');
@@ -22,18 +22,18 @@ const { hardResetAndLoad } = require('./services/initialLoad');
 const { runDailySmartSync } = require('./services/smartSync'); 
 
 const app = express();
-const server = http.createServer(app); // [1] Legăm Express de HTTP Server
+const server = http.createServer(app); // Legăm Express de HTTP Server
 const PORT = process.env.PORT || 3000;
 const TOKEN_SECRET = process.env.JWT_SECRET || 'cheie_secreta_foarte_lunga_si_sigura';
 
-// [2] CONFIGURARE CLOUDINARY
+// CONFIGURARE CLOUDINARY
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_NAME, 
   api_key: process.env.CLOUDINARY_KEY, 
   api_secret: process.env.CLOUDINARY_SECRET
 });
 
-// [1] CONFIGURARE SOCKET.IO
+// CONFIGURARE SOCKET.IO
 const io = new Server(server, {
     cors: {
         origin: "*", 
@@ -78,14 +78,13 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// [3] SCHEME DE VALIDARE JOI
+// SCHEME DE VALIDARE JOI
 const registerSchema = Joi.object({
     name: Joi.string().min(3).required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required()
 });
 
-// SCHEMĂ REDENUMITĂ PENTRU A EVITA CONFLICTE
 const listingValidationSchema = Joi.object({
     title: Joi.string().min(5).required(),
     category: Joi.string().required(),
@@ -124,13 +123,13 @@ userSchema.pre('save', async function(next) {
 });
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// B. MESSAGE (NOU - ADAUGAT isDeleted)
+// B. MESSAGE (SOFT DELETE)
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
     message: String,
     time: String,
-    isDeleted: { type: Boolean, default: false }, // <--- PENTRU SOFT DELETE
+    isDeleted: { type: Boolean, default: false }, 
     timestamp: { type: Date, default: Date.now }
 });
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
@@ -204,7 +203,6 @@ io.on("connection", (socket) => {
             const newMessage = new Message(data);
             await newMessage.save();
             
-            // [MODIFICAT] Trimitem obiectul SALVAT (care conține _id), nu datele brute
             io.in(data.room).emit("receive_message", newMessage);
         } catch(e) { console.error(e); }
     });
@@ -213,7 +211,6 @@ io.on("connection", (socket) => {
         console.log("User Disconnected", socket.id);
     });
     socket.on("typing", (room) => {
-        // Trimitem doar celorlalți din cameră, nu și celui care scrie
         socket.to(room).emit("display_typing", { isTyping: true });
     });
 
@@ -248,7 +245,7 @@ const startServer = async () => {
                     content: `REPORTER: Domnule Andrași...`, 
                     date: 'Ianuarie 2026'
                 }
-            ]);
+             ]);
         }
 
         // RUTE AUTH
@@ -350,7 +347,7 @@ const startServer = async () => {
             try {
                 const { email, name } = req.body;
 
-                // 1. Găsim produsele tale (unde ești vânzător)
+                // 1. Găsim produsele tale
                 const myListings = await Listing.find({ sellerEmail: email });
                 const myListingIds = myListings.map(l => l._id.toString());
                 
@@ -371,7 +368,6 @@ const startServer = async () => {
                     if (listing) {
                         const lastMsg = await Message.findOne({ room }).sort({ timestamp: -1 });
                         
-                        // Afișăm dacă există mesaje sau dacă e produsul tău
                         if (lastMsg || myListingIds.includes(listingId)) {
                             conversations.push({
                                 roomId: room,
@@ -385,7 +381,6 @@ const startServer = async () => {
                     }
                 }
                 
-                // Sortăm după data ultimului mesaj
                 conversations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 res.json(conversations);
             } catch (err) {
@@ -394,7 +389,7 @@ const startServer = async () => {
             }
         });
 
-        // --- RUTA PENTRU TRIMITERE MESAJ (API HTTP -> SOCKET) ---
+        // --- RUTA PENTRU TRIMITERE MESAJ ---
         app.post('/api/messages/send', async (req, res) => {
             try {
                 const { room, author, message, time } = req.body;
@@ -408,7 +403,6 @@ const startServer = async () => {
                 });
                 await newMessage.save();
 
-                // Notificăm socket-ul
                 io.in(room).emit("receive_message", newMessage);
 
                 res.json({ success: true, message: "Mesaj trimis!" });
@@ -418,7 +412,7 @@ const startServer = async () => {
             }
         });
 
-        // --- [NOU] RUTA PENTRU ȘTERGERE MESAJ (SOFT DELETE) ---
+        // --- RUTA PENTRU ȘTERGERE MESAJ (SOFT DELETE) ---
         app.delete('/api/messages/:id', async (req, res) => {
             try {
                 const messageId = req.params.id;
@@ -428,17 +422,14 @@ const startServer = async () => {
                 
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
 
-                // Verificare de securitate
                 if (msg.author !== user) {
                     return res.status(403).json({ error: "Nu poți șterge mesajele altora." });
                 }
 
-                // SOFT DELETE - Marcam ca șters și golim textul
                 msg.isDeleted = true;
-                msg.message = ""; // Golim mesajul pentru privacy
+                msg.message = ""; 
                 await msg.save();
 
-                // Anunțăm socket-ul că s-a actualizat mesajul (nu șters de tot)
                 io.in(msg.room).emit("message_updated", msg);
 
                 res.json({ success: true });
@@ -448,14 +439,12 @@ const startServer = async () => {
             }
         });
 
-        // RUTE MARKETPLACE (CU CLOUDINARY & VALIDARE)
+        // RUTE MARKETPLACE
         app.post('/api/listings', async (req, res) => {
             try {
-                // [3] Validare
                 const { error } = listingValidationSchema.validate(req.body);
                 if (error) return res.status(400).json({ error: error.details[0].message });
 
-                // [2] Upload Imagini în Cloud
                 const imagePromises = req.body.images.map(img => uploadImage(img));
                 const uploadedImages = await Promise.all(imagePromises);
                 const validImages = uploadedImages.filter(img => img !== null);
@@ -510,7 +499,6 @@ const startServer = async () => {
                 let query = {};
                 
                 if (search) {
-                    // Căutare flexibilă (case-insensitive) după 'name', 'firstname' sau 'lastname'
                     query.$or = [
                         { name: { $regex: search,$options: 'i' } },
                         { firstname: { $regex: search,$options: 'i' } },
@@ -543,7 +531,7 @@ const startServer = async () => {
         app.get('/api/admin/hard-reset', async (req, res) => { hardResetAndLoad(); res.send("Reset initiated."); });
         cron.schedule('10 16 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
 
-        // IMPORTANT: [1] Folosim server.listen, NU app.listen
+        // IMPORTANT: Folosim server.listen, NU app.listen
         server.listen(PORT, () => console.log(`🚀 Server + Chat pornit pe http://localhost:${PORT}`));
 
     } catch (error) { console.error("❌ Eroare:", error.message); }
