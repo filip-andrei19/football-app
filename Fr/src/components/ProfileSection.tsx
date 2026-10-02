@@ -14,7 +14,8 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
       email: user.email,
       avatar: user.avatar || '',
       currentPassword: '',
-      newPassword: ''
+      newPassword: '',
+      confirmPassword: '' // NOU: Câmp pentru confirmarea parolei
   });
 
   // --- 1. LOGICA PENTRU POZĂ (Upload & Salvare Automată) ---
@@ -33,10 +34,8 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
           reader.onloadend = async () => {
               const base64Image = reader.result as string;
               
-              // 1. Actualizăm interfața vizual instant
               setFormData(prev => ({ ...prev, avatar: base64Image }));
               
-              // 2. Salvăm poza AUTOMAT în baza de date
               setLoading(true);
               const savingToast = toast.loading("Salvăm noua poză...");
               
@@ -54,14 +53,13 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
                   const data = await response.json();
 
                   if (data.success) {
-                      onUpdateUser(data.user); // Actualizează și în restul aplicației
+                      onUpdateUser(data.user); 
                       toast.success("Poză de profil salvată permanent!", { id: savingToast });
                   } else {
-                      // AM MODIFICAT AICI: Acum va afișa eroarea EXACTĂ de la server
                       toast.error(data.error || data.message || "Eroare la salvarea pozei.", { id: savingToast });
                   }
               } catch (err) {
-                  toast.error("Eroare server. Verifică log-urile din Render.", { id: savingToast });
+                  toast.error("Eroare server.", { id: savingToast });
               } finally {
                   setLoading(false);
               }
@@ -101,10 +99,19 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
       }
   };
 
-  // --- 3. SCHIMBARE PAROLĂ ---
+  // --- 3. SCHIMBARE PAROLĂ (CU 3 CÂMPURI) ---
   const handleChangePassword = async (e: React.FormEvent) => {
       e.preventDefault();
-      if(formData.newPassword.length < 6) return toast.error("Parola nouă e prea scurtă!");
+      
+      if (!formData.currentPassword) {
+          return toast.error("Introdu parola curentă!");
+      }
+      if (formData.newPassword.length < 6) {
+          return toast.error("Parola nouă trebuie să aibă cel puțin 6 caractere!");
+      }
+      if (formData.newPassword !== formData.confirmPassword) {
+          return toast.error("Parolele noi nu coincid!");
+      }
       
       setLoading(true);
       try {
@@ -120,10 +127,10 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
           
           const data = await response.json();
           if(data.success) {
-              toast.success("Parola a fost schimbată!");
-              setFormData({...formData, currentPassword: '', newPassword: ''});
+              toast.success("Parola a fost schimbată cu succes!");
+              setFormData({ ...formData, currentPassword: '', newPassword: '', confirmPassword: '' });
           } else {
-              toast.error(data.message || "Eroare.");
+              toast.error(data.message || data.error || "Eroare la schimbarea parolei.");
           }
       } catch (err) {
           toast.error("Eroare server.");
@@ -139,7 +146,6 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
         <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-10"></div>
             
-            {/* ZONA POZĂ DE PROFIL */}
             <div className="relative group cursor-pointer" onClick={handleImageClick}>
                 <div className="w-32 h-32 rounded-full bg-blue-100 dark:bg-slate-700 flex items-center justify-center text-4xl font-bold text-blue-600 dark:text-blue-400 border-4 border-white dark:border-slate-800 shadow-lg overflow-hidden">
                     {formData.avatar ? (
@@ -149,7 +155,6 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
                     )}
                 </div>
                 
-                {/* Overlay la hover + Iconiță */}
                 <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Camera className="w-8 h-8 text-white" />
                 </div>
@@ -157,7 +162,6 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
                     <Camera className="w-4 h-4" />
                 </div>
 
-                {/* INPUT ASCUNS */}
                 <input 
                     type="file" 
                     ref={fileInputRef} 
@@ -243,6 +247,7 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
                                 type="password" 
                                 value={formData.currentPassword}
                                 onChange={e => setFormData({...formData, currentPassword: e.target.value})}
+                                placeholder="Introdu parola actuală"
                                 className="w-full p-3 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-900 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                         </div>
@@ -252,6 +257,17 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
                                 type="password" 
                                 value={formData.newPassword}
                                 onChange={e => setFormData({...formData, newPassword: e.target.value})}
+                                placeholder="Minim 6 caractere"
+                                className="w-full p-3 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-900 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Confirmă Parola Nouă</label>
+                            <input 
+                                type="password" 
+                                value={formData.confirmPassword}
+                                onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                                placeholder="Reintrodu parola nouă"
                                 className="w-full p-3 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-900 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                         </div>
