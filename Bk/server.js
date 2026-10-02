@@ -406,14 +406,16 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare la încărcarea conversațiilor." }); }
         });
 
-        // ACTUALIZAT: Permite primirea pozelor (imageBase64)
+        // ACTUALIZAT: Permite primirea pozelor (indiferent dacă se trimit cu text sau separat)
         app.post('/api/messages/send', async (req, res) => {
             try {
-                const { room, author, message, time, imageBase64 } = req.body;
+                const { room, author, message, time, imageUrl, imageBase64 } = req.body;
                 
-                let imageUrl = "";
-                if (imageBase64 && imageBase64.startsWith('data:image')) {
-                    imageUrl = await uploadImage(imageBase64);
+                const rawImage = imageBase64 || imageUrl;
+                let finalImageUrl = "";
+                
+                if (rawImage && rawImage.startsWith('data:image')) {
+                    finalImageUrl = await uploadImage(rawImage);
                 }
 
                 const newMessage = new Message({ 
@@ -421,14 +423,17 @@ const startServer = async () => {
                     author, 
                     message: message || "", 
                     time, 
-                    imageUrl,
+                    imageUrl: finalImageUrl,
                     timestamp: new Date() 
                 });
 
                 await newMessage.save();
                 io.in(room).emit("receive_message", newMessage);
                 res.json({ success: true, message: "Mesaj trimis!" });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) { 
+                console.error("Eroare trimitere mesaj:", err);
+                res.status(500).json({ error: "Eroare." }); 
+            }
         });
 
         app.delete('/api/messages/:id', async (req, res) => {
@@ -440,14 +445,13 @@ const startServer = async () => {
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
                 if (msg.author !== user) return res.status(403).json({ error: "Nu poți șterge mesajele altora." });
                 
-                // Ștergem poza de pe Cloudinary dacă avea una
                 if (msg.imageUrl && msg.imageUrl.includes('cloudinary.com')) {
                     await deleteFromCloudinary(msg.imageUrl);
                 }
 
                 msg.isDeleted = true;
                 msg.message = ""; 
-                msg.imageUrl = ""; // Ștergem linkul pozei
+                msg.imageUrl = ""; 
                 await msg.save();
                 
                 io.in(msg.room).emit("message_updated", msg);
