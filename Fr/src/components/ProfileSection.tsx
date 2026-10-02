@@ -57,10 +57,11 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
                       onUpdateUser(data.user); // Actualizează și în restul aplicației
                       toast.success("Poză de profil salvată permanent!", { id: savingToast });
                   } else {
-                      toast.error(data.message || "Eroare la salvarea pozei.", { id: savingToast });
+                      // AM MODIFICAT AICI: Acum va afișa eroarea EXACTĂ de la server
+                      toast.error(data.error || data.message || "Eroare la salvarea pozei.", { id: savingToast });
                   }
               } catch (err) {
-                  toast.error("Eroare server.", { id: savingToast });
+                  toast.error("Eroare server. Verifică log-urile din Render.", { id: savingToast });
               } finally {
                   setLoading(false);
               }
@@ -91,7 +92,7 @@ export function ProfileSection({ user, onUpdateUser, onLogout }: { user: any, on
               onUpdateUser(data.user); 
               toast.success("Profil actualizat! Numele s-a schimbat și în anunțuri.");
           } else {
-              toast.error(data.message || "Eroare la actualizare.");
+              toast.error(data.error || data.message || "Eroare la actualizare.");
           }
       } catch (err) {
           toast.error("Eroare server.");
