@@ -7,10 +7,10 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const http = require('http');           // Necesare pentru Socket.io
-const { Server } = require("socket.io");// Socket.io
-const cloudinary = require('cloudinary').v2; // Cloudinary
-const Joi = require('joi');             // Joi Validation
+const http = require('http');           
+const { Server } = require("socket.io");
+const cloudinary = require('cloudinary').v2; 
+const Joi = require('joi');             
 
 // --- IMPORTURI SECURITATE & PERFORMANȚĂ ---
 const helmet = require('helmet');
@@ -22,7 +22,7 @@ const { hardResetAndLoad } = require('./services/initialLoad');
 const { runDailySmartSync } = require('./services/smartSync'); 
 
 const app = express();
-const server = http.createServer(app); // Legăm Express de HTTP Server
+const server = http.createServer(app); 
 const PORT = process.env.PORT || 3000;
 const TOKEN_SECRET = process.env.JWT_SECRET || 'cheie_secreta_foarte_lunga_si_sigura';
 
@@ -123,7 +123,7 @@ userSchema.pre('save', async function(next) {
 });
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// B. MESSAGE (SOFT DELETE)
+// B. MESSAGE
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
@@ -167,7 +167,7 @@ const storySchema = new mongoose.Schema({
 });
 const Story = mongoose.models.Story || mongoose.model('Story', storySchema);
 
-// Helper Cloudinary Upload
+// --- HELPERE CLOUDINARY PENTRU UPLOAD ȘI ȘTERGERE ---
 const uploadImage = async (base64Str) => {
     try {
         if (!base64Str || !base64Str.startsWith('data:image')) return base64Str; 
@@ -182,11 +182,32 @@ const uploadImage = async (base64Str) => {
     }
 };
 
+const deleteFromCloudinary = async (imageUrl) => {
+    try {
+        if (!imageUrl || !imageUrl.includes('cloudinary.com')) return;
+        
+        // Extragem ID-ul public al pozei din URL
+        const urlParts = imageUrl.split('/');
+        const uploadIndex = urlParts.findIndex(part => part === 'upload');
+        const partsToKeep = urlParts.slice(uploadIndex + 1);
+        
+        // Eliminăm versiunea (ex: v1700000) dacă există
+        if (partsToKeep[0].startsWith('v')) partsToKeep.shift(); 
+        
+        const publicIdWithExt = partsToKeep.join('/');
+        const publicId = publicIdWithExt.split('.')[0]; // Eliminăm extensia (.png, .jpg)
+        
+        await cloudinary.uploader.destroy(publicId);
+        console.log(`🗑️ Imagine ștearsă din Cloudinary: ${publicId}`);
+    } catch (err) {
+        console.error("Eroare la ștergerea din Cloudinary:", err);
+    }
+};
+
 // ==========================================
 // 2. LOGICA SERVER & RUTE
 // ==========================================
 
-// LOGICA CHAT (SOCKET.IO)
 io.on("connection", (socket) => {
     console.log(`User Connected: ${socket.id}`);
 
@@ -202,7 +223,6 @@ io.on("connection", (socket) => {
         try {
             const newMessage = new Message(data);
             await newMessage.save();
-            
             io.in(data.room).emit("receive_message", newMessage);
         } catch(e) { console.error(e); }
     });
@@ -213,7 +233,6 @@ io.on("connection", (socket) => {
     socket.on("typing", (room) => {
         socket.to(room).emit("display_typing", { isTyping: true });
     });
-
     socket.on("stop_typing", (room) => {
         socket.to(room).emit("display_typing", { isTyping: false });
     });
@@ -224,7 +243,6 @@ const startServer = async () => {
         await mongoose.connect(process.env.MONGO_URI);
         console.log('✅ Conectat la MongoDB.');
 
-        // SEEDING STORIES
         const storyCount = await Story.countDocuments();
         if (storyCount === 0) {
              console.log("📂 Seeding stories...");
@@ -248,7 +266,7 @@ const startServer = async () => {
              ]);
         }
 
-        // RUTE AUTH
+        // --- RUTE AUTH & PROFIL ---
         app.post('/api/users/register', async (req, res) => {
             try {
                 const { error } = registerSchema.validate(req.body);
@@ -294,7 +312,6 @@ const startServer = async () => {
                  user.resetPasswordToken = token;
                  user.resetPasswordExpires = Date.now() + 3600000;
                  await user.save();
-                 console.log(`📧 [EMAIL SIMULAT]: http://localhost:5173/reset-password/${token}`);
                  res.json({ success: true, message: "Link trimis." });
              } catch(err) { res.status(500).json({error: "Eroare"}); }
         });
@@ -311,22 +328,40 @@ const startServer = async () => {
              } catch(err) { res.status(500).json({error: "Eroare"}); }
         });
 
+        // --- ACTUALIZARE PROFIL (CU UPLOAD ȘI ȘTERGERE VECHEA POZĂ) ---
         app.put('/api/users/profile', async (req, res) => {
             try {
                 const { email, name, avatar } = req.body;
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
 
+                let newAvatarUrl = user.avatar;
+
+                // Dacă s-a trimis o poză nouă (Base64) din frontend
+                if (avatar && avatar.startsWith('data:image')) {
+                    // 1. Dacă avea deja o poză veche în Cloudinary, o ștergem ca să nu ocupe spațiu aiurea
+                    if (user.avatar && user.avatar.includes('cloudinary.com')) {
+                        await deleteFromCloudinary(user.avatar);
+                    }
+                    // 2. Încărcăm noua poză în Cloudinary
+                    newAvatarUrl = await uploadImage(avatar);
+                }
+
                 let updates = {};
                 if (name && name !== user.name) updates.seller = name;
-                if (avatar && avatar !== user.avatar) updates.sellerAvatar = avatar;
-                if (Object.keys(updates).length > 0) await Listing.updateMany({ sellerEmail: email }, { $set: updates });
+                if (newAvatarUrl && newAvatarUrl !== user.avatar) updates.sellerAvatar = newAvatarUrl;
+                
+                // Actualizăm automat toate anunțurile acestui user cu noua poză și nume
+                if (Object.keys(updates).length > 0) {
+                    await Listing.updateMany({ sellerEmail: email }, { $set: updates });
+                }
 
                 user.name = name || user.name;
-                user.avatar = avatar || user.avatar;
+                user.avatar = newAvatarUrl || user.avatar;
                 await user.save();
+                
                 res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) { res.status(500).json({ error: "Eroare la actualizarea profilului." }); }
         });
 
         app.put('/api/users/change-password', async (req, res) => {
@@ -342,32 +377,23 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
-        // --- RUTA PENTRU LISTA DE CONVERSAȚII (INBOX) ---
+        // --- RUTE MESAJE ---
         app.post('/api/messages/conversations', async (req, res) => {
             try {
                 const { email, name } = req.body;
-
-                // 1. Găsim produsele tale
                 const myListings = await Listing.find({ sellerEmail: email });
                 const myListingIds = myListings.map(l => l._id.toString());
-                
-                // 2. Găsim mesajele scrise de tine
                 const myMessages = await Message.find({ author: name }).distinct('room');
-
-                // 3. Combinăm toate camerele relevante
                 const myListingRooms = myListingIds.map(id => `listing_${id}`);
                 const allRelevantRooms = [...new Set([...myListingRooms, ...myMessages])];
                 const listingRooms = allRelevantRooms.filter(r => r && r.startsWith('listing_'));
-
                 const conversations = [];
 
                 for (const room of listingRooms) {
                     const listingId = room.split('_')[1];
                     const listing = await Listing.findById(listingId);
-
                     if (listing) {
                         const lastMsg = await Message.findOne({ room }).sort({ timestamp: -1 });
-                        
                         if (lastMsg || myListingIds.includes(listingId)) {
                             conversations.push({
                                 roomId: room,
@@ -380,66 +406,38 @@ const startServer = async () => {
                         }
                     }
                 }
-                
                 conversations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 res.json(conversations);
-            } catch (err) {
-                console.error(err);
-                res.status(500).json({ error: "Eroare la încărcarea conversațiilor." });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare la încărcarea conversațiilor." }); }
         });
 
-        // --- RUTA PENTRU TRIMITERE MESAJ ---
         app.post('/api/messages/send', async (req, res) => {
             try {
                 const { room, author, message, time } = req.body;
-                
-                const newMessage = new Message({
-                    room,
-                    author,
-                    message,
-                    time,
-                    timestamp: new Date()
-                });
+                const newMessage = new Message({ room, author, message, time, timestamp: new Date() });
                 await newMessage.save();
-
                 io.in(room).emit("receive_message", newMessage);
-
                 res.json({ success: true, message: "Mesaj trimis!" });
-            } catch (err) {
-                console.error(err);
-                res.status(500).json({ error: "Eroare la trimiterea mesajului." });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
-        // --- RUTA PENTRU ȘTERGERE MESAJ (SOFT DELETE) ---
         app.delete('/api/messages/:id', async (req, res) => {
             try {
                 const messageId = req.params.id;
                 const { user } = req.body; 
-
                 const msg = await Message.findById(messageId);
-                
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
-
-                if (msg.author !== user) {
-                    return res.status(403).json({ error: "Nu poți șterge mesajele altora." });
-                }
-
+                if (msg.author !== user) return res.status(403).json({ error: "Nu poți șterge mesajele altora." });
+                
                 msg.isDeleted = true;
                 msg.message = ""; 
                 await msg.save();
-
                 io.in(msg.room).emit("message_updated", msg);
-
                 res.json({ success: true });
-            } catch (err) {
-                console.error(err);
-                res.status(500).json({ error: "Eroare la ștergere." });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare la ștergere." }); }
         });
 
-        // RUTE MARKETPLACE
+        // --- RUTE MARKETPLACE ---
         app.post('/api/listings', async (req, res) => {
             try {
                 const { error } = listingValidationSchema.validate(req.body);
@@ -457,7 +455,6 @@ const startServer = async () => {
                 await newListing.save();
                 res.status(201).json(newListing);
             } catch (err) { 
-                console.error(err);
                 res.status(500).json({ error: "Eroare la postare." }); 
             }
         });
@@ -472,6 +469,7 @@ const startServer = async () => {
             res.json(listings);
         });
 
+        // --- ȘTERGERE ANUNȚ (CU ELIMINAREA POZELOR DIN CLOUDINARY) ---
         app.delete('/api/listings/:id', async (req, res) => {
             try {
                 const { email } = req.body; 
@@ -485,19 +483,27 @@ const startServer = async () => {
                 if (!isOwner && !isAdmin) {
                     return res.status(403).json({ error: "Nu ai permisiunea să ștergi acest produs." });
                 }
+
+                // 1. Ștergem toate pozele acestui anunț din Cloudinary
+                if (listing.images && listing.images.length > 0) {
+                    for (const imgUrl of listing.images) {
+                        await deleteFromCloudinary(imgUrl);
+                    }
+                }
+
+                // 2. Ștergem anunțul din MongoDB
                 await Listing.findByIdAndDelete(req.params.id);
-                res.json({ success: true, message: "Produs șters." });
+                res.json({ success: true, message: "Produs și imagini șterse definitiv." });
             } catch (err) {
                 res.status(500).json({ error: "Eroare la ștergere." });
             }
         });
 
-        // RUTĂ OPTIMIZATĂ PENTRU JUCĂTORI (SUPORTĂ CĂUTARE DUPĂ NUME)
+        // RUTE API SPORT & ADMIN
         app.get('/api/sport/players', async (req, res) => {
             try {
                 const { search } = req.query;
                 let query = {};
-                
                 if (search) {
                     query.$or = [
                         { name: { $regex: search,$options: 'i' } },
@@ -505,15 +511,11 @@ const startServer = async () => {
                         { lastname: { $regex: search,$options: 'i' } }
                     ];
                 }
-
                 const players = await Player.find(query).limit(500); 
                 res.json(players);
-            } catch (err) {
-                res.status(500).json({ error: "Eroare la preluarea jucătorilor." });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
         });
 
-        // RUTE ADMIN & STORIES
         app.get('/api/admin/users', async (req, res) => { const users = await User.find(); res.json(users); });
         app.put('/api/admin/users/:id/ban', async (req, res) => { 
             const user = await User.findById(req.params.id); 
@@ -529,9 +531,9 @@ const startServer = async () => {
 
         // --- ADMIN TOOLS ---
         app.get('/api/admin/hard-reset', async (req, res) => { hardResetAndLoad(); res.send("Reset initiated."); });
+        app.get('/api/admin/force-sync', async (req, res) => { runDailySmartSync(); res.send("Smart Sync forțat. Verifică logs."); });
         cron.schedule('10 16 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
 
-        // IMPORTANT: Folosim server.listen, NU app.listen
         server.listen(PORT, () => console.log(`🚀 Server + Chat pornit pe http://localhost:${PORT}`));
 
     } catch (error) { console.error("❌ Eroare:", error.message); }
