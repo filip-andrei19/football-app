@@ -4,7 +4,7 @@ const Player = require('../models/player');
 // --- CONFIGURARE ---
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://v3.football.api-sports.io"; 
-const SEASON = 2024; 
+const SEASON = 2026; 
 
 const LEAGUE_PRIORITIES = [
     { id: 283, name: "SuperLiga (Romania)" }

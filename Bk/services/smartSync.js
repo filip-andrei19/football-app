@@ -4,9 +4,9 @@ const Player = require('../models/player');
 // --- CONFIGURARE ---
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://v3.football.api-sports.io";
-const SEASON = 2024;
+const SEASON = 2026; // Anul corectat pentru sezonul curent
 
-// Lista Ligilor Importante (Acum le vom procesa pe TOATE într-o singură rulare)
+// Lista Ligilor Importante
 const TARGET_LEAGUES = [
     { id: 39, name: "Premier League (Anglia)" },
     { id: 140, name: "La Liga (Spania)" },
@@ -21,7 +21,6 @@ const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const runDailySmartSync = async () => {
     console.log(`⏰ [SMART SYNC] Pornesc actualizarea completă pentru TOATE LIGILE...`);
 
-    // Iterăm prin TOATE ligile în aceeași rulare
     for (const targetLeague of TARGET_LEAGUES) {
         console.log(`\n🌍 Încep procesarea pentru: ${targetLeague.name}...`);
 
@@ -43,10 +42,10 @@ const runDailySmartSync = async () => {
                 const teamId = t.team.id;
                 const teamLogo = t.team.logo;
 
-                console.log(`  👉 Verific Echipa: ${teamName}`);
+                console.log(` 👉 Verific Echipa: ${teamName}`);
                 await processTeamAndUpdate(teamId, teamName, teamLogo, targetLeague.id);
                 
-                // Pauză de 3 secunde între echipe pentru a respecta rate-limit-ul pe secundă
+                // Pauză de 3 secunde între echipe
                 await wait(3000); 
             }
 
@@ -77,7 +76,9 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
                 const p = item.player;
                 const stats = item.statistics[0];
 
-                const currentTeamLogo = stats?.team?.logo || teamLogo;
+                // MODIFICARE CRITICĂ PENTRU TRANSFERURI:
+                // Forțăm echipa curentă să fie cea scanată (teamName, teamLogo)
+                const currentTeamLogo = teamLogo; 
 
                 const updateData = {
                     name: p.name,
@@ -91,10 +92,13 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
                     weight: p.weight,
                     image: p.photo,
                     position: stats?.games?.position,
+                    
+                    // Suprascriem forțat echipa veche cu echipa la care este găsit ACUM în roster
                     team_name: teamName,
                     team: teamName, 
                     team_logo: currentTeamLogo,
                     league_id: leagueId,
+                    
                     statistics_summary: {
                         team_name: teamName,
                         total_goals: stats?.goals?.total || 0,
@@ -111,12 +115,12 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
 
                 if (existingPlayer) {
                     if (existingPlayer.team_name !== teamName) {
-                        console.log(`      🔄 TRANSFER DETECTAT: ${p.name} s-a mutat la "${teamName}"!`);
+                        console.log(`   🔄 TRANSFER DETECTAT ȘI REZOLVAT: ${p.name} s-a mutat la "${teamName}"!`);
                     }
                     await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
                 } else {
                     if (p.nationality === "Romania") {
-                        console.log(`      ⭐ Jucător NOU Român adăugat: ${p.name}`);
+                        console.log(`   ⭐ Jucător NOU Român adăugat: ${p.name}`);
                         const newPlayer = new Player({
                             api_player_id: p.id,
                             api_id: p.id,
@@ -128,11 +132,10 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
             }
             currentPage++;
             
-            // Pauză de 1.5 secunde între paginile aceleiași echipe
             if (currentPage <= totalPages) await wait(1500); 
             
         } catch (err) {
-            console.log(`      ❌ Eroare pagină: ${err.message}`);
+            console.log(`   ❌ Eroare pagină: ${err.message}`);
             break;
         }
     } while (currentPage <= totalPages);
