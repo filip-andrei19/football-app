@@ -536,38 +536,50 @@ const startServer = async () => {
         });
 
         // --- CĂUTARE ECHIPE (Returnează o listă unică de echipe cu logo) ---
+        // 🟢 Varianta ROBUSTĂ: caută și în câmpul `team_name` și în câmpul `team`
         app.get('/api/sport/teams/search', async (req, res) => {
             try {
                 const { q } = req.query;
-                let matchStage = {};
-                // Dacă utilizatorul caută ceva, filtrăm după nume
+                let matchQuery = {};
+                
                 if (q) {
-                    matchStage = { team_name: { $regex: q,$options: 'i' } };
+                    matchQuery = { 
+                        $or: [
+                            { team_name: { $regex: q,$options: 'i' } },
+                            { team: { $regex: q,$options: 'i' } }
+                        ]
+                    };
                 }
                 
-                // Folosim agregarea pentru a extrage doar echipele unice din lista de jucători
                 const teams = await Player.aggregate([
-                    { $match: matchStage },
+                    { $match: matchQuery },
                     { $group: { 
-                        _id: "$team_name", 
-                        team_logo: { $first: "$team_logo" }, 
-                        league_id: { $first: "$league_id" } 
+                        _id: { $ifNull: ["$team_name", "$team"] },
+                        team_logo: { $first: "$team_logo" }
                     }},
-                    { $project: { _id: 0, team_name: "$_id", team_logo: 1, league_id: 1 } },
-                    { $sort: { team_name: 1 } },                     {$limit: 20 } // Returnează maxim 20 de echipe la o căutare
+                    { $match: { _id: {$ne: null } } }, 
+                    { $project: { _id: 0, team_name: "$_id", team_logo: 1 } },
+                    { $sort: { team_name: 1 } },                     {$limit: 200 } // Limită mărită
                 ]);
                 
                 res.json(teams);
             } catch (err) { 
+                console.error("Eroare Teams:", err);
                 res.status(500).json({ error: "Eroare la căutarea echipelor." }); 
             }
         });
 
         // --- PRELUARE LOT ECHIPĂ STRUCTURAT PE POZIȚII ---
+        // 🟢 Varianta ROBUSTĂ: preia jucătorii indiferent cum e salvată echipa
         app.get('/api/sport/teams/:teamName/roster', async (req, res) => {
             try {
                 const teamName = req.params.teamName;
-                const players = await Player.find({ team_name: teamName }).sort({ name: 1 });
+                const players = await Player.find({ 
+                    $or: [
+                        { team_name: teamName },
+                        { team: teamName }
+                    ]
+                }).sort({ name: 1 });
                 
                 if (!players || players.length === 0) {
                     return res.status(404).json({ message: "Echipa nu a fost găsită sau nu are jucători." });
