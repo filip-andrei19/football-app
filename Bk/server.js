@@ -197,7 +197,7 @@ const deleteFromCloudinary = async (imageUrl) => {
         const publicId = publicIdWithExt.split('.')[0]; 
         
         await cloudinary.uploader.destroy(publicId);
-        console.log(`🗑️️ Imagine ștearsă din Cloudinary: ${publicId}`);
+        console.log(`🗑 Imagine ștearsă din Cloudinary: ${publicId}`);
     } catch (err) {
         console.error("Eroare la ștergerea din Cloudinary:", err);
     }
@@ -533,6 +533,66 @@ const startServer = async () => {
                 const players = await Player.find(query).limit(500); 
                 res.json(players);
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
+        });
+
+        // --- CĂUTARE ECHIPE (Returnează o listă unică de echipe cu logo) ---
+        app.get('/api/sport/teams/search', async (req, res) => {
+            try {
+                const { q } = req.query;
+                let matchStage = {};
+                // Dacă utilizatorul caută ceva, filtrăm după nume
+                if (q) {
+                    matchStage = { team_name: { $regex: q,$options: 'i' } };
+                }
+                
+                // Folosim agregarea pentru a extrage doar echipele unice din lista de jucători
+                const teams = await Player.aggregate([
+                    { $match: matchStage },
+                    { $group: { 
+                        _id: "$team_name", 
+                        team_logo: { $first: "$team_logo" }, 
+                        league_id: { $first: "$league_id" } 
+                    }},
+                    { $project: { _id: 0, team_name: "$_id", team_logo: 1, league_id: 1 } },
+                    { $sort: { team_name: 1 } },                     {$limit: 20 } // Returnează maxim 20 de echipe la o căutare
+                ]);
+                
+                res.json(teams);
+            } catch (err) { 
+                res.status(500).json({ error: "Eroare la căutarea echipelor." }); 
+            }
+        });
+
+        // --- PRELUARE LOT ECHIPĂ STRUCTURAT PE POZIȚII ---
+        app.get('/api/sport/teams/:teamName/roster', async (req, res) => {
+            try {
+                const teamName = req.params.teamName;
+                const players = await Player.find({ team_name: teamName }).sort({ name: 1 });
+                
+                if (!players || players.length === 0) {
+                    return res.status(404).json({ message: "Echipa nu a fost găsită sau nu are jucători." });
+                }
+
+                // Structurăm lotul exact ca pe Flashscore
+                const roster = {
+                    teamInfo: {
+                        name: teamName,
+                        logo: players[0].team_logo,
+                        totalPlayers: players.length
+                    },
+                    squad: {
+                        Goalkeepers: players.filter(p => p.position === 'Goalkeeper'),
+                        Defenders: players.filter(p => p.position === 'Defender'),
+                        Midfielders: players.filter(p => p.position === 'Midfielder'),
+                        Attackers: players.filter(p => p.position === 'Attacker'),
+                        Unknown: players.filter(p => !p.position || !['Goalkeeper', 'Defender', 'Midfielder', 'Attacker'].includes(p.position))
+                    }
+                };
+                
+                res.json(roster);
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la preluarea lotului." });
+            }
         });
 
         app.get('/api/admin/users', async (req, res) => { const users = await User.find(); res.json(users); });
