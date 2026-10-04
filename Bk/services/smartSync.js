@@ -74,10 +74,12 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
 
             for (const item of playersList) {
                 const p = item.player;
-                const stats = item.statistics[0];
+                
+                // REZOLVARE STATISTICI: Căutăm statisticile EXACT pentru liga pe care o scanăm
+                const leagueStats = item.statistics.find(s => s.team.id === teamId && s.league.id === leagueId);
+                const fallbackStats = item.statistics.find(s => s.team.id === teamId) || item.statistics[0];
+                const stats = leagueStats || fallbackStats;
 
-                // MODIFICARE CRITICĂ PENTRU TRANSFERURI:
-                // Forțăm echipa curentă să fie cea scanată (teamName, teamLogo)
                 const currentTeamLogo = teamLogo; 
 
                 const updateData = {
@@ -93,7 +95,6 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
                     image: p.photo,
                     position: stats?.games?.position,
                     
-                    // Suprascriem forțat echipa veche cu echipa la care este găsit ACUM în roster
                     team_name: teamName,
                     team: teamName, 
                     team_logo: currentTeamLogo,
@@ -114,10 +115,25 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
                 });
 
                 if (existingPlayer) {
+                    // REZOLVARE TRANSFERURI: Evităm suprascrierea transferurilor noi de către fostele cluburi
+                    const existingMinutes = existingPlayer.statistics_summary?.minutes_played || 0;
+                    const newMinutes = stats?.games?.minutes || 0;
+
                     if (existingPlayer.team_name !== teamName) {
-                        console.log(`   🔄 TRANSFER DETECTAT ȘI REZOLVAT: ${p.name} s-a mutat la "${teamName}"!`);
+                        if (newMinutes >= existingMinutes) {
+                             console.log(`   🔄 TRANSFER ACTUALIZAT CORECT: ${p.name} -> "${teamName}"!`);
+                             await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
+                        } else {
+                             console.log(`   ⛔ Transfer IGNORAT (evităm mutarea înapoi la vechiul club pt ${p.name})`);
+                             await Player.updateOne({ _id: existingPlayer._id }, { 
+                                 $set: { 
+                                     "statistics_summary.total_goals": existingPlayer.statistics_summary.total_goals + (stats?.goals?.total || 0)
+                                 } 
+                             });
+                        }
+                    } else {
+                        await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
                     }
-                    await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
                 } else {
                     if (p.nationality === "Romania") {
                         console.log(`   ⭐ Jucător NOU Român adăugat: ${p.name}`);
