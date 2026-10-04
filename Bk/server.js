@@ -197,7 +197,7 @@ const deleteFromCloudinary = async (imageUrl) => {
         const publicId = publicIdWithExt.split('.')[0]; 
         
         await cloudinary.uploader.destroy(publicId);
-        console.log(`🗑️ Imagine ștearsă din Cloudinary: ${publicId}`);
+        console.log(`🗑️️ Imagine ștearsă din Cloudinary: ${publicId}`);
     } catch (err) {
         console.error("Eroare la ștergerea din Cloudinary:", err);
     }
@@ -551,7 +551,7 @@ const startServer = async () => {
         // --- ADMIN TOOLS ---
         app.get('/api/admin/hard-reset', async (req, res) => { hardResetAndLoad(); res.send("Reset initiated."); });
         app.get('/api/admin/force-sync', async (req, res) => { runDailySmartSync(); res.send("Smart Sync forțat. Verifică logs."); });
-        cron.schedule('50 11 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
+        cron.schedule('05 12 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
 
         server.listen(PORT, () => console.log(`🚀 Server + Chat pornit pe http://localhost:${PORT}`));
 
