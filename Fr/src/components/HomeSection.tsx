@@ -146,25 +146,25 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   return (
     <div className="relative min-h-[80vh] py-10 overflow-hidden">
 
-      {/* MODAL LOT ECHIPĂ (Când se apasă pe o echipă) */}
+      {/* MODAL LOT ECHIPĂ (Când se apasă pe o echipă) - MODIFICAT PENTRU MOBIL */}
       {selectedTeam && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
-              <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-300">
-                  <div className="bg-slate-900 text-white p-6 flex items-center justify-between shrink-0">
-                      <div className="flex items-center gap-4">
-                          <div className="w-16 h-16 bg-white p-2 rounded-xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+              <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-300">
+                  <div className="bg-slate-900 text-white p-4 sm:p-6 flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white p-1.5 sm:p-2 rounded-xl shrink-0">
                               <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" />
                           </div>
-                          <div>
-                              <h2 className="text-3xl font-black">{selectedTeam.teamInfo.name}</h2>
-                              <p className="text-slate-400 font-medium">{selectedTeam.teamInfo.totalPlayers} Jucători în Lot</p>
+                          <div className="min-w-0">
+                              <h2 className="text-xl sm:text-3xl font-black truncate">{selectedTeam.teamInfo.name}</h2>
+                              <p className="text-xs sm:text-sm text-slate-400 font-medium truncate">{selectedTeam.teamInfo.totalPlayers} Jucători în Lot</p>
                           </div>
                       </div>
-                      <button onClick={() => setSelectedTeam(null)} className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition text-xl">
+                      <button onClick={() => setSelectedTeam(null)} className="p-2 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full transition text-lg sm:text-xl shrink-0 ml-2">
                           ✕
                       </button>
                   </div>
-                  <div className="overflow-y-auto p-6 bg-slate-50 space-y-8 flex-1">
+                  <div className="overflow-y-auto p-3 sm:p-6 bg-slate-50 space-y-6 flex-1">
                       {([ 
                           { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-600" },
                           { title: "Fundași", data: selectedTeam.squad.Defenders, color: "text-blue-600" },
@@ -172,26 +172,35 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                           { title: "Atacanți", data: selectedTeam.squad.Attackers, color: "text-rose-600" }
                       ]).map((section, idx) => section.data.length > 0 && (
                           <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                              <div className="bg-slate-100/50 px-4 py-3 border-b border-slate-100">
-                                  <h3 className={`font-black uppercase tracking-wider ${section.color}`}>{section.title}</h3>
+                              <div className="bg-slate-100/50 px-3 sm:px-4 py-2 sm:py-3 border-b border-slate-100">
+                                  <h3 className={`font-black uppercase tracking-wider text-sm sm:text-base ${section.color}`}>{section.title}</h3>
                               </div>
                               <div className="divide-y divide-slate-50">
                                   {section.data.map(p => (
-                                      <div key={p._id} className="flex items-center justify-between p-3 hover:bg-slate-50 transition">
-                                          <div className="flex items-center gap-3">
-                                              <img src={p.image || "https://via.placeholder.com/40"} alt={p.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
-                                              <div>
-                                                  <p className="font-bold text-slate-800">{p.name}</p>
-                                                  <div className="flex gap-2 text-xs text-slate-500 font-medium mt-0.5">
-                                                      {p.age && <span>{p.age} ani</span>}
-                                                      {p.nationality && <span>• {p.nationality}</span>}
+                                      <div key={p._id} className="flex items-center justify-between p-2.5 sm:p-3 hover:bg-slate-50 transition gap-2">
+                                          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                              <img src={p.image || "https://via.placeholder.com/40"} alt={p.name} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border border-slate-200 shrink-0" />
+                                              <div className="min-w-0 flex-1">
+                                                  <p className="font-bold text-slate-800 text-sm sm:text-base truncate" title={p.name}>{p.name}</p>
+                                                  <div className="flex gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 truncate">
+                                                      {p.age && <span className="shrink-0">{p.age} ani</span>}
+                                                      {p.nationality && <span className="truncate">• {p.nationality}</span>}
                                                   </div>
                                               </div>
                                           </div>
-                                          <div className="flex gap-4 text-center">
-                                              <div className="min-w-[50px]"><p className="text-[10px] text-slate-400 font-bold uppercase">Meciuri</p><p className="font-black text-slate-700">{p.statistics_summary?.total_appearances || 0}</p></div>
-                                              <div className="min-w-[50px]"><p className="text-[10px] text-slate-400 font-bold uppercase">Goluri</p><p className="font-black text-slate-700">{p.statistics_summary?.total_goals || 0}</p></div>
-                                              <div className="min-w-[50px]"><p className="text-[10px] text-slate-400 font-bold uppercase">Rating</p><p className="font-black text-amber-600">{p.statistics_summary?.rating ? parseFloat(p.statistics_summary.rating).toFixed(2) : "-"}</p></div>
+                                          <div className="flex gap-2 sm:gap-4 text-center shrink-0">
+                                              <div className="w-[38px] sm:w-[50px]">
+                                                  <p className="text-[8px] sm:text-[10px] text-slate-400 font-bold uppercase">Meciuri</p>
+                                                  <p className="font-black text-slate-700 text-sm sm:text-base">{p.statistics_summary?.total_appearances || 0}</p>
+                                              </div>
+                                              <div className="w-[38px] sm:w-[50px]">
+                                                  <p className="text-[8px] sm:text-[10px] text-slate-400 font-bold uppercase">Goluri</p>
+                                                  <p className="font-black text-slate-700 text-sm sm:text-base">{p.statistics_summary?.total_goals || 0}</p>
+                                              </div>
+                                              <div className="w-[38px] sm:w-[50px]">
+                                                  <p className="text-[8px] sm:text-[10px] text-slate-400 font-bold uppercase">Rating</p>
+                                                  <p className="font-black text-amber-600 text-sm sm:text-base">{p.statistics_summary?.rating ? parseFloat(p.statistics_summary.rating).toFixed(2) : "-"}</p>
+                                              </div>
                                           </div>
                                       </div>
                                   ))}
@@ -230,11 +239,11 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     <div className="bg-white/60 backdrop-blur-md p-1.5 rounded-full inline-flex shadow-sm border border-white/50">
                         <button 
                             onClick={() => {setSearchMode('players'); setSearchTerm('');}}
-                            className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${searchMode === 'players' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
+                            className={`px-4 sm:px-6 py-2 rounded-full text-sm font-bold transition-all ${searchMode === 'players' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
                         >👤 Caută Jucători</button>
                         <button 
                             onClick={() => {setSearchMode('teams'); setSearchTerm('');}}
-                            className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${searchMode === 'teams' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
+                            className={`px-4 sm:px-6 py-2 rounded-full text-sm font-bold transition-all ${searchMode === 'teams' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
                         >🛡️ Caută Echipe</button>
                     </div>
                 </div>
@@ -247,7 +256,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                         </svg>
                         <input
                         type="text"
-                        placeholder={searchMode === 'players' ? "Caută un jucător (ex: Saka, Hagi, Mutu)..." : "Caută un club (ex: Liverpool, FCSB)..."}
+                        placeholder={searchMode === 'players' ? "Caută un jucător (ex: Saka, Hagi)..." : "Caută un club (ex: Liverpool, FCSB)..."}
                         className="w-full pl-14 pr-6 py-5 text-lg font-medium border-0 rounded-full shadow-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white/90 backdrop-blur-xl placeholder:text-slate-400 text-slate-900"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -276,7 +285,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             
             {!showResults && !loading && (
                 <div className="text-center py-20 opacity-60">
-                    <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto opacity-20 mb-6">
+                    <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto opacity-20 mb-6 hidden sm:grid">
                         <div className="h-32 bg-slate-300 rounded-2xl rotate-[-6deg]"></div>
                         <div className="h-32 bg-slate-300 rounded-2xl translate-y-[-10px]"></div>
                         <div className="h-32 bg-slate-300 rounded-2xl rotate-[6deg]"></div>
@@ -286,7 +295,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 </div>
             )}
 
-            {/* AFISARE JUCATORI (Design original păstrat 100%) */}
+            {/* AFISARE JUCATORI */}
             {showResults && !loading && searchMode === 'players' && players.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {players.map((player) => {
@@ -410,14 +419,13 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
             {/* AFISARE ECHIPE (Mod Nou) */}
             {showResults && !loading && searchMode === 'teams' && teams.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
                 {teams.map((team, idx) => (
-                    <div key={idx} onClick={() => handleTeamClick(team.team_name)} className="bg-white/90 backdrop-blur-sm p-6 rounded-3xl shadow-lg hover:shadow-2xl border border-white hover:border-blue-200 transition-all cursor-pointer group flex flex-col items-center text-center">
-                        <div className="w-24 h-24 mb-4 bg-slate-50 rounded-2xl p-3 shadow-inner group-hover:scale-110 transition-transform">
+                    <div key={idx} onClick={() => handleTeamClick(team.team_name)} className="bg-white/90 backdrop-blur-sm p-4 sm:p-6 rounded-3xl shadow-lg hover:shadow-2xl border border-white hover:border-blue-200 transition-all cursor-pointer group flex flex-col items-center text-center">
+                        <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 bg-slate-50 rounded-2xl p-2 sm:p-3 shadow-inner group-hover:scale-110 transition-transform">
                             <img src={team.team_logo} alt={team.team_name} className="w-full h-full object-contain" />
                         </div>
-                        <h4 className="font-black text-lg text-slate-800 leading-tight">{team.team_name}</h4>
-                        <p className="text-xs font-bold text-blue-600 mt-2 uppercase tracking-wide opacity-0 group-hover:opacity-100 transition-opacity">Vezi Lotul →</p>
+                        <h4 className="font-black text-sm sm:text-lg text-slate-800 leading-tight">{team.team_name}</h4>
                     </div>
                 ))}
             </div>
