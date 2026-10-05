@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, AlertTriangle, Loader2, MessageCircle, Share2, Copy, Send } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, AlertTriangle, Loader2, MessageCircle, Share2, Copy, Send, Heart } from 'lucide-react';
 import toast from 'react-hot-toast'; 
 import { SkeletonCard } from './SkeletonCard'; 
 
@@ -30,7 +30,8 @@ interface CollectorsHubProps {
     user: { 
         name: string; 
         email: string; 
-        avatar?: string; 
+        avatar?: string;
+        favorites?: string[]; // Adăugat pentru favorite
     }; 
     onOpenChat: (roomId: string, partner: { name: string, avatar?: string }) => void;
     initialPostId?: string | null;
@@ -139,7 +140,7 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
 };
 
 // --- CARD PRODUS (COMPLET) ---
-const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void, onStartChat: (p: Product) => void, onShare: (p: Product) => void }) => {
+const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare, onToggleFavorite, isFavorite }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void, onStartChat: (p: Product) => void, onShare: (p: Product) => void, onToggleFavorite: (id: string) => void, isFavorite: boolean }) => {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const images = product.images || [];
   const sellerName = product.seller || "Necunoscut";
@@ -148,13 +149,23 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }:
   return (
     <div onClick={() => onClick(product)} className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full cursor-pointer relative">
       <div className="absolute top-3 left-3 z-20 bg-black/50 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"><Maximize2 className="w-4 h-4" /></div>
+      
+      {/* NOU: Butonul de Favorite direct pe imagine */}
+      <button 
+        onClick={(e) => { e.stopPropagation(); onToggleFavorite(product._id); }} 
+        className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur hover:bg-white text-gray-400 hover:text-red-500 p-2 rounded-full shadow-sm transition-all"
+        title="Adaugă la Favorite"
+      >
+        <Heart className={`w-5 h-5 transition-colors ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+      </button>
+
       <div className="relative h-64 bg-gray-100">
         {images.length > 0 ? (
           <img src={images[currentImgIndex]} alt={product.title} className="w-full h-full object-cover transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400?text=Eroare+Imagine' }} />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-200 p-4 text-center"><AlertTriangle className="w-8 h-8 mb-2 opacity-50" /><span className="text-xs">Fără imagine</span></div>
         )}
-        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-blue-800 shadow-sm z-10">{product.category || "General"}</div>
+        <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-blue-800 shadow-sm z-10">{product.category || "General"}</div>
         {images.length > 1 && (
           <>
             <button onClick={(e) => { e.stopPropagation(); if(images.length>0) setCurrentImgIndex((prev) => (prev - 1 + images.length) % images.length); }} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20"><ChevronLeft className="w-5 h-5" /></button>
@@ -163,7 +174,7 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }:
         )}
       </div>
       <div className="p-5 flex-1 flex flex-col">
-        <div className="flex justify-between items-start mb-2"><h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">{product.title || "Fără Titlu"}</h3><span className="bg-green-50 text-green-700 px-2 py-1 rounded-lg text-sm font-bold whitespace-nowrap">{product.price || "N/A"}</span></div>
+        <div className="flex justify-between items-start mb-2"><h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-blue-600 transition-colors pr-2">{product.title || "Fără Titlu"}</h3><span className="bg-green-50 text-green-700 px-2 py-1 rounded-lg text-sm font-bold whitespace-nowrap">{product.price || "N/A"}</span></div>
         <p className="text-gray-500 text-sm mb-4 line-clamp-2 flex-1">{product.description || "Fără descriere."}</p>
         
         {/* FOOTER CU AVATAR, NUME ȘI BUTOANE */}
@@ -202,7 +213,7 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare }:
 };
 
 // --- MODAL VIZUALIZARE (CU DETALII CONTACT REPUSE) ---
-const ProductViewModal = ({ product, onClose, onShare }: { product: Product, onClose: () => void, onShare: (p: Product) => void }) => {
+const ProductViewModal = ({ product, onClose, onShare, onToggleFavorite, isFavorite }: { product: Product, onClose: () => void, onShare: (p: Product) => void, onToggleFavorite: (id: string) => void, isFavorite: boolean }) => {
     const [activeIdx, setActiveIdx] = useState(0);
     const [isZoomed, setIsZoomed] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -221,6 +232,9 @@ const ProductViewModal = ({ product, onClose, onShare }: { product: Product, onC
                 
                 {/* Header Butoane Modal */}
                 <div className="absolute top-4 right-4 z-50 flex gap-2">
+                    <button onClick={() => onToggleFavorite(product._id)} className="bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg">
+                        <Heart className={`w-6 h-6 transition-colors ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+                    </button>
                     <button onClick={() => onShare(product)} className="bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg"><Share2 className="w-6 h-6" /></button>
                     <button onClick={onClose} className="bg-white/80 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg"><X className="w-6 h-6" /></button>
                 </div>
@@ -273,7 +287,7 @@ const ProductViewModal = ({ product, onClose, onShare }: { product: Product, onC
 export function CollectorsHubSection({ user, onOpenChat, initialPostId }: CollectorsHubProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'market' | 'my_items'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'my_items' | 'favorites'>('market');
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -282,6 +296,7 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
   const [newProduct, setNewProduct] = useState({ title: '', price: '', category: 'Tricouri', images: [] as string[], description: '', phone: '' });
   
   const [productToShare, setProductToShare] = useState<Product | null>(null);
+  const [userFavorites, setUserFavorites] = useState<string[]>(user?.favorites || []);
 
   useEffect(() => { fetchProducts(); }, []);
 
@@ -318,7 +333,6 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
 
     setIsSubmitting(true);
     try {
-        // Excludem proprietatea "phone" din payload-ul principal și o trecem ca "sellerPhone"
         const { phone, ...dataToSend } = newProduct;
 
         const res = await fetch(API_URL, {
@@ -357,10 +371,37 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
       toast.success(`Chat deschis cu ${product.seller}`);
   };
 
+  // NOU: Funcția care comunică cu serverul pentru adăugare/ștergere din Favorite
+  const handleToggleFavorite = async (listingId: string) => {
+      try {
+          const res = await fetch('https://football-backend-m2a4.onrender.com/api/users/favorites/toggle', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: user.email, listingId })
+          });
+          if (res.ok) {
+              const data = await res.json();
+              setUserFavorites(data.favorites);
+              if (data.favorites.includes(listingId)) {
+                  toast.success("Adăugat la favorite! ❤️");
+              } else {
+                  toast("Eliminat din favorite.");
+              }
+          }
+      } catch (e) {
+          toast.error("Eroare la procesare.");
+      }
+  };
+
   const filteredProducts = products.filter(p => {
     if (!p) return false;
     const titleMatch = (p.title || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTab = activeTab === 'my_items' ? p.sellerEmail === user.email : true;
+    
+    // Logica modificată pentru noul TAB de Favorite
+    let matchesTab = true;
+    if (activeTab === 'my_items') matchesTab = p.sellerEmail === user.email;
+    if (activeTab === 'favorites') matchesTab = userFavorites.includes(p._id);
+
     const matchesCategory = selectedCategory === "Toate" ? true : p.category === selectedCategory;
     return titleMatch && matchesTab && matchesCategory;
   });
@@ -369,11 +410,15 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div><h2 className="text-3xl font-black text-gray-900 mb-2 flex items-center gap-2"><ShoppingBag className="text-blue-600" /> Collectors Hub</h2><p className="text-gray-500">Piața oficială pentru colecționarii echipei naționale.</p></div>
-        <div className="flex bg-gray-100 p-1 rounded-xl">
-          <button onClick={() => setActiveTab('market')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'market' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Toate</button>
-          <button onClick={() => setActiveTab('my_items')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'my_items' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><User className="w-4 h-4" /> Ale Mele</button>
+        
+        {/* TAB-URI ACTUALIZATE */}
+        <div className="flex bg-gray-100 p-1 rounded-xl overflow-x-auto w-full md:w-auto">
+          <button onClick={() => setActiveTab('market')} className={`px-4 py-2 whitespace-nowrap rounded-lg text-sm font-bold transition-all ${activeTab === 'market' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Toate</button>
+          <button onClick={() => setActiveTab('favorites')} className={`px-4 py-2 whitespace-nowrap rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'favorites' ? 'bg-white text-red-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Heart className={`w-4 h-4 ${activeTab==='favorites'?'fill-red-500':''}`} /> Favorite</button>
+          <button onClick={() => setActiveTab('my_items')} className={`px-4 py-2 whitespace-nowrap rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'my_items' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><User className="w-4 h-4" /> Ale Mele</button>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform active:scale-95 shadow-lg shadow-blue-200"><Plus className="w-5 h-5" /> Vinde Produs</button>
+        
+        <button onClick={() => setShowAddModal(true)} className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-blue-200"><Plus className="w-5 h-5" /> Vinde Produs</button>
       </div>
 
       <div className="space-y-4">
@@ -384,7 +429,19 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
       {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{[1, 2, 3].map(i => <SkeletonCard key={i} />)}</div>
       ) : filteredProducts.length === 0 ? (
-        <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200"><Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" /><h3 className="text-lg font-bold text-gray-500">Niciun produs găsit.</h3></div>
+        <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+            {activeTab === 'favorites' ? (
+                <>
+                    <Heart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-gray-500">Nu ai produse salvate la Favorite.</h3>
+                </>
+            ) : (
+                <>
+                    <Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-gray-500">Niciun produs găsit.</h3>
+                </>
+            )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProducts.map((product) => (
@@ -396,12 +453,22 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                     onClick={setSelectedProduct} 
                     onStartChat={handleStartChat} 
                     onShare={(p) => setProductToShare(p)} 
+                    onToggleFavorite={handleToggleFavorite}
+                    isFavorite={userFavorites.includes(product._id)}
                 />
             ))}
         </div>
       )}
 
-      {selectedProduct && <ProductViewModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onShare={(p) => setProductToShare(p)} />}
+      {selectedProduct && 
+        <ProductViewModal 
+            product={selectedProduct} 
+            onClose={() => setSelectedProduct(null)} 
+            onShare={(p) => setProductToShare(p)} 
+            onToggleFavorite={handleToggleFavorite}
+            isFavorite={userFavorites.includes(selectedProduct._id)}
+        />
+      }
 
       {productToShare && <ShareModal product={productToShare} user={user} onClose={() => setProductToShare(null)} />}
 

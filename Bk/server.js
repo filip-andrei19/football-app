@@ -108,6 +108,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, default: 'user', enum: ['user', 'admin'] }, 
     avatar: { type: String, default: '' }, 
+    favorites: { type: [String], default: [] }, // [NOU] Aici salvăm ID-urile produselor favorite
     isBanned: { type: Boolean, default: false },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
@@ -279,7 +280,7 @@ const startServer = async () => {
                 await newUser.save();
                 
                 const token = jwt.sign({ _id: newUser._id, role: newUser.role }, TOKEN_SECRET);
-                res.status(201).json({ success: true, token, user: { name: newUser.name, email: newUser.email, role: newUser.role } });
+                res.status(201).json({ success: true, token, user: { name: newUser.name, email: newUser.email, role: newUser.role, favorites: newUser.favorites } });
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
@@ -294,13 +295,13 @@ const startServer = async () => {
                 if (!isMatch) return res.status(401).json({ success: false, message: "Parolă incorectă." });
 
                 const token = jwt.sign({ _id: user._id, role: user.role }, TOKEN_SECRET);
-                res.json({ success: true, token, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+                res.json({ success: true, token, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar, favorites: user.favorites } });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
         app.post('/api/users/refresh', async (req, res) => {
             const user = await User.findOne({ email: req.body.email });
-            if(user) res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+            if(user) res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar, favorites: user.favorites } });
         });
 
         app.post('/api/users/forgot-password', async (req, res) => {
@@ -355,7 +356,7 @@ const startServer = async () => {
                 user.avatar = newAvatarUrl || user.avatar;
                 await user.save();
                 
-                res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+                res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar, favorites: user.favorites } });
             } catch (err) { res.status(500).json({ error: "Eroare la actualizarea profilului." }); }
         });
 
@@ -370,6 +371,40 @@ const startServer = async () => {
                 await user.save();
                 res.json({ success: true, message: "Parolă schimbată." });
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
+        });
+
+        // --- [NOU] RUTE FAVORITE ---
+        app.post('/api/users/favorites/toggle', async (req, res) => {
+            try {
+                const { email, listingId } = req.body;
+                const user = await User.findOne({ email });
+                if (!user) return res.status(404).json({ error: "User not found" });
+
+                const index = user.favorites.indexOf(listingId);
+                if (index === -1) {
+                    user.favorites.push(listingId);
+                } else {
+                    user.favorites.splice(index, 1);
+                }
+                
+                await user.save();
+                res.json({ success: true, favorites: user.favorites });
+            } catch (err) { 
+                res.status(500).json({ error: "Eroare la modificarea favoritelor." }); 
+            }
+        });
+
+        app.get('/api/users/favorites/:email', async (req, res) => {
+            try {
+                const user = await User.findOne({ email: req.params.email });
+                if (!user) return res.status(404).json({ error: "User not found" });
+                
+                // Căutăm toate produsele care au ID-ul în lista de favorite a userului
+                const favoriteListings = await Listing.find({ _id: { $in: user.favorites } }).sort({ posted: -1 });
+                res.json({ success: true, favorites: user.favorites, favoriteListings });
+            } catch (err) { 
+                res.status(500).json({ error: "Eroare la preluarea favoritelor." }); 
+            }
         });
 
         // --- RUTE MESAJE ---
@@ -512,6 +547,13 @@ const startServer = async () => {
                 }
 
                 await Listing.findByIdAndDelete(req.params.id);
+                
+                // [NOU] Eliminăm produsul șters din favoritele tuturor userilor
+                await User.updateMany(
+                    { favorites: req.params.id }, 
+                    { $pull: { favorites: req.params.id } }
+                );
+
                 res.json({ success: true, message: "Produs și imagini șterse definitiv." });
             } catch (err) {
                 res.status(500).json({ error: "Eroare la ștergere." });
@@ -559,7 +601,7 @@ const startServer = async () => {
                     }},
                     { $match: { _id: {$ne: null } } }, 
                     { $project: { _id: 0, team_name: "$_id", team_logo: 1 } },
-                    { $sort: { team_name: 1 } },                     {$limit: 200 } // Limită mărită
+                    { $sort: { team_name: 1 } },                                          {$limit: 200 } // Limită mărită
                 ]);
                 
                 res.json(teams);
