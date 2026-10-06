@@ -138,7 +138,7 @@ const messageSchema = new mongoose.Schema({
         author: String,
         text: String
     },
-    reactions: { type: Map, of: [String], default: {} },
+    reactions: { type: Object, default: {} },
     isPinned: { type: Boolean, default: false },
     timestamp: { type: Date, default: Date.now }
 });
@@ -514,27 +514,30 @@ const startServer = async () => {
                 const msg = await Message.findById(req.params.id);
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
 
-                // Asigurăm existența obiectului reactions
-                if (!msg.reactions) msg.reactions = new Map();
-                
-                let usersWhoReacted = msg.reactions.get(emoji) ? [...msg.reactions.get(emoji)] : [];
+                // Extragem obiectul de reacții sau creăm unul gol
+                const currentReactions = msg.reactions || {};
+                let usersWhoReacted = currentReactions[emoji] || [];
 
+                // Adăugăm sau scoatem utilizatorul
                 if (usersWhoReacted.includes(user)) {
-                    usersWhoReacted = usersWhoReacted.filter(u => u !== user); // Toggle
+                    usersWhoReacted = usersWhoReacted.filter(u => u !== user); // Toggle (ștergere)
                 } else {
-                    usersWhoReacted.push(user);
+                    usersWhoReacted.push(user); // Adăugare
                 }
 
+                // Dacă nu mai e nimeni care a dat acest emoji, ștergem cheia
                 if (usersWhoReacted.length === 0) {
-                    msg.reactions.delete(emoji);
+                    delete currentReactions[emoji];
                 } else {
-                    msg.reactions.set(emoji, usersWhoReacted);
+                    currentReactions[emoji] = usersWhoReacted;
                 }
 
-                // 🔥 CRUCIAL: Mongoose are nevoie de asta pentru a salva un Map modificat
-                msg.markModified('reactions');
+                // Salvăm
+                msg.reactions = currentReactions;
+                msg.markModified('reactions'); // Forțăm Mongoose să vadă modificarea
                 await msg.save();
                 
+                // Trimitem către toți cei din chat mesajul actualizat
                 io.in(msg.room).emit("message_updated", msg);
                 res.json({ success: true });
             } catch (err) { 
