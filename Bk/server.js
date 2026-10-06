@@ -514,27 +514,33 @@ const startServer = async () => {
                 const msg = await Message.findById(req.params.id);
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
 
-                const currentReactions = msg.reactions || new Map();
-                let usersWhoReacted = currentReactions.get(emoji) || [];
+                // Asigurăm existența obiectului reactions
+                if (!msg.reactions) msg.reactions = new Map();
+                
+                let usersWhoReacted = msg.reactions.get(emoji) ? [...msg.reactions.get(emoji)] : [];
 
                 if (usersWhoReacted.includes(user)) {
-                    usersWhoReacted = usersWhoReacted.filter(u => u !== user); // Scoatem reactia (Toggle)
+                    usersWhoReacted = usersWhoReacted.filter(u => u !== user); // Toggle
                 } else {
-                    usersWhoReacted.push(user); // Adaugam reactia
+                    usersWhoReacted.push(user);
                 }
 
                 if (usersWhoReacted.length === 0) {
-                    currentReactions.delete(emoji);
+                    msg.reactions.delete(emoji);
                 } else {
-                    currentReactions.set(emoji, usersWhoReacted);
+                    msg.reactions.set(emoji, usersWhoReacted);
                 }
 
-                msg.reactions = currentReactions;
+                // 🔥 CRUCIAL: Mongoose are nevoie de asta pentru a salva un Map modificat
+                msg.markModified('reactions');
                 await msg.save();
                 
                 io.in(msg.room).emit("message_updated", msg);
                 res.json({ success: true });
-            } catch (err) { res.status(500).json({ error: "Eroare la adăugarea reacției." }); }
+            } catch (err) { 
+                console.error("Eroare reacție:", err);
+                res.status(500).json({ error: "Eroare la adăugarea reacției." }); 
+            }
         });
 
         // --- NOU: RUTA PENTRU FIXARE MESAJ (PIN) ---

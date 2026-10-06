@@ -244,12 +244,18 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   const handleReact = async (msgId: string, emoji: string) => {
       setShowReactionPickerId(null);
       try {
-          await fetch(`https://football-backend-m2a4.onrender.com/api/messages/${msgId}/react`, {
+          const res = await fetch(`https://football-backend-m2a4.onrender.com/api/messages/${msgId}/react`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ emoji, user: user.name }) 
           });
-      } catch (err) { toast.error("Nu s-a putut adăuga reacția."); }
+          
+          if (!res.ok) {
+              toast.error("Serverul se actualizează (Deploy Render). Mai așteaptă un pic!");
+          }
+      } catch (err) { 
+          toast.error("Nu s-a putut adăuga reacția. Eroare rețea."); 
+      }
   };
 
   const handlePin = async (msgId: string) => {
