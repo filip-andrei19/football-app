@@ -13,9 +13,9 @@ interface Message {
   imageUrl?: string;
   time: string;
   isDeleted?: boolean;
-  replyTo?: { id: string, author: string, text: string }; // PENTRU REPLY
-  reactions?: { [emoji: string]: string[] }; // PENTRU EMOJI
-  isPinned?: boolean; // PENTRU PINNED
+  replyTo?: { id: string, author: string, text: string }; 
+  reactions?: { [emoji: string]: string[] }; 
+  isPinned?: boolean; 
   timestamp: string;
 }
 
@@ -70,7 +70,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   
-  // STATE-URI NOI (Reply, Emoji Picker)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [showReactionPickerId, setShowReactionPickerId] = useState<string | null>(null);
 
@@ -153,7 +152,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
         setTimeout(scrollToBottom, 100);
     });
 
-    // Preluam automat cand cineva reactioneaza, da pin sau sterge
     socket.on("message_updated", (updatedMsg: Message) => {
         setMessageList((currentList) => currentList.map(m => m._id === updatedMsg._id ? updatedMsg : m));
     });
@@ -251,7 +249,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
           });
           
           if (!res.ok) {
-              toast.error("Serverul se actualizează (Deploy Render). Mai așteaptă un pic!");
+              toast.error("Serverul se actualizează. Mai așteaptă un pic!");
           }
       } catch (err) { 
           toast.error("Nu s-a putut adăuga reacția. Eroare rețea."); 
@@ -407,7 +405,9 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                                               {/* TOOLBAR MESAJ (Apare la Hover) */}
                                                               {!msg.isDeleted && (
                                                                   <div className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm p-1 rounded-full absolute top-0 z-10 ${isMe ? '-left-24' : '-right-24'}`}>
-                                                                      <button onClick={() => setShowReactionPickerId(msg._id)} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-gray-50 rounded-full" title="Reacționează"><Smile className="w-3.5 h-3.5"/></button>
+                                                                      {/* 🔥 FIX AICI: e.stopPropagation() previne închiderea instantanee a picker-ului */}
+                                                                      <button onClick={(e) => { e.stopPropagation(); setShowReactionPickerId(msg._id); }} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-gray-50 rounded-full" title="Reacționează"><Smile className="w-3.5 h-3.5"/></button>
+                                                                      
                                                                       <button onClick={() => setReplyingTo(msg)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-gray-50 rounded-full" title="Răspunde"><Reply className="w-3.5 h-3.5"/></button>
                                                                       <button onClick={() => handlePin(msg._id)} className={`p-1.5 hover:bg-gray-50 rounded-full ${msg.isPinned ? 'text-amber-500' : 'text-gray-400 hover:text-amber-500'}`} title={msg.isPinned ? "Scoate de la Fixate" : "Fixează Mesajul"}><Pin className="w-3.5 h-3.5"/></button>
                                                                       {isMe && <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-50 rounded-full" title="Șterge"><Trash2 className="w-3.5 h-3.5"/></button>}
