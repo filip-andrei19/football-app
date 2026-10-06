@@ -413,8 +413,12 @@ const startServer = async () => {
                 const { email, name } = req.body;
                 const myListings = await Listing.find({ sellerEmail: email });
                 const myListingIds = myListings.map(l => l._id.toString());
+                
+                // Găsește camerele unde userul a scris mesaje
                 const myMessages = await Message.find({ author: name }).distinct('room');
                 const myListingRooms = myListingIds.map(id => `listing_${id}`);
+                
+                // Combină camerele
                 const allRelevantRooms = [...new Set([...myListingRooms, ...myMessages])];
                 const listingRooms = allRelevantRooms.filter(r => r && r.startsWith('listing_'));
                 const conversations = [];
@@ -422,20 +426,26 @@ const startServer = async () => {
                 for (const room of listingRooms) {
                     const listingId = room.split('_')[1];
                     const listing = await Listing.findById(listingId);
+                    
                     if (listing) {
                         const lastMsg = await Message.findOne({ room }).sort({ timestamp: -1 });
-                        if (lastMsg || myListingIds.includes(listingId)) {
+                        
+                        // MODIFICAREA ESTE AICI: 
+                        // Afișăm conversația DOAR dacă există măcar un mesaj (lastMsg)
+                        if (lastMsg) {
                             conversations.push({
                                 roomId: room,
                                 title: listing.title,
                                 image: listing.images[0] || '', 
-                                lastMessage: lastMsg ? (lastMsg.imageUrl ? '📷 Imagine' : lastMsg.message) : "Începe conversația...",
-                                timestamp: lastMsg ? lastMsg.timestamp : listing.posted,
+                                lastMessage: lastMsg.imageUrl ? '📷 Imagine' : lastMsg.message,
+                                timestamp: lastMsg.timestamp,
                                 isMyListing: listing.sellerEmail === email
                             });
                         }
                     }
                 }
+                
+                // Sortăm după data ultimului mesaj
                 conversations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 res.json(conversations);
             } catch (err) { res.status(500).json({ error: "Eroare la încărcarea conversațiilor." }); }
