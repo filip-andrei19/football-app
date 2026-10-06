@@ -108,7 +108,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, default: 'user', enum: ['user', 'admin'] }, 
     avatar: { type: String, default: '' }, 
-    favorites: { type: [String], default: [] }, // [NOU] Aici salvăm ID-urile produselor favorite
+    favorites: { type: [String], default: [] }, 
     isBanned: { type: Boolean, default: false },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
@@ -124,7 +124,7 @@ userSchema.pre('save', async function(next) {
 });
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// B. MESSAGE (Actualizat cu imageUrl)
+// B. MESSAGE (Actualizat pentru Răspunsuri, Reacții și Fixare)
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
@@ -132,6 +132,14 @@ const messageSchema = new mongoose.Schema({
     imageUrl: { type: String, default: "" }, 
     time: String,
     isDeleted: { type: Boolean, default: false }, 
+    // --- NOU: PENTRU INTERACȚIUNE ---
+    replyTo: { 
+        id: String,
+        author: String,
+        text: String
+    },
+    reactions: { type: Map, of: [String], default: {} },
+    isPinned: { type: Boolean, default: false },
     timestamp: { type: Date, default: Date.now }
 });
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
@@ -214,7 +222,7 @@ io.on("connection", (socket) => {
     socket.on("join_room", async (data) => {
         socket.join(data); 
         try {
-            const history = await Message.find({ room: data }).sort({ timestamp: 1 }).limit(50);
+            const history = await Message.find({ room: data }).sort({ timestamp: 1 }).limit(100);
             socket.emit("load_history", history);
         } catch(e) { console.error(e); }
     });
@@ -373,7 +381,7 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare server." }); }
         });
 
-        // --- [NOU] RUTE FAVORITE ---
+        // --- RUTE FAVORITE ---
         app.post('/api/users/favorites/toggle', async (req, res) => {
             try {
                 const { email, listingId } = req.body;
@@ -399,7 +407,6 @@ const startServer = async () => {
                 const user = await User.findOne({ email: req.params.email });
                 if (!user) return res.status(404).json({ error: "User not found" });
                 
-                // Căutăm toate produsele care au ID-ul în lista de favorite a userului
                 const favoriteListings = await Listing.find({ _id: { $in: user.favorites } }).sort({ posted: -1 });
                 res.json({ success: true, favorites: user.favorites, favoriteListings });
             } catch (err) { 
@@ -414,11 +421,9 @@ const startServer = async () => {
                 const myListings = await Listing.find({ sellerEmail: email });
                 const myListingIds = myListings.map(l => l._id.toString());
                 
-                // Găsește camerele unde userul a scris mesaje
                 const myMessages = await Message.find({ author: name }).distinct('room');
                 const myListingRooms = myListingIds.map(id => `listing_${id}`);
                 
-                // Combină camerele
                 const allRelevantRooms = [...new Set([...myListingRooms, ...myMessages])];
                 const listingRooms = allRelevantRooms.filter(r => r && r.startsWith('listing_'));
                 const conversations = [];
@@ -430,8 +435,6 @@ const startServer = async () => {
                     if (listing) {
                         const lastMsg = await Message.findOne({ room }).sort({ timestamp: -1 });
                         
-                        // MODIFICAREA ESTE AICI: 
-                        // Afișăm conversația DOAR dacă există măcar un mesaj (lastMsg)
                         if (lastMsg) {
                             conversations.push({
                                 roomId: room,
@@ -445,16 +448,14 @@ const startServer = async () => {
                     }
                 }
                 
-                // Sortăm după data ultimului mesaj
                 conversations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 res.json(conversations);
             } catch (err) { res.status(500).json({ error: "Eroare la încărcarea conversațiilor." }); }
         });
 
-        // ACTUALIZAT: Permite primirea pozelor (indiferent dacă se trimit cu text sau separat)
         app.post('/api/messages/send', async (req, res) => {
             try {
-                const { room, author, message, time, imageUrl, imageBase64 } = req.body;
+                const { room, author, message, time, imageUrl, imageBase64, replyTo } = req.body;
                 
                 const rawImage = imageBase64 || imageUrl;
                 let finalImageUrl = "";
@@ -469,6 +470,7 @@ const startServer = async () => {
                     message: message || "", 
                     time, 
                     imageUrl: finalImageUrl,
+                    replyTo: replyTo || null,
                     timestamp: new Date() 
                 });
 
@@ -497,11 +499,56 @@ const startServer = async () => {
                 msg.isDeleted = true;
                 msg.message = ""; 
                 msg.imageUrl = ""; 
+                msg.replyTo = null; // Eliminăm și reply dacă se șterge
                 await msg.save();
                 
                 io.in(msg.room).emit("message_updated", msg);
                 res.json({ success: true });
             } catch (err) { res.status(500).json({ error: "Eroare la ștergere." }); }
+        });
+
+        // --- NOU: RUTA PENTRU REACȚII EMOJI ---
+        app.post('/api/messages/:id/react', async (req, res) => {
+            try {
+                const { emoji, user } = req.body;
+                const msg = await Message.findById(req.params.id);
+                if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
+
+                const currentReactions = msg.reactions || new Map();
+                let usersWhoReacted = currentReactions.get(emoji) || [];
+
+                if (usersWhoReacted.includes(user)) {
+                    usersWhoReacted = usersWhoReacted.filter(u => u !== user); // Scoatem reactia (Toggle)
+                } else {
+                    usersWhoReacted.push(user); // Adaugam reactia
+                }
+
+                if (usersWhoReacted.length === 0) {
+                    currentReactions.delete(emoji);
+                } else {
+                    currentReactions.set(emoji, usersWhoReacted);
+                }
+
+                msg.reactions = currentReactions;
+                await msg.save();
+                
+                io.in(msg.room).emit("message_updated", msg);
+                res.json({ success: true });
+            } catch (err) { res.status(500).json({ error: "Eroare la adăugarea reacției." }); }
+        });
+
+        // --- NOU: RUTA PENTRU FIXARE MESAJ (PIN) ---
+        app.post('/api/messages/:id/pin', async (req, res) => {
+            try {
+                const msg = await Message.findById(req.params.id);
+                if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
+
+                msg.isPinned = !msg.isPinned; // Toggle starea de fixat
+                await msg.save();
+                
+                io.in(msg.room).emit("message_updated", msg);
+                res.json({ success: true, isPinned: msg.isPinned });
+            } catch (err) { res.status(500).json({ error: "Eroare la fixarea mesajului." }); }
         });
 
         // --- RUTE MARKETPLACE ---
@@ -558,7 +605,6 @@ const startServer = async () => {
 
                 await Listing.findByIdAndDelete(req.params.id);
                 
-                // [NOU] Eliminăm produsul șters din favoritele tuturor userilor
                 await User.updateMany(
                     { favorites: req.params.id }, 
                     { $pull: { favorites: req.params.id } }
@@ -587,8 +633,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
         });
 
-        // --- CĂUTARE ECHIPE (Returnează o listă unică de echipe cu logo) ---
-        // 🟢 Varianta ROBUSTĂ: caută și în câmpul `team_name` și în câmpul `team`
         app.get('/api/sport/teams/search', async (req, res) => {
             try {
                 const { q } = req.query;
@@ -621,8 +665,6 @@ const startServer = async () => {
             }
         });
 
-        // --- PRELUARE LOT ECHIPĂ STRUCTURAT PE POZIȚII ---
-        // 🟢 Varianta ROBUSTĂ: preia jucătorii indiferent cum e salvată echipa
         app.get('/api/sport/teams/:teamName/roster', async (req, res) => {
             try {
                 const teamName = req.params.teamName;
@@ -637,7 +679,6 @@ const startServer = async () => {
                     return res.status(404).json({ message: "Echipa nu a fost găsită sau nu are jucători." });
                 }
 
-                // Structurăm lotul exact ca pe Flashscore
                 const roster = {
                     teamInfo: {
                         name: teamName,
