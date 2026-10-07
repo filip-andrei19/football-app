@@ -105,11 +105,19 @@ const processNationalTeam = async (teamId, teamName, teamLogo) => {
                     api_id: p.id
                 };
 
-                await Player.updateOne(
-                    { $or: [ { api_player_id: p.id }, { api_id: p.id } ] },
-                    { $set: updateData },
-                    { upsert: true }
-                );
+                // --- SOLUȚIA ERORII ---
+                const existingPlayer = await Player.findOne({ 
+                    $or: [ { api_player_id: p.id }, { api_id: p.id } ] 
+                });
+
+                if (existingPlayer) {
+                    await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
+                } else {
+                    const newPlayer = new Player(updateData);
+                    await newPlayer.save();
+                }
+                // -----------------------
+
                 console.log(`   ⭐ [NAȚIONALĂ] Actualizat stranier: ${p.name} -> Club: ${finalTeamName}`);
             }
             currentPage++;
@@ -122,7 +130,7 @@ const processNationalTeam = async (teamId, teamName, teamLogo) => {
     } while (currentPage <= totalPages);
 };
 
-// --- NOU: Funcția apelabilă separat DOAR pentru Națională ---
+// --- Funcția apelabilă separat DOAR pentru Națională ---
 const runNationalTeamSync = async () => {
     console.log(`\n🇷🇴 [SMART SYNC] Caut Naționala României pentru a adăuga Jucătorii...`);
     try {
@@ -146,7 +154,6 @@ const runNationalTeamSync = async () => {
 const runDailySmartSync = async () => {
     console.log(`⏰ [SMART SYNC] Pornesc actualizarea completă...`);
 
-    // 1. ACTUALIZĂM LIGILE (inclusiv cele noi adăugate)
     for (const targetLeague of TARGET_LEAGUES) {
         console.log(`\n🌍 Încep procesarea pentru: ${targetLeague.name}...`);
         try {
@@ -168,7 +175,7 @@ const runDailySmartSync = async () => {
         }
     }
 
-    // 2. ACTUALIZĂM ECHIPA NAȚIONALĂ LA FINAL
+    // ACTUALIZĂM ECHIPA NAȚIONALĂ LA FINAL
     await runNationalTeamSync();
 
     console.log(`\n✅ [SMART SYNC FULL] Baza de date a fost actualizată la zi!`);
@@ -223,7 +230,9 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
                         total_appearances: stats?.games?.appearences || 0,
                         minutes_played: stats?.games?.minutes || 0,
                         rating: stats?.games?.rating || null
-                    }
+                    },
+                    api_player_id: p.id,
+                    api_id: p.id
                 };
 
                 const existingPlayer = await Player.findOne({ 
