@@ -19,7 +19,6 @@ const rateLimit = require('express-rate-limit');
 
 // --- IMPORTURI SERVICII ---
 const { hardResetAndLoad } = require('./services/initialLoad'); 
-// AICI AM MODIFICAT: Importăm și funcția separată pentru Națională
 const { runDailySmartSync, runNationalTeamSync } = require('./services/smartSync'); 
 
 const app = express();
@@ -249,7 +248,7 @@ io.on("connection", (socket) => {
 const startServer = async () => {
     try {
         await mongoose.connect(process.env.MONGO_URI);
-        console.log('✅ Conectat la MongoDB.');
+        console.log('✅ Conectat la MongoDB[cite: 13].');
 
         const storyCount = await Story.countDocuments();
         if (storyCount === 0) {
@@ -499,7 +498,7 @@ const startServer = async () => {
                 msg.isDeleted = true;
                 msg.message = ""; 
                 msg.imageUrl = ""; 
-                msg.replyTo = null; // Eliminăm și reply dacă se șterge
+                msg.replyTo = null; 
                 await msg.save();
                 
                 io.in(msg.room).emit("message_updated", msg);
@@ -547,7 +546,7 @@ const startServer = async () => {
                 const msg = await Message.findById(req.params.id);
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
 
-                msg.isPinned = !msg.isPinned; // Toggle starea de fixat
+                msg.isPinned = !msg.isPinned; 
                 await msg.save();
                 
                 io.in(msg.room).emit("message_updated", msg);
@@ -620,16 +619,14 @@ const startServer = async () => {
             }
         });
 
-        // RUTE API SPORT & ADMIN
+        // RUTE API SPORT & ADMIN (Actualizat cu filtrare sigură pentru Diaspora)
         app.get('/api/sport/players', async (req, res) => {
             try {
                 const { search, diaspora } = req.query;
                 let query = {};
                 
-                // NOU: Dacă frontend-ul cere Diaspora, filtrăm direct din baza de date!
                 if (diaspora === 'true') {
                     query.nationality = "Romania";
-                    query.league_id = { $nin: [283, 284] }; // Excludem direct SuperLiga și Liga 2
                 } else if (search) {
                     query.$or = [
                         { name: { $regex: search,$options: 'i' } },
@@ -638,9 +635,20 @@ const startServer = async () => {
                     ];
                 }
                 
-                // Mărim limita la 1000 pentru Diaspora ca să prindem toți stranierii
-                const limit = diaspora === 'true' ? 1000 : 500;
-                const players = await Player.find(query).limit(limit); 
+                const players = await Player.find(query).limit(1000); 
+
+                if (diaspora === 'true') {
+                    const blockedKeywords = ["fcsb", "steaua", "cfr", "cluj", "craiova", "rapid", "farul", "sepsi", "petrolul", "hermannstadt", "uta", "iasi", "otelul", "botosani", "dinamo", "slobozia", "buzau", "voluntari", "chiajna", "mioveni", "chindia", "metaloglobus", "csikszereda", "corvinul", "resita"];
+                    
+                    const filtered = players.filter(p => {
+                        const tName = (p.team_name || "").toLowerCase();
+                        const isNational = tName.includes("nationala") || tName === "romania";
+                        if (isNational) return true;
+                        return !blockedKeywords.some(keyword => tName.includes(keyword));
+                    });
+                    return res.json(filtered);
+                }
+
                 res.json(players);
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
         });
@@ -667,7 +675,7 @@ const startServer = async () => {
                     }},
                     { $match: { _id: {$ne: null } } }, 
                     { $project: { _id: 0, team_name: "$_id", team_logo: 1 } },
-                    { $sort: { team_name: 1 } },                                          {$limit: 200 } // Limită mărită
+                    { $sort: { team_name: 1 } },                                          {$limit: 200 } 
                 ]);
                 
                 res.json(teams);
@@ -728,8 +736,6 @@ const startServer = async () => {
         // --- ADMIN TOOLS ---
         app.get('/api/admin/hard-reset', async (req, res) => { hardResetAndLoad(); res.send("Reset initiated."); });
         app.get('/api/admin/force-sync', async (req, res) => { runDailySmartSync(); res.send("Smart Sync forțat. Verifică logs."); });
-        
-        // --- NOU: RUTA PENTRU A SINCROZIA DOAR NAȚIONALA ACUM ---
         app.get('/api/admin/force-sync-national', async (req, res) => { 
             runNationalTeamSync(); 
             res.send("Sincronizarea exclusivă a Echipei Naționale a început. Verifică logs pe Render."); 
