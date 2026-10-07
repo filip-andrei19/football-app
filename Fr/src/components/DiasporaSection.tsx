@@ -3,7 +3,6 @@ import { Globe, Plane, Shield, Star, Clock, Activity, Filter } from 'lucide-reac
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
-// --- NOU: Mapare automată și curată pe baza ID-urilor ligilor din backend ---
 const LEAGUE_ID_MAP: { [key: number]: string } = {
   39: "Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿",
   140: "La Liga 🇪🇸",
@@ -36,7 +35,6 @@ interface Player {
   };
 }
 
-// --- SKELETON ---
 const DiasporaSkeleton = () => (
     <div className="rounded-2xl overflow-hidden p-[2px] bg-gray-200 dark:bg-slate-800 animate-pulse h-[400px]">
         <div className="h-full w-full bg-white dark:bg-slate-900 rounded-[14px]">
@@ -64,21 +62,14 @@ export function DiasporaSection() {
   useEffect(() => {
     const fetchDiaspora = async () => {
       try {
-        const response = await fetch('https://football-backend-m2a4.onrender.com/api/sport/players');
+        const API_URL = window.location.hostname === "localhost" 
+            ? "http://localhost:3000" 
+            : "https://football-backend-m2a4.onrender.com";
+
+        const response = await fetch(`${API_URL}/api/sport/players?diaspora=true`);
         const data = await response.json();
 
-        // --- FILTRARE INTELIGENTĂ STRANIERI ---
-        const stranieri = data.filter((p: Player) => {
-           if (p.nationality !== "Romania") return false;
-           
-           // Excludem automat SuperLiga (283) și Liga 2 (284) din România
-           if (p.league_id === 283 || p.league_id === 284) return false;
-
-           return true; 
-        });
-
-        // --- SORTARE ---
-        const sortedStranieri = stranieri.sort((a: Player, b: Player) => {
+        const sortedStranieri = data.sort((a: Player, b: Player) => {
             const isNationalA = a.team_name.includes("Nationala");
             const isNationalB = b.team_name.includes("Nationala");
             
@@ -123,14 +114,12 @@ export function DiasporaSection() {
   return (
     <div className="relative min-h-[80vh] py-10 overflow-hidden bg-slate-50 dark:bg-slate-900 z-0">
       
-      {/* FUNDAL TRICOLOR ANIMAT */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-60">
           <div className="absolute top-0 left-0 -translate-x-1/4 -translate-y-1/4 w-[600px] h-[600px] rounded-full bg-blue-600/20 blur-[120px] animate-pulse-slow"></div>
           <div className="absolute top-[40%] right-0 translate-x-1/4 w-[500px] h-[500px] rounded-full bg-yellow-400/20 blur-[120px] animate-pulse-slow delay-1000"></div>
           <div className="absolute bottom-0 left-[20%] translate-y-1/4 w-[700px] h-[700px] rounded-full bg-red-600/15 blur-[120px] animate-pulse-slow delay-2000"></div>
       </div>
 
-      {/* HEADER */}
       <section className="text-center space-y-6 px-4 relative z-10 mb-8">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur border border-yellow-200 dark:border-yellow-900/50 text-sm font-bold mb-2 shadow-sm">
           <Globe className="w-4 h-4 text-blue-600" />
@@ -148,7 +137,6 @@ export function DiasporaSection() {
         </p>
       </section>
 
-      {/* FILTRE */}
       <section className="px-4 container mx-auto relative z-10 mb-10 flex justify-center">
           <div className="flex flex-wrap justify-center gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md p-2 rounded-2xl border border-blue-100 dark:border-slate-700 shadow-lg">
               {FILTERS.map((filter) => (
@@ -168,7 +156,6 @@ export function DiasporaSection() {
           </div>
       </section>
 
-      {/* GRID JUCĂTORI */}
       <section className="px-6 container mx-auto relative z-10">
         {loading ? (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -193,17 +180,14 @@ export function DiasporaSection() {
                 const isNationalOnly = player.team_name.includes("Nationala") || player.team_name === "Romania";
                 const ratingValue = stats.rating ? parseFloat(stats.rating).toFixed(2) : "-";
 
-                // --- NOU: Calculăm textul pentru insingnă folosind ID-ul ligii ---
                 const leagueBadge = player.league_id ? LEAGUE_ID_MAP[player.league_id] : null;
                 const badgeText = isNationalOnly ? "CONVOCAT" : (leagueBadge || player.team_name);
 
                 return (
                     <div key={player._id} className="relative group rounded-2xl bg-gradient-to-br from-blue-700 via-yellow-400 to-red-600 p-[3px] shadow-lg hover:shadow-2xl hover:shadow-yellow-500/40 transition-all duration-300 transform hover:-translate-y-2 flex flex-col h-full">
                         
-                        {/* Interiorul Cardului */}
                         <div className="relative h-full bg-white dark:bg-slate-900 rounded-[13px] overflow-hidden flex flex-col">
                             
-                            {/* 1. BADGE SUS DREAPTA (Tricolor / Nume Ligă) */}
                             <div className="absolute top-0 right-0 z-20 flex flex-col items-end">
                                 <div className="bg-gradient-to-l from-blue-700 via-yellow-500 to-red-600 text-white text-[10px] font-black px-4 py-1.5 rounded-bl-xl shadow-lg flex items-center gap-1 uppercase tracking-wider border-b border-l border-white/20">
                                     {badgeText} {isNationalOnly && "🇷🇴"}
@@ -215,16 +199,13 @@ export function DiasporaSection() {
                                 )}
                             </div>
 
-                            {/* 2. BADGE SUS STÂNGA (Poziție) */}
                             <div className="absolute top-3 left-3 z-20">
                                 <span className="px-2 py-1 text-[10px] font-black rounded border border-white/40 shadow-lg bg-black/60 backdrop-blur-md text-white uppercase tracking-widest">
                                     {player.position}
                                 </span>
                             </div>
 
-                            {/* 3. POZA JUCĂTORULUI */}
                             <div className="h-56 relative overflow-hidden bg-gradient-to-b from-gray-200 to-white dark:from-slate-800 dark:to-slate-900 shrink-0">
-                                {/* Fundal texturat auriu */}
                                 <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fbbf24_1px,transparent_1px)] [background-size:16px_16px]"></div>
                                 
                                 <img 
@@ -234,10 +215,8 @@ export function DiasporaSection() {
                                     onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                                 />
                                 
-                                {/* Gradient pentru vizibilitate text */}
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent z-10"></div>
                                 
-                                {/* Detalii Jucător (Nume + Club) */}
                                 <div className="absolute bottom-4 left-4 z-20 text-white w-full pr-4">
                                     <h3 className="text-2xl font-black leading-none uppercase italic truncate tracking-tight drop-shadow-md text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-300">
                                         {player.name}
@@ -248,14 +227,11 @@ export function DiasporaSection() {
                                     </div>
                                 </div>
 
-                                {/* Watermark Tricolor fin pe poză */}
                                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-yellow-400 to-red-600 z-20"></div>
                             </div>
 
-                            {/* 4. STATISTICI */}
                             <div className="p-5 flex-1 flex flex-col justify-center bg-white dark:bg-slate-900">
                                 
-                                {/* Rândul 1: Principale */}
                                 <div className="grid grid-cols-3 gap-2 text-center border-b border-gray-100 dark:border-slate-800 pb-4 mb-4">
                                     <div className="group/stat">
                                         <span className="block text-2xl font-black text-slate-800 dark:text-white transition-colors">{stats.total_appearances}</span>
@@ -271,7 +247,6 @@ export function DiasporaSection() {
                                     </div>
                                 </div>
 
-                                {/* Rândul 2: Detalii */}
                                 <div className="grid grid-cols-2 gap-3 text-center">
                                     <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-transparent group-hover:border-blue-100 dark:group-hover:border-slate-700 transition-colors">
                                          <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-black text-sm">

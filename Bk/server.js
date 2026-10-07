@@ -623,16 +623,24 @@ const startServer = async () => {
         // RUTE API SPORT & ADMIN
         app.get('/api/sport/players', async (req, res) => {
             try {
-                const { search } = req.query;
+                const { search, diaspora } = req.query;
                 let query = {};
-                if (search) {
+                
+                // NOU: Dacă frontend-ul cere Diaspora, filtrăm direct din baza de date!
+                if (diaspora === 'true') {
+                    query.nationality = "Romania";
+                    query.league_id = { $nin: [283, 284] }; // Excludem direct SuperLiga și Liga 2
+                } else if (search) {
                     query.$or = [
                         { name: { $regex: search,$options: 'i' } },
                         { firstname: { $regex: search,$options: 'i' } },
                         { lastname: { $regex: search,$options: 'i' } }
                     ];
                 }
-                const players = await Player.find(query).limit(500); 
+                
+                // Mărim limita la 1000 pentru Diaspora ca să prindem toți stranierii
+                const limit = diaspora === 'true' ? 1000 : 500;
+                const players = await Player.find(query).limit(limit); 
                 res.json(players);
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
         });
