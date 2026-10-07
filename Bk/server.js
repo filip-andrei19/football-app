@@ -19,7 +19,8 @@ const rateLimit = require('express-rate-limit');
 
 // --- IMPORTURI SERVICII ---
 const { hardResetAndLoad } = require('./services/initialLoad'); 
-const { runDailySmartSync } = require('./services/smartSync'); 
+// AICI AM MODIFICAT: Importăm și funcția separată pentru Națională
+const { runDailySmartSync, runNationalTeamSync } = require('./services/smartSync'); 
 
 const app = express();
 const server = http.createServer(app); 
@@ -124,7 +125,7 @@ userSchema.pre('save', async function(next) {
 });
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// B. MESSAGE (Actualizat pentru Răspunsuri, Reacții și Fixare)
+// B. MESSAGE
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
@@ -132,7 +133,6 @@ const messageSchema = new mongoose.Schema({
     imageUrl: { type: String, default: "" }, 
     time: String,
     isDeleted: { type: Boolean, default: false }, 
-    // --- NOU: PENTRU INTERACȚIUNE ---
     replyTo: { 
         id: String,
         author: String,
@@ -507,37 +507,32 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare la ștergere." }); }
         });
 
-        // --- NOU: RUTA PENTRU REACȚII EMOJI ---
+        // --- RUTA PENTRU REACȚII EMOJI ---
         app.post('/api/messages/:id/react', async (req, res) => {
             try {
                 const { emoji, user } = req.body;
                 const msg = await Message.findById(req.params.id);
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
 
-                // Extragem obiectul de reacții sau creăm unul gol
                 const currentReactions = msg.reactions || {};
                 let usersWhoReacted = currentReactions[emoji] || [];
 
-                // Adăugăm sau scoatem utilizatorul
                 if (usersWhoReacted.includes(user)) {
-                    usersWhoReacted = usersWhoReacted.filter(u => u !== user); // Toggle (ștergere)
+                    usersWhoReacted = usersWhoReacted.filter(u => u !== user); 
                 } else {
-                    usersWhoReacted.push(user); // Adăugare
+                    usersWhoReacted.push(user);
                 }
 
-                // Dacă nu mai e nimeni care a dat acest emoji, ștergem cheia
                 if (usersWhoReacted.length === 0) {
                     delete currentReactions[emoji];
                 } else {
                     currentReactions[emoji] = usersWhoReacted;
                 }
 
-                // Salvăm
                 msg.reactions = currentReactions;
-                msg.markModified('reactions'); // Forțăm Mongoose să vadă modificarea
+                msg.markModified('reactions'); 
                 await msg.save();
                 
-                // Trimitem către toți cei din chat mesajul actualizat
                 io.in(msg.room).emit("message_updated", msg);
                 res.json({ success: true });
             } catch (err) { 
@@ -546,7 +541,7 @@ const startServer = async () => {
             }
         });
 
-        // --- NOU: RUTA PENTRU FIXARE MESAJ (PIN) ---
+        // --- RUTA PENTRU FIXARE MESAJ (PIN) ---
         app.post('/api/messages/:id/pin', async (req, res) => {
             try {
                 const msg = await Message.findById(req.params.id);
@@ -725,6 +720,13 @@ const startServer = async () => {
         // --- ADMIN TOOLS ---
         app.get('/api/admin/hard-reset', async (req, res) => { hardResetAndLoad(); res.send("Reset initiated."); });
         app.get('/api/admin/force-sync', async (req, res) => { runDailySmartSync(); res.send("Smart Sync forțat. Verifică logs."); });
+        
+        // --- NOU: RUTA PENTRU A SINCROZIA DOAR NAȚIONALA ACUM ---
+        app.get('/api/admin/force-sync-national', async (req, res) => { 
+            runNationalTeamSync(); 
+            res.send("Sincronizarea exclusivă a Echipei Naționale a început. Verifică logs pe Render."); 
+        });
+
         cron.schedule('14 12 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
 
         server.listen(PORT, () => console.log(`🚀 Server + Chat pornit pe http://localhost:${PORT}`));
