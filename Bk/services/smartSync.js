@@ -4,22 +4,25 @@ const Player = require('../models/player');
 // --- CONFIGURARE ---
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://v3.football.api-sports.io";
-const SEASON = 2026; // Anul corectat pentru sezonul curent
+const SEASON = 2026; 
 
-// Lista Ligilor Importante
+// Am adăugat noile ligi în lista de actualizare zilnică
 const TARGET_LEAGUES = [
     { id: 39, name: "Premier League (Anglia)" },
     { id: 140, name: "La Liga (Spania)" },
     { id: 135, name: "Serie A (Italia)" },
     { id: 78, name: "Bundesliga (Germania)" },
     { id: 61, name: "Ligue 1 (Franta)" },
-    { id: 283, name: "SuperLiga (Romania)" } 
+    { id: 283, name: "SuperLiga (Romania)" },
+    { id: 88, name: "Eredivisie (Olanda)" },
+    { id: 94, name: "Primeira Liga (Portugalia)" },
+    { id: 40, name: "Championship (Anglia L2)" }
 ];
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const runDailySmartSync = async () => {
-    console.log(`⏰ [SMART SYNC] Pornesc actualizarea completă pentru TOATE LIGILE...`);
+    console.log(`⏰ [SMART SYNC] Pornesc actualizarea completă pentru TOATE LIGILE (inclusiv noile adăugări)...`);
 
     for (const targetLeague of TARGET_LEAGUES) {
         console.log(`\n🌍 Încep procesarea pentru: ${targetLeague.name}...`);
@@ -45,7 +48,7 @@ const runDailySmartSync = async () => {
                 console.log(` 👉 Verific Echipa: ${teamName}`);
                 await processTeamAndUpdate(teamId, teamName, teamLogo, targetLeague.id);
                 
-                // Pauză de 3 secunde între echipe
+                // Pauză de 3 secunde între echipe pentru siguranța limitei de API
                 await wait(3000); 
             }
 

@@ -6,14 +6,23 @@ const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://v3.football.api-sports.io"; 
 const SEASON = 2026; 
 
+// Am adăugat noile ligi (Olanda, Portugalia, Anglia L2) + Top 5 (opțional pt reset total)
 const LEAGUE_PRIORITIES = [
-    { id: 283, name: "SuperLiga (Romania)" }
+    { id: 283, name: "SuperLiga (Romania)" },
+    { id: 39, name: "Premier League (Anglia)" },
+    { id: 140, name: "La Liga (Spania)" },
+    { id: 135, name: "Serie A (Italia)" },
+    { id: 78, name: "Bundesliga (Germania)" },
+    { id: 61, name: "Ligue 1 (Franta)" },
+    { id: 88, name: "Eredivisie (Olanda)" },
+    { id: 94, name: "Primeira Liga (Portugalia)" },
+    { id: 40, name: "Championship (Anglia L2)" }
 ];
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const hardResetAndLoad = async () => {
-    console.log(`🛡️ [UPDATE v5] Încep actualizarea (Corecție Cluburi Stranieri)...`);
+    console.log(`🛡️ [UPDATE v6] Încep actualizarea (Corecție Cluburi Stranieri + Extra Ligi)...`);
 
     // 1. Verificăm API-ul
     try {
@@ -24,7 +33,7 @@ const hardResetAndLoad = async () => {
     }
 
     // ---------------------------------------------------------
-    // ETAPA 1: ECHIPELE DE CLUB DIN ROMÂNIA
+    // ETAPA 1: ECHIPELE DE CLUB DIN LIGI
     // ---------------------------------------------------------
     for (const league of LEAGUE_PRIORITIES) {
         console.log(`\n🌍 [ETAPA 1] Verific Liga: ${league.name}...`);
@@ -38,10 +47,6 @@ const hardResetAndLoad = async () => {
             for (const t of teams) {
                 const teamName = t.team.name;
                 const teamLogo = t.team.logo;
-                
-                // Opțional: sari dacă există deja clubul (comentat pt o actualizare forțată a tuturor)
-                // const exists = await Player.findOne({ team_name: teamName });
-                // if (exists) continue; 
 
                 console.log(`   📥 [DESCARC/ACTUALIZEZ] ${teamName}...`);
                 await processTeam(t.team.id, teamName, teamLogo, league.id, false);
@@ -134,7 +139,7 @@ const processTeam = async (teamId, teamName, teamLogo, leagueId, isNationalTeam)
                     });
                     
                     if (existingPlayer) {
-                        // 1. Dacă joacă la un club din SuperLigă (ex: Olaru la FCSB), îl lăsăm în pace
+                        // 1. Dacă joacă la un club din SuperLigă, îl lăsăm în pace
                         if (existingPlayer.team_name && existingPlayer.team_name !== "Romania (Nationala)") {
                              shouldUpdate = false;
                         } 
