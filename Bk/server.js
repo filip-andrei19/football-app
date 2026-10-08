@@ -619,7 +619,6 @@ const startServer = async () => {
             }
         });
 
-        // --- RUTE JUCĂTORI / DIASPORA ---
         app.get('/api/sport/players', async (req, res) => {
             try {
                 const { search, diaspora } = req.query;
@@ -633,7 +632,7 @@ const startServer = async () => {
                     ];
                 }
                 
-                // Mongoose .limit(0) echivalează cu NICI O LIMITĂ, returnând toți jucătorii
+                // Luăm ultimii 1000 de jucători din baza de date (fără limită pentru diaspora)
                 const limitQuery = diaspora === 'true' ? 0 : 1000;
                 const players = await Player.find(query).limit(limitQuery); 
 
