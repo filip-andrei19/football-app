@@ -248,7 +248,7 @@ io.on("connection", (socket) => {
 const startServer = async () => {
     try {
         await mongoose.connect(process.env.MONGO_URI);
-        console.log('✅ Conectat la MongoDB[cite: 14].');
+        console.log('✅ Conectat la MongoDB.');
 
         const storyCount = await Story.countDocuments();
         if (storyCount === 0) {
@@ -619,6 +619,7 @@ const startServer = async () => {
             }
         });
 
+        // --- RUTE JUCĂTORI / DIASPORA ---
         app.get('/api/sport/players', async (req, res) => {
             try {
                 const { search, diaspora } = req.query;
@@ -632,8 +633,9 @@ const startServer = async () => {
                     ];
                 }
                 
-                // Luăm ultimii 1000 de jucători din baza de date
-                const players = await Player.find(query).limit(1000); 
+                // Mongoose .limit(0) echivalează cu NICI O LIMITĂ, returnând toți jucătorii
+                const limitQuery = diaspora === 'true' ? 0 : 1000;
+                const players = await Player.find(query).limit(limitQuery); 
 
                 if (diaspora === 'true') {
                     const blockedKeywords = ["fcsb", "steaua", "cfr", "cluj", "craiova", "rapid", "farul", "sepsi", "petrolul", "hermannstadt", "uta", "iasi", "otelul", "botosani", "dinamo", "slobozia", "buzau", "voluntari", "chiajna", "mioveni", "chindia", "metaloglobus", "csikszereda", "corvinul", "resita"];
@@ -676,7 +678,7 @@ const startServer = async () => {
                     }},
                     { $match: { _id: {$ne: null } } }, 
                     { $project: { _id: 0, team_name: "$_id", team_logo: 1 } },
-                    { $sort: { team_name: 1 } },                                          {$limit: 200 } 
+                    { $sort: { team_name: 1 } },                                                               {$limit: 200 } 
                 ]);
                 
                 res.json(teams);
