@@ -444,9 +444,7 @@ const startServer = async () => {
                 let query = {};
                 
                 if (diaspora === 'true') {
-                    // Caută toți jucătorii din baza de date care sunt români, indiferent cum e scris (Romania, ROMANIA)
                     query.nationality = { $regex: /^romania$/i };
-                    // Și exclude direct ligile interne din România (Superliga: 283, Liga 2: 284)
                     query.league_id = { $nin: [283, 284] };
                 } else if (search) {
                     query.$or = [
@@ -456,7 +454,6 @@ const startServer = async () => {
                     ];
                 }
                 
-                // Mongoose .limit(0) returnează toți jucătorii care corespund, oricâți ar fi (peste 3000)
                 const limitQuery = diaspora === 'true' ? 0 : 1000;
                 const players = await Player.find(query).limit(limitQuery);
                 

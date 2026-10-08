@@ -77,22 +77,25 @@ const processNationalTeam = async (teamId, teamName, teamLogo) => {
                     activeStats = realClubInfo.stats;
                 }
 
+                // STRUCTURĂ COMPLETĂ ȘI CURATĂ
                 const updateData = {
-                    name: p.name,
-                    firstname: p.firstname,
-                    lastname: p.lastname,
-                    age: p.age,
-                    nationality: "Romania", // Asigurăm naționalitatea pentru toți
-                    birth_date: p.birth?.date,
-                    birth_place: p.birth?.place,
-                    height: p.height,
-                    weight: p.weight,
-                    position: activeStats?.games?.position,
+                    api_id: p.id,
+                    api_player_id: p.id,
+                    name: p.name || "",
+                    firstname: p.firstname || "",
+                    lastname: p.lastname || "",
+                    age: p.age || null,
+                    nationality: "Romania", // Forțăm naționalitatea aici
+                    birth_date: p.birth?.date || null,
+                    birth_place: p.birth?.place || null,
+                    height: p.height || null,
+                    weight: p.weight || null,
+                    position: activeStats?.games?.position || "Unknown",
                     image: p.photo,
                     team_name: finalTeamName, 
                     team: finalTeamName,
                     team_logo: finalTeamLogo,
-                    league_id: leagueId,
+                    league_id: leagueId || null,
                     statistics_summary: {
                         team_name: finalTeamName,
                         total_goals: activeStats?.goals?.total || 0,
@@ -100,12 +103,9 @@ const processNationalTeam = async (teamId, teamName, teamLogo) => {
                         total_appearances: activeStats?.games?.appearences || 0,
                         minutes_played: activeStats?.games?.minutes || 0,
                         rating: activeStats?.games?.rating || null
-                    },
-                    api_player_id: p.id,
-                    api_id: p.id
+                    }
                 };
 
-                // --- SOLUȚIA ERORII ---
                 const existingPlayer = await Player.findOne({ 
                     $or: [ { api_player_id: p.id }, { api_id: p.id } ] 
                 });
@@ -116,9 +116,8 @@ const processNationalTeam = async (teamId, teamName, teamLogo) => {
                     const newPlayer = new Player(updateData);
                     await newPlayer.save();
                 }
-                // -----------------------
 
-                console.log(`   ⭐ [NAȚIONALĂ] Actualizat stranier: ${p.name} -> Club: ${finalTeamName}`);
+                console.log(`   ⭐ [NAȚIONALĂ] Actualizat stranier în DB: ${p.name} -> Club: ${finalTeamName}`);
             }
             currentPage++;
             await wait(3000); 
@@ -203,26 +202,25 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
                 const fallbackStats = item.statistics.find(s => s.team.id === teamId) || item.statistics[0];
                 const stats = leagueStats || fallbackStats;
 
-                const currentTeamLogo = teamLogo; 
-
+                // STRUCTURĂ COMPLETĂ ȘI CURATĂ
                 const updateData = {
-                    name: p.name,
-                    firstname: p.firstname,
-                    lastname: p.lastname,
-                    age: p.age,
-                    nationality: p.nationality,
-                    birth_date: p.birth?.date,
-                    birth_place: p.birth?.place,
-                    height: p.height,
-                    weight: p.weight,
+                    api_id: p.id,
+                    api_player_id: p.id,
+                    name: p.name || "",
+                    firstname: p.firstname || "",
+                    lastname: p.lastname || "",
+                    age: p.age || null,
+                    nationality: p.nationality || "Unknown",
+                    birth_date: p.birth?.date || null,
+                    birth_place: p.birth?.place || null,
+                    height: p.height || null,
+                    weight: p.weight || null,
                     image: p.photo,
-                    position: stats?.games?.position,
-                    
+                    position: stats?.games?.position || "Unknown",
                     team_name: teamName,
                     team: teamName, 
-                    team_logo: currentTeamLogo,
-                    league_id: leagueId,
-                    
+                    team_logo: teamLogo,
+                    league_id: leagueId || null,
                     statistics_summary: {
                         team_name: teamName,
                         total_goals: stats?.goals?.total || 0,
@@ -230,9 +228,7 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
                         total_appearances: stats?.games?.appearences || 0,
                         minutes_played: stats?.games?.minutes || 0,
                         rating: stats?.games?.rating || null
-                    },
-                    api_player_id: p.id,
-                    api_id: p.id
+                    }
                 };
 
                 const existingPlayer = await Player.findOne({ 
@@ -259,12 +255,8 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
                     }
                 } else {
                     if (p.nationality === "Romania") {
-                        console.log(`   ⭐ Jucător NOU Român adăugat: ${p.name}`);
-                        const newPlayer = new Player({
-                            api_player_id: p.id,
-                            api_id: p.id,
-                            ...updateData
-                        });
+                        console.log(`   ⭐ Jucător NOU Român adăugat în DB: ${p.name}`);
+                        const newPlayer = new Player(updateData);
                         await newPlayer.save();
                     }
                 }
