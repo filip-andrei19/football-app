@@ -248,7 +248,7 @@ io.on("connection", (socket) => {
 const startServer = async () => {
     try {
         await mongoose.connect(process.env.MONGO_URI);
-        console.log('✅ Conectat la MongoDB[cite: 13].');
+        console.log('✅ Conectat la MongoDB[cite: 14].');
 
         const storyCount = await Story.countDocuments();
         if (storyCount === 0) {
@@ -325,7 +325,7 @@ const startServer = async () => {
 
         app.post('/api/users/reset-password/:token', async (req, res) => {
              try {
-                 const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
+                 const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { \$gt: Date.now() } });
                  if (!user) return res.status(400).json({ message: "Token invalid." });
                  user.password = req.body.password;
                  user.resetPasswordToken = undefined;
@@ -356,7 +356,7 @@ const startServer = async () => {
                 if (newAvatarUrl && newAvatarUrl !== user.avatar) updates.sellerAvatar = newAvatarUrl;
                 
                 if (Object.keys(updates).length > 0) {
-                    await Listing.updateMany({ sellerEmail: email }, { $set: updates });
+                    await Listing.updateMany({ sellerEmail: email }, { \$set: updates });
                 }
 
                 user.name = name || user.name;
@@ -406,7 +406,7 @@ const startServer = async () => {
                 const user = await User.findOne({ email: req.params.email });
                 if (!user) return res.status(404).json({ error: "User not found" });
                 
-                const favoriteListings = await Listing.find({ _id: { $in: user.favorites } }).sort({ posted: -1 });
+                const favoriteListings = await Listing.find({ _id: { \$in: user.favorites } }).sort({ posted: -1 });
                 res.json({ success: true, favorites: user.favorites, favoriteListings });
             } catch (err) { 
                 res.status(500).json({ error: "Eroare la preluarea favoritelor." }); 
@@ -579,7 +579,7 @@ const startServer = async () => {
         app.get('/api/listings', async (req, res) => {
             const { page = 1, limit = 50, search, category } = req.query;
             let query = {};
-            if (search) query.$or = [{ title: { $regex: search,$options: 'i' } }, { description: { $regex: search,$options: 'i' } }];
+            if (search) query.\$or = [{ title: { $regex: search,$options: 'i' } }, { description: { $regex: search,$options: 'i' } }];
             if (category && category !== 'Toate') query.category = category;
 
             const listings = await Listing.find(query).sort({ posted: -1 }).limit(limit * 1).skip((page - 1) * limit);
@@ -610,7 +610,7 @@ const startServer = async () => {
                 
                 await User.updateMany(
                     { favorites: req.params.id }, 
-                    { $pull: { favorites: req.params.id } }
+                    { \$pull: { favorites: req.params.id } }
                 );
 
                 res.json({ success: true, message: "Produs și imagini șterse definitiv." });
@@ -619,32 +619,33 @@ const startServer = async () => {
             }
         });
 
-        // RUTE API SPORT & ADMIN (Actualizat cu filtrare sigură pentru Diaspora)
         app.get('/api/sport/players', async (req, res) => {
             try {
                 const { search, diaspora } = req.query;
                 let query = {};
                 
-                if (diaspora === 'true') {
-                    query.nationality = "Romania";
-                } else if (search) {
-                    query.$or = [
+                if (search) {
+                    query.\$or = [
                         { name: { $regex: search,$options: 'i' } },
                         { firstname: { $regex: search,$options: 'i' } },
                         { lastname: { $regex: search,$options: 'i' } }
                     ];
                 }
                 
+                // Luăm ultimii 1000 de jucători din baza de date
                 const players = await Player.find(query).limit(1000); 
 
                 if (diaspora === 'true') {
                     const blockedKeywords = ["fcsb", "steaua", "cfr", "cluj", "craiova", "rapid", "farul", "sepsi", "petrolul", "hermannstadt", "uta", "iasi", "otelul", "botosani", "dinamo", "slobozia", "buzau", "voluntari", "chiajna", "mioveni", "chindia", "metaloglobus", "csikszereda", "corvinul", "resita"];
                     
                     const filtered = players.filter(p => {
-                        const tName = (p.team_name || "").toLowerCase();
+                        const tName = (p.team_name || p.team || "").toLowerCase();
                         const isNational = tName.includes("nationala") || tName === "romania";
                         if (isNational) return true;
-                        return !blockedKeywords.some(keyword => tName.includes(keyword));
+                        
+                        // Dacă echipa conține vreun cuvânt cheie din România, îl excludem
+                        const isLocal = blockedKeywords.some(keyword => tName.includes(keyword));
+                        return !isLocal;
                     });
                     return res.json(filtered);
                 }
@@ -660,7 +661,7 @@ const startServer = async () => {
                 
                 if (q) {
                     matchQuery = { 
-                        $or: [
+                        \$or: [
                             { team_name: { $regex: q,$options: 'i' } },
                             { team: { $regex: q,$options: 'i' } }
                         ]
@@ -668,9 +669,9 @@ const startServer = async () => {
                 }
                 
                 const teams = await Player.aggregate([
-                    { $match: matchQuery },
-                    { $group: { 
-                        _id: { $ifNull: ["$team_name", "$team"] },
+                    { \$match: matchQuery },
+                    { \$group: { 
+                        _id: { \$ifNull: ["$team_name", "$team"] },
                         team_logo: { $first: "$team_logo" }
                     }},
                     { $match: { _id: {$ne: null } } }, 
@@ -689,7 +690,7 @@ const startServer = async () => {
             try {
                 const teamName = req.params.teamName;
                 const players = await Player.find({ 
-                    $or: [
+                    \$or: [
                         { team_name: teamName },
                         { team: teamName }
                     ]
