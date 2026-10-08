@@ -626,9 +626,9 @@ const startServer = async () => {
                 let query = {};
                 
                 if (diaspora === 'true') {
-                    // 1. Trebuie să fie român (ignoram litere mari/mici)
+                    // Căutăm românii folosind regex corect
                     query.nationality = { $regex: /^romania$/i };
-                    // 2. Excludem ID-urile ligilor din România (SuperLiga = 283, Liga 2 = 284)
+                    // Excludem SuperLiga (283) și Liga 2 (284)
                     query.league_id = { \$nin: [283, 284] };
                 } else if (search) {
                     query.\$or = [
@@ -638,7 +638,6 @@ const startServer = async () => {
                     ];
                 }
                 
-                // limit(0) aduce toți jucătorii fără excepție
                 const limitQuery = diaspora === 'true' ? 0 : 1000;
                 const players = await Player.find(query).limit(limitQuery); 
 
