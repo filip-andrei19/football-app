@@ -254,7 +254,7 @@ const startServer = async () => {
 
         app.post('/api/users/reset-password/:token', async (req, res) => {
              try {
-                 const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { \$gt: Date.now() } });
+                 const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
                  if (!user) return res.status(400).json({ message: "Token invalid." });
                  user.password = req.body.password;
                  user.resetPasswordToken = undefined;
@@ -277,7 +277,7 @@ const startServer = async () => {
                 let updates = {};
                 if (name && name !== user.name) updates.seller = name;
                 if (newAvatarUrl && newAvatarUrl !== user.avatar) updates.sellerAvatar = newAvatarUrl;
-                if (Object.keys(updates).length > 0) { await Listing.updateMany({ sellerEmail: email }, { \$set: updates }); }
+                if (Object.keys(updates).length > 0) { await Listing.updateMany({ sellerEmail: email }, { $set: updates }); }
                 user.name = name || user.name;
                 user.avatar = newAvatarUrl || user.avatar;
                 await user.save();
@@ -314,7 +314,7 @@ const startServer = async () => {
             try {
                 const user = await User.findOne({ email: req.params.email });
                 if (!user) return res.status(404).json({ error: "User not found" });
-                const favoriteListings = await Listing.find({ _id: { \$in: user.favorites } }).sort({ posted: -1 });
+                const favoriteListings = await Listing.find({ _id: { $in: user.favorites } }).sort({ posted: -1 });
                 res.json({ success: true, favorites: user.favorites, favoriteListings });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
@@ -414,7 +414,7 @@ const startServer = async () => {
         app.get('/api/listings', async (req, res) => {
             const { page = 1, limit = 50, search, category } = req.query;
             let query = {};
-            if (search) query.\$or = [{ title: { $regex: search,$options: 'i' } }, { description: { $regex: search,$options: 'i' } }];
+            if (search) query.$or = [{ title: { $regex: search,$options: 'i' } }, { description: { $regex: search,$options: 'i' } }];
             if (category && category !== 'Toate') query.category = category;
             const listings = await Listing.find(query).sort({ posted: -1 }).limit(limit * 1).skip((page - 1) * limit);
             res.json(listings);
@@ -433,7 +433,7 @@ const startServer = async () => {
                     for (const imgUrl of listing.images) { await deleteFromCloudinary(imgUrl); }
                 }
                 await Listing.findByIdAndDelete(req.params.id);
-                await User.updateMany({ favorites: req.params.id }, { \$pull: { favorites: req.params.id } });
+                await User.updateMany({ favorites: req.params.id }, { $pull: { favorites: req.params.id } });
                 res.json({ success: true, message: "Șters." });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
@@ -447,9 +447,9 @@ const startServer = async () => {
                     // Caută toți jucătorii din baza de date care sunt români, indiferent cum e scris (Romania, ROMANIA)
                     query.nationality = { $regex: /^romania$/i };
                     // Și exclude direct ligile interne din România (Superliga: 283, Liga 2: 284)
-                    query.league_id = { \$nin: [283, 284] };
+                    query.league_id = { $nin: [283, 284] };
                 } else if (search) {
-                    query.\$or = [
+                    query.$or = [
                         { name: { $regex: search,$options: 'i' } },
                         { firstname: { $regex: search,$options: 'i' } },
                         { lastname: { $regex: search,$options: 'i' } }
@@ -470,14 +470,14 @@ const startServer = async () => {
                 let matchQuery = {};
                 if (q) {
                     matchQuery = {
-                        \$or: [
+                        $or: [
                             { team_name: { $regex: q,$options: 'i' } },
                             { team: { $regex: q,$options: 'i' } }
                         ]
                     };
                 }
                 const teams = await Player.aggregate([
-                    { \$match: matchQuery },
+                    { $match: matchQuery },
                     { $group: { _id: {$ifNull: ["$team_name", "$team"] }, team_logo: { $first: "$team_logo" } } },
                     { $match: { _id: {$ne: null } } },
                     { $project: { _id: 0, team_name: "$_id", team_logo: 1 } },
@@ -491,7 +491,7 @@ const startServer = async () => {
             try {
                 const teamName = req.params.teamName;
                 const players = await Player.find({
-                    \$or: [
+                    $or: [
                         { team_name: teamName },
                         { team: teamName }
                     ]
