@@ -14,16 +14,13 @@ const LEAGUE_ID_MAP: { [key: number]: string } = {
   40: "Championship 🏴󠁧󠁢󠁥󠁮󠁧󠁿"
 };
 
-const normalizeText = (text: string) => {
-  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, "");
-};
-
 interface Player {
   _id: string;
   name: string;
-  team_name: string;
-  nationality: string;
-  position: string;
+  team_name?: string;
+  team?: string;
+  nationality?: string;
+  position?: string;
   image?: string;
   league_id?: number; 
   statistics_summary?: {
@@ -69,23 +66,30 @@ export function DiasporaSection() {
         const response = await fetch(`${API_URL}/api/sport/players?diaspora=true`);
         const data = await response.json();
 
-        const sortedStranieri = data.sort((a: Player, b: Player) => {
-            const isNationalA = a.team_name.includes("Nationala");
-            const isNationalB = b.team_name.includes("Nationala");
-            
-            if (isNationalA && !isNationalB) return -1;
-            if (!isNationalA && isNationalB) return 1;
+        if (Array.isArray(data)) {
+            const sortedStranieri = data.sort((a: Player, b: Player) => {
+                const teamA = (a.team_name || a.team || "").toLowerCase();
+                const teamB = (b.team_name || b.team || "").toLowerCase();
+                
+                const isNationalA = teamA.includes("nationala") || teamA === "romania";
+                const isNationalB = teamB.includes("nationala") || teamB === "romania";
+                
+                if (isNationalA && !isNationalB) return -1;
+                if (!isNationalA && isNationalB) return 1;
 
-            const ratingA = parseFloat(a.statistics_summary?.rating || "0");
-            const ratingB = parseFloat(b.statistics_summary?.rating || "0");
-            if (ratingB !== ratingA) return ratingB - ratingA;
+                const ratingA = parseFloat(a.statistics_summary?.rating || "0");
+                const ratingB = parseFloat(b.statistics_summary?.rating || "0");
+                if (ratingB !== ratingA) return ratingB - ratingA;
 
-            return (b.statistics_summary?.total_appearances || 0) - (a.statistics_summary?.total_appearances || 0);
-        });
+                return (b.statistics_summary?.total_appearances || 0) - (a.statistics_summary?.total_appearances || 0);
+            });
 
-        setPlayers(sortedStranieri);
+            setPlayers(sortedStranieri);
+        } else {
+            setPlayers([]);
+        }
       } catch (err) {
-        console.error("Eroare:", err);
+        console.error("Eroare Diaspora:", err);
       } finally {
         setLoading(false);
       }
@@ -175,13 +179,14 @@ export function DiasporaSection() {
         ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-in slide-in-from-bottom-8 duration-700">
             {filteredPlayers.map((player) => {
-                const stats = player.statistics_summary || { matches: 0, total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
+                const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
+                const teamNameStr = player.team_name || player.team || "Club";
                 
-                const isNationalOnly = player.team_name.includes("Nationala") || player.team_name === "Romania";
+                const isNationalOnly = teamNameStr.toLowerCase().includes("nationala") || teamNameStr.toLowerCase() === "romania";
                 const ratingValue = stats.rating ? parseFloat(stats.rating).toFixed(2) : "-";
 
                 const leagueBadge = player.league_id ? LEAGUE_ID_MAP[player.league_id] : null;
-                const badgeText = isNationalOnly ? "CONVOCAT" : (leagueBadge || player.team_name);
+                const badgeText = isNationalOnly ? "CONVOCAT" : (leagueBadge || teamNameStr);
 
                 return (
                     <div key={player._id} className="relative group rounded-2xl bg-gradient-to-br from-blue-700 via-yellow-400 to-red-600 p-[3px] shadow-lg hover:shadow-2xl hover:shadow-yellow-500/40 transition-all duration-300 transform hover:-translate-y-2 flex flex-col h-full">
@@ -201,7 +206,7 @@ export function DiasporaSection() {
 
                             <div className="absolute top-3 left-3 z-20">
                                 <span className="px-2 py-1 text-[10px] font-black rounded border border-white/40 shadow-lg bg-black/60 backdrop-blur-md text-white uppercase tracking-widest">
-                                    {player.position}
+                                    {player.position || "Jucător"}
                                 </span>
                             </div>
 
@@ -210,7 +215,7 @@ export function DiasporaSection() {
                                 
                                 <img 
                                     src={player.image || GENERIC_USER_IMAGE} 
-                                    alt={player.name}
+                                    alt={player.name} 
                                     className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                                     onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                                 />
@@ -223,7 +228,7 @@ export function DiasporaSection() {
                                     </h3>
                                     <div className="flex items-center gap-1.5 text-yellow-400 text-xs font-bold mt-1.5 tracking-wide uppercase drop-shadow-md">
                                         <Shield className="w-3.5 h-3.5" /> 
-                                        <span className="truncate">{player.team_name}</span>
+                                        <span className="truncate">{teamNameStr}</span>
                                     </div>
                                 </div>
 
@@ -234,15 +239,15 @@ export function DiasporaSection() {
                                 
                                 <div className="grid grid-cols-3 gap-2 text-center border-b border-gray-100 dark:border-slate-800 pb-4 mb-4">
                                     <div className="group/stat">
-                                        <span className="block text-2xl font-black text-slate-800 dark:text-white transition-colors">{stats.total_appearances}</span>
+                                        <span className="block text-2xl font-black text-slate-800 dark:text-white transition-colors">{stats.total_appearances || 0}</span>
                                         <span className="text-[9px] uppercase text-gray-400 font-bold tracking-widest">Meciuri</span>
                                     </div>
                                     <div className="border-x border-gray-100 dark:border-slate-800 group/stat">
-                                        <span className="block text-2xl font-black text-blue-600 dark:text-blue-400">{stats.total_goals}</span>
+                                        <span className="block text-2xl font-black text-blue-600 dark:text-blue-400">{stats.total_goals || 0}</span>
                                         <span className="text-[9px] uppercase text-gray-400 font-bold tracking-widest">Goluri</span>
                                     </div>
                                     <div className="group/stat">
-                                        <span className="block text-2xl font-black text-red-600 dark:text-red-400">{stats.total_assists}</span>
+                                        <span className="block text-2xl font-black text-red-600 dark:text-red-400">{stats.total_assists || 0}</span>
                                         <span className="text-[9px] uppercase text-gray-400 font-bold tracking-widest">Pase</span>
                                     </div>
                                 </div>
@@ -263,6 +268,7 @@ export function DiasporaSection() {
                                          <span className="text-[8px] uppercase text-gray-400 font-bold mt-0.5">Media Rating</span>
                                     </div>
                                 </div>
+
                             </div>
 
                         </div>
