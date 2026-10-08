@@ -619,12 +619,18 @@ const startServer = async () => {
             }
         });
 
+        // --- RUTA SIMPLIFICATĂ PENTRU JUCĂTORI / DIASPORA ---
         app.get('/api/sport/players', async (req, res) => {
             try {
                 const { search, diaspora } = req.query;
                 let query = {};
                 
-                if (search) {
+                if (diaspora === 'true') {
+                    // 1. Trebuie să fie român (ignoram litere mari/mici)
+                    query.nationality = { $regex: /^romania$/i };
+                    // 2. Excludem ID-urile ligilor din România (SuperLiga = 283, Liga 2 = 284)
+                    query.league_id = { \$nin: [283, 284] };
+                } else if (search) {
                     query.\$or = [
                         { name: { $regex: search,$options: 'i' } },
                         { firstname: { $regex: search,$options: 'i' } },
@@ -632,24 +638,9 @@ const startServer = async () => {
                     ];
                 }
                 
-                // Luăm ultimii 1000 de jucători din baza de date (fără limită pentru diaspora)
+                // limit(0) aduce toți jucătorii fără excepție
                 const limitQuery = diaspora === 'true' ? 0 : 1000;
                 const players = await Player.find(query).limit(limitQuery); 
-
-                if (diaspora === 'true') {
-                    const blockedKeywords = ["fcsb", "steaua", "cfr", "cluj", "craiova", "rapid", "farul", "sepsi", "petrolul", "hermannstadt", "uta", "iasi", "otelul", "botosani", "dinamo", "slobozia", "buzau", "voluntari", "chiajna", "mioveni", "chindia", "metaloglobus", "csikszereda", "corvinul", "resita"];
-                    
-                    const filtered = players.filter(p => {
-                        const tName = (p.team_name || p.team || "").toLowerCase();
-                        const isNational = tName.includes("nationala") || tName === "romania";
-                        if (isNational) return true;
-                        
-                        // Dacă echipa conține vreun cuvânt cheie din România, îl excludem
-                        const isLocal = blockedKeywords.some(keyword => tName.includes(keyword));
-                        return !isLocal;
-                    });
-                    return res.json(filtered);
-                }
 
                 res.json(players);
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
