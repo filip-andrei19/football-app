@@ -448,19 +448,18 @@ const startServer = async () => {
                     query.league_id = { $nin: [283, 284] };
                 } else if (search) {
                     query.$or = [
-                        { name: { $regex: search,$options: 'i' } },
-                        { firstname: { $regex: search,$options: 'i' } },
-                        { lastname: { $regex: search,$options: 'i' } }
+                        { name: { $regex: search, $options: 'i' } },
+                        { firstname: { $regex: search, $options: 'i' } },
+                        { lastname: { $regex: search, $options: 'i' } }
                     ];
                 }
                 
-                const limitQuery = diaspora === 'true' ? 0 : 1000;
-                const players = await Player.find(query).limit(limitQuery);
-                
+                // Returnează absolut toți jucătorii fără să mai taie lista la 1000
+                const players = await Player.find(query);
                 res.json(players);
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
         });
-
+        
         app.get('/api/sport/teams/search', async (req, res) => {
             try {
                 const { q } = req.query;

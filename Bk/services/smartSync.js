@@ -20,7 +20,6 @@ const TARGET_LEAGUES = [
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- Funcție pentru a găsi clubul real al unui stranier ---
 const getRealClubNameAndLogo = async (playerId, nationalTeamId) => {
     try {
         const res = await axios.get(`${BASE_URL}/players?id=${playerId}&season=${SEASON}`, {
@@ -43,7 +42,6 @@ const getRealClubNameAndLogo = async (playerId, nationalTeamId) => {
     } catch (err) { return null; }
 };
 
-// --- Procesare dedicată pentru Națională ---
 const processNationalTeam = async (teamId, teamName, teamLogo) => {
     let currentPage = 1;
     let totalPages = 1;
@@ -62,7 +60,7 @@ const processNationalTeam = async (teamId, teamName, teamLogo) => {
             for (const item of playersList) {
                 const p = item.player;
                 
-                await wait(2000); // Pauză rate limit pentru siguranță
+                await wait(2000); 
                 const realClubInfo = await getRealClubNameAndLogo(p.id, teamId);
                 
                 let finalTeamName = teamName; 
@@ -77,26 +75,33 @@ const processNationalTeam = async (teamId, teamName, teamLogo) => {
                     activeStats = realClubInfo.stats;
                 }
 
-                // STRUCTURĂ COMPLETĂ ȘI CURATĂ
-                const updateData = {
+                // 1. ȘTERGEM documentul vechi/incomplet dacă există deja în baza de date
+                await Player.deleteMany({
+                    $or: [
+                        { api_id: p.id },
+                        { name: p.name },
+                        { lastname: p.lastname, firstname: p.firstname }
+                    ]
+                });
+
+                // 2. REINTRODUCEM jucătorul complet de la zero cu naționalitatea pusă
+                const newPlayerData = {
                     api_id: p.id,
-                    api_player_id: p.id,
                     name: p.name || "",
                     firstname: p.firstname || "",
                     lastname: p.lastname || "",
                     age: p.age || null,
-                    nationality: "Romania", // Forțăm naționalitatea aici
-                    birth_date: p.birth?.date || null,
-                    birth_place: p.birth?.place || null,
+                    nationality: "Romania", // Naționalitatea este garantată
                     height: p.height || null,
                     weight: p.weight || null,
                     position: activeStats?.games?.position || "Unknown",
                     image: p.photo,
-                    team_name: finalTeamName, 
                     team: finalTeamName,
+                    team_name: finalTeamName,
                     team_logo: finalTeamLogo,
                     league_id: leagueId || null,
                     statistics_summary: {
+                        team: finalTeamName,
                         team_name: finalTeamName,
                         total_goals: activeStats?.goals?.total || 0,
                         total_assists: activeStats?.goals?.assists || 0,
@@ -106,18 +111,10 @@ const processNationalTeam = async (teamId, teamName, teamLogo) => {
                     }
                 };
 
-                const existingPlayer = await Player.findOne({ 
-                    $or: [ { api_player_id: p.id }, { api_id: p.id } ] 
-                });
+                const playerDoc = new Player(newPlayerData);
+                await playerDoc.save();
 
-                if (existingPlayer) {
-                    await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
-                } else {
-                    const newPlayer = new Player(updateData);
-                    await newPlayer.save();
-                }
-
-                console.log(`   ⭐ [NAȚIONALĂ] Actualizat stranier în DB: ${p.name} -> Club: ${finalTeamName}`);
+                console.log(`   ⭐ [Șters & Reintrodus] ${p.name} | Naționalitate: Romania | Club: ${finalTeamName}`);
             }
             currentPage++;
             await wait(3000); 
@@ -129,9 +126,8 @@ const processNationalTeam = async (teamId, teamName, teamLogo) => {
     } while (currentPage <= totalPages);
 };
 
-// --- Funcția apelabilă separat DOAR pentru Națională ---
 const runNationalTeamSync = async () => {
-    console.log(`\n🇷🇴 [SMART SYNC] Caut Naționala României pentru a adăuga Jucătorii...`);
+    console.log(`\n🇷🇴 [SMART SYNC] Reintroducere curată a lotului Naționalei...`);
     try {
         const allTeamsRes = await axios.get(`${BASE_URL}/teams`, {
             headers: { 'x-apisports-key': API_KEY },
@@ -142,14 +138,13 @@ const runNationalTeamSync = async () => {
 
         if (nationalTeamObj) {
             const romaniaTeam = nationalTeamObj.team;
-            console.log(`✅ GĂSITĂ: ${romaniaTeam.name}. Încep procesarea lotului...`);
+            console.log(`✅ GĂSITĂ: ${romaniaTeam.name}. Încep ștergerea și reintroducerea jucătorilor...`);
             await processNationalTeam(romaniaTeam.id, "Romania (Nationala)", romaniaTeam.logo);
-            console.log(`✅ [NAȚIONALĂ ACTUALIZATĂ CU SUCCES]`);
+            console.log(`✅ [NAȚIONALĂ REINTRODUSĂ COMPLET CU SUCCES]`);
         }
     } catch (error) { console.error("⚠️ Eroare Națională:", error.message); }
 };
 
-// --- Funcția de actualizare ZILNICĂ COMPLETĂ (toate ligile + naționala) ---
 const runDailySmartSync = async () => {
     console.log(`⏰ [SMART SYNC] Pornesc actualizarea completă...`);
 
@@ -163,8 +158,6 @@ const runDailySmartSync = async () => {
             const teams = teamsRes.data.response;
             if (!teams || teams.length === 0) continue;
 
-            console.log(`📋 S-au găsit ${teams.length} echipe. Procesez...`);
-
             for (const t of teams) {
                 await processTeamAndUpdate(t.team.id, t.team.name, t.team.logo, targetLeague.id);
                 await wait(3000); 
@@ -174,9 +167,7 @@ const runDailySmartSync = async () => {
         }
     }
 
-    // ACTUALIZĂM ECHIPA NAȚIONALĂ LA FINAL
     await runNationalTeamSync();
-
     console.log(`\n✅ [SMART SYNC FULL] Baza de date a fost actualizată la zi!`);
 };
 
@@ -197,31 +188,25 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
 
             for (const item of playersList) {
                 const p = item.player;
-                
-                const leagueStats = item.statistics.find(s => s.team.id === teamId && s.league.id === leagueId);
-                const fallbackStats = item.statistics.find(s => s.team.id === teamId) || item.statistics[0];
-                const stats = leagueStats || fallbackStats;
+                const stats = item.statistics[0];
 
-                // STRUCTURĂ COMPLETĂ ȘI CURATĂ
                 const updateData = {
                     api_id: p.id,
-                    api_player_id: p.id,
                     name: p.name || "",
                     firstname: p.firstname || "",
                     lastname: p.lastname || "",
                     age: p.age || null,
                     nationality: p.nationality || "Unknown",
-                    birth_date: p.birth?.date || null,
-                    birth_place: p.birth?.place || null,
                     height: p.height || null,
                     weight: p.weight || null,
                     image: p.photo,
                     position: stats?.games?.position || "Unknown",
-                    team_name: teamName,
-                    team: teamName, 
+                    team: teamName,
+                    team_name: teamName, 
                     team_logo: teamLogo,
                     league_id: leagueId || null,
                     statistics_summary: {
+                        team: teamName,
                         team_name: teamName,
                         total_goals: stats?.goals?.total || 0,
                         total_assists: stats?.goals?.assists || 0,
@@ -232,39 +217,20 @@ const processTeamAndUpdate = async (teamId, teamName, teamLogo, leagueId) => {
                 };
 
                 const existingPlayer = await Player.findOne({ 
-                    $or: [ { api_player_id: p.id }, { api_id: p.id } ] 
+                    $or: [ { api_id: p.id }, { name: p.name } ] 
                 });
 
                 if (existingPlayer) {
-                    const existingMinutes = existingPlayer.statistics_summary?.minutes_played || 0;
-                    const newMinutes = stats?.games?.minutes || 0;
-
-                    if (existingPlayer.team_name !== teamName) {
-                        if (newMinutes >= existingMinutes) {
-                             console.log(`   🔄 TRANSFER ACTUALIZAT CORECT: ${p.name} -> "${teamName}"!`);
-                             await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
-                        } else {
-                             await Player.updateOne({ _id: existingPlayer._id }, { 
-                                 $set: { 
-                                     "statistics_summary.total_goals": existingPlayer.statistics_summary.total_goals + (stats?.goals?.total || 0)
-                                 } 
-                             });
-                        }
-                    } else {
-                        await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
-                    }
+                    await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
                 } else {
                     if (p.nationality === "Romania") {
-                        console.log(`   ⭐ Jucător NOU Român adăugat în DB: ${p.name}`);
                         const newPlayer = new Player(updateData);
                         await newPlayer.save();
                     }
                 }
             }
             currentPage++;
-            
             if (currentPage <= totalPages) await wait(1500); 
-            
         } catch (err) { break; }
     } while (currentPage <= totalPages);
 };
