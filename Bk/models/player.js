@@ -25,9 +25,10 @@ const playerSchema = new mongoose.Schema({
         minutes_played: { type: Number, default: 0 },
         rating: { type: String, default: null }
     },
+    detailed_stats: { type: Array, default: [] }, // AICI SALVĂM EVIDENȚA PE COMPETIȚII
     updatedAt: { type: Date, default: Date.now }
 }, {
-    strict: false // Esențial: împiedică Mongoose să șteargă pe ascuns orice câmp salvat
+    strict: false 
 });
 
 module.exports = mongoose.models.Player || mongoose.model('Player', playerSchema);
