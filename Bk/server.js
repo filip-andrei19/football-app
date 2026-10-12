@@ -28,9 +28,9 @@ const TOKEN_SECRET = process.env.JWT_SECRET || 'cheie_secreta_foarte_lunga_si_si
 
 // CONFIGURARE CLOUDINARY
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_NAME,
-  api_key: process.env.CLOUDINARY_KEY,
-  api_secret: process.env.CLOUDINARY_SECRET
+    cloud_name: process.env.CLOUDINARY_NAME,
+    api_key: process.env.CLOUDINARY_KEY,
+    api_secret: process.env.CLOUDINARY_SECRET
 });
 
 // CONFIGURARE SOCKET.IO
@@ -254,7 +254,7 @@ const startServer = async () => {
 
         app.post('/api/users/reset-password/:token', async (req, res) => {
              try {
-                 const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
+                 const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { \$gt: Date.now() } });
                  if (!user) return res.status(400).json({ message: "Token invalid." });
                  user.password = req.body.password;
                  user.resetPasswordToken = undefined;
@@ -277,7 +277,7 @@ const startServer = async () => {
                 let updates = {};
                 if (name && name !== user.name) updates.seller = name;
                 if (newAvatarUrl && newAvatarUrl !== user.avatar) updates.sellerAvatar = newAvatarUrl;
-                if (Object.keys(updates).length > 0) { await Listing.updateMany({ sellerEmail: email }, { $set: updates }); }
+                if (Object.keys(updates).length > 0) { await Listing.updateMany({ sellerEmail: email }, { \$set: updates }); }
                 user.name = name || user.name;
                 user.avatar = newAvatarUrl || user.avatar;
                 await user.save();
@@ -314,7 +314,7 @@ const startServer = async () => {
             try {
                 const user = await User.findOne({ email: req.params.email });
                 if (!user) return res.status(404).json({ error: "User not found" });
-                const favoriteListings = await Listing.find({ _id: { $in: user.favorites } }).sort({ posted: -1 });
+                const favoriteListings = await Listing.find({ _id: { \$in: user.favorites } }).sort({ posted: -1 });
                 res.json({ success: true, favorites: user.favorites, favoriteListings });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
@@ -414,7 +414,7 @@ const startServer = async () => {
         app.get('/api/listings', async (req, res) => {
             const { page = 1, limit = 50, search, category } = req.query;
             let query = {};
-            if (search) query.$or = [{ title: { $regex: search,$options: 'i' } }, { description: { $regex: search,$options: 'i' } }];
+            if (search) query.\$or = [{ title: { $regex: search,$options: 'i' } }, { description: { $regex: search,$options: 'i' } }];
             if (category && category !== 'Toate') query.category = category;
             const listings = await Listing.find(query).sort({ posted: -1 }).limit(limit * 1).skip((page - 1) * limit);
             res.json(listings);
@@ -433,7 +433,7 @@ const startServer = async () => {
                     for (const imgUrl of listing.images) { await deleteFromCloudinary(imgUrl); }
                 }
                 await Listing.findByIdAndDelete(req.params.id);
-                await User.updateMany({ favorites: req.params.id }, { $pull: { favorites: req.params.id } });
+                await User.updateMany({ favorites: req.params.id }, { \$pull: { favorites: req.params.id } });
                 res.json({ success: true, message: "Șters." });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
@@ -445,16 +445,15 @@ const startServer = async () => {
                 
                 if (diaspora === 'true') {
                     query.nationality = { $regex: /^romania$/i };
-                    query.league_id = { $nin: [283, 284] };
+                    query.league_id = { \$nin: [283, 284] };
                 } else if (search) {
-                    query.$or = [
-                        { name: { $regex: search, $options: 'i' } },
-                        { firstname: { $regex: search, $options: 'i' } },
-                        { lastname: { $regex: search, $options: 'i' } }
+                    query.\$or = [
+                        { name: { $regex: search,$options: 'i' } },
+                        { firstname: { $regex: search,$options: 'i' } },
+                        { lastname: { $regex: search,$options: 'i' } }
                     ];
                 }
                 
-                // Returnează absolut toți jucătorii fără să mai taie lista la 1000
                 const players = await Player.find(query);
                 res.json(players);
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
@@ -466,41 +465,59 @@ const startServer = async () => {
                 let matchQuery = {};
                 if (q) {
                     matchQuery = {
-                        $or: [
+                        \$or: [
                             { team_name: { $regex: q,$options: 'i' } },
                             { team: { $regex: q,$options: 'i' } }
                         ]
                     };
                 }
                 const teams = await Player.aggregate([
-                    { $match: matchQuery },
+                    { \$match: matchQuery },
                     { $group: { _id: {$ifNull: ["$team_name", "$team"] }, team_logo: { $first: "$team_logo" } } },
                     { $match: { _id: {$ne: null } } },
                     { $project: { _id: 0, team_name: "$_id", team_logo: 1 } },
-                    { $sort: { team_name: 1 } },                     {$limit: 200 }
+                    { $sort: { team_name: 1 } },                    {$limit: 200 }
                 ]);
                 res.json(teams);
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
+        // RUTĂ ACTUALIZATĂ CU REGEX PENTRU A GĂSI TOȚI JUCĂTORII ECHIPEI FĂRĂ ERORI DE ORTOGRAFIE
         app.get('/api/sport/teams/:teamName/roster', async (req, res) => {
             try {
-                const teamName = req.params.teamName;
+                const teamNameRegex = new RegExp(req.params.teamName.trim(), 'i');
                 const players = await Player.find({
-                    $or: [
-                        { team_name: teamName },
-                        { team: teamName }
+                    \$or: [
+                        { team_name: teamNameRegex },
+                        { team: teamNameRegex }
                     ]
                 }).sort({ name: 1 });
+                
                 if (!players || players.length === 0) return res.status(404).json({ message: "Nu sunt jucători." });
+                
                 const roster = {
-                    teamInfo: { name: teamName, logo: players[0].team_logo, totalPlayers: players.length },
+                    teamInfo: { name: req.params.teamName, logo: players[0].team_logo || "", totalPlayers: players.length },
                     squad: {
-                        Goalkeepers: players.filter(p => p.position === 'Goalkeeper'),
-                        Defenders: players.filter(p => p.position === 'Defender'),
-                        Midfielders: players.filter(p => p.position === 'Midfielder'),
-                        Attackers: players.filter(p => p.position === 'Attacker'),
-                        Unknown: players.filter(p => !p.position || !['Goalkeeper', 'Defender', 'Midfielder', 'Attacker'].includes(p.position))
+                        Goalkeepers: players.filter(p => {
+                            const pos = (p.position || "").toLowerCase();
+                            return pos.includes('goalkeeper') || pos.includes('portar');
+                        }),
+                        Defenders: players.filter(p => {
+                            const pos = (p.position || "").toLowerCase();
+                            return pos.includes('defender') || pos.includes('back');
+                        }),
+                        Midfielders: players.filter(p => {
+                            const pos = (p.position || "").toLowerCase();
+                            return pos.includes('midfield') || pos.includes('mijloca');
+                        }),
+                        Attackers: players.filter(p => {
+                            const pos = (p.position || "").toLowerCase();
+                            return pos.includes('forward') || pos.includes('striker') || pos.includes('wing') || pos.includes('attack');
+                        }),
+                        Unknown: players.filter(p => {
+                            const pos = (p.position || "").toLowerCase();
+                            return !pos || (!pos.includes('goalkeeper') && !pos.includes('portar') && !pos.includes('defender') && !pos.includes('back') && !pos.includes('midfield') && !pos.includes('mijloca') && !pos.includes('forward') && !pos.includes('striker') && !pos.includes('wing') && !pos.includes('attack'));
+                        })
                     }
                 };
                 res.json(roster);
