@@ -32,8 +32,16 @@ function calculateTotalStats(statisticsArray, targetTeamId) {
         return defaultStats;
     }
 
-    let ratingSum = 0;
-    let ratingCount = 0;
+    // --- VARIABILE PENTRU ALGORITMUL PROPRIU "SCOUT IQ" ---
+    let totalGoals = 0;
+    let totalAssists = 0;
+    let totalMinutes = 0;
+    let totalKeyPasses = 0;
+    let totalTackles = 0;
+    let totalInterceptions = 0;
+    let totalSaves = 0;
+    let yellowCards = 0;
+    let redCards = 0;
 
     const clubStats = statisticsArray.filter(s => s && s.team && s.team.id === targetTeamId);
     
@@ -41,22 +49,33 @@ function calculateTotalStats(statisticsArray, targetTeamId) {
         if (!s) continue;
 
         const apps = (s.games && s.games.appearences) ? s.games.appearences : 0;
+        const mins = (s.games && s.games.minutes) ? s.games.minutes : 0;
         const goals = (s.goals && s.goals.total) ? s.goals.total : 0;
         const assists = (s.goals && s.goals.assists) ? s.goals.assists : 0;
-        const mins = (s.games && s.games.minutes) ? s.games.minutes : 0;
-        const rating = (s.games && s.games.rating) ? s.games.rating : null;
+        
         const compName = (s.league && s.league.name) ? s.league.name : "Competitie necunoscuta";
         const compType = (s.league && s.league.type) ? s.league.type : "Other";
 
+        // Extragem date avansate DOAR din meciurile oficiale (Campionat / Cupă)
+        if (compType === "League" || compType === "Cup") {
+            totalKeyPasses += (s.passes && s.passes.key) ? s.passes.key : 0;
+            totalTackles += (s.tackles && s.tackles.total) ? s.tackles.total : 0;
+            totalInterceptions += (s.tackles && s.tackles.interceptions) ? s.tackles.interceptions : 0;
+            totalSaves += (s.goals && s.goals.saves) ? s.goals.saves : 0;
+            yellowCards += (s.cards && s.cards.yellow) ? s.cards.yellow : 0;
+            redCards += (s.cards && s.cards.red) ? s.cards.red : 0;
+        }
+
+        // Adăugăm la totalurile generale
         defaultStats.total_appearances += apps;
         defaultStats.total_goals += goals;
         defaultStats.total_assists += assists;
         defaultStats.minutes_played += mins;
+
+        totalGoals += goals;
+        totalAssists += assists;
+        totalMinutes += mins;
         
-        if (rating) {
-            ratingSum += parseFloat(rating);
-            ratingCount++;
-        }
         if (s.games && s.games.position && defaultStats.position === "Unknown") {
             defaultStats.position = s.games.position;
         }
@@ -76,8 +95,53 @@ function calculateTotalStats(statisticsArray, targetTeamId) {
         }
     }
 
-    if (ratingCount > 0) {
-        defaultStats.rating = (ratingSum / ratingCount).toFixed(2);
+    // ========================================================
+    // ALGORITMUL PROPRIU DE RATING ("Scout IQ Index")
+    // ========================================================
+    if (totalMinutes > 90) { 
+        // 1. Stabilim o bază și calculăm "Meciuri Echivalente" (per 90 min)
+        let baseRating = 6.0;
+        let performanceScore = 0;
+        const matchesEquivalent = totalMinutes / 90; 
+
+        const pos = defaultStats.position.toLowerCase();
+
+        // 2. Punctaj în funcție de Poziția Jucătorului
+        if (pos.includes('attacker') || pos.includes('forward') || pos.includes('striker')) {
+            performanceScore += (totalGoals * 1.5) + (totalAssists * 0.8) + (totalKeyPasses * 0.1);
+        } else if (pos.includes('midfielder')) {
+            performanceScore += (totalGoals * 1.2) + (totalAssists * 1.2) + (totalKeyPasses * 0.2) + (totalInterceptions * 0.1);
+        } else if (pos.includes('defender') || pos.includes('back')) {
+            performanceScore += (totalGoals * 2.5) + (totalAssists * 1.5) + (totalTackles * 0.15) + (totalInterceptions * 0.2);
+        } else if (pos.includes('goalkeeper')) {
+            performanceScore += (totalSaves * 0.3) + (totalInterceptions * 0.1);
+        } else {
+            performanceScore += (totalGoals * 1.0) + (totalAssists * 1.0) + (totalKeyPasses * 0.1) + (totalTackles * 0.1);
+        }
+
+        // 3. Penalizări disciplinare (Cartonașe)
+        let disciplinePenalty = (yellowCards * 0.15) + (redCards * 0.6);
+
+        // 4. Calculăm impactul mediu pe meci (Cât aduce jucătorul în 90 de min?)
+        let impactPerMatch = performanceScore / matchesEquivalent;
+
+        // 5. Bonus de consistență: titularii incontestabili primesc un mic boost (max +0.3)
+        let consistencyBonus = Math.min((totalMinutes / 3000) * 0.3, 0.3);
+
+        // 6. Formula Finală
+        let finalRating = baseRating + impactPerMatch + consistencyBonus - (disciplinePenalty / matchesEquivalent);
+
+        // 7. Normalizare: Ne asigurăm că nota nu sare de 10.0 și nu cade sub 4.0
+        finalRating = Math.max(4.0, Math.min(10.0, finalRating));
+
+        defaultStats.rating = finalRating.toFixed(2);
+        
+    } else if (totalMinutes > 0 && totalMinutes <= 90) {
+        // A jucat prea puțin pentru ca algoritmul să fie precis
+        defaultStats.rating = "6.00";
+    } else {
+        // Nu a jucat deloc
+        defaultStats.rating = null;
     }
 
     return defaultStats;
