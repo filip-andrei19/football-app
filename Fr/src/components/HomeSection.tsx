@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Globe, Plane, Shield, Star, Clock, Activity, Filter, X, Trophy, MapPin, User as UserIcon, Home as HomeIcon } from 'lucide-react';
+import { Globe, Shield, Star, Activity, X, Trophy, MapPin, User as UserIcon, Home as HomeIcon } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
@@ -150,11 +150,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   };
 
   const showResults = searchTerm.trim().length > 0;
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' });
-  };
 
   // Extragem doar prenumele
   const firstName = user?.name ? user.name.split(' ')[0] : 'Scouter';
@@ -385,52 +380,49 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         </section>
       </div>
 
-      {/* MODAL DETALII JUCĂTOR (Același ca în DiasporaSection) */}
+      {/* MODAL DETALII JUCĂTOR */}
       {selectedPlayer && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
               <div 
                   className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-slate-700"
                   onClick={(e) => e.stopPropagation()} 
               >
-                  {/* Header Modal */}
-                  <div className="relative h-32 md:h-40 bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-800 shrink-0">
+                  {/* Header Modal - Refăcut complet cu Flexbox pentru a preveni suprapunerea */}
+                  <div className="relative bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-800 shrink-0 px-6 py-8">
                       <button 
                           onClick={() => setSelectedPlayer(null)}
                           className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 backdrop-blur rounded-full p-2 text-white transition-colors z-10"
                       >
                           <X className="w-5 h-5" />
                       </button>
-                      <div className="absolute -bottom-12 left-6 flex items-end gap-4">
+                      
+                      <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 relative z-0">
+                          {/* Imagine Jucător */}
                           <img 
                               src={selectedPlayer.image || GENERIC_USER_IMAGE} 
                               alt={selectedPlayer.name}
-                              className="w-24 h-24 md:w-32 md:h-32 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-lg bg-white dark:bg-slate-800"
+                              className="w-28 h-28 md:w-36 md:h-36 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-xl bg-white dark:bg-slate-800 shrink-0"
                               onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                           />
-                          <div className="pb-2 text-white drop-shadow-md hidden sm:block">
-                              <h2 className="text-3xl font-black">{selectedPlayer.name}</h2>
-                              <div className="flex items-center gap-2 mt-1 opacity-90">
-                                  {selectedPlayer.team_logo && <img src={selectedPlayer.team_logo} alt="logo" className="w-5 h-5 bg-white rounded-full p-0.5" />}
-                                  <span className="font-bold">{selectedPlayer.team_name || selectedPlayer.team}</span>
+                          
+                          {/* Detalii Text (Nume, Echipă) */}
+                          <div className="text-white drop-shadow-md text-center sm:text-left flex-1 min-w-0">
+                              <h2 className="text-3xl md:text-4xl font-black truncate">{selectedPlayer.name}</h2>
+                              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 opacity-90">
+                                  {selectedPlayer.team_logo && (
+                                      <img src={selectedPlayer.team_logo} alt="logo" className="w-6 h-6 bg-white rounded-full p-0.5 object-contain" />
+                                  )}
+                                  <span className="font-bold text-lg truncate">{selectedPlayer.team_name || selectedPlayer.team}</span>
                               </div>
                           </div>
                       </div>
                   </div>
 
                   {/* Conținut Derulabil */}
-                  <div className="flex-1 overflow-y-auto p-6 pt-16 md:pt-6 bg-slate-50 dark:bg-slate-900">
+                  <div className="flex-1 overflow-y-auto p-6 bg-slate-50 dark:bg-slate-900">
                       
-                      {/* Numele vizibil pe mobil */}
-                      <div className="sm:hidden mb-6 text-center">
-                          <h2 className="text-2xl font-black text-slate-800 dark:text-white">{selectedPlayer.name}</h2>
-                          <div className="flex items-center justify-center gap-2 mt-1 text-slate-600 dark:text-slate-400 font-bold">
-                              {selectedPlayer.team_logo && <img src={selectedPlayer.team_logo} alt="logo" className="w-5 h-5" />}
-                              <span>{selectedPlayer.team_name || selectedPlayer.team}</span>
-                          </div>
-                      </div>
-
                       {/* Info Bar */}
-                      <div className="flex flex-wrap gap-3 mb-8">
+                      <div className="flex flex-wrap justify-center sm:justify-start gap-3 mb-8">
                           <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 shadow-sm">
                               <Globe className="w-4 h-4 text-emerald-500" /> 
                               {selectedPlayer.nationality || "Necunoscut"}
