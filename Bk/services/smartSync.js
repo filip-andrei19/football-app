@@ -290,7 +290,7 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         firstname: p.firstname || "",
                         lastname: p.lastname || "",
                         age: p.age || null,
-                        nationality: p.nationality || "Romania",
+                        nationality: p.nationality || "Necunoscut", // S-a înlocuit cu Necunoscut în lipsa datelor
                         birth_date: (p.birth && p.birth.date) ? p.birth.date : null,
                         birth_place: (p.birth && p.birth.place) ? p.birth.place : null,
                         height: p.height || null,
@@ -321,12 +321,12 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         if (!p.nationality && existingPlayer.nationality) {
                             updateData.nationality = existingPlayer.nationality;
                         }
+                        // Dacă există deja, DOAR actualizează datele și înlocuiește vechiul rating!
                         await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
                     } else {
-                        if (p.nationality === "Romania" || leagueId === 283 || leagueId === 284) {
-                            const newPlayer = new Player(updateData);
-                            await newPlayer.save();
-                        }
+                        // AM ELIMINAT STRICTEȚEA AICI - Acum salvează orice jucător nou găsit!
+                        const newPlayer = new Player(updateData);
+                        await newPlayer.save();
                     }
                 } catch (innerErr) {
                     console.log(`Eroare izolata jucator (Liga): ${innerErr.message}`);
