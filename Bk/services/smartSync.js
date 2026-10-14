@@ -285,7 +285,7 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         firstname: p.firstname || "",
                         lastname: p.lastname || "",
                         age: p.age || null,
-                        nationality: p.nationality || "Necunoscut", // S-a înlocuit cu Necunoscut în lipsa datelor
+                        nationality: p.nationality || "Necunoscut",
                         birth_date: (p.birth && p.birth.date) ? p.birth.date : null,
                         birth_place: (p.birth && p.birth.place) ? p.birth.place : null,
                         height: p.height || null,
@@ -295,7 +295,8 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         team_name: teamName,
                         team: teamName, 
                         team_logo: teamLogo,
-                        league_id: leagueId || null,
+                        // Păstrăm liga internă (dacă există în statistici) pentru a nu strica filtrul Diaspora
+                        league_id: totalStats.league_id || leagueId || null,
                         detailed_stats: totalStats.detailed_stats || [],
                         statistics_summary: {
                             team_name: teamName,
@@ -316,10 +317,12 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         if (!p.nationality && existingPlayer.nationality) {
                             updateData.nationality = existingPlayer.nationality;
                         }
-                        // Dacă există deja, DOAR actualizează datele și înlocuiește vechiul rating!
+                        // Dacă nu am găsit liga internă acum, dar o avea salvată anterior, o păstrăm
+                        if (!totalStats.league_id && existingPlayer.league_id && ![2, 3, 848].includes(existingPlayer.league_id)) {
+                            updateData.league_id = existingPlayer.league_id;
+                        }
                         await Player.updateOne({ _id: existingPlayer._id }, { $set: updateData });
                     } else {
-                        // AM ELIMINAT STRICTEȚEA AICI - Acum salvează orice jucător nou găsit!
                         const newPlayer = new Player(updateData);
                         await newPlayer.save();
                     }
@@ -360,26 +363,49 @@ async function runNationalTeamSync() {
 async function runDailySmartSync() {
     console.log(`\n [SMART SYNC] Pornesc actualizarea completa...`);
 
+    const EUROPEAN_CUPS = [2, 3, 848];
+
     for (const targetLeague of TARGET_LEAGUES) {
         console.log(`\n Incep procesarea pentru: ${targetLeague.name}...`);
         try {
-            const teamsRes = await axios.get(`${BASE_URL}/teams?league=${targetLeague.id}&season=${SEASON}`, {
-                headers: { 'x-apisports-key': API_KEY }
-            });
-            
-            if (!teamsRes.data || !teamsRes.data.response) continue;
-            
-            const teams = teamsRes.data.response;
-            if (teams.length === 0) continue;
+            let teams = [];
 
+            if (EUROPEAN_CUPS.includes(targetLeague.id)) {
+                // PENTRU CUPELE EUROPENE: Luăm DOAR echipele din faza grupelor (League Phase) folosind /standings
+                const standingsRes = await axios.get(`${BASE_URL}/standings?league=${targetLeague.id}&season=${SEASON}`, {
+                    headers: { 'x-apisports-key': API_KEY }
+                });
+
+                const standingsList = standingsRes.data?.response?.[0]?.league?.standings;
+                if (standingsList && Array.isArray(standingsList)) {
+                    // Parcurgem clasamentul (folosim flat() în caz că sunt mai multe grupe sau un singur tabel de 36)
+                    const allRows = standingsList.flat();
+                    teams = allRows.filter(row => row && row.team).map(row => ({ team: row.team }));
+                }
+                console.log(` -> Am extras ${teams.length} echipe calificate în faza grupelor pentru ${targetLeague.name}.`);
+            } else {
+                // PENTRU CAMPIONATELE INTERNE: Metoda clasică
+                const teamsRes = await axios.get(`${BASE_URL}/teams?league=${targetLeague.id}&season=${SEASON}`, {
+                    headers: { 'x-apisports-key': API_KEY }
+                });
+                if (teamsRes.data && teamsRes.data.response) {
+                    teams = teamsRes.data.response;
+                }
+            }
+
+            if (!teams || teams.length === 0) continue;
+
+            let count = 1;
             for (const t of teams) {
                 if (t && t.team) {
+                    console.log(`   [${count}/${teams.length}] Procesez echipa: ${t.team.name} (${targetLeague.name})...`);
                     await processTeamAndUpdate(t.team.id, t.team.name, t.team.logo, targetLeague.id);
+                    count++;
                     await wait(3000); 
                 }
             }
         } catch (error) { 
-            console.log(`Eroare la liga ${targetLeague.name}`);
+            console.log(`Eroare la liga ${targetLeague.name}: ${error.message}`);
         }
     }
 
