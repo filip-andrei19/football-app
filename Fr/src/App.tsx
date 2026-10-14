@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogOut, User, Settings, ShieldAlert, Moon, Sun } from 'lucide-react';
+import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogOut, User, Settings, ShieldAlert, Moon, Sun, Calendar } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
 import { HomeSection } from './components/HomeSection';
@@ -11,6 +11,7 @@ import { AuthPage } from './components/AuthPage';
 import { ProfileSection } from './components/ProfileSection'; 
 import { AdminDashboard } from './components/AdminDashboard'; 
 import { ChatWidget } from './components/ChatWidget'; 
+import { MatchesSection } from './components/MatchesSection'; // 🔥 AM IMPORTAT SECȚIUNEA DE MECIURI
 
 const Button = ({ children, onClick, variant, className, disabled }: any) => {
   const baseStyle = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50";
@@ -23,7 +24,7 @@ const Button = ({ children, onClick, variant, className, disabled }: any) => {
   return <button onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant || 'default']} ${className || ''}`}>{children}</button>;
 };
 
-type Section = 'home' | 'diaspora' | 'stars' | 'heroes' | 'collectors' | 'profile' | 'admin';
+type Section = 'home' | 'diaspora' | 'stars' | 'heroes' | 'collectors' | 'matches' | 'profile' | 'admin';
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<Section>('home');
@@ -35,37 +36,29 @@ export default function App() {
   const [activeChatRoom, setActiveChatRoom] = useState("general_chat");
   const [activeChatPartner, setActiveChatPartner] = useState<{ name: string, avatar?: string } | null>(null);
 
-  // [NOU] State pentru produsul partajat (din URL)
+  // State pentru produsul partajat (din URL)
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
 
   useEffect(() => {
     const syncUserData = async () => {
-        // ... (logica ta existentă de sync user) ...
         const savedUser = localStorage.getItem('footballAppUser');
         if (savedUser) {
             const localUser = JSON.parse(savedUser);
             setUser(localUser);
-            // ... (restul logicii de refresh token) ...
         }
         
-        // ... (logica ta existentă de theme) ...
         const savedTheme = localStorage.getItem('footballAppTheme') as 'light' | 'dark';
         if (savedTheme) {
             setTheme(savedTheme);
             if (savedTheme === 'dark') document.documentElement.classList.add('dark');
         }
 
-        // --- [NOU] LOGICĂ DETECTARE LINK PARTAJAT ---
-        // Verificăm dacă URL-ul conține ?postId=...
         const urlParams = new URLSearchParams(window.location.search);
         const postId = urlParams.get('postId');
         
         if (postId) {
-            // Dacă există un ID în link, mergem direct la secțiunea Collectors
             setSharedPostId(postId);
             setActiveSection('collectors');
-            
-            // Opțional: Curățăm URL-ul ca să nu rămână urât
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     };
@@ -99,8 +92,10 @@ export default function App() {
 
   const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
 
+  // 🔥 AM ADĂUGAT OPȚIUNEA PENTRU MECIURI ÎN MENIU 🔥
   const navigation = [
     { id: 'home' as Section, label: 'Home', icon: Home },
+    { id: 'matches' as Section, label: 'Meciuri', icon: Calendar }, 
     { id: 'diaspora' as Section, label: 'Diaspora', icon: Users },
     { id: 'stars' as Section, label: 'Future Stars', icon: Star },
     { id: 'heroes' as Section, label: 'Eroi', icon: Heart },
@@ -110,13 +105,11 @@ export default function App() {
   const renderSection = () => {
     switch (activeSection) {
       case 'home': return <HomeSection user={user!} onNavigate={setActiveSection} />;
+      case 'matches': return <MatchesSection />; // 🔥 RANDEAZĂ PAGINA DE MECIURI
       case 'diaspora': return <DiasporaSection />;
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
-      
-      // [NOU] Trimitem 'sharedPostId' către CollectorsHub
       case 'collectors': return <CollectorsHubSection user={user!} onOpenChat={handleOpenChat} initialPostId={sharedPostId} />;
-      
       case 'profile': return <ProfileSection user={user!} onUpdateUser={handleLoginSuccess} onLogout={handleLogout} />; 
       case 'admin': return isAdmin ? <AdminDashboard user={user!} /> : <HomeSection user={user!} onNavigate={setActiveSection} />;
       default: return <HomeSection user={user!} onNavigate={setActiveSection} />;
