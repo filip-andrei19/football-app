@@ -591,9 +591,31 @@ const startServer = async () => {
 
         cron.schedule('0 1 * * *', async () => { await sync7DaysWindow(); }, { timezone: "Europe/Bucharest" });
 
-        setInterval(() => {
-            syncLiveMatches(io);
-        }, 2 * 60 * 1000); 
+        // 🔥 ACTUALIZARE SCORURI LIVE (LA 30 SEC) - SUPER OPTIMIZAT 🔥
+        setInterval(async () => {
+            try {
+                // Aflăm timpul curent (în secunde)
+                const currentTimestamp = Math.floor(Date.now() / 1000);
+                
+                // Definim o fereastră de timp (un meci durează cam 120-150 minute)
+                const startWindow = currentTimestamp + (5 * 60); // Meci care începe în maxim 5 minute
+                const endWindow = currentTimestamp - (150 * 60); // Meci care a început acum cel mult 150 de minute
+                
+                // Căutăm în baza noastră de date LOCALĂ (Gratis) dacă e vreun meci în fereastra asta
+                const liveMatchesCount = await Fixture.countDocuments({
+                    timestamp: { $lte: startWindow,$gte: endWindow }
+                });
+                
+                if (liveMatchesCount > 0) {
+                    // Avem meciuri! Cerem scorul Live de la API-Football
+                    syncLiveMatches(io);
+                } 
+                // Dacă nu e niciun meci activ, scriptul nu face nimic. Am salvat un request!
+
+            } catch (err) {
+                console.log("Eroare verificare live local:", err.message);
+            }
+        }, 30 * 1000); // Rulează la fiecare 30 de secunde
 
         server.listen(PORT, () => console.log(`Server pornit pe port ${PORT}`));
 

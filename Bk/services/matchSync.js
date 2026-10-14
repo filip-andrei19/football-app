@@ -5,8 +5,8 @@ const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://v3.football.api-sports.io";
 const SEASON = 2026;
 
-// Toate cele 9 ligi ale tale
-const TARGET_LEAGUES = [39, 140, 135, 78, 61, 283, 88, 94, 40];
+// Am adăugat 2 (UCL), 3 (UEL) și 848 (UECL)
+const TARGET_LEAGUES = [39, 140, 135, 78, 61, 283, 88, 94, 40, 2, 3, 848];
 
 // Funcție utilitară pentru a formata data în YYYY-MM-DD
 function formatDate(date) {

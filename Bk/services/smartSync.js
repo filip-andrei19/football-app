@@ -14,7 +14,11 @@ const TARGET_LEAGUES = [
     { id: 283, name: "SuperLiga (Romania)" },
     { id: 88, name: "Eredivisie (Olanda)" },
     { id: 94, name: "Primeira Liga (Portugalia)" },
-    { id: 40, name: "Championship (Anglia L2)" }
+    { id: 40, name: "Championship (Anglia L2)" },
+    // ECHIPE EUROPENE
+    { id: 2, name: "UEFA Champions League" },
+    { id: 3, name: "UEFA Europa League" },
+    { id: 848, name: "UEFA Conference League" }
 ];
 
 function wait(ms) {
