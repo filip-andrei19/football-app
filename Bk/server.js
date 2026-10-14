@@ -20,6 +20,7 @@ const rateLimit = require('express-rate-limit');
 // --- IMPORTURI SERVICII ---
 const { hardResetAndLoad } = require('./services/initialLoad');
 const { runDailySmartSync, runNationalTeamSync } = require('./services/smartSync');
+const { sync7DaysWindow, syncLiveMatches } = require('./services/matchSync');
 
 const app = express();
 const server = http.createServer(app);
@@ -154,6 +155,26 @@ const storySchema = new mongoose.Schema({
     title: String, role: String, organization: String, excerpt: String, content: String, date: String, postedAt: { type: Date, default: Date.now }
 });
 const Story = mongoose.models.Story || mongoose.model('Story', storySchema);
+
+const fixtureSchema = new mongoose.Schema({
+    fixture_id: { type: Number, unique: true },
+    date: Date,
+    timestamp: Number,
+    league_id: Number,
+    league_name: String,
+    league_logo: String,
+    home_team_id: Number,
+    home_team_name: String,
+    home_team_logo: String,
+    away_team_id: Number,
+    away_team_name: String,
+    away_team_logo: String,
+    home_goals: { type: Number, default: null },
+    away_goals: { type: Number, default: null },
+    status_short: String,
+    elapsed: { type: Number, default: null }
+});
+const Fixture = mongoose.models.Fixture || mongoose.model('Fixture', fixtureSchema);
 
 const uploadImage = async (base64Str) => {
     try {
@@ -482,7 +503,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
-        // RUTĂ ACTUALIZATĂ CU REGEX PENTRU A GĂSI TOȚI JUCĂTORII ECHIPEI FĂRĂ ERORI DE ORTOGRAFIE
         app.get('/api/sport/teams/:teamName/roster', async (req, res) => {
             try {
                 const teamNameRegex = new RegExp(req.params.teamName.trim(), 'i');
@@ -524,6 +544,27 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
+        app.get('/api/sport/matches', async (req, res) => {
+            try {
+                const { date } = req.query; 
+                if (!date) return res.status(400).json({error: "Parametrul date este obligatoriu"});
+
+                const startDate = new Date(date);
+                startDate.setHours(0, 0, 0, 0);
+                
+                const endDate = new Date(date);
+                endDate.setHours(23, 59, 59, 999);
+
+                const matches = await Fixture.find({
+                    date: { $gte: startDate,$lte: endDate }
+                }).sort({ league_id: 1, timestamp: 1 });
+
+                res.json(matches);
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la preluarea meciurilor." });
+            }
+        });
+
         app.get('/api/admin/users', async (req, res) => { const users = await User.find(); res.json(users); });
         app.put('/api/admin/users/:id/ban', async (req, res) => {
             const user = await User.findById(req.params.id);
@@ -540,8 +581,19 @@ const startServer = async () => {
         app.get('/api/admin/hard-reset', async (req, res) => { hardResetAndLoad(); res.send("Reset."); });
         app.get('/api/admin/force-sync', async (req, res) => { runDailySmartSync(); res.send("Sync."); });
         app.get('/api/admin/force-sync-national', async (req, res) => { runNationalTeamSync(); res.send("Sync national."); });
+        
+        app.get('/api/admin/force-matches', async (req, res) => { 
+            sync7DaysWindow(); 
+            res.send("Sincronizarea celor 7 zile de meciuri a pornit în fundal!"); 
+        });
 
         cron.schedule('14 12 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
+
+        cron.schedule('0 1 * * *', async () => { await sync7DaysWindow(); }, { timezone: "Europe/Bucharest" });
+
+        setInterval(() => {
+            syncLiveMatches(io);
+        }, 2 * 60 * 1000); 
 
         server.listen(PORT, () => console.log(`Server pornit pe port ${PORT}`));
 
