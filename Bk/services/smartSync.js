@@ -6,7 +6,16 @@ const BASE_URL = "https://v3.football.api-sports.io";
 const SEASON = 2026; 
 
 const TARGET_LEAGUES = [
-    // ECHIPELE DIN CUPELE EUROPENE:
+    { id: 39, name: "Premier League (Anglia)" },
+    { id: 140, name: "La Liga (Spania)" },
+    { id: 135, name: "Serie A (Italia)" },
+    { id: 78, name: "Bundesliga (Germania)" },
+    { id: 61, name: "Ligue 1 (Franta)" },
+    { id: 283, name: "SuperLiga (Romania)" },
+    { id: 88, name: "Eredivisie (Olanda)" },
+    { id: 94, name: "Primeira Liga (Portugalia)" },
+    { id: 40, name: "Championship (Anglia L2)" },
+    // ECHIPELE DIN CUPELE EUROPENE (Aduc automat jucătorii și stats-urile din campionatele lor)
     { id: 2, name: "UEFA Champions League" },
     { id: 3, name: "UEFA Europa League" },
     { id: 848, name: "UEFA Conference League" }
