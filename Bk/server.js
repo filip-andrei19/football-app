@@ -20,7 +20,7 @@ const rateLimit = require('express-rate-limit');
 // --- IMPORTURI SERVICII ---
 const { hardResetAndLoad } = require('./services/initialLoad');
 const { runDailySmartSync, runNationalTeamSync } = require('./services/smartSync');
-const { sync7DaysWindow, syncLiveMatches } = require('./services/matchSync');
+const { sync7DaysWindow, syncLiveMatches, getFixtureDetailsOnDemand, getLeagueStandingsOnDemand } = require('./services/matchSync');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -164,6 +164,10 @@ const fixtureSchema = new mongoose.Schema({
     league_id: Number,
     league_name: String,
     league_logo: String,
+    league_round: String,
+    venue_name: String,
+    venue_city: String,
+    referee: String,
     home_team_id: Number,
     home_team_name: String,
     home_team_logo: String,
@@ -173,9 +177,23 @@ const fixtureSchema = new mongoose.Schema({
     home_goals: { type: Number, default: null },
     away_goals: { type: Number, default: null },
     status_short: String,
-    elapsed: { type: Number, default: null }
+    elapsed: { type: Number, default: null },
+    events: { type: Array, default: [] },
+    lineups: { type: Array, default: [] },
+    statistics: { type: Array, default: [] },
+    details_updated_at: { type: Date, default: null }
 });
 const Fixture = mongoose.models.Fixture || mongoose.model('Fixture', fixtureSchema);
+
+const standingSchema = new mongoose.Schema({
+    league_id: Number,
+    season: Number,
+    league_name: String,
+    league_logo: String,
+    table: { type: Array, default: [] },
+    updated_at: { type: Date, default: Date.now }
+});
+const Standing = mongoose.models.Standing || mongoose.model('Standing', standingSchema);
 
 const uploadImage = async (base64Str) => {
     try {
@@ -476,7 +494,6 @@ const startServer = async () => {
                     ];
                 }
                 
-                // Dacă nu se caută nimic specific și nu e bifată diaspora, limităm la 300 pentru a proteja memoria RAM pe Render
                 let playersQuery = Player.find(query);
                 if (!search && diaspora !== 'true') {
                     playersQuery = playersQuery.limit(300);
@@ -572,6 +589,27 @@ const startServer = async () => {
             }
         });
 
+        // RUTE NOI PENTRU DETALII MECI ȘI CLASAMENT CU CACHING
+        app.get('/api/sport/matches/:fixtureId/details', async (req, res) => {
+            try {
+                const matchDetails = await getFixtureDetailsOnDemand(req.params.fixtureId);
+                if (!matchDetails) return res.status(404).json({ error: "Meciul nu a fost găsit." });
+                res.json(matchDetails);
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la preluarea detaliilor meciului." });
+            }
+        });
+
+        app.get('/api/sport/standings/:leagueId', async (req, res) => {
+            try {
+                const standings = await getLeagueStandingsOnDemand(req.params.leagueId);
+                if (!standings) return res.status(404).json({ error: "Clasamentul nu este disponibil." });
+                res.json(standings);
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la preluarea clasamentului." });
+            }
+        });
+
         app.get('/api/admin/users', async (req, res) => { const users = await User.find(); res.json(users); });
         app.put('/api/admin/users/:id/ban', async (req, res) => {
             const user = await User.findById(req.params.id);
@@ -598,8 +636,6 @@ const startServer = async () => {
 
         cron.schedule('0 1 * * *', async () => { await sync7DaysWindow(); }, { timezone: "Europe/Bucharest" });
 
-        // Verificăm la pornirea serverului dacă există vreun meci din trecut rămas blocat în status LIVE (1H, 2H, HT)
-        // Dacă da (ex: serverul pe Render a dormit peste noapte), actualizăm automat fereastra de 7 zile!
         const stuckMatches = await Fixture.countDocuments({
             status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] },
             timestamp: { $lt: Math.floor(Date.now() / 1000) - (130 * 60) }
@@ -609,18 +645,12 @@ const startServer = async () => {
             sync7DaysWindow();
         }
 
-        // 🔥 ACTUALIZARE SCORURI LIVE (LA 30 SEC) - SUPER OPTIMIZAT & FĂRĂ MECIURI BLOCATE 🔥
         setInterval(async () => {
             try {
-                // Aflăm timpul curent (în secunde)
                 const currentTimestamp = Math.floor(Date.now() / 1000);
+                const startWindow = currentTimestamp + (5 * 60); 
+                const endWindow = currentTimestamp - (160 * 60); 
                 
-                // Definim o fereastră de timp (un meci cu prelungiri poate dura până la 160 minute)
-                const startWindow = currentTimestamp + (5 * 60); // Meci care începe în maxim 5 minute
-                const endWindow = currentTimestamp - (160 * 60); // Meci care a început acum cel mult 160 de minute
-                
-                // Căutăm în baza noastră de date LOCALĂ (Gratis) dacă e vreun meci activ în fereastră
-                // SAU dacă vreun meci din ultimele 6 ore încă figurează cu status de LIVE în baza de date
                 const liveMatchesCount = await Fixture.countDocuments({
                     $or: [
                         {
@@ -635,15 +665,12 @@ const startServer = async () => {
                 });
                 
                 if (liveMatchesCount > 0) {
-                    // Avem meciuri active! Cerem scorul Live de la API-Football
                     syncLiveMatches(io);
                 } 
-                // Dacă nu e niciun meci activ, scriptul nu face nimic. Am salvat un request!
-
             } catch (err) {
                 console.log("Eroare verificare live local:", err.message);
             }
-        }, 30 * 1000); // Rulează la fiecare 30 de secunde
+        }, 30 * 1000);
 
         server.listen(PORT, () => console.log(`Server pornit pe port ${PORT}`));
 
