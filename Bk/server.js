@@ -51,7 +51,7 @@ app.use(cors());
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 200,
+    max: 1000, // Mărit de la 200 la 1000 pentru a permite căutări rapide fără blocaj
     message: "Prea multe cereri. Încearcă mai târziu."
 });
 app.use(limiter);
@@ -475,7 +475,13 @@ const startServer = async () => {
                     ];
                 }
                 
-                const players = await Player.find(query);
+                // Dacă nu se caută nimic specific și nu e bifată diaspora, limităm la 300 pentru a proteja memoria RAM pe Render
+                let playersQuery = Player.find(query);
+                if (!search && diaspora !== 'true') {
+                    playersQuery = playersQuery.limit(300);
+                }
+
+                const players = await playersQuery;
                 res.json(players);
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
         });
@@ -497,7 +503,7 @@ const startServer = async () => {
                     { $group: { _id: {$ifNull: ["$team_name", "$team"] }, team_logo: { $first: "$team_logo" } } },
                     { $match: { _id: {$ne: null } } },
                     { $project: { _id: 0, team_name: "$_id", team_logo: 1 } },
-                    { $sort: { team_name: 1 } },                    {$limit: 200 }
+                    { $sort: { team_name: 1 } }, {$limit: 200 }
                 ]);
                 res.json(teams);
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
@@ -591,23 +597,44 @@ const startServer = async () => {
 
         cron.schedule('0 1 * * *', async () => { await sync7DaysWindow(); }, { timezone: "Europe/Bucharest" });
 
-        // 🔥 ACTUALIZARE SCORURI LIVE (LA 30 SEC) - SUPER OPTIMIZAT 🔥
+        // Verificăm la pornirea serverului dacă există vreun meci din trecut rămas blocat în status LIVE (1H, 2H, HT)
+        // Dacă da (ex: serverul pe Render a dormit peste noapte), actualizăm automat fereastra de 7 zile!
+        const stuckMatches = await Fixture.countDocuments({
+            status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] },
+            timestamp: { $lt: Math.floor(Date.now() / 1000) - (130 * 60) }
+        });
+        if (stuckMatches > 0) {
+            console.log(`Am găsit ${stuckMatches} meciuri rămase agățate în LIVE. Pornesc actualizarea ferestrei de 7 zile...`);
+            sync7DaysWindow();
+        }
+
+        // 🔥 ACTUALIZARE SCORURI LIVE (LA 30 SEC) - SUPER OPTIMIZAT & FĂRĂ MECIURI BLOCATE 🔥
         setInterval(async () => {
             try {
                 // Aflăm timpul curent (în secunde)
                 const currentTimestamp = Math.floor(Date.now() / 1000);
                 
-                // Definim o fereastră de timp (un meci durează cam 120-150 minute)
+                // Definim o fereastră de timp (un meci cu prelungiri poate dura până la 160 minute)
                 const startWindow = currentTimestamp + (5 * 60); // Meci care începe în maxim 5 minute
-                const endWindow = currentTimestamp - (150 * 60); // Meci care a început acum cel mult 150 de minute
+                const endWindow = currentTimestamp - (160 * 60); // Meci care a început acum cel mult 160 de minute
                 
-                // Căutăm în baza noastră de date LOCALĂ (Gratis) dacă e vreun meci în fereastra asta
+                // Căutăm în baza noastră de date LOCALĂ (Gratis) dacă e vreun meci activ în fereastră
+                // SAU dacă vreun meci din ultimele 6 ore încă figurează cu status de LIVE în baza de date
                 const liveMatchesCount = await Fixture.countDocuments({
-                    timestamp: { $lte: startWindow,$gte: endWindow }
+                    $or: [
+                        {
+                            timestamp: { $lte: startWindow,$gte: endWindow },
+                            status_short: { $nin: ["FT", "AET", "PEN", "PST", "CANC", "ABD"] }
+                        },
+                        {
+                            status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] },
+                            timestamp: { $gte: currentTimestamp - (6 * 3600) }
+                        }
+                    ]
                 });
                 
                 if (liveMatchesCount > 0) {
-                    // Avem meciuri! Cerem scorul Live de la API-Football
+                    // Avem meciuri active! Cerem scorul Live de la API-Football
                     syncLiveMatches(io);
                 } 
                 // Dacă nu e niciun meci activ, scriptul nu face nimic. Am salvat un request!

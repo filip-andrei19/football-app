@@ -8,6 +8,9 @@ const SEASON = 2026;
 // Am adăugat 2 (UCL), 3 (UEL) și 848 (UECL)
 const TARGET_LEAGUES = [39, 140, 135, 78, 61, 283, 88, 94, 40, 2, 3, 848];
 
+// Statusurile care indică faptul că un meci este încă în desfășurare în baza noastră de date
+const LIVE_STATUSES = ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"];
+
 // Funcție utilitară pentru a formata data în YYYY-MM-DD
 function formatDate(date) {
     return date.toISOString().split('T')[0];
@@ -52,7 +55,7 @@ async function sync7DaysWindow() {
     console.log(`[MATCH SYNC] Fereastra de 7 zile a fost actualizată!`);
 }
 
-// 2. Funcția care aduce DOAR meciurile LIVE (rulează din 2 în 2 minute)
+// 2. Funcția care aduce DOAR meciurile LIVE și închide automat meciurile care tocmai s-au terminat
 async function syncLiveMatches(io) {
     const Fixture = mongoose.model('Fixture');
     try {
@@ -64,8 +67,12 @@ async function syncLiveMatches(io) {
         });
 
         const liveMatches = res.data.response || [];
+        const activeApiIds = [];
+
+        // A. Actualizăm toate meciurile care sunt în desfășurare chiar acum
         if (liveMatches.length > 0) {
             for (const m of liveMatches) {
+                activeApiIds.push(m.fixture.id);
                 const savedMatch = await updateOrInsertFixture(Fixture, m);
                 
                 // Trimitem scorul live instantaneu către Frontend (dacă utilizatorul are aplicația deschisă)
@@ -74,6 +81,36 @@ async function syncLiveMatches(io) {
                 }
             }
         }
+
+        // B. VERIFICARE MECIURI TERMINATE (care încă apar ca LIVE în baza noastră de date, dar au ieșit din fluxul live API)
+        const stuckLocalMatches = await Fixture.find({
+            status_short: { $in: LIVE_STATUSES },
+            fixture_id: { $nin: activeApiIds }
+        }).select('fixture_id');
+
+        if (stuckLocalMatches.length > 0) {
+            // API-Football permite interogarea a până la 20 de fixture_id într-un singur request (separate prin cratimă)
+            const idsToResolve = stuckLocalMatches.map(doc => doc.fixture_id);
+
+            for (let i = 0; i < idsToResolve.length; i += 20) {
+                const batchIds = idsToResolve.slice(i, i + 20).join('-');
+                const finishedRes = await axios.get(`${BASE_URL}/fixtures`, {
+                    headers: { 'x-apisports-key': API_KEY },
+                    params: { ids: batchIds }
+                });
+
+                const resolvedMatches = finishedRes.data.response || [];
+                for (const m of resolvedMatches) {
+                    const updatedMatch = await updateOrInsertFixture(Fixture, m);
+                    // Trimitem noul status (ex: FT) către Frontend ca să dispară minutul roșu și să apară "FINAL"
+                    if (io) {
+                        io.emit("live_match_update", updatedMatch);
+                    }
+                }
+            }
+            console.log(`[LIVE SYNC] Am închis/actualizat automat ${stuckLocalMatches.length} meciuri care s-au terminat.`);
+        }
+
     } catch (err) {
         console.log(`[LIVE SYNC] Eroare interogare live:`, err.message);
     }
