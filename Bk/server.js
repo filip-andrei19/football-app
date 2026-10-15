@@ -23,6 +23,7 @@ const { runDailySmartSync, runNationalTeamSync } = require('./services/smartSync
 const { sync7DaysWindow, syncLiveMatches } = require('./services/matchSync');
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 const TOKEN_SECRET = process.env.JWT_SECRET || 'cheie_secreta_foarte_lunga_si_sigura';
