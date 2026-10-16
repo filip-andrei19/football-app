@@ -323,8 +323,10 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                     const existingPlayer = await Player.findOne({ api_id: p.id });
 
                     if (existingPlayer) {
-                        // Am eliminat păstrarea greșită a naționalității vechi
-                        // Dacă nu am găsit liga internă acum, dar o avea salvată anterior, o păstrăm
+                        // Forțăm ca un jucător să nu primească naționalitatea României decât dacă API-ul o zice clar sau e la Națională
+                        if (!p.nationality && existingPlayer.nationality === "Romania" && teamName !== "Romania (Nationala)") {
+                            updateData.nationality = "Necunoscut";
+                        }
                         if (!totalStats.league_id && existingPlayer.league_id && ![2, 3, 848].includes(existingPlayer.league_id)) {
                             updateData.league_id = existingPlayer.league_id;
                         }

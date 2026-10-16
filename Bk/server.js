@@ -484,8 +484,14 @@ const startServer = async () => {
                 let query = {};
                 
                 if (diaspora === 'true') {
-                    query.nationality = { $regex: /^romania$/i };
-                    query.league_id = { $nin: [283, 284] };
+                    // Filtrul corect pentru Diaspora: Jucători români care NU joacă în SuperLiga României (283, 284)
+                    // SAU fac parte din lotul Echipei Naționale a României
+                    query = {
+                        $or: [
+                            { nationality: { $regex: /^romania$/i }, league_id: { $nin: [283, 284] } },
+                            { team_name: { $regex: /romania/i } }
+                        ]
+                    };
                 } else if (search) {
                     query.$or = [
                         { name: { $regex: search,$options: 'i' } },
