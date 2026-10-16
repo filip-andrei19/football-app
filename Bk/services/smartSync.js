@@ -323,9 +323,7 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                     const existingPlayer = await Player.findOne({ api_id: p.id });
 
                     if (existingPlayer) {
-                        if (!p.nationality && existingPlayer.nationality) {
-                            updateData.nationality = existingPlayer.nationality;
-                        }
+                        // Am eliminat păstrarea greșită a naționalității vechi
                         // Dacă nu am găsit liga internă acum, dar o avea salvată anterior, o păstrăm
                         if (!totalStats.league_id && existingPlayer.league_id && ![2, 3, 848].includes(existingPlayer.league_id)) {
                             updateData.league_id = existingPlayer.league_id;
@@ -387,7 +385,6 @@ async function runDailySmartSync() {
 
                 const standingsList = standingsRes.data?.response?.[0]?.league?.standings;
                 if (standingsList && Array.isArray(standingsList)) {
-                    // Parcurgem clasamentul (folosim flat() în caz că sunt mai multe grupe sau un singur tabel de 36)
                     const allRows = standingsList.flat();
                     teams = allRows.filter(row => row && row.team).map(row => ({ team: row.team }));
                 }
