@@ -631,17 +631,18 @@ const startServer = async () => {
             res.send("Sincronizarea celor 7 zile de meciuri a pornit în fundal!"); 
         });
 
-        // RUTA NOUĂ DE CURĂȚARE INSTANTANEE A JUCĂTORILOR STRĂINI DIN MONGO
+        // RUTA DE CURĂȚARE ROBUSTĂ PENTRU JUCĂTORII STRĂINI DIN DIASPORA
         app.get('/api/admin/clean-foreign-players', async (req, res) => {
             try {
+                // Trecem la "Necunoscut" pe toți cei care au naționalitatea setată pe România 
+                // dar NU joacă în SuperLiga românească și NICI la Naționala României
                 const result = await Player.updateMany(
                     { 
-                        nationality: /^romania\$/i,
-                        team_name: { $nin: ["Romania (Nationala)", "Romania"] }
-                    },
-                    { $set: { nationality: "Necunoscut" } }
+                        nationality: { $regex: /^romania$/i },
+                        team_name: { $nin: ["Romania (Nationala)", "Romania"] },
+                        league_id: { $nin: [283, 284] } }, {$set: { nationality: "Necunoscut" } }
                 );
-                res.send(`Am curățat cu succes ${result.modifiedCount} jucători străini din baza de date! Ei nu vor mai apărea la Diaspora.`);
+                res.send(`Curățare reușită! Au fost actualizați ${result.modifiedCount} jucători străini care aveau naționalitatea eronată.`);
             } catch (err) {
                 res.status(500).send(err.message);
             }
