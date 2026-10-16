@@ -52,7 +52,7 @@ app.use(cors());
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 1000, // Mărit de la 200 la 1000 pentru a permite căutări rapide fără blocaj
+    max: 1000, 
     message: "Prea multe cereri. Încearcă mai târziu."
 });
 app.use(limiter);
@@ -589,7 +589,6 @@ const startServer = async () => {
             }
         });
 
-        // RUTE NOI PENTRU DETALII MECI ȘI CLASAMENT CU CACHING
         app.get('/api/sport/matches/:fixtureId/details', async (req, res) => {
             try {
                 const matchDetails = await getFixtureDetailsOnDemand(req.params.fixtureId);
@@ -630,6 +629,22 @@ const startServer = async () => {
         app.get('/api/admin/force-matches', async (req, res) => { 
             sync7DaysWindow(); 
             res.send("Sincronizarea celor 7 zile de meciuri a pornit în fundal!"); 
+        });
+
+        // RUTA NOUĂ DE CURĂȚARE INSTANTANEE A JUCĂTORILOR STRĂINI DIN MONGO
+        app.get('/api/admin/clean-foreign-players', async (req, res) => {
+            try {
+                const result = await Player.updateMany(
+                    { 
+                        nationality: /^romania\$/i,
+                        team_name: { $nin: ["Romania (Nationala)", "Romania"] }
+                    },
+                    { $set: { nationality: "Necunoscut" } }
+                );
+                res.send(`Am curățat cu succes ${result.modifiedCount} jucători străini din baza de date! Ei nu vor mai apărea la Diaspora.`);
+            } catch (err) {
+                res.status(500).send(err.message);
+            }
         });
 
         cron.schedule('14 12 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
