@@ -480,7 +480,7 @@ const startServer = async () => {
 
         app.get('/api/sport/players', async (req, res) => {
             try {
-                const { search, diaspora } = req.query;
+                const { search, diaspora, u21 } = req.query;
                 let query = {};
                 
                 if (diaspora === 'true') {
@@ -488,8 +488,14 @@ const startServer = async () => {
                     // SAU fac parte din lotul Echipei Naționale a României
                     query = {
                         $or: [
-                            { nationality: { $regex: /^romania$/i }, league_id: { $nin: [283, 284] } },
-                            { team_name: { $regex: /romania/i } }
+                            { nationality: { $regex: /^romania$/i }, league_id: { $nin: [283, 284] } }, { team_name: {$regex: /romania/i } }
+                        ]
+                    };
+                } else if (u21 === 'true') {
+                    // Filtrul pentru Future Stars: Căutăm în TOATĂ baza de date toți jucătorii U21
+                    query = {
+                        $or: [
+                            { age: { $gt: 0, $lte: 21 } }, { birth_date: {$regex: /^(2005|2006|2007|2008|2009|2010)/ } }
                         ]
                     };
                 } else if (search) {
@@ -501,7 +507,7 @@ const startServer = async () => {
                 }
                 
                 let playersQuery = Player.find(query);
-                if (!search && diaspora !== 'true') {
+                if (!search && diaspora !== 'true' && u21 !== 'true') {
                     playersQuery = playersQuery.limit(300);
                 }
 

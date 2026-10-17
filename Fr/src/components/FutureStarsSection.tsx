@@ -46,7 +46,6 @@ const FutureStarSkeleton = () => (
 // CATEGORIILE DE FILTRARE
 const FILTERS = ["Toate", "Portari", "Fundași", "Mijlocași", "Atacanți"];
 
-// Funcție ajutătoare pentru obținerea vârstei reale (din age sau birth_date)
 const getPlayerAge = (player: Player): number | null => {
   if (player.age && player.age > 0) return player.age;
   if (player.birth_date) {
@@ -71,15 +70,15 @@ export function FutureStarsSection() {
             ? "http://localhost:3000" 
             : "https://football-backend-m2a4.onrender.com";
 
-        const response = await fetch(`${API_URL}/api/sport/players`);
+        // Cerem direct de la backend toți jucătorii U21 din toată baza de date (fără limita de 300)
+        const response = await fetch(`${API_URL}/api/sport/players?u21=true`);
         const data = await response.json();
         
         if (Array.isArray(data)) {
-            // LOGICA DE FILTRARE ACTUALIZATĂ (U23 + calcul din data nașterii dacă lipsește age)
             const youngGuns = data
                 .filter((p: Player) => {
                     const playerAge = getPlayerAge(p);
-                    return playerAge !== null && playerAge <= 23;
+                    return playerAge !== null && playerAge <= 21;
                 })
                 .sort((a: Player, b: Player) => {
                     const ratingA = parseFloat(a.statistics_summary?.rating || "0");
@@ -148,7 +147,7 @@ export function FutureStarsSection() {
         </h1>
         
         <p className="max-w-2xl mx-auto text-slate-600 dark:text-slate-400 text-lg font-medium">
-            Cele mai promițătoare talente U23 din fotbalul intern și internațional.
+            Cele mai promițătoare talente U21 din fotbalul intern și internațional.
         </p>
       </section>
 
@@ -191,7 +190,7 @@ export function FutureStarsSection() {
                 const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
                 const rating = stats.rating ? parseFloat(stats.rating).toFixed(2) : null;
                 const hasBioData = player.birth_date || player.birth_place || player.height || player.weight || player.nationality;
-                const displayAge = getPlayerAge(player) || 21;
+                const displayAge = getPlayerAge(player) || player.age || 21;
                 
                 return (
                     <div key={player._id} className="group relative bg-white/90 backdrop-blur-md dark:bg-slate-800/90 border border-amber-100 dark:border-slate-700 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-amber-500/20 transition-all duration-300 hover:-translate-y-2 flex flex-col h-full">
