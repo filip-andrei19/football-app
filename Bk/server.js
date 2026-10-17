@@ -583,13 +583,11 @@ const startServer = async () => {
         app.get('/api/sport/matches', async (req, res) => {
             try {
                 const { date } = req.query; 
-                if (!date) return res.status(400).json({error: "Parametrul date este obligatoriu"});
+                if (!date) return res.status(400).json({ error: "Parametrul date este obligatoriu" });
 
-                const startDate = new Date(date);
-                startDate.setHours(0, 0, 0, 0);
-                
-                const endDate = new Date(date);
-                endDate.setHours(23, 59, 59, 999);
+                // Setăm intervalul corect pentru ziua respectivă (00:00:00 până la 23:59:59)
+                const startDate = new Date(`${date}T00:00:00.000Z`);
+                const endDate = new Date(`${date}T23:59:59.999Z`);
 
                 const matches = await Fixture.find({
                     date: { $gte: startDate,$lte: endDate }
@@ -600,7 +598,7 @@ const startServer = async () => {
                 res.status(500).json({ error: "Eroare la preluarea meciurilor." });
             }
         });
-
+        
         app.get('/api/sport/matches/:fixtureId/details', async (req, res) => {
             try {
                 const matchDetails = await getFixtureDetailsOnDemand(req.params.fixtureId);
