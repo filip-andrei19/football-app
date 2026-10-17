@@ -5,13 +5,25 @@ const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/
 
 const LEAGUE_ID_MAP: { [key: number]: string } = {
   39: "Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+  40: "Championship 🏴󠁧󠁢󠁥󠁮󠁧󠁿",
   140: "La Liga 🇪🇸",
+  141: "La Liga 2 🇪🇸",
   135: "Serie A 🇮🇹",
+  136: "Serie B 🇮🇹",
   78: "Bundesliga 🇩🇪",
+  79: "2. Bundesliga 🇩🇪",
   61: "Ligue 1 🇫🇷",
   88: "Eredivisie 🇳🇱",
   94: "Primeira Liga 🇵🇹",
-  40: "Championship 🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+  203: "Süper Lig 🇹🇷",
+  283: "SuperLiga 🇷🇴",
+  284: "Liga 2 🇷🇴",
+  307: "Pro League 🇸🇦",
+  179: "Premiership 🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  106: "Ekstraklasa 🇵🇱",
+  318: "1. Division 🇨🇾",
+  169: "Super League 🇨🇳",
+  253: "MLS 🇺🇸"
 };
 
 interface Player {
@@ -33,16 +45,18 @@ interface Player {
 }
 
 const DiasporaSkeleton = () => (
-    <div className="rounded-2xl overflow-hidden p-[2px] bg-gray-200 dark:bg-slate-800 animate-pulse h-[400px]">
-        <div className="h-full w-full bg-white dark:bg-slate-900 rounded-[14px]">
-            <div className="h-48 bg-gray-300 dark:bg-slate-700 w-full relative"></div>
+    <div className="rounded-2xl overflow-hidden p-[1.5px] bg-gray-200 dark:bg-slate-800 animate-pulse h-[400px]">
+        <div className="h-full w-full bg-white dark:bg-slate-900 rounded-xl">
+            <div className="h-56 bg-gray-300 dark:bg-slate-800 w-full relative"></div>
             <div className="p-4 space-y-4">
-                <div className="h-6 bg-gray-300 dark:bg-slate-700 rounded w-3/4 mx-auto"></div>
-                <div className="h-4 bg-gray-300 dark:bg-slate-700 rounded w-1/2 mx-auto"></div>
-                <div className="grid grid-cols-3 gap-2 mt-4">
-                    <div className="h-10 bg-gray-300 dark:bg-slate-700 rounded"></div>
-                    <div className="h-10 bg-gray-300 dark:bg-slate-700 rounded"></div>
-                    <div className="h-10 bg-gray-300 dark:bg-slate-700 rounded"></div>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                    <div className="h-12 bg-gray-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-12 bg-gray-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-12 bg-gray-200 dark:bg-slate-800 rounded"></div>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5 pt-2">
+                    <div className="h-12 bg-gray-200 dark:bg-slate-800 rounded-xl"></div>
+                    <div className="h-12 bg-gray-200 dark:bg-slate-800 rounded-xl"></div>
                 </div>
             </div>
         </div>
@@ -186,86 +200,114 @@ export function DiasporaSection() {
                 const ratingValue = stats.rating ? parseFloat(stats.rating).toFixed(2) : "-";
 
                 const leagueBadge = player.league_id ? LEAGUE_ID_MAP[player.league_id] : null;
-                const badgeText = isNationalOnly ? "CONVOCAT" : (leagueBadge || teamNameStr);
+                const badgeText = isNationalOnly ? "CONVOCAT 🇷🇴" : (leagueBadge || "TRICOLOR 🇷🇴");
 
                 return (
-                    <div key={player._id} className="relative group rounded-2xl bg-gradient-to-br from-blue-700 via-yellow-400 to-red-600 p-[3px] shadow-lg hover:shadow-2xl hover:shadow-yellow-500/40 transition-all duration-300 transform hover:-translate-y-2 flex flex-col h-full">
-                        
-                        <div className="relative h-full bg-white dark:bg-slate-900 rounded-[13px] overflow-hidden flex flex-col">
+                    <div 
+                        key={player._id} 
+                        className="relative group rounded-2xl bg-gradient-to-br from-blue-600/80 via-yellow-500/80 to-red-600/80 p-[2px] shadow-[0_10px_30px_rgba(15,23,42,0.12)] hover:shadow-[0_20px_40px_rgba(234,179,8,0.2)] transition-all duration-300 transform hover:-translate-y-2 flex flex-col h-full overflow-hidden"
+                    >
+                        <div className="relative h-full bg-white dark:bg-slate-900 rounded-[14px] overflow-hidden flex flex-col z-10">
                             
+                            {/* ETICHETE DREAPTA SUS (LIGA & RATING) */}
                             <div className="absolute top-0 right-0 z-20 flex flex-col items-end">
-                                <div className="bg-gradient-to-l from-blue-700 via-yellow-500 to-red-600 text-white text-[10px] font-black px-4 py-1.5 rounded-bl-xl shadow-lg flex items-center gap-1 uppercase tracking-wider border-b border-l border-white/20">
-                                    {badgeText} {isNationalOnly && "🇷🇴"}
+                                <div className="bg-gradient-to-r from-red-600 to-red-500 text-white text-[10px] font-black px-3.5 py-1.5 rounded-bl-xl shadow-md flex items-center gap-1 uppercase tracking-wider border-b border-l border-white/15">
+                                    {badgeText}
                                 </div>
                                 {ratingValue !== "-" && (
-                                    <div className="bg-slate-900/90 backdrop-blur-sm text-yellow-400 text-[10px] font-black px-3 py-1 flex items-center justify-center gap-1 shadow-md rounded-bl-lg border-b border-l border-white/10 mt-1 mr-1">
-                                        <Star className="w-3 h-3 fill-yellow-400" /> {ratingValue}
+                                    <div className="bg-slate-900/90 backdrop-blur-md text-yellow-400 text-[11px] font-black px-2.5 py-1 flex items-center justify-center gap-1 shadow-md rounded-bl-lg border-l border-b border-white/10 mt-1 mr-0.5">
+                                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" /> {ratingValue}
                                     </div>
                                 )}
                             </div>
 
+                            {/* POZIȚIE (STÂNGA SUS - CU CHENAR AURIU DISCRET) */}
                             <div className="absolute top-3 left-3 z-20">
-                                <span className="px-2 py-1 text-[10px] font-black rounded border border-white/40 shadow-lg bg-black/60 backdrop-blur-md text-white uppercase tracking-widest">
-                                    {player.position || "Jucător"}
+                                <span className="px-2.5 py-1 text-[9px] font-black tracking-widest text-white bg-slate-950/85 backdrop-blur-md rounded-md border border-yellow-500/50 shadow-md uppercase">
+                                    {player.position || "JUCĂTOR"}
                                 </span>
                             </div>
 
-                            <div className="h-56 relative overflow-hidden bg-gradient-to-b from-gray-200 to-white dark:from-slate-800 dark:to-slate-900 shrink-0">
-                                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fbbf24_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                            {/* SECȚIUNE FOTO JUCĂTOR (FUNDAL BLEUMARIN TEXTURAT) */}
+                            <div className="h-56 relative overflow-hidden bg-gradient-to-b from-slate-950 via-blue-950/90 to-slate-950 shrink-0">
+                                {/* Textură discretă pe fundalul întunecat */}
+                                <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#60a5fa_1px,transparent_1px)] [background-size:12px_12px]"></div>
                                 
                                 <img 
                                     src={player.image || GENERIC_USER_IMAGE} 
                                     alt={player.name} 
-                                    className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                                    className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105 filter brightness-95"
                                     onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                                 />
                                 
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent z-10"></div>
+                                {/* Gradient întunecat în partea de jos pentru lizibilitate */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent z-10"></div>
+                                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950 via-slate-950/85 to-transparent z-10"></div>
                                 
-                                <div className="absolute bottom-4 left-4 z-20 text-white w-full pr-4">
-                                    <h3 className="text-2xl font-black leading-none uppercase italic truncate tracking-tight drop-shadow-md text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-300">
+                                {/* NUME ȘI ECHIPĂ */}
+                                <div className="absolute bottom-3.5 left-4 z-20 text-white w-full pr-6">
+                                    <h3 className="text-xl sm:text-2xl font-black leading-tight uppercase italic truncate tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] text-white">
                                         {player.name}
                                     </h3>
-                                    <div className="flex items-center gap-1.5 text-yellow-400 text-xs font-bold mt-1.5 tracking-wide uppercase drop-shadow-md">
-                                        <Shield className="w-3.5 h-3.5" /> 
+                                    <div className="flex items-center gap-1.5 text-yellow-400 text-[11px] font-bold mt-1 tracking-wide uppercase drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                                        <Shield className="w-3.5 h-3.5 text-yellow-400 shrink-0" /> 
                                         <span className="truncate">{teamNameStr}</span>
                                     </div>
                                 </div>
 
-                                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-yellow-400 to-red-600 z-20"></div>
+                                {/* BARĂ TRICOLORĂ SUBȚIRE DE SEPARARE */}
+                                <div className="absolute bottom-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-600 via-yellow-400 to-red-600 z-20"></div>
                             </div>
 
-                            <div className="p-5 flex-1 flex flex-col justify-center bg-white dark:bg-slate-900">
+                            {/* STATISTICI PRINCIPALE (ALBASTRU ÎNCHIS / AURIU / ROȘU) */}
+                            <div className="p-5 flex-1 flex flex-col justify-between bg-white dark:bg-slate-900">
                                 
-                                <div className="grid grid-cols-3 gap-2 text-center border-b border-gray-100 dark:border-slate-800 pb-4 mb-4">
-                                    <div className="group/stat">
-                                        <span className="block text-2xl font-black text-slate-800 dark:text-white transition-colors">{stats.total_appearances || 0}</span>
-                                        <span className="text-[9px] uppercase text-gray-400 font-bold tracking-widest">Meciuri</span>
+                                <div className="grid grid-cols-3 gap-1 text-center border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
+                                    <div>
+                                        <span className="block text-2xl font-black text-slate-900 dark:text-white">
+                                            {stats.total_appearances || 0}
+                                        </span>
+                                        <span className="text-[9px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                                            Meciuri
+                                        </span>
                                     </div>
-                                    <div className="border-x border-gray-100 dark:border-slate-800 group/stat">
-                                        <span className="block text-2xl font-black text-blue-600 dark:text-blue-400">{stats.total_goals || 0}</span>
-                                        <span className="text-[9px] uppercase text-gray-400 font-bold tracking-widest">Goluri</span>
+                                    <div className="border-x border-slate-100 dark:border-slate-800">
+                                        <span className="block text-2xl font-black text-amber-500 dark:text-yellow-400">
+                                            {stats.total_goals || 0}
+                                        </span>
+                                        <span className="text-[9px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                                            Goluri
+                                        </span>
                                     </div>
-                                    <div className="group/stat">
-                                        <span className="block text-2xl font-black text-red-600 dark:text-red-400">{stats.total_assists || 0}</span>
-                                        <span className="text-[9px] uppercase text-gray-400 font-bold tracking-widest">Pase</span>
+                                    <div>
+                                        <span className="block text-2xl font-black text-red-600 dark:text-red-500">
+                                            {stats.total_assists || 0}
+                                        </span>
+                                        <span className="text-[9px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                                            Pase Decisive
+                                        </span>
                                     </div>
                                 </div>
 
+                                {/* CASETE MINUTE JUCATE (ALBASTRU) & MEDIA RATING (ROȘU) */}
                                 <div className="grid grid-cols-2 gap-3 text-center">
-                                    <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-transparent group-hover:border-blue-100 dark:group-hover:border-slate-700 transition-colors">
-                                         <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-black text-sm">
-                                            <Clock className="w-3.5 h-3.5 text-blue-500" />
+                                    <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-100/80 dark:border-blue-900/30 group-hover:border-blue-300 dark:group-hover:border-blue-700/50 transition-colors">
+                                         <div className="flex items-center gap-1.5 text-slate-800 dark:text-slate-100 font-black text-sm">
+                                            <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                                             {stats.minutes_played || 0}'
                                          </div>
-                                         <span className="text-[8px] uppercase text-gray-400 font-bold mt-0.5">Minute Jucate</span>
+                                         <span className="text-[8px] uppercase text-slate-400 dark:text-slate-400 font-bold mt-0.5 tracking-wider">
+                                            Minute Jucate
+                                         </span>
                                     </div>
-                                    <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-transparent group-hover:border-red-100 dark:group-hover:border-slate-700 transition-colors">
-                                         <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-black text-sm">
-                                            <Activity className="w-3.5 h-3.5 text-red-500" />
+                                    <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-red-50/70 dark:bg-red-950/25 border border-red-100/80 dark:border-red-900/30 group-hover:border-red-300 dark:group-hover:border-red-700/50 transition-colors">
+                                         <div className="flex items-center gap-1.5 text-slate-800 dark:text-slate-100 font-black text-sm">
+                                            <Activity className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
                                             {ratingValue}
                                          </div>
-                                         <span className="text-[8px] uppercase text-gray-400 font-bold mt-0.5">Media Rating</span>
+                                         <span className="text-[8px] uppercase text-slate-400 dark:text-slate-400 font-bold mt-0.5 tracking-wider">
+                                            Media Rating
+                                         </span>
                                     </div>
                                 </div>
 
