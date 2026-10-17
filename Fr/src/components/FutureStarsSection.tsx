@@ -46,6 +46,19 @@ const FutureStarSkeleton = () => (
 // CATEGORIILE DE FILTRARE
 const FILTERS = ["Toate", "Portari", "Fundași", "Mijlocași", "Atacanți"];
 
+// Funcție ajutătoare pentru obținerea vârstei reale (din age sau birth_date)
+const getPlayerAge = (player: Player): number | null => {
+  if (player.age && player.age > 0) return player.age;
+  if (player.birth_date) {
+    const birthYear = new Date(player.birth_date).getFullYear();
+    const currentYear = new Date().getFullYear();
+    if (!isNaN(birthYear)) {
+      return currentYear - birthYear;
+    }
+  }
+  return null;
+};
+
 export function FutureStarsSection() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,20 +67,31 @@ export function FutureStarsSection() {
   useEffect(() => {
     const fetchYoungTalents = async () => {
       try {
-        const response = await fetch('https://football-backend-m2a4.onrender.com/api/sport/players');
+        const API_URL = window.location.hostname === "localhost" 
+            ? "http://localhost:3000" 
+            : "https://football-backend-m2a4.onrender.com";
+
+        const response = await fetch(`${API_URL}/api/sport/players`);
         const data = await response.json();
         
-        // LOGICA DE FILTRARE INIȚIALĂ (U21)
-        const youngGuns = data
-            .filter((p: Player) => p.age && p.age <= 21)
-            .sort((a: Player, b: Player) => {
-                const ratingA = parseFloat(a.statistics_summary?.rating || "0");
-                const ratingB = parseFloat(b.statistics_summary?.rating || "0");
-                if (ratingB !== ratingA) return ratingB - ratingA;
-                return (b.statistics_summary?.total_goals || 0) - (a.statistics_summary?.total_goals || 0);
-            });
+        if (Array.isArray(data)) {
+            // LOGICA DE FILTRARE ACTUALIZATĂ (U23 + calcul din data nașterii dacă lipsește age)
+            const youngGuns = data
+                .filter((p: Player) => {
+                    const playerAge = getPlayerAge(p);
+                    return playerAge !== null && playerAge <= 23;
+                })
+                .sort((a: Player, b: Player) => {
+                    const ratingA = parseFloat(a.statistics_summary?.rating || "0");
+                    const ratingB = parseFloat(b.statistics_summary?.rating || "0");
+                    if (ratingB !== ratingA) return ratingB - ratingA;
+                    return (b.statistics_summary?.total_goals || 0) - (a.statistics_summary?.total_goals || 0);
+                });
 
-        setPlayers(youngGuns);
+            setPlayers(youngGuns);
+        } else {
+            setPlayers([]);
+        }
       } catch (err) {
         console.error("Eroare la încărcarea tinerilor:", err);
       } finally {
@@ -124,7 +148,7 @@ export function FutureStarsSection() {
         </h1>
         
         <p className="max-w-2xl mx-auto text-slate-600 dark:text-slate-400 text-lg font-medium">
-            Cele mai promițătoare talente U21 din fotbalul intern și internațional.
+            Cele mai promițătoare talente U23 din fotbalul intern și internațional.
         </p>
       </section>
 
@@ -167,6 +191,7 @@ export function FutureStarsSection() {
                 const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
                 const rating = stats.rating ? parseFloat(stats.rating).toFixed(2) : null;
                 const hasBioData = player.birth_date || player.birth_place || player.height || player.weight || player.nationality;
+                const displayAge = getPlayerAge(player) || 21;
                 
                 return (
                     <div key={player._id} className="group relative bg-white/90 backdrop-blur-md dark:bg-slate-800/90 border border-amber-100 dark:border-slate-700 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-amber-500/20 transition-all duration-300 hover:-translate-y-2 flex flex-col h-full">
@@ -177,7 +202,7 @@ export function FutureStarsSection() {
                             
                             {/* Badge Vârstă */}
                             <div className="absolute top-3 left-3 bg-white/90 backdrop-blur text-amber-800 text-xs font-bold px-2 py-1 rounded-lg shadow-sm z-10 flex items-center gap-1">
-                                <Zap className="w-3 h-3 fill-amber-500 text-amber-500" /> U{player.age}
+                                <Zap className="w-3 h-3 fill-amber-500 text-amber-500" /> U{displayAge}
                             </div>
 
                             {/* Badge Rating */}
