@@ -45,7 +45,7 @@ interface Player {
 }
 
 const DiasporaSkeleton = () => (
-    <div className="rounded-2xl overflow-hidden p-[1.5px] bg-gray-200 dark:bg-slate-800 animate-pulse h-[400px]">
+    <div className="rounded-2xl overflow-hidden p-[1.5px] bg-gray-200 dark:bg-slate-800 animate-pulse h-[420px]">
         <div className="h-full w-full bg-white dark:bg-slate-900 rounded-xl">
             <div className="h-56 bg-gray-300 dark:bg-slate-800 w-full relative"></div>
             <div className="p-4 space-y-4">
@@ -228,35 +228,32 @@ export function DiasporaSection() {
                                 </span>
                             </div>
 
-                            {/* SECȚIUNE FOTO JUCĂTOR (FUNDAL BLEUMARIN TEXTURAT) */}
-                            <div className="h-56 relative overflow-hidden bg-gradient-to-b from-slate-950 via-blue-950/90 to-slate-950 shrink-0">
-                                {/* Textură discretă pe fundalul întunecat */}
+                            {/* SECȚIUNE FOTO JUCĂTOR (FĂRĂ TEXT PESTE FAȚĂ, VIZIBILITATE 100%) */}
+                            <div className="h-48 relative overflow-hidden bg-gradient-to-b from-slate-900 via-blue-950 to-slate-950 shrink-0 flex items-end justify-center pt-5">
+                                {/* Textură discretă și lumină ambientală în spatele jucătorului */}
                                 <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#60a5fa_1px,transparent_1px)] [background-size:12px_12px]"></div>
+                                <div className="absolute bottom-0 w-36 h-36 bg-blue-500/20 rounded-full blur-2xl pointer-events-none"></div>
                                 
                                 <img 
                                     src={player.image || GENERIC_USER_IMAGE} 
                                     alt={player.name} 
-                                    className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105 filter brightness-95"
+                                    className="h-full w-auto max-w-full object-contain object-bottom transition-transform duration-500 group-hover:scale-105 relative z-10 drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
                                     onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                                 />
-                                
-                                {/* Gradient întunecat în partea de jos pentru lizibilitate */}
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent z-10"></div>
-                                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950 via-slate-950/85 to-transparent z-10"></div>
-                                
-                                {/* NUME ȘI ECHIPĂ */}
-                                <div className="absolute bottom-3.5 left-4 z-20 text-white w-full pr-6">
-                                    <h3 className="text-xl sm:text-2xl font-black leading-tight uppercase italic truncate tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] text-white">
-                                        {player.name}
-                                    </h3>
-                                    <div className="flex items-center gap-1.5 text-yellow-400 text-[11px] font-bold mt-1 tracking-wide uppercase drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                                        <Shield className="w-3.5 h-3.5 text-yellow-400 shrink-0" /> 
-                                        <span className="truncate">{teamNameStr}</span>
-                                    </div>
+                            </div>
+
+                            {/* BANDĂ DEDICATĂ PENTRU NUME ȘI ECHIPĂ (SUB POZĂ, CA SĂ NU ACOPERE FAȚA) */}
+                            <div className="relative bg-slate-950 px-4 py-3 text-white shrink-0">
+                                <h3 className="text-lg sm:text-xl font-black leading-tight uppercase italic truncate tracking-tight text-white">
+                                    {player.name}
+                                </h3>
+                                <div className="flex items-center gap-1.5 text-yellow-400 text-[11px] font-bold mt-0.5 tracking-wide uppercase">
+                                    <Shield className="w-3.5 h-3.5 text-yellow-400 shrink-0" /> 
+                                    <span className="truncate">{teamNameStr}</span>
                                 </div>
 
                                 {/* BARĂ TRICOLORĂ SUBȚIRE DE SEPARARE */}
-                                <div className="absolute bottom-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-600 via-yellow-400 to-red-600 z-20"></div>
+                                <div className="absolute bottom-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-600 via-yellow-400 to-red-600"></div>
                             </div>
 
                             {/* STATISTICI PRINCIPALE (ALBASTRU ÎNCHIS / AURIU / ROȘU) */}
