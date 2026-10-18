@@ -11,11 +11,14 @@ const TARGET_LEAGUES = [39, 140, 135, 78, 61, 283, 88, 94, 40, 2, 3, 848];
 const LIVE_STATUSES = ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"];
 const FINISHED_STATUSES = ["FT", "AET", "PEN"];
 
+// Cooldown pentru a nu interoga prea des meciurile "NS" amânate sau întârziate
+let lastStuckNsCheck = 0;
+
 function formatDate(date) {
     return date.toISOString().split('T')[0];
 }
 
-// 1. Funcția care aduce fereastra de 7 zile (rulează o dată pe zi)
+// 1. Funcția care aduce fereastra de 7 zile (rulează periodic și la cerere)
 async function sync7DaysWindow() {
     const Fixture = mongoose.model('Fixture');
     const today = new Date();
@@ -54,7 +57,7 @@ async function sync7DaysWindow() {
     console.log(`[MATCH SYNC] Fereastra de 7 zile a fost actualizată!`);
 }
 
-// 2. Funcția care aduce DOAR meciurile LIVE și închide automat meciurile care s-au terminat
+// 2. Funcția care aduce DOAR meciurile LIVE și închide automat meciurile care s-au terminat sau au rămas în "NS"
 async function syncLiveMatches(io) {
     const Fixture = mongoose.model('Fixture');
     try {
@@ -78,8 +81,24 @@ async function syncLiveMatches(io) {
             }
         }
 
+        const nowSec = Math.floor(Date.now() / 1000);
+        const shouldCheckStuckNs = (Date.now() - lastStuckNsCheck) > 2 * 60 * 1000; // verificăm NS-urile restante la fiecare 2 minute
+
+        const stuckOrConditions = [
+            { status_short: { $in: LIVE_STATUSES } }
+        ];
+
+        // Dacă un meci a trecut de ora de start cu cel puțin 3 minute dar încă figurează ca "NS", îl verificăm și îl actualizăm!
+        if (shouldCheckStuckNs) {
+            lastStuckNsCheck = Date.now();
+            stuckOrConditions.push({
+                status_short: "NS",
+                timestamp: { $lte: nowSec - 180,$gte: nowSec - (3 * 86400) }
+            });
+        }
+
         const stuckLocalMatches = await Fixture.find({
-            status_short: { $in: LIVE_STATUSES },
+            $or: stuckOrConditions,
             fixture_id: { $nin: activeApiIds }
         }).select('fixture_id');
 
@@ -101,7 +120,7 @@ async function syncLiveMatches(io) {
                     }
                 }
             }
-            console.log(`[LIVE SYNC] Am închis/actualizat automat ${stuckLocalMatches.length} meciuri care s-au terminat.`);
+            console.log(`[LIVE SYNC] Am închis/actualizat automat ${stuckLocalMatches.length} meciuri restante (LIVE/NS -> scor la zi).`);
         }
 
     } catch (err) {
@@ -109,7 +128,7 @@ async function syncLiveMatches(io) {
     }
 }
 
-// 3. NOU: Preia Detaliile Meciului (Formații, Evenimente, Statistici) cu Caching Inteligent
+// 3. Preia Detaliile Meciului (Formații, Evenimente, Statistici) cu Caching Inteligent
 async function getFixtureDetailsOnDemand(fixtureId) {
     const Fixture = mongoose.model('Fixture');
     let matchDoc = await Fixture.findOne({ fixture_id: Number(fixtureId) });
@@ -131,17 +150,18 @@ async function getFixtureDetailsOnDemand(fixtureId) {
         if (LIVE_STATUSES.includes(matchDoc.status_short) && (now - lastSync < 2 * 60 * 1000) && hasDetails) {
             return matchDoc;
         }
-        // C. Dacă meciul nu a început (NS)
+        // C. Dacă meciul nu a început (NS), verificăm DOAR dacă într-adevăr ora de start este în viitor
         if (matchDoc.status_short === "NS") {
             const timeUntilKickoff = (matchDoc.timestamp * 1000) - now;
             // Dacă mai e mai mult de 60 min până la start, nu facem request (formațiile nu sunt publicate încă)
             if (timeUntilKickoff > 60 * 60 * 1000) {
                 return matchDoc;
             }
-            // Dacă suntem în ultima oră înainte de start, verificăm maxim o dată la 10 minute
-            if (now - lastSync < 10 * 60 * 1000) {
+            // Dacă meciul este încă în viitor (0 - 60 min până la start), verificăm maxim o dată la 10 minute
+            if (timeUntilKickoff > 0 && (now - lastSync < 10 * 60 * 1000)) {
                 return matchDoc;
             }
+            // Dacă timeUntilKickoff <= 0, înseamnă că meciul a început sau s-a terminat deja, deci facem request imediat!
         }
     }
 
@@ -163,7 +183,7 @@ async function getFixtureDetailsOnDemand(fixtureId) {
     return matchDoc;
 }
 
-// 4. NOU: Preia Clasamentul Ligii cu Caching (maxim 1 request la 3 ore per ligă)
+// 4. Preia Clasamentul Ligii cu Caching (maxim 1 request la 3 ore per ligă)
 async function getLeagueStandingsOnDemand(leagueId) {
     const Standing = mongoose.model('Standing');
     const numericLeagueId = Number(leagueId);
@@ -228,14 +248,16 @@ async function updateOrInsertFixture(FixtureModel, m, includeDetails = false) {
         away_team_logo: m.teams.away.logo,
         home_goals: m.goals.home,
         away_goals: m.goals.away,
+        ht_home_goals: m.score?.halftime?.home ?? null,
+        ht_away_goals: m.score?.halftime?.away ?? null,
         status_short: m.fixture.status.short,
         elapsed: m.fixture.status.elapsed
     };
 
-    if (includeDetails || m.events || m.lineups || m.statistics) {
-        if (m.events) matchData.events = m.events;
-        if (m.lineups) matchData.lineups = m.lineups;
-        if (m.statistics) matchData.statistics = m.statistics;
+    if (includeDetails || (m.events && m.events.length > 0) || (m.lineups && m.lineups.length > 0) || (m.statistics && m.statistics.length > 0)) {
+        if (m.events && m.events.length > 0) matchData.events = m.events;
+        if (m.lineups && m.lineups.length > 0) matchData.lineups = m.lineups;
+        if (m.statistics && m.statistics.length > 0) matchData.statistics = m.statistics;
         matchData.details_updated_at = new Date();
     }
 

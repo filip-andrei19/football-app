@@ -104,6 +104,8 @@ const userSchema = new mongoose.Schema({
     role: { type: String, default: 'user', enum: ['user', 'admin'] },
     avatar: { type: String, default: '' },
     favorites: { type: [String], default: [] },
+    scoutWatchlist: { type: [String], default: [] },
+    favoriteMatches: { type: [Number], default: [] },
     isBanned: { type: Boolean, default: false },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
@@ -236,6 +238,9 @@ io.on("connection", (socket) => {
     socket.on("stop_typing", (room) => { socket.to(room).emit("display_typing", { isTyping: false }); });
 });
 
+// Cooldown pentru sincronizarea automată a meciurilor rămase în urmă
+let lastAutoMatchSyncTime = 0;
+
 const startServer = async () => {
     try {
         await mongoose.connect(process.env.MONGO_URI);
@@ -258,7 +263,18 @@ const startServer = async () => {
                 const newUser = new User({ name, email, password, role });
                 await newUser.save();
                 const token = jwt.sign({ _id: newUser._id, role: newUser.role }, TOKEN_SECRET);
-                res.status(201).json({ success: true, token, user: { name: newUser.name, email: newUser.email, role: newUser.role, favorites: newUser.favorites } });
+                res.status(201).json({
+                    success: true,
+                    token,
+                    user: {
+                        name: newUser.name,
+                        email: newUser.email,
+                        role: newUser.role,
+                        favorites: newUser.favorites,
+                        scoutWatchlist: newUser.scoutWatchlist,
+                        favoriteMatches: newUser.favoriteMatches
+                    }
+                });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
@@ -271,13 +287,36 @@ const startServer = async () => {
                 const isMatch = await bcrypt.compare(password, user.password);
                 if (!isMatch) return res.status(401).json({ success: false, message: "Parolă incorectă." });
                 const token = jwt.sign({ _id: user._id, role: user.role }, TOKEN_SECRET);
-                res.json({ success: true, token, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar, favorites: user.favorites } });
+                res.json({
+                    success: true,
+                    token,
+                    user: {
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                        avatar: user.avatar,
+                        favorites: user.favorites,
+                        scoutWatchlist: user.scoutWatchlist || [],
+                        favoriteMatches: user.favoriteMatches || []
+                    }
+                });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
         app.post('/api/users/refresh', async (req, res) => {
             const user = await User.findOne({ email: req.body.email });
-            if(user) res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar, favorites: user.favorites } });
+            if(user) res.json({
+                success: true,
+                user: {
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    avatar: user.avatar,
+                    favorites: user.favorites,
+                    scoutWatchlist: user.scoutWatchlist || [],
+                    favoriteMatches: user.favoriteMatches || []
+                }
+            });
         });
 
         app.post('/api/users/forgot-password', async (req, res) => {
@@ -321,7 +360,18 @@ const startServer = async () => {
                 user.name = name || user.name;
                 user.avatar = newAvatarUrl || user.avatar;
                 await user.save();
-                res.json({ success: true, user: { name: user.name, email: user.email, role: user.role, avatar: user.avatar, favorites: user.favorites } });
+                res.json({
+                    success: true,
+                    user: {
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                        avatar: user.avatar,
+                        favorites: user.favorites,
+                        scoutWatchlist: user.scoutWatchlist || [],
+                        favoriteMatches: user.favoriteMatches || []
+                    }
+                });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
@@ -357,6 +407,52 @@ const startServer = async () => {
                 const favoriteListings = await Listing.find({ _id: { $in: user.favorites } }).sort({ posted: -1 });
                 res.json({ success: true, favorites: user.favorites, favoriteListings });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
+        });
+
+        // --- RUTE NOI: WATCHLIST JUCĂTORI (SCOUTING) & MECIURI FAVORITE ---
+        app.post('/api/users/watchlist/toggle', async (req, res) => {
+            try {
+                const { email, playerId } = req.body;
+                const user = await User.findOne({ email });
+                if (!user) return res.status(404).json({ error: "User not found" });
+                if (!user.scoutWatchlist) user.scoutWatchlist = [];
+                const index = user.scoutWatchlist.indexOf(String(playerId));
+                if (index === -1) {
+                    user.scoutWatchlist.push(String(playerId));
+                } else {
+                    user.scoutWatchlist.splice(index, 1);
+                }
+                await user.save();
+                res.json({ success: true, scoutWatchlist: user.scoutWatchlist });
+            } catch (err) { res.status(500).json({ error: "Eroare la actualizarea watchlist-ului." }); }
+        });
+
+        app.get('/api/users/watchlist/:email', async (req, res) => {
+            try {
+                const user = await User.findOne({ email: req.params.email });
+                if (!user) return res.status(404).json({ error: "User not found" });
+                const watchlistIds = user.scoutWatchlist || [];
+                const watchedPlayers = await Player.find({ _id: { $in: watchlistIds } });
+                res.json({ success: true, scoutWatchlist: watchlistIds, watchedPlayers });
+            } catch (err) { res.status(500).json({ error: "Eroare la preluarea watchlist-ului." }); }
+        });
+
+        app.post('/api/users/favorite-matches/toggle', async (req, res) => {
+            try {
+                const { email, fixtureId } = req.body;
+                const user = await User.findOne({ email });
+                if (!user) return res.status(404).json({ error: "User not found" });
+                if (!user.favoriteMatches) user.favoriteMatches = [];
+                const numericId = Number(fixtureId);
+                const index = user.favoriteMatches.indexOf(numericId);
+                if (index === -1) {
+                    user.favoriteMatches.push(numericId);
+                } else {
+                    user.favoriteMatches.splice(index, 1);
+                }
+                await user.save();
+                res.json({ success: true, favoriteMatches: user.favoriteMatches });
+            } catch (err) { res.status(500).json({ error: "Eroare la actualizarea meciurilor favorite." }); }
         });
 
         app.post('/api/messages/conversations', async (req, res) => {
@@ -480,40 +576,138 @@ const startServer = async () => {
 
         app.get('/api/sport/players', async (req, res) => {
             try {
-                const { search, diaspora, u21 } = req.query;
-                let query = {};
-                
+                const {
+                    search,
+                    diaspora,
+                    u21,
+                    position,
+                    minAge,
+                    maxAge,
+                    minMinutes,
+                    minGoals,
+                    minRating,
+                    leagueId,
+                    nationality,
+                    team,
+                    limit
+                } = req.query;
+
+                let conditions = [];
+
                 if (diaspora === 'true') {
                     // Filtrul corect pentru Diaspora: Jucători români care NU joacă în SuperLiga României (283, 284)
                     // SAU fac parte din lotul Echipei Naționale a României
-                    query = {
+                    conditions.push({
                         $or: [
                             { nationality: { $regex: /^romania$/i }, league_id: { $nin: [283, 284] } }, { team_name: {$regex: /romania/i } }
                         ]
-                    };
+                    });
                 } else if (u21 === 'true') {
                     // Filtrul pentru Future Stars: Căutăm în TOATĂ baza de date toți jucătorii U21
-                    query = {
+                    conditions.push({
                         $or: [
                             { age: { $gt: 0, $lte: 21 } }, { birth_date: {$regex: /^(2005|2006|2007|2008|2009|2010)/ } }
                         ]
-                    };
-                } else if (search) {
-                    query.$or = [
-                        { name: { $regex: search,$options: 'i' } },
-                        { firstname: { $regex: search,$options: 'i' } },
-                        { lastname: { $regex: search,$options: 'i' } }
-                    ];
-                }
-                
-                let playersQuery = Player.find(query);
-                if (!search && diaspora !== 'true' && u21 !== 'true') {
-                    playersQuery = playersQuery.limit(300);
+                    });
                 }
 
-                const players = await playersQuery;
+                if (search) {
+                    conditions.push({
+                        $or: [
+                            { name: { $regex: search,$options: 'i' } },
+                            { firstname: { $regex: search,$options: 'i' } },
+                            { lastname: { $regex: search,$options: 'i' } },
+                            { team_name: { $regex: search,$options: 'i' } },
+                            { team: { $regex: search,$options: 'i' } }
+                        ]
+                    });
+                }
+
+                // Filtre avansate pentru modulul de Scouting Pro
+                if (position && position !== 'Toate') {
+                    const posLower = position.toLowerCase();
+                    if (posLower.includes('portar') || posLower.includes('goalkeeper')) {
+                        conditions.push({ position: { $regex: /goalkeeper|portar/i } });
+                    } else if (posLower.includes('funda') || posLower.includes('defender')) {
+                        conditions.push({ position: { $regex: /defender|back|funda/i } });
+                    } else if (posLower.includes('mijloca') || posLower.includes('midfield')) {
+                        conditions.push({ position: { $regex: /midfield|mijloca/i } });
+                    } else if (posLower.includes('ataca') || posLower.includes('attack') || posLower.includes('forward')) {
+                        conditions.push({ position: { $regex: /attacker|forward|striker|wing|ataca/i } });
+                    } else {
+                        conditions.push({ position: { $regex: position,$options: 'i' } });
+                    }
+                }
+
+                if (minAge || maxAge) {
+                    const ageFilter = {};
+                    if (minAge) ageFilter.$gte = Number(minAge);
+                    if (maxAge) ageFilter.$lte = Number(maxAge);
+                    conditions.push({ age: ageFilter });
+                }
+
+                if (minMinutes) {
+                    conditions.push({ 'statistics_summary.minutes_played': { $gte: Number(minMinutes) } });
+                }
+
+                if (minGoals) {
+                    conditions.push({ 'statistics_summary.total_goals': { $gte: Number(minGoals) } });
+                }
+
+                if (leagueId) {
+                    conditions.push({ league_id: Number(leagueId) });
+                }
+
+                if (nationality) {
+                    conditions.push({ nationality: { $regex: nationality,$options: 'i' } });
+                }
+
+                if (team) {
+                    conditions.push({
+                        $or: [
+                            { team_name: { $regex: team,$options: 'i' } },
+                            { team: { $regex: team,$options: 'i' } }
+                        ]
+                    });
+                }
+
+                const finalQuery = conditions.length > 0 ? { $and: conditions } : {};
+                const hasCustomFilters = Boolean(
+                    search || diaspora === 'true' || u21 === 'true' || position ||
+                    minAge || maxAge || minMinutes || minGoals || minRating || leagueId || nationality || team
+                );
+
+                let playersQuery = Player.find(finalQuery);
+                if (!hasCustomFilters) {
+                    playersQuery = playersQuery.limit(limit ? Number(limit) : 300);
+                } else if (limit) {
+                    playersQuery = playersQuery.limit(Number(limit));
+                }
+
+                let players = await playersQuery;
+
+                if (minRating) {
+                    const minR = parseFloat(minRating);
+                    if (!isNaN(minR)) {
+                        players = players.filter(p => parseFloat(p.statistics_summary?.rating || "0") >= minR);
+                    }
+                }
+
                 res.json(players);
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
+        });
+
+        // RUTA NOUĂ: COMPARATOR HEAD-TO-HEAD JUCĂTORI
+        app.get('/api/sport/players/compare', async (req, res) => {
+            try {
+                const { ids } = req.query;
+                if (!ids) return res.status(400).json({ error: "Parametrul ids este obligatoriu." });
+                const idList = String(ids).split(',').map(id => id.trim()).filter(Boolean);
+                const players = await Player.find({ _id: { $in: idList } });
+                res.json(players);
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la compararea jucătorilor." });
+            }
         });
         
         app.get('/api/sport/teams/search', async (req, res) => {
@@ -593,6 +787,19 @@ const startServer = async () => {
                     date: { $gte: startDate,$lte: endDate }
                 }).sort({ league_id: 1, timestamp: 1 });
 
+                // Verificăm dacă există meciuri al căror timp de start a trecut dar au rămas cu "NS" sau agățate în LIVE
+                const nowSec = Math.floor(Date.now() / 1000);
+                const hasOutdatedMatches = matches.some(m =>
+                    (m.status_short === "NS" && m.timestamp && m.timestamp < nowSec - 300) ||
+                    (["1H", "HT", "2H", "ET", "P", "BT", "LIVE"].includes(m.status_short) && m.timestamp && m.timestamp < nowSec - (130 * 60))
+                );
+
+                // Declanșăm sincronizarea automată în fundal (cu cooldown de 10 minute) dacă există meciuri neactualizate
+                if (hasOutdatedMatches && (Date.now() - lastAutoMatchSyncTime > 10 * 60 * 1000)) {
+                    lastAutoMatchSyncTime = Date.now();
+                    sync7DaysWindow().catch(err => console.error("Eroare auto-sync meciuri:", err.message));
+                }
+
                 res.json(matches);
             } catch (err) {
                 res.status(500).json({ error: "Eroare la preluarea meciurilor." });
@@ -603,6 +810,8 @@ const startServer = async () => {
             try {
                 const matchDetails = await getFixtureDetailsOnDemand(req.params.fixtureId);
                 if (!matchDetails) return res.status(404).json({ error: "Meciul nu a fost găsit." });
+                // Trimitem actualizarea și prin Socket.io ca lista de meciuri să actualizeze scorul instantaneu
+                io.emit("live_match_update", matchDetails);
                 res.json(matchDetails);
             } catch (err) {
                 res.status(500).json({ error: "Eroare la preluarea detaliilor meciului." });
@@ -660,14 +869,25 @@ const startServer = async () => {
 
         cron.schedule('14 12 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
 
-        cron.schedule('0 1 * * *', async () => { await sync7DaysWindow(); }, { timezone: "Europe/Bucharest" });
+        // Sincronizare programată atât la 01:00 noaptea, cât și la fiecare 3 ore pentru a menține toate scorurile la zi
+        cron.schedule('0 1,9,13,17,21,23 * * *', async () => { await sync7DaysWindow(); }, { timezone: "Europe/Bucharest" });
 
+        // Verificăm la pornire atât meciurile agățate în LIVE, cât și meciurile trecute de ora de start rămase în "NS"
+        const nowTimestamp = Math.floor(Date.now() / 1000);
         const stuckMatches = await Fixture.countDocuments({
-            status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] },
-            timestamp: { $lt: Math.floor(Date.now() / 1000) - (130 * 60) }
+            $or: [
+                {
+                    status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] },
+                    timestamp: { $lt: nowTimestamp - (130 * 60) }
+                },
+                {
+                    status_short: "NS",
+                    timestamp: { $lt: nowTimestamp - (15 * 60),$gt: nowTimestamp - (3 * 86400) }
+                }
+            ]
         });
         if (stuckMatches > 0) {
-            console.log(`Am găsit ${stuckMatches} meciuri rămase agățate în LIVE. Pornesc actualizarea ferestrei de 7 zile...`);
+            console.log(`Am găsit ${stuckMatches} meciuri rămase neactualizate (NS/LIVE). Pornesc actualizarea ferestrei de 7 zile...`);
             sync7DaysWindow();
         }
 
@@ -675,7 +895,7 @@ const startServer = async () => {
             try {
                 const currentTimestamp = Math.floor(Date.now() / 1000);
                 const startWindow = currentTimestamp + (5 * 60); 
-                const endWindow = currentTimestamp - (160 * 60); 
+                const endWindow = currentTimestamp - (180 * 60); 
                 
                 const liveMatchesCount = await Fixture.countDocuments({
                     $or: [
