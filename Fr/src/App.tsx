@@ -105,8 +105,7 @@ export default function App() {
   const renderSection = () => {
     switch (activeSection) {
       case 'home': return <HomeSection user={user!} onNavigate={setActiveSection} />;
-      case 'matches': return <MatchesSection />; // 🔥 RANDEAZĂ PAGINA DE MECIURI
-      case 'diaspora': return <DiasporaSection />;
+      case 'matches': return <MatchesSection userEmail={user?.email} />;      case 'diaspora': return <DiasporaSection />;
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
       case 'collectors': return <CollectorsHubSection user={user!} onOpenChat={handleOpenChat} initialPostId={sharedPostId} />;

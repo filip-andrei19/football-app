@@ -96,6 +96,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [activeMatchTab, setActiveMatchTab] = useState<'events' | 'lineups' | 'stats' | 'standings'>('events');
     const [standingsData, setStandingsData] = useState<any[]>([]);
     const [loadingStandings, setLoadingStandings] = useState(false);
+    
+    // Tab intern pentru vizualizarea pe teren a fiecărei echipe în parte (Stil SofaScore)
+    const [lineupViewTeam, setLineupViewTeam] = useState<'home' | 'away'>('home');
 
     useEffect(() => {
         const today = new Date();
@@ -329,6 +332,43 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         return map[type] || type;
     };
 
+    // Funcție de organizare a jucătorilor pe linii în funcție de așezarea tactică (ex: 4-3-3, 4-2-3-1)
+    const organizeLineupByTactics = (startXI: any[], formationStr?: string) => {
+        if (!startXI || startXI.length === 0) return { gk: [], def: [], mid: [], fwd: [] };
+
+        const gk = startXI.filter((p: any) => p.player?.pos === 'G');
+        const outfield = startXI.filter((p: any) => p.player?.pos !== 'G');
+
+        // Dacă avem o formație tipică (ex: "4-3-3" sau "4-2-3-1")
+        if (formationStr && /^\d(-\d)+$/.test(formationStr)) {
+            const lines = formationStr.split('-').map(Number);
+            let index = 0;
+            const defCount = lines[0] || 4;
+            const def = outfield.slice(index, index + defCount);
+            index += defCount;
+
+            const midCount = lines[1] || 3;
+            const mid = outfield.slice(index, index + midCount);
+            index += midCount;
+
+            const fwd = outfield.slice(index);
+            return { gk, def, mid, fwd };
+        }
+
+        // Fallback automat după poziție
+        const def = outfield.filter((p: any) => p.player?.pos === 'D');
+        const mid = outfield.filter((p: any) => p.player?.pos === 'M');
+        const fwd = outfield.filter((p: any) => p.player?.pos === 'F' || p.player?.pos === 'A');
+        
+        // Dacă au rămas jucători nearanjați
+        const assignedIds = new Set([...gk, ...def, ...mid, ...fwd].map(x => x.player?.id));
+        const unassigned = outfield.filter((p: any) => !assignedIds.has(p.player?.id));
+        if (mid.length === 0) mid.push(...unassigned);
+        else fwd.push(...unassigned);
+
+        return { gk, def, mid, fwd };
+    };
+
     return (
         <div className="max-w-4xl mx-auto py-8 px-2 sm:px-4 min-h-[80vh] relative">
             
@@ -435,59 +475,200 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         </div>
                                     )}
 
+                                    {/* ========================================================= */}
+                                    {/* TAB FORMAȚII & TEREN 2D STIL SOFASCORE / FLASHSCORE */}
+                                    {/* ========================================================= */}
                                     {activeMatchTab === 'lineups' && (
                                         <div>
                                             {(!selectedMatchDetails.lineups || selectedMatchDetails.lineups.length === 0) ? (
                                                 <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 text-slate-500 font-medium">Formațiile de start nu au fost publicate încă.</div>
                                             ) : (
-                                                <div className="space-y-6">
-                                                    <div className="relative w-full h-[520px] bg-gradient-to-b from-emerald-700 via-emerald-600 to-emerald-800 rounded-3xl overflow-hidden shadow-xl border-4 border-white/20 flex flex-col justify-between p-4">
-                                                        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]"></div>
-                                                        <div className="absolute top-1/2 inset-x-0 h-0.5 bg-white/30 transform -translate-y-1/2"></div>
-                                                        <div className="absolute top-1/2 left-1/2 w-32 h-32 border-2 border-white/30 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
-                                                        
-                                                        <div className="text-center text-white/80 font-black text-xs uppercase tracking-widest relative z-10">Gazde ({selectedMatchDetails.lineups?.[0]?.team?.name || "Gazde"})</div>
-                                                        
-                                                        <div className="flex-1 flex flex-col justify-around relative z-10 py-2">
-                                                            <div className="flex justify-center"><div onClick={() => handleLineupPlayerClick(selectedMatchDetails.lineups?.[0]?.startXI?.[0]?.player?.name)} className="cursor-pointer bg-slate-900/90 text-white px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-md border border-white/20 flex items-center gap-1"><span>{selectedMatchDetails.lineups?.[0]?.startXI?.[0]?.player?.number}</span><span className="truncate max-w-[100px]">{selectedMatchDetails.lineups?.[0]?.startXI?.[0]?.player?.name}</span></div></div>
-                                                            <div className="flex justify-around">
-                                                                {selectedMatchDetails.lineups?.[0]?.startXI?.slice(1, 5).map((item: any, i: number) => (
-                                                                    <div key={i} onClick={() => handleLineupPlayerClick(item.player?.name)} className="cursor-pointer bg-slate-900/90 text-white px-2 py-1 rounded-xl text-[10px] font-bold shadow-md border border-white/20 flex items-center gap-1"><span>{item.player?.number}</span><span className="truncate max-w-[80px]">{item.player?.name}</span></div>
-                                                                ))}
-                                                            </div>
-                                                            <div className="flex justify-around">
-                                                                {selectedMatchDetails.lineups?.[0]?.startXI?.slice(5, 8).map((item: any, i: number) => (
-                                                                    <div key={i} onClick={() => handleLineupPlayerClick(item.player?.name)} className="cursor-pointer bg-slate-900/90 text-white px-2 py-1 rounded-xl text-[10px] font-bold shadow-md border border-white/20 flex items-center gap-1"><span>{item.player?.number}</span><span className="truncate max-w-[80px]">{item.player?.name}</span></div>
-                                                                ))}
-                                                            </div>
-                                                            <div className="flex justify-around">
-                                                                {selectedMatchDetails.lineups?.[0]?.startXI?.slice(8, 11).map((item: any, i: number) => (
-                                                                    <div key={i} onClick={() => handleLineupPlayerClick(item.player?.name)} className="cursor-pointer bg-slate-900/90 text-white px-2 py-1 rounded-xl text-[10px] font-bold shadow-md border border-white/20 flex items-center gap-1"><span>{item.player?.number}</span><span className="truncate max-w-[80px]">{item.player?.name}</span></div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex-1 flex flex-col justify-around relative z-10 py-2 border-t border-white/10 pt-4">
-                                                            <div className="flex justify-around">
-                                                                {selectedMatchDetails.lineups?.[1]?.startXI?.slice(8, 11).map((item: any, i: number) => (
-                                                                    <div key={i} onClick={() => handleLineupPlayerClick(item.player?.name)} className="cursor-pointer bg-blue-950/95 text-white px-2 py-1 rounded-xl text-[10px] font-bold shadow-md border border-white/20 flex items-center gap-1"><span>{item.player?.number}</span><span className="truncate max-w-[80px]">{item.player?.name}</span></div>
-                                                                ))}
-                                                            </div>
-                                                            <div className="flex justify-around">
-                                                                {selectedMatchDetails.lineups?.[1]?.startXI?.slice(5, 8).map((item: any, i: number) => (
-                                                                    <div key={i} onClick={() => handleLineupPlayerClick(item.player?.name)} className="cursor-pointer bg-blue-950/95 text-white px-2 py-1 rounded-xl text-[10px] font-bold shadow-md border border-white/20 flex items-center gap-1"><span>{item.player?.number}</span><span className="truncate max-w-[80px]">{item.player?.name}</span></div>
-                                                                ))}
-                                                            </div>
-                                                            <div className="flex justify-around">
-                                                                {selectedMatchDetails.lineups?.[1]?.startXI?.slice(1, 5).map((item: any, i: number) => (
-                                                                    <div key={i} onClick={() => handleLineupPlayerClick(item.player?.name)} className="cursor-pointer bg-blue-950/95 text-white px-2 py-1 rounded-xl text-[10px] font-bold shadow-md border border-white/20 flex items-center gap-1"><span>{item.player?.number}</span><span className="truncate max-w-[80px]">{item.player?.name}</span></div>
-                                                                ))}
-                                                            </div>
-                                                            <div className="flex justify-center"><div onClick={() => handleLineupPlayerClick(selectedMatchDetails.lineups?.[1]?.startXI?.[0]?.player?.name)} className="cursor-pointer bg-blue-950/95 text-white px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-md border border-white/20 flex items-center gap-1"><span>{selectedMatchDetails.lineups?.[1]?.startXI?.[0]?.player?.number}</span><span className="truncate max-w-[100px]">{selectedMatchDetails.lineups?.[1]?.startXI?.[0]?.player?.name}</span></div></div>
-                                                        </div>
-
-                                                        <div className="text-center text-white/80 font-black text-xs uppercase tracking-widest relative z-10">Oaspeți ({selectedMatchDetails.lineups?.[1]?.team?.name || "Oaspeți"})</div>
+                                                <div className="space-y-4">
+                                                    {/* Selector Echipă pentru Teren (Stil SofaScore) */}
+                                                    <div className="flex bg-slate-200/80 p-1 rounded-2xl max-w-sm mx-auto shadow-inner">
+                                                        <button
+                                                            onClick={() => setLineupViewTeam('home')}
+                                                            className={`flex-1 py-2 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-2 ${
+                                                                lineupViewTeam === 'home'
+                                                                    ? 'bg-slate-900 text-white shadow-md'
+                                                                    : 'text-slate-600 hover:text-slate-900'
+                                                            }`}
+                                                        >
+                                                            {selectedMatchDetails.lineups?.[0]?.team?.logo && (
+                                                                <img src={selectedMatchDetails.lineups[0].team.logo} alt="home" className="w-4 h-4 object-contain" />
+                                                            )}
+                                                            {selectedMatchDetails.lineups?.[0]?.team?.name || selectedMatchDetails.home_team_name}
+                                                            {selectedMatchDetails.lineups?.[0]?.formation && (
+                                                                <span className="text-[10px] opacity-80">({selectedMatchDetails.lineups[0].formation})</span>
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setLineupViewTeam('away')}
+                                                            className={`flex-1 py-2 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-2 ${
+                                                                lineupViewTeam === 'away'
+                                                                    ? 'bg-slate-900 text-white shadow-md'
+                                                                    : 'text-slate-600 hover:text-slate-900'
+                                                            }`}
+                                                        >
+                                                            {selectedMatchDetails.lineups?.[1]?.team?.logo && (
+                                                                <img src={selectedMatchDetails.lineups[1].team.logo} alt="away" className="w-4 h-4 object-contain" />
+                                                            )}
+                                                            {selectedMatchDetails.lineups?.[1]?.team?.name || selectedMatchDetails.away_team_name}
+                                                            {selectedMatchDetails.lineups?.[1]?.formation && (
+                                                                <span className="text-[10px] opacity-80">({selectedMatchDetails.lineups[1].formation})</span>
+                                                            )}
+                                                        </button>
                                                     </div>
+
+                                                    {/* TEREN 2D PROFESIONIST STIL SOFASCORE */}
+                                                    {(() => {
+                                                        const currentLineupIndex = lineupViewTeam === 'home' ? 0 : 1;
+                                                        const teamData = selectedMatchDetails.lineups?.[currentLineupIndex];
+                                                        const startXI = teamData?.startXI || [];
+                                                        const formation = teamData?.formation || "4-3-3";
+                                                        const { gk, def, mid, fwd } = organizeLineupByTactics(startXI, formation);
+
+                                                        return (
+                                                            <div className="space-y-6">
+                                                                <div className="relative w-full h-[620px] bg-gradient-to-b from-emerald-800 via-emerald-700 to-emerald-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-white/30 flex flex-col justify-between p-4">
+                                                                    
+                                                                    {/* Marcaje teren */}
+                                                                    <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#fff_1.5px,transparent_1.5px)] [background-size:24px_24px]"></div>
+                                                                    <div className="absolute top-1/2 inset-x-0 h-0.5 bg-white/40 transform -translate-y-1/2"></div>
+                                                                    <div className="absolute top-1/2 left-1/2 w-36 h-36 border-2 border-white/40 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+                                                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-20 border-b-2 border-x-2 border-white/40 rounded-b-2xl"></div>
+                                                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-20 border-t-2 border-x-2 border-white/40 rounded-t-2xl"></div>
+
+                                                                    {/* 1. Atacanți */}
+                                                                    <div className="flex-1 flex items-center justify-around relative z-10">
+                                                                        {fwd.map((item: any, idx: number) => {
+                                                                            const pName = item.player?.name;
+                                                                            const pNum = item.player?.number;
+                                                                            const pRating = item.player?.rating;
+                                                                            return (
+                                                                                <div key={idx} onClick={() => handleLineupPlayerClick(pName)} className="cursor-pointer group flex flex-col items-center">
+                                                                                    <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center shadow-lg border-2 border-amber-400 group-hover:scale-110 transition">
+                                                                                        {pNum}
+                                                                                        {pRating && (
+                                                                                            <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-[9px] font-bold px-1 rounded shadow">
+                                                                                                {parseFloat(pRating).toFixed(1)}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <span className="mt-1 bg-slate-900/80 backdrop-blur text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow max-w-[90px] truncate">
+                                                                                        {pName?.split(' ').pop()}
+                                                                                    </span>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+
+                                                                    {/* 2. Mijlocași */}
+                                                                    <div className="flex-1 flex items-center justify-around relative z-10">
+                                                                        {mid.map((item: any, idx: number) => {
+                                                                            const pName = item.player?.name;
+                                                                            const pNum = item.player?.number;
+                                                                            const pRating = item.player?.rating;
+                                                                            return (
+                                                                                <div key={idx} onClick={() => handleLineupPlayerClick(pName)} className="cursor-pointer group flex flex-col items-center">
+                                                                                    <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center shadow-lg border-2 border-amber-400 group-hover:scale-110 transition">
+                                                                                        {pNum}
+                                                                                        {pRating && (
+                                                                                            <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-[9px] font-bold px-1 rounded shadow">
+                                                                                                {parseFloat(pRating).toFixed(1)}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <span className="mt-1 bg-slate-900/80 backdrop-blur text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow max-w-[90px] truncate">
+                                                                                        {pName?.split(' ').pop()}
+                                                                                    </span>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+
+                                                                    {/* 3. Fundași */}
+                                                                    <div className="flex-1 flex items-center justify-around relative z-10">
+                                                                        {def.map((item: any, idx: number) => {
+                                                                            const pName = item.player?.name;
+                                                                            const pNum = item.player?.number;
+                                                                            const pRating = item.player?.rating;
+                                                                            return (
+                                                                                <div key={idx} onClick={() => handleLineupPlayerClick(pName)} className="cursor-pointer group flex flex-col items-center">
+                                                                                    <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center shadow-lg border-2 border-amber-400 group-hover:scale-110 transition">
+                                                                                        {pNum}
+                                                                                        {pRating && (
+                                                                                            <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-[9px] font-bold px-1 rounded shadow">
+                                                                                                {parseFloat(pRating).toFixed(1)}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <span className="mt-1 bg-slate-900/80 backdrop-blur text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow max-w-[90px] truncate">
+                                                                                        {pName?.split(' ').pop()}
+                                                                                    </span>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+
+                                                                    {/* 4. Portar */}
+                                                                    <div className="flex-1 flex items-center justify-center relative z-10">
+                                                                        {gk.map((item: any, idx: number) => {
+                                                                            const pName = item.player?.name;
+                                                                            const pNum = item.player?.number;
+                                                                            const pRating = item.player?.rating;
+                                                                            return (
+                                                                                <div key={idx} onClick={() => handleLineupPlayerClick(pName)} className="cursor-pointer group flex flex-col items-center">
+                                                                                    <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-yellow-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-lg border-2 border-white group-hover:scale-110 transition">
+                                                                                        {pNum}
+                                                                                        {pRating && (
+                                                                                            <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-[9px] font-bold px-1 rounded shadow">
+                                                                                                {parseFloat(pRating).toFixed(1)}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <span className="mt-1 bg-slate-900/80 backdrop-blur text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow max-w-[90px] truncate">
+                                                                                        {pName?.split(' ').pop()}
+                                                                                    </span>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Antrenor și Rezerve */}
+                                                                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-4">
+                                                                    {teamData?.coach?.name && (
+                                                                        <div className="text-xs font-bold text-slate-700 pb-2 border-b border-slate-100 flex items-center justify-between">
+                                                                            <span>Antrenor Principal:</span>
+                                                                            <span className="font-black text-slate-900">{teamData.coach.name}</span>
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div>
+                                                                        <h4 className="text-xs font-black uppercase text-slate-500 mb-2">Banca de Rezerve</h4>
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                            {teamData?.substitutes?.map((sub: any, sIdx: number) => (
+                                                                                <div
+                                                                                    key={sIdx}
+                                                                                    onClick={() => handleLineupPlayerClick(sub.player?.name)}
+                                                                                    className="flex items-center justify-between p-2 bg-slate-50 rounded-xl hover:bg-slate-100 cursor-pointer transition text-xs"
+                                                                                >
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="w-6 h-6 rounded-full bg-slate-200 font-bold flex items-center justify-center text-[11px]">
+                                                                                            {sub.player?.number}
+                                                                                        </span>
+                                                                                        <span className="font-bold text-slate-800 truncate max-w-[140px]">{sub.player?.name}</span>
+                                                                                    </div>
+                                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{sub.player?.pos}</span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             )}
                                         </div>
