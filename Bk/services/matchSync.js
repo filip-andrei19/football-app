@@ -14,6 +14,11 @@ const FINISHED_STATUSES = ["FT", "AET", "PEN"];
 // Cooldown pentru a nu interoga prea des meciurile "NS" amânate sau întârziate
 let lastStuckNsCheck = 0;
 
+// Set în memorie + control concurență pentru sincronizarea jucătorilor după meci
+const syncedFinishedFixtures = new Set();
+let isSyncingPostMatchPlayers = false;
+let lastPostMatchCheck = 0;
+
 function formatDate(date) {
     return date.toISOString().split('T')[0];
 }
@@ -57,7 +62,7 @@ async function sync7DaysWindow() {
     console.log(`[MATCH SYNC] Fereastra de 7 zile a fost actualizată!`);
 }
 
-// 2. Funcția care aduce DOAR meciurile LIVE și închide automat meciurile care s-au terminat sau au rămas în "NS"
+// 2. Funcția care aduce DOAR meciurile LIVE, închide automat meciurile rămase în "NS"/LIVE și declanșează sync-ul de jucători după meci
 async function syncLiveMatches(io) {
     const Fixture = mongoose.model('Fixture');
     try {
@@ -123,33 +128,220 @@ async function syncLiveMatches(io) {
             console.log(`[LIVE SYNC] Am închis/actualizat automat ${stuckLocalMatches.length} meciuri restante (LIVE/NS -> scor la zi).`);
         }
 
+        // Declanșăm verificarea meciurilor recent încheiate pentru actualizarea jucătorilor (la fiecare 3 minute, în fundal)
+        if (Date.now() - lastPostMatchCheck > 3 * 60 * 1000) {
+            lastPostMatchCheck = Date.now();
+            syncPlayersAfterFinishedMatches().catch(err =>
+                console.error("[POST-MATCH PLAYER SYNC] Eroare:", err.message)
+            );
+        }
+
     } catch (err) {
         console.log(`[LIVE SYNC] Eroare interogare live:`, err.message);
     }
 }
 
-// 3. Preia Detaliile Meciului (Formații, Evenimente, Statistici) cu Caching Inteligent
-async function getFixtureDetailsOnDemand(fixtureId) {
+// 2.1. NOU: Sincronizează automat statisticile jucătorilor și detaliile meciului după ce un meci trece în FT / AET / PEN
+async function syncPlayersAfterFinishedMatches() {
+    if (isSyncingPostMatchPlayers) return;
+    isSyncingPostMatchPlayers = true;
+
+    try {
+        const Fixture = mongoose.model('Fixture');
+        const nowSec = Math.floor(Date.now() / 1000);
+
+        // Căutăm meciuri terminate în ultimele 12 ore, dar al căror start a fost acum cel puțin 110 minute (~5 min după fluierul final)
+        const recentFinishedMatches = await Fixture.find({
+            status_short: { $in: FINISHED_STATUSES },
+            timestamp: {
+                $lte: nowSec - (110 * 60),$gte: nowSec - (12 * 3600)
+            }
+        }).limit(10);
+
+        for (const matchDoc of recentFinishedMatches) {
+            // Verificăm dacă am sincronizat deja jucătorii pentru acest meci (în DB sau în memorie)
+            if (matchDoc.players_synced === true || syncedFinishedFixtures.has(matchDoc.fixture_id)) {
+                continue;
+            }
+
+            console.log(`[POST-MATCH SYNC] Actualizez detaliile finale și jucătorii după meciul: ${matchDoc.home_team_name} vs ${matchDoc.away_team_name} (#${matchDoc.fixture_id})`);
+
+            // 1. Asigurăm că meciul are descărcate formațiile, notele finale și statisticile complete
+            await getFixtureDetailsOnDemand(matchDoc.fixture_id, true);
+
+            // 2. Actualizăm statisticile de sezon ale jucătorilor celor două echipe
+            await syncTeamsPlayersStatsAfterMatch(
+                matchDoc.home_team_id,
+                matchDoc.away_team_id,
+                matchDoc.league_id,
+                matchDoc.home_team_name,
+                matchDoc.away_team_name,
+                matchDoc.home_team_logo,
+                matchDoc.away_team_logo
+            );
+
+            // 3. Marcăm meciul ca sincronizat (în memorie + în colecția Fixture, chiar dacă schema e strictă folosim collection.updateOne)
+            syncedFinishedFixtures.add(matchDoc.fixture_id);
+            await Fixture.collection.updateOne(
+                { fixture_id: matchDoc.fixture_id },
+                { $set: { players_synced: true, players_synced_at: new Date() } }
+            );
+        }
+    } catch (err) {
+        console.error("[POST-MATCH SYNC] Eroare procesare:", err.message);
+    } finally {
+        isSyncingPostMatchPlayers = false;
+    }
+}
+
+// 2.2. NOU: Actualizează jucătorii din baza de date pentru cele două echipe care tocmai au terminat meciul
+async function syncTeamsPlayersStatsAfterMatch(homeTeamId, awayTeamId, leagueId, homeTeamName, awayTeamName, homeTeamLogo, awayTeamLogo) {
+    // Dacă există o funcție dedicată în smartSync.js, o apelăm și pe aceea
+    try {
+        const smartSync = require('./smartSync');
+        if (typeof smartSync.syncTeamPlayersAfterMatch === 'function') {
+            await smartSync.syncTeamPlayersAfterMatch(homeTeamId, leagueId);
+            await smartSync.syncTeamPlayersAfterMatch(awayTeamId, leagueId);
+            return;
+        }
+    } catch (_) {
+        // Dacă smartSync nu exportă funcția, folosim actualizarea directă în modelul Player de mai jos
+    }
+
+    let Player;
+    try {
+        Player = mongoose.model('Player');
+    } catch (_) {
+        return;
+    }
+
+    const teamsToSync = [
+        { id: homeTeamId, name: homeTeamName, logo: homeTeamLogo },
+        { id: awayTeamId, name: awayTeamName, logo: awayTeamLogo }
+    ];
+
+    for (const teamObj of teamsToSync) {
+        if (!teamObj.id) continue;
+        try {
+            // Preluăm prima pagină de jucători ai echipei pentru sezonul curent de la API-Football
+            const res = await axios.get(`${BASE_URL}/players`, {
+                headers: { 'x-apisports-key': API_KEY },
+                params: {
+                    team: teamObj.id,
+                    season: SEASON,
+                    page: 1
+                }
+            });
+
+            const apiPlayers = res.data?.response || [];
+            for (const item of apiPlayers) {
+                const pInfo = item.player;
+                const statsArr = item.statistics || [];
+                if (!pInfo || statsArr.length === 0) continue;
+
+                let totalGoals = 0;
+                let totalAssists = 0;
+                let totalApps = 0;
+                let totalMinutes = 0;
+                let ratingSum = 0;
+                let ratingCount = 0;
+
+                const detailedStats = statsArr.map(st => {
+                    const apps = st.games?.appearences || 0;
+                    const goals = st.goals?.total || 0;
+                    const assists = st.goals?.assists || 0;
+                    const mins = st.games?.minutes || 0;
+                    const r = st.games?.rating ? parseFloat(st.games.rating) : 0;
+
+                    totalApps += apps;
+                    totalGoals += goals;
+                    totalAssists += assists;
+                    totalMinutes += mins;
+                    if (r > 0) {
+                        ratingSum += r;
+                        ratingCount += 1;
+                    }
+
+                    return {
+                        competition: st.league?.name || "Competiție",
+                        type: st.league?.type || "League",
+                        appearances: apps,
+                        goals: goals,
+                        assists: assists,
+                        minutes: mins
+                    };
+                });
+
+                const avgRating = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(2) : "0";
+                const primaryPos = statsArr[0]?.games?.position || "Unknown";
+
+                await Player.findOneAndUpdate(
+                    { name: pInfo.name },
+                    {
+                        $set: {
+                            name: pInfo.name,
+                            age: pInfo.age || undefined,
+                            nationality: pInfo.nationality || undefined,
+                            height: pInfo.height || undefined,
+                            weight: pInfo.weight || undefined,
+                            image: pInfo.photo || undefined,
+                            position: primaryPos,
+                            team: teamObj.name,
+                            team_name: teamObj.name,
+                            team_logo: teamObj.logo,
+                            league_id: leagueId,
+                            detailed_stats: detailedStats,
+                            statistics_summary: {
+                                team_name: teamObj.name,
+                                total_goals: totalGoals,
+                                total_assists: totalAssists,
+                                total_appearances: totalApps,
+                                minutes_played: totalMinutes,
+                                rating: avgRating
+                            },
+                            updated_at: new Date()
+                        }
+                    },
+                    { upsert: true }
+                );
+            }
+            console.log(`[POST-MATCH SYNC] Jucătorii echipei ${teamObj.name} au fost actualizați la zi!`);
+        } catch (err) {
+            console.error(`[POST-MATCH SYNC] Eroare actualizare echipă ${teamObj.name}:`, err.message);
+        }
+    }
+}
+
+// 3. Preia Detaliile Meciului (Formații, Evenimente, Statistici) cu Caching Inteligent (Reparat pentru Formații & Statistici complete)
+async function getFixtureDetailsOnDemand(fixtureId, forceRefresh = false) {
     const Fixture = mongoose.model('Fixture');
     let matchDoc = await Fixture.findOne({ fixture_id: Number(fixtureId) });
 
     const now = Date.now();
     const lastSync = matchDoc?.details_updated_at ? new Date(matchDoc.details_updated_at).getTime() : 0;
-    const hasDetails = matchDoc && (
-        (matchDoc.lineups && matchDoc.lineups.length > 0) ||
-        (matchDoc.events && matchDoc.events.length > 0) ||
-        (matchDoc.statistics && matchDoc.statistics.length > 0)
-    );
 
-    if (matchDoc) {
-        // A. Dacă meciul e terminat și avem deja detaliile în DB, 0 request-uri!
-        if (FINISHED_STATUSES.includes(matchDoc.status_short) && hasDetails) {
+    // IMPORTANT: Verificăm dacă avem ATÂT formațiile (lineups), CÂT ȘI statisticile (statistics), nu doar evenimentele!
+    const hasLineups = Boolean(matchDoc?.lineups && matchDoc.lineups.length > 0);
+    const hasStats = Boolean(matchDoc?.statistics && matchDoc.statistics.length > 0);
+    const hasFullDetails = hasLineups && hasStats;
+
+    if (matchDoc && !forceRefresh) {
+        // A. Dacă meciul e terminat și avem deja AMBELE (formații + statistici) în DB, 0 request-uri!
+        // Dacă însă îi lipsesc formațiile sau statisticile și nu am mai încercat în ultimele 15 minute, reîncercăm descărcarea!
+        if (FINISHED_STATUSES.includes(matchDoc.status_short)) {
+            if (hasFullDetails) {
+                return matchDoc;
+            }
+            if (lastSync > 0 && (now - lastSync < 15 * 60 * 1000)) {
+                return matchDoc;
+            }
+        }
+
+        // B. Dacă meciul e LIVE și am descărcat deja detaliile complete în ultimele 2 minute, 0 request-uri!
+        if (LIVE_STATUSES.includes(matchDoc.status_short) && (now - lastSync < 2 * 60 * 1000) && hasFullDetails) {
             return matchDoc;
         }
-        // B. Dacă meciul e LIVE și am descărcat deja detaliile în ultimele 2 minute, 0 request-uri!
-        if (LIVE_STATUSES.includes(matchDoc.status_short) && (now - lastSync < 2 * 60 * 1000) && hasDetails) {
-            return matchDoc;
-        }
+
         // C. Dacă meciul nu a început (NS), verificăm DOAR dacă într-adevăr ora de start este în viitor
         if (matchDoc.status_short === "NS") {
             const timeUntilKickoff = (matchDoc.timestamp * 1000) - now;
@@ -157,11 +349,10 @@ async function getFixtureDetailsOnDemand(fixtureId) {
             if (timeUntilKickoff > 60 * 60 * 1000) {
                 return matchDoc;
             }
-            // Dacă meciul este încă în viitor (0 - 60 min până la start), verificăm maxim o dată la 10 minute
-            if (timeUntilKickoff > 0 && (now - lastSync < 10 * 60 * 1000)) {
+            // Dacă meciul este încă în viitor (0 - 60 min până la start), verificăm maxim o dată la 5 minute dacă au apărut formațiile
+            if (timeUntilKickoff > 0 && (now - lastSync < 5 * 60 * 1000) && hasLineups) {
                 return matchDoc;
             }
-            // Dacă timeUntilKickoff <= 0, înseamnă că meciul a început sau s-a terminat deja, deci facem request imediat!
         }
     }
 
@@ -174,6 +365,31 @@ async function getFixtureDetailsOnDemand(fixtureId) {
 
         const fullMatch = res.data?.response?.[0];
         if (fullMatch) {
+            // Dacă în obiectul principal nu au venit lineups sau statistics, le cerem punctual doar dacă lipsesc
+            if (!fullMatch.lineups || fullMatch.lineups.length === 0) {
+                try {
+                    const lRes = await axios.get(`${BASE_URL}/fixtures/lineups`, {
+                        headers: { 'x-apisports-key': API_KEY },
+                        params: { fixture: fixtureId }
+                    });
+                    if (lRes.data?.response?.length > 0) {
+                        fullMatch.lineups = lRes.data.response;
+                    }
+                } catch (_) {}
+            }
+
+            if (!fullMatch.statistics || fullMatch.statistics.length === 0) {
+                try {
+                    const sRes = await axios.get(`${BASE_URL}/fixtures/statistics`, {
+                        headers: { 'x-apisports-key': API_KEY },
+                        params: { fixture: fixtureId }
+                    });
+                    if (sRes.data?.response?.length > 0) {
+                        fullMatch.statistics = sRes.data.response;
+                    }
+                } catch (_) {}
+            }
+
             matchDoc = await updateOrInsertFixture(Fixture, fullMatch, true);
         }
     } catch (err) {
@@ -272,5 +488,6 @@ module.exports = {
     sync7DaysWindow,
     syncLiveMatches,
     getFixtureDetailsOnDemand,
-    getLeagueStandingsOnDemand
+    getLeagueStandingsOnDemand,
+    syncPlayersAfterFinishedMatches
 };

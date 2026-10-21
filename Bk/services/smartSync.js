@@ -21,6 +21,9 @@ const TARGET_LEAGUES = [
     { id: 848, name: "UEFA Conference League" }
 ];
 
+// Evidență în memorie pentru a evita dubla scanare a aceleiași echipe într-un interval scurt
+const recentTeamSyncMap = new Map();
+
 function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -349,6 +352,47 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
     } while (currentPage <= totalPages);
 }
 
+// ============================================================================
+// NOU: SINCRONIZARE AUTOMATĂ A JUCĂTORILOR UNEI ECHIPE IMEDIAT DUPĂ MECI (FT)
+// Folosește direct processTeamAndUpdate și algoritmul tău "Scout IQ Index"
+// ============================================================================
+async function syncTeamPlayersAfterMatch(teamId, teamName, teamLogo, leagueId) {
+    if (!teamId) return;
+
+    const now = Date.now();
+    const lastSync = recentTeamSyncMap.get(Number(teamId)) || 0;
+
+    // Dacă echipa a fost deja sincronizată în ultimele 30 de minute, o sărim pentru a economisi request-uri
+    if (now - lastSync < 30 * 60 * 1000) {
+        console.log(`   [POST-MATCH SMART SYNC] Echipa ${teamName} (#${teamId}) a fost deja actualizată recent.`);
+        return;
+    }
+
+    recentTeamSyncMap.set(Number(teamId), now);
+    console.log(`   [POST-MATCH SMART SYNC] Actualizez lotul și Scout IQ pentru: ${teamName} (#${teamId})...`);
+    await processTeamAndUpdate(teamId, teamName || "Unknown", teamLogo || "", leagueId || null);
+}
+
+async function syncMatchTeamsPlayers(matchDoc) {
+    if (!matchDoc) return;
+
+    await syncTeamPlayersAfterMatch(
+        matchDoc.home_team_id,
+        matchDoc.home_team_name,
+        matchDoc.home_team_logo,
+        matchDoc.league_id
+    );
+
+    await wait(2000);
+
+    await syncTeamPlayersAfterMatch(
+        matchDoc.away_team_id,
+        matchDoc.away_team_name,
+        matchDoc.away_team_logo,
+        matchDoc.league_id
+    );
+}
+
 async function runNationalTeamSync() {
     try {
         const allTeamsRes = await axios.get(`${BASE_URL}/teams`, {
@@ -421,4 +465,10 @@ async function runDailySmartSync() {
     console.log(`\n [SMART SYNC FULL] Baza de date actualizata!`);
 }
 
-module.exports = { runDailySmartSync, runNationalTeamSync };
+module.exports = {
+    runDailySmartSync,
+    runNationalTeamSync,
+    processTeamAndUpdate,
+    syncTeamPlayersAfterMatch,
+    syncMatchTeamsPlayers
+};
