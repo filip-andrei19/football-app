@@ -976,8 +976,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
       {/* BARĂ PLUTITOARE PENTRU COMPARATORUL HEAD-TO-HEAD */}
       {/* ========================================================= */}
       {compareList.length > 0 && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[55] bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border border-emerald-500/40 flex items-center gap-4 max-w-xl w-[92%] justify-between animate-in slide-in-from-bottom-5">
-          <div className="flex items-center gap-3 overflow-hidden">
+      <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-[55] bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border border-emerald-500/40 flex items-center gap-4 max-w-xl w-[92%] justify-between animate-in slide-in-from-bottom-5">          <div className="flex items-center gap-3 overflow-hidden">
             <Scale className="w-5 h-5 text-emerald-400 shrink-0" />
             <div className="flex items-center gap-2 overflow-hidden">
               {compareList.map((p) => (
