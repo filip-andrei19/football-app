@@ -112,6 +112,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const [lineupViewMode, setLineupViewMode] = useState<'both' | 'home' | 'away'>('both');
 
+    // === SOLICITĂ PERMISIUNEA PENTRU NOTIFICĂRI ===
+    useEffect(() => {
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+    }, []);
+
     useEffect(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -170,11 +177,29 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         fetchMatches(localDateStr);
     }, [selectedDate]);
 
+    // === SOCKET.IO ACTUALIZAT PENTRU NOTIFICĂRI ===
     useEffect(() => {
         socket.on("live_match_update", (updatedMatch: Match) => {
             setMatches(prevMatches => {
                 const index = prevMatches.findIndex(m => m.fixture_id === updatedMatch.fixture_id);
                 if (index !== -1) {
+                    const oldMatch = prevMatches[index];
+
+                    // Notificări Push la marcarea unui gol în meciurile favorite
+                    if (favoriteMatches.includes(updatedMatch.fixture_id)) {
+                        const homeGoal = updatedMatch.home_goals !== oldMatch.home_goals && updatedMatch.home_goals !== null;
+                        const awayGoal = updatedMatch.away_goals !== oldMatch.away_goals && updatedMatch.away_goals !== null;
+
+                        if ((homeGoal || awayGoal) && "Notification" in window && Notification.permission === "granted") {
+                            new Notification("⚽ GOL!", {
+                                body: `${updatedMatch.home_team_name} ${updatedMatch.home_goals} - ${updatedMatch.away_goals} ${updatedMatch.away_team_name}`,
+                                icon: updatedMatch.league_logo || '/icon-192.png',
+                                badge: '/icon-192.png',
+                                vibrate: [200, 100, 200]
+                            } as any);
+                        }
+                    }
+
                     const newMatches = [...prevMatches];
                     newMatches[index] = { ...newMatches[index], ...updatedMatch };
                     return newMatches;
@@ -188,7 +213,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         return () => {
             socket.off("live_match_update");
         };
-    }, []);
+    }, [favoriteMatches]); // Array de dependențe actualizat
 
     const toggleFavoriteMatch = async (e: React.MouseEvent, fixtureId: number) => {
         e.stopPropagation();
@@ -363,7 +388,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         return map[type] || type;
     };
 
-    // Construiește liniile tactice exacte ale antrenorului pe baza coordonatelor `player.grid` ("row:col")
     const buildExactCoachRows = (startXI: any[], formationStr?: string, isTopDown: boolean = true): any[][] => {
         if (!startXI || startXI.length === 0) return [];
 
@@ -550,7 +574,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         );
     };
 
-    // Date precalculate pentru tab-ul de formații (fără IIFE-uri în JSX)
     const homeTeamLineup = selectedMatchDetails?.lineups?.[0] || null;
     const awayTeamLineup = selectedMatchDetails?.lineups?.[1] || null;
 
