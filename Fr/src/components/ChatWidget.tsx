@@ -397,14 +397,12 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                                   const isFirstInGroup = idx === 0 || arr[idx - 1].author !== msg.author;
                                                   
                                                   return (
-                                                      <div key={idx} ref={(el) => (messageContainerRefs.current[msg._id] = el)} className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isFirstInGroup ? "mt-3" : "mt-0.5"}`}>
-                                                          {!isMe && isFirstInGroup && !msg.isDeleted && <span className="text-[10px] text-gray-500 ml-3 mb-0.5 font-medium">{msg.author}</span>}
-
+                                                    <div key={idx} ref={(el) => { messageContainerRefs.current[msg._id] = el; }} className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isFirstInGroup ? "mt-3" : "mt-0.5"}`}>
                                                           <div className={`group relative flex items-center gap-2 max-w-[90%] ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
                                                               
                                                               {/* TOOLBAR MESAJ (Apare la Hover) */}
                                                               {!msg.isDeleted && (
-                                                                  <div className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm p-1 rounded-full absolute top-0 z-10 ${isMe ? '-left-24' : '-right-24'}`}>
+                                                                  <div className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-md p-1 rounded-full absolute -top-10 z-[30] ${isMe ? 'right-0' : 'left-0'}`}>
                                                                       {/* 🔥 FIX AICI: e.stopPropagation() previne închiderea instantanee a picker-ului */}
                                                                       <button onClick={(e) => { e.stopPropagation(); setShowReactionPickerId(msg._id); }} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-gray-50 rounded-full" title="Reacționează"><Smile className="w-3.5 h-3.5"/></button>
                                                                       
@@ -416,7 +414,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
 
                                                               {/* PICKER EMOJI FLOTANT */}
                                                               {showReactionPickerId === msg._id && (
-                                                                  <div className={`absolute -top-10 z-20 bg-white border border-gray-100 shadow-xl rounded-full px-2 py-1.5 flex gap-1 animate-in zoom-in ${isMe ? 'right-0' : 'left-0'}`}>
+                                                                  <div className={`absolute -top-20 z-[40] bg-white border border-gray-100 shadow-xl rounded-full px-2 py-1.5 flex gap-1 animate-in zoom-in ${isMe ? 'right-0' : 'left-0'}`}>
                                                                       {AVAILABLE_EMOJIS.map(emoji => (
                                                                           <button key={emoji} onClick={(e) => { e.stopPropagation(); handleReact(msg._id, emoji); }} className="hover:scale-125 transition-transform text-lg px-1">{emoji}</button>
                                                                       ))}
