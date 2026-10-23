@@ -64,10 +64,6 @@ const io = new Server(server, {
 // CONFIGURĂRI MIDDLEWARE
 // ==========================================
 
-// Handlere Sentry pentru cereri și tracing (TRUIE SĂ FIE PRIMELE MIDDLEWARE-URI)
-app.use(Sentry.Handlers.requestHandler());
-app.use(Sentry.Handlers.tracingHandler());
-
 app.use(helmet());
 app.use(compression());
 app.use(cors());
@@ -895,9 +891,9 @@ const startServer = async () => {
         });
 
         // ==========================================
-        // SENTRY ERROR HANDLER (TRUIE SĂ FIE ULTIMUL MIDDLEWARE ÎNAINTE DE app.listen)
+        // SENTRY ERROR HANDLER
         // ==========================================
-        app.use(Sentry.Handlers.errorHandler());
+        Sentry.setupExpressErrorHandler(app);
 
         cron.schedule('14 12 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
 
