@@ -17,6 +17,10 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
+// --- IMPORTURI SENTRY (NOU) ---
+const Sentry = require("@sentry/node");
+const { nodeProfilingIntegration } = require("@sentry/profiling-node");
+
 // --- IMPORTURI SERVICII ---
 const { hardResetAndLoad } = require('./services/initialLoad');
 const { runDailySmartSync, runNationalTeamSync } = require('./services/smartSync');
@@ -24,6 +28,19 @@ const { sync7DaysWindow, syncLiveMatches, getFixtureDetailsOnDemand, getLeagueSt
 
 const app = express();
 app.set('trust proxy', 1);
+
+// ==========================================
+// INIȚIALIZARE SENTRY (TRUIE SĂ FIE AICI, ÎNAINTE DE RUTE/MIDDLEWARE)
+// ==========================================
+Sentry.init({
+  dsn: "https://1cd760c47aa5288d63b8307df25fb8f4@o4512306562596864.ingest.de.sentry.io/4512306687705168", // <-- ÎNLOCUIEȘTE CU DSN-UL REAL PENTRU BACKEND
+  integrations: [
+    nodeProfilingIntegration(),
+  ],
+  tracesSampleRate: 1.0,
+  profilesSampleRate: 1.0,
+});
+
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 const TOKEN_SECRET = process.env.JWT_SECRET || 'cheie_secreta_foarte_lunga_si_sigura';
@@ -46,6 +63,11 @@ const io = new Server(server, {
 // ==========================================
 // CONFIGURĂRI MIDDLEWARE
 // ==========================================
+
+// Handlere Sentry pentru cereri și tracing (TRUIE SĂ FIE PRIMELE MIDDLEWARE-URI)
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.tracingHandler());
+
 app.use(helmet());
 app.use(compression());
 app.use(cors());
@@ -252,6 +274,11 @@ const startServer = async () => {
                 { title: 'Gheorghe "Gică" Popescu', role: 'Șef', organization: 'Academia', excerpt: '...', content: `REP...`, date: 'Dec 2025' }
              ]);
         }
+
+        // RUTA DE TEST SENTRY (OPȚIONALĂ, PENTRU VERIFICARE)
+        app.get("/debug-sentry", function mainHandler(req, res) {
+            throw new Error("My first Sentry error!");
+        });
 
         app.post('/api/users/register', async (req, res) => {
             try {
@@ -866,6 +893,11 @@ const startServer = async () => {
                 res.status(500).send(err.message);
             }
         });
+
+        // ==========================================
+        // SENTRY ERROR HANDLER (TRUIE SĂ FIE ULTIMUL MIDDLEWARE ÎNAINTE DE app.listen)
+        // ==========================================
+        app.use(Sentry.Handlers.errorHandler());
 
         cron.schedule('14 12 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
 

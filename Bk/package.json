@@ -21,6 +21,8 @@
   },
   "homepage": "https://github.com/filip-andrei19/Football#readme",
   "dependencies": {
+    "@sentry/node": "^11.9.0",
+    "@sentry/profiling-node": "^11.9.0",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
