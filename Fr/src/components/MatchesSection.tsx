@@ -177,6 +177,26 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         fetchMatches(localDateStr);
     }, [selectedDate]);
 
+    // === FETCH SILENȚIOS LA FIECARE 60 SECUNDE (FALLBACK PENTRU SOCKET SLEEP) ===
+    useEffect(() => {
+        if (!selectedDate) return;
+        const interval = setInterval(() => {
+            const localDateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000)
+                .toISOString()
+                .split('T')[0];
+            
+            // Fetch silențios, fără setLoading(true) pentru a nu întrerupe UI-ul
+            fetch(`https://football-backend-m2a4.onrender.com/api/sport/matches?date=${localDateStr}`)
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    if (data) setMatches(data);
+                })
+                .catch(() => {});
+        }, 60000); // 60 de secunde
+
+        return () => clearInterval(interval);
+    }, [selectedDate]);
+
     // === SOCKET.IO ACTUALIZAT PENTRU NOTIFICĂRI ===
     useEffect(() => {
         socket.on("live_match_update", (updatedMatch: Match) => {
@@ -213,7 +233,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         return () => {
             socket.off("live_match_update");
         };
-    }, [favoriteMatches]); // Array de dependențe actualizat
+    }, [favoriteMatches]);
 
     const toggleFavoriteMatch = async (e: React.MouseEvent, fixtureId: number) => {
         e.stopPropagation();
