@@ -10,9 +10,27 @@ const getAllPlayers = async (query = {}) => {
   const limit = parseInt(query.limit) || 250; 
   const skip = (page - 1) * limit;
 
-  // 2. Interogăm baza de date cu sortare obligatorie pentru o paginare stabilă
-  return await Player.find()
-    .sort({ _id: -1 }) // Ordonăm descrescător după ID (cei mai noi primii)
+  // 2. Construim filtrul dinamic
+  let filter = {};
+  
+  if (query.diaspora === 'true') {
+      // Ajustează acest câmp dacă folosești altă structură în DB pentru stranieri 
+      // (ex: { 'league_id': { $nin: [283, 284] } } pentru ligi externe)
+      filter.diaspora = true; 
+  }
+  
+  if (query.u21 === 'true') {
+      filter.age = { $lte: 21 }; // Filtru pentru Future Stars
+  }
+  
+  if (query.search) {
+      // Căutare case-insensitive după nume (pentru HomeSection)
+      filter.name = { $regex: query.search, $options: 'i' }; 
+  }
+
+  // 3. Interogăm baza de date cu filtru, sortare și paginare
+  return await Player.find(filter)
+    .sort({ _id: -1 }) // Ordonăm descrescător după ID pentru o paginare stabilă
     .skip(skip)
     .limit(limit); 
 };
