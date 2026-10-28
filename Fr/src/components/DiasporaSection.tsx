@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Globe, Plane, Shield, Star, Clock, Activity, Filter } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInView } from 'react-intersection-observer';
+import { Globe, Plane, Shield, Star, Clock, Activity, Filter, Loader2 } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
@@ -66,56 +68,72 @@ const DiasporaSkeleton = () => (
 const FILTERS = ["Toate", "Portari", "Fundași", "Mijlocași", "Atacanți"];
 
 export function DiasporaSection() {
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("Toate");
+  const { ref, inView } = useInView();
 
+  const API_URL = window.location.hostname === "localhost" 
+      ? "http://localhost:3000" 
+      : "https://football-backend-m2a4.onrender.com";
+
+  // Funcția de fetch adaptată pentru Infinite Query
+  const fetchDiaspora = async ({ pageParam = 1 }) => {
+    const response = await fetch(`${API_URL}/api/sport/players?diaspora=true&page=${pageParam}&limit=12`);
+    if (!response.ok) throw new Error("Eroare la preluarea datelor Diaspora");
+    return response.json();
+  };
+
+  // Setup React Query pentru Infinite Scroll
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    status
+  } = useInfiniteQuery({
+    queryKey: ['diasporaPlayers'],
+    queryFn: fetchDiaspora,
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      // Dacă primim mai puțin de 12 elemente, înseamnă că e ultima pagină
+      return lastPage.length === 12 ? allPages.length + 1 : undefined;
+    },
+  });
+
+  // Declanșează următoarea pagină când elementul invizibil intră în vizor
   useEffect(() => {
-    const fetchDiaspora = async () => {
-      try {
-        const API_URL = window.location.hostname === "localhost" 
-            ? "http://localhost:3000" 
-            : "https://football-backend-m2a4.onrender.com";
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-        const response = await fetch(`${API_URL}/api/sport/players?diaspora=true`);
-        const data = await response.json();
+  // Transformă array-urile din fiecare pagină într-o singură listă
+  const allPlayers = data ? data.pages.flatMap(page => page) : [];
 
-        if (Array.isArray(data)) {
-            const sortedStranieri = data.sort((a: Player, b: Player) => {
-                const teamA = (a.team_name || a.team || "").toLowerCase();
-                const teamB = (b.team_name || b.team || "").toLowerCase();
-                
-                const isNationalA = teamA.includes("nationala") || teamA === "romania";
-                const isNationalB = teamB.includes("nationala") || teamB === "romania";
-                
-                if (isNationalA && !isNationalB) return -1;
-                if (!isNationalA && isNationalB) return 1;
+  // Păstrează logica originală de sortare
+  const sortedPlayers = [...allPlayers].sort((a: Player, b: Player) => {
+      const teamA = (a.team_name || a.team || "").toLowerCase();
+      const teamB = (b.team_name || b.team || "").toLowerCase();
+      
+      const isNationalA = teamA.includes("nationala") || teamA === "romania";
+      const isNationalB = teamB.includes("nationala") || teamB === "romania";
+      
+      if (isNationalA && !isNationalB) return -1;
+      if (!isNationalA && isNationalB) return 1;
 
-                const ratingA = parseFloat(a.statistics_summary?.rating || "0");
-                const ratingB = parseFloat(b.statistics_summary?.rating || "0");
-                if (ratingB !== ratingA) return ratingB - ratingA;
+      const ratingA = parseFloat(a.statistics_summary?.rating || "0");
+      const ratingB = parseFloat(b.statistics_summary?.rating || "0");
+      if (ratingB !== ratingA) return ratingB - ratingA;
 
-                return (b.statistics_summary?.total_appearances || 0) - (a.statistics_summary?.total_appearances || 0);
-            });
+      return (b.statistics_summary?.total_appearances || 0) - (a.statistics_summary?.total_appearances || 0);
+  });
 
-            setPlayers(sortedStranieri);
-        } else {
-            setPlayers([]);
-        }
-      } catch (err) {
-        console.error("Eroare Diaspora:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDiaspora();
-  }, []);
-
+  // Funcția de filtrare pe poziții
   const getFilteredPlayers = () => {
-      if (activeFilter === "Toate") return players;
+      if (activeFilter === "Toate") return sortedPlayers;
 
-      return players.filter(player => {
+      return sortedPlayers.filter(player => {
           const pos = (player.position || "").toLowerCase();
           
           if (activeFilter === "Portari") return pos.includes("goalkeeper") || pos.includes("portar");
@@ -128,6 +146,10 @@ export function DiasporaSection() {
   };
 
   const filteredPlayers = getFilteredPlayers();
+
+  if (status === 'error') {
+    return <div className="text-center py-20 text-red-500 font-bold">Eroare: {(error as Error).message}</div>;
+  }
 
   return (
     <div className="relative min-h-[80vh] py-10 overflow-hidden bg-slate-50 dark:bg-slate-900 z-0">
@@ -175,11 +197,11 @@ export function DiasporaSection() {
       </section>
 
       <section className="px-6 container mx-auto relative z-10">
-        {loading ? (
+        {status === 'pending' ? (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                  {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <DiasporaSkeleton key={i} />)}
              </div>
-        ) : filteredPlayers.length === 0 ? (
+        ) : filteredPlayers.length === 0 && !isFetching ? (
             <div className="flex flex-col items-center justify-center py-20 bg-white/50 dark:bg-slate-800/50 backdrop-blur rounded-3xl border border-dashed border-gray-300 dark:border-slate-600 text-center px-4 max-w-2xl mx-auto">
                 <div className="bg-yellow-100 dark:bg-yellow-900/30 p-4 rounded-full mb-4">
                     <Plane className="w-8 h-8 text-yellow-600" />
@@ -191,130 +213,143 @@ export function DiasporaSection() {
                 </button>
             </div>
         ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-in slide-in-from-bottom-8 duration-700">
-            {filteredPlayers.map((player) => {
-                const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
-                const teamNameStr = player.team_name || player.team || "Club";
-                
-                const isNationalOnly = teamNameStr.toLowerCase().includes("nationala") || teamNameStr.toLowerCase() === "romania";
-                const ratingValue = stats.rating ? parseFloat(stats.rating).toFixed(2) : "-";
+            <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-in slide-in-from-bottom-8 duration-700">
+                {filteredPlayers.map((player) => {
+                    const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
+                    const teamNameStr = player.team_name || player.team || "Club";
+                    
+                    const isNationalOnly = teamNameStr.toLowerCase().includes("nationala") || teamNameStr.toLowerCase() === "romania";
+                    const ratingValue = stats.rating ? parseFloat(stats.rating).toFixed(2) : "-";
 
-                const leagueBadge = player.league_id ? LEAGUE_ID_MAP[player.league_id] : null;
-                const badgeText = isNationalOnly ? "CONVOCAT 🇷🇴" : (leagueBadge || "TRICOLOR 🇷🇴");
+                    const leagueBadge = player.league_id ? LEAGUE_ID_MAP[player.league_id] : null;
+                    const badgeText = isNationalOnly ? "CONVOCAT 🇷🇴" : (leagueBadge || "TRICOLOR 🇷🇴");
 
-                return (
-                    <div 
-                        key={player._id} 
-                        className="relative group rounded-2xl bg-gradient-to-br from-blue-600/80 via-yellow-500/80 to-red-600/80 p-[2px] shadow-[0_10px_30px_rgba(15,23,42,0.12)] hover:shadow-[0_20px_40px_rgba(234,179,8,0.2)] transition-all duration-300 transform hover:-translate-y-2 flex flex-col h-full overflow-hidden"
-                    >
-                        <div className="relative h-full bg-white dark:bg-slate-900 rounded-[14px] overflow-hidden flex flex-col z-10">
-                            
-                            {/* ETICHETE DREAPTA SUS (LIGA & RATING) */}
-                            <div className="absolute top-0 right-0 z-20 flex flex-col items-end">
-                                <div className="bg-gradient-to-r from-red-600 to-red-500 text-white text-[10px] font-black px-3.5 py-1.5 rounded-bl-xl shadow-md flex items-center gap-1 uppercase tracking-wider border-b border-l border-white/15">
-                                    {badgeText}
-                                </div>
-                                {ratingValue !== "-" && (
-                                    <div className="bg-slate-900/90 backdrop-blur-md text-yellow-400 text-[11px] font-black px-2.5 py-1 flex items-center justify-center gap-1 shadow-md rounded-bl-lg border-l border-b border-white/10 mt-1 mr-0.5">
-                                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" /> {ratingValue}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* POZIȚIE (STÂNGA SUS - CU CHENAR AURIU DISCRET) */}
-                            <div className="absolute top-3 left-3 z-20">
-                                <span className="px-2.5 py-1 text-[9px] font-black tracking-widest text-white bg-slate-950/85 backdrop-blur-md rounded-md border border-yellow-500/50 shadow-md uppercase">
-                                    {player.position || "JUCĂTOR"}
-                                </span>
-                            </div>
-
-                            {/* SECȚIUNE FOTO JUCĂTOR (FĂRĂ TEXT PESTE FAȚĂ, VIZIBILITATE 100%) */}
-                            <div className="h-48 relative overflow-hidden bg-gradient-to-b from-slate-900 via-blue-950 to-slate-950 shrink-0 flex items-end justify-center pt-5">
-                                {/* Textură discretă și lumină ambientală în spatele jucătorului */}
-                                <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#60a5fa_1px,transparent_1px)] [background-size:12px_12px]"></div>
-                                <div className="absolute bottom-0 w-36 h-36 bg-blue-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                    return (
+                        <div 
+                            key={player._id} 
+                            className="relative group rounded-2xl bg-gradient-to-br from-blue-600/80 via-yellow-500/80 to-red-600/80 p-[2px] shadow-[0_10px_30px_rgba(15,23,42,0.12)] hover:shadow-[0_20px_40px_rgba(234,179,8,0.2)] transition-all duration-300 transform hover:-translate-y-2 flex flex-col h-full overflow-hidden"
+                        >
+                            <div className="relative h-full bg-white dark:bg-slate-900 rounded-[14px] overflow-hidden flex flex-col z-10">
                                 
-                                <img 
-                                    src={player.image || GENERIC_USER_IMAGE} 
-                                    alt={player.name} 
-                                    className="h-full w-auto max-w-full object-contain object-bottom transition-transform duration-500 group-hover:scale-105 relative z-10 drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
-                                    onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
-                                />
-                            </div>
-
-                            {/* BANDĂ DEDICATĂ PENTRU NUME ȘI ECHIPĂ (SUB POZĂ, CA SĂ NU ACOPERE FAȚA) */}
-                            <div className="relative bg-slate-950 px-4 py-3 text-white shrink-0">
-                                <h3 className="text-lg sm:text-xl font-black leading-tight uppercase italic truncate tracking-tight text-white">
-                                    {player.name}
-                                </h3>
-                                <div className="flex items-center gap-1.5 text-yellow-400 text-[11px] font-bold mt-0.5 tracking-wide uppercase">
-                                    <Shield className="w-3.5 h-3.5 text-yellow-400 shrink-0" /> 
-                                    <span className="truncate">{teamNameStr}</span>
+                                {/* ETICHETE DREAPTA SUS (LIGA & RATING) */}
+                                <div className="absolute top-0 right-0 z-20 flex flex-col items-end">
+                                    <div className="bg-gradient-to-r from-red-600 to-red-500 text-white text-[10px] font-black px-3.5 py-1.5 rounded-bl-xl shadow-md flex items-center gap-1 uppercase tracking-wider border-b border-l border-white/15">
+                                        {badgeText}
+                                    </div>
+                                    {ratingValue !== "-" && (
+                                        <div className="bg-slate-900/90 backdrop-blur-md text-yellow-400 text-[11px] font-black px-2.5 py-1 flex items-center justify-center gap-1 shadow-md rounded-bl-lg border-l border-b border-white/10 mt-1 mr-0.5">
+                                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" /> {ratingValue}
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* BARĂ TRICOLORĂ SUBȚIRE DE SEPARARE */}
-                                <div className="absolute bottom-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-600 via-yellow-400 to-red-600"></div>
-                            </div>
-
-                            {/* STATISTICI PRINCIPALE (ALBASTRU ÎNCHIS / AURIU / ROȘU) */}
-                            <div className="p-5 flex-1 flex flex-col justify-between bg-white dark:bg-slate-900">
-                                
-                                <div className="grid grid-cols-3 gap-1 text-center border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
-                                    <div>
-                                        <span className="block text-2xl font-black text-slate-900 dark:text-white">
-                                            {stats.total_appearances || 0}
-                                        </span>
-                                        <span className="text-[9px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
-                                            Meciuri
-                                        </span>
-                                    </div>
-                                    <div className="border-x border-slate-100 dark:border-slate-800">
-                                        <span className="block text-2xl font-black text-amber-500 dark:text-yellow-400">
-                                            {stats.total_goals || 0}
-                                        </span>
-                                        <span className="text-[9px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
-                                            Goluri
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-2xl font-black text-red-600 dark:text-red-500">
-                                            {stats.total_assists || 0}
-                                        </span>
-                                        <span className="text-[9px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
-                                            Pase Decisive
-                                        </span>
-                                    </div>
+                                {/* POZIȚIE (STÂNGA SUS - CU CHENAR AURIU DISCRET) */}
+                                <div className="absolute top-3 left-3 z-20">
+                                    <span className="px-2.5 py-1 text-[9px] font-black tracking-widest text-white bg-slate-950/85 backdrop-blur-md rounded-md border border-yellow-500/50 shadow-md uppercase">
+                                        {player.position || "JUCĂTOR"}
+                                    </span>
                                 </div>
 
-                                {/* CASETE MINUTE JUCATE (ALBASTRU) & MEDIA RATING (ROȘU) */}
-                                <div className="grid grid-cols-2 gap-3 text-center">
-                                    <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-100/80 dark:border-blue-900/30 group-hover:border-blue-300 dark:group-hover:border-blue-700/50 transition-colors">
-                                         <div className="flex items-center gap-1.5 text-slate-800 dark:text-slate-100 font-black text-sm">
-                                            <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                                            {stats.minutes_played || 0}'
-                                         </div>
-                                         <span className="text-[8px] uppercase text-slate-400 dark:text-slate-400 font-bold mt-0.5 tracking-wider">
-                                            Minute Jucate
-                                         </span>
+                                {/* SECȚIUNE FOTO JUCĂTOR */}
+                                <div className="h-48 relative overflow-hidden bg-gradient-to-b from-slate-900 via-blue-950 to-slate-950 shrink-0 flex items-end justify-center pt-5">
+                                    <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#60a5fa_1px,transparent_1px)] [background-size:12px_12px]"></div>
+                                    <div className="absolute bottom-0 w-36 h-36 bg-blue-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                                    
+                                    <img 
+                                        src={player.image || GENERIC_USER_IMAGE} 
+                                        alt={player.name} 
+                                        className="h-full w-auto max-w-full object-contain object-bottom transition-transform duration-500 group-hover:scale-105 relative z-10 drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+                                        onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
+                                    />
+                                </div>
+
+                                {/* BANDĂ NUME ȘI ECHIPĂ */}
+                                <div className="relative bg-slate-950 px-4 py-3 text-white shrink-0">
+                                    <h3 className="text-lg sm:text-xl font-black leading-tight uppercase italic truncate tracking-tight text-white">
+                                        {player.name}
+                                    </h3>
+                                    <div className="flex items-center gap-1.5 text-yellow-400 text-[11px] font-bold mt-0.5 tracking-wide uppercase">
+                                        <Shield className="w-3.5 h-3.5 text-yellow-400 shrink-0" /> 
+                                        <span className="truncate">{teamNameStr}</span>
                                     </div>
-                                    <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-red-50/70 dark:bg-red-950/25 border border-red-100/80 dark:border-red-900/30 group-hover:border-red-300 dark:group-hover:border-red-700/50 transition-colors">
-                                         <div className="flex items-center gap-1.5 text-slate-800 dark:text-slate-100 font-black text-sm">
-                                            <Activity className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                                            {ratingValue}
-                                         </div>
-                                         <span className="text-[8px] uppercase text-slate-400 dark:text-slate-400 font-bold mt-0.5 tracking-wider">
-                                            Media Rating
-                                         </span>
+                                    <div className="absolute bottom-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-600 via-yellow-400 to-red-600"></div>
+                                </div>
+
+                                {/* STATISTICI PRINCIPALE */}
+                                <div className="p-5 flex-1 flex flex-col justify-between bg-white dark:bg-slate-900">
+                                    
+                                    <div className="grid grid-cols-3 gap-1 text-center border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
+                                        <div>
+                                            <span className="block text-2xl font-black text-slate-900 dark:text-white">
+                                                {stats.total_appearances || 0}
+                                            </span>
+                                            <span className="text-[9px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                                                Meciuri
+                                            </span>
+                                        </div>
+                                        <div className="border-x border-slate-100 dark:border-slate-800">
+                                            <span className="block text-2xl font-black text-amber-500 dark:text-yellow-400">
+                                                {stats.total_goals || 0}
+                                            </span>
+                                            <span className="text-[9px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                                                Goluri
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-2xl font-black text-red-600 dark:text-red-500">
+                                                {stats.total_assists || 0}
+                                            </span>
+                                            <span className="text-[9px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                                                Pase Decisive
+                                            </span>
+                                        </div>
                                     </div>
+
+                                    {/* MINUTE JUCATE & MEDIA RATING */}
+                                    <div className="grid grid-cols-2 gap-3 text-center">
+                                        <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-100/80 dark:border-blue-900/30 group-hover:border-blue-300 dark:group-hover:border-blue-700/50 transition-colors">
+                                             <div className="flex items-center gap-1.5 text-slate-800 dark:text-slate-100 font-black text-sm">
+                                                <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                                {stats.minutes_played || 0}'
+                                             </div>
+                                             <span className="text-[8px] uppercase text-slate-400 dark:text-slate-400 font-bold mt-0.5 tracking-wider">
+                                                Minute Jucate
+                                             </span>
+                                        </div>
+                                        <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-red-50/70 dark:bg-red-950/25 border border-red-100/80 dark:border-red-900/30 group-hover:border-red-300 dark:group-hover:border-red-700/50 transition-colors">
+                                             <div className="flex items-center gap-1.5 text-slate-800 dark:text-slate-100 font-black text-sm">
+                                                <Activity className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                                                {ratingValue}
+                                             </div>
+                                             <span className="text-[8px] uppercase text-slate-400 dark:text-slate-400 font-bold mt-0.5 tracking-wider">
+                                                Media Rating
+                                             </span>
+                                        </div>
+                                    </div>
+
                                 </div>
 
                             </div>
-
                         </div>
-                    </div>
-                );
-            })}
-            </div>
+                    );
+                })}
+                </div>
+                
+                {/* Elementul invizibil de Intersection Observer care declanșează paginația */}
+                <div ref={ref} className="w-full flex justify-center py-10 mt-4">
+                    {isFetchingNextPage ? (
+                        <div className="flex items-center gap-2 text-blue-600 font-bold">
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                            Încărcăm mai mulți stranieri...
+                        </div>
+                    ) : hasNextPage ? (
+                        <div className="h-10"></div>
+                    ) : (
+                        <div className="text-slate-400 font-medium text-sm">Ai ajuns la finalul listei de stranieri.</div>
+                    )}
+                </div>
+            </>
         )}
       </section>
     </div>
