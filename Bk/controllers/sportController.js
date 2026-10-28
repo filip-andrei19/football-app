@@ -1,10 +1,11 @@
 const sportService = require('../services/sportService');
+const smartSync = require('../services/smartSync'); // Adăugat pentru sincronizarea bazei de date
 
 // Helper pentru request-uri
 const handleRequest = async (res, serviceFunction, ...args) => {
   try {
     const result = await serviceFunction(...args);
-    if (!result) return res.status(404).json({ error: "Not Found" }); // Verificare extra
+    if (!result) return res.status(404).json({ error: "Not Found" });
     res.status(200).json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -17,7 +18,6 @@ exports.addPlayer = async (req, res) => {
   await handleRequest(res, sportService.createPlayer, data);
 };
 
-// MODIFICAT: Trimitem req.query pentru a prelua ?page=...&limit=...
 exports.getPlayers = async (req, res) => await handleRequest(res, sportService.getAllPlayers, req.query);
 
 exports.getPlayerById = async (req, res) => await handleRequest(res, sportService.getPlayerById, req.params.id);
@@ -37,4 +37,18 @@ exports.getCoaches = async (req, res) => await handleRequest(res, sportService.g
 
 // --- MATCHES ---
 exports.addMatch = async (req, res) => await handleRequest(res, sportService.createMatch, req.body);
-exports.getMatches = async (req, res) => await handleRequest(res, sportService.getAllMatches);
+exports.getMatches = async (req, res) => await handleRequest(res, sportService.getAllMatches); 
+
+// --- NOU: TRIGGER SMART SYNC PENTRU POPULAREA BAZEI DE DATE ---
+exports.triggerSmartSync = async (req, res) => {
+  try {
+    // Pornește procesul în fundal ca să nu blocheze browserul
+    smartSync.runDailySmartSync().catch(err => console.error("Eroare Sync:", err));
+    
+    res.status(200).json({ 
+      message: "Sincronizarea bazei de date a început! Verifică terminalul de la backend pentru progres." 
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

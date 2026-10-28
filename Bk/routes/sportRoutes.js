@@ -13,10 +13,12 @@ const { createMatchSchema } = require('../validators/matchValidator');
 const sportController = require('../controllers/sportController'); 
 
 // --- RUTE ---
-// Suportă acum opțional ?page=1&limit=20 pentru paginare / infinite scroll
 router.post('/players', auth, validate(createPlayerSchema), sportController.addPlayer);
 router.get('/players', sportController.getPlayers);       
 router.get('/players/:id', sportController.getPlayerById); 
+
+// --- NOU: RUTA DE TRIGGER PENTRU POPULARE ---
+router.get('/trigger-sync', sportController.triggerSmartSync);
 
 router.post('/teams', auth, validate(createTeamSchema), sportController.addTeam);
 router.get('/teams', sportController.getTeams);
