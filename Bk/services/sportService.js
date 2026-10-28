@@ -1,17 +1,23 @@
-const { Player, Team } = require('../models/models'); // SAU require('../models/player') depinde cum ai fișierele
-// Verifică să imporți corect modelul Player definit mai sus!
-// Dacă ai fișiere separate, folosește: const Player = require('../models/player');
+const { Player, Team } = require('../models/models'); // Verifică să imporți corect modelul
 
 // --- PLAYERS ---
 const createPlayer = async (data) => await Player.create(data);
 
 // --- MODIFICARE AICI ---
-// Am scos .populate('team'). Luăm datele "raw", exact cum sunt în MongoDB.
-const getAllPlayers = async () => {
-  return await Player.find(); 
+const getAllPlayers = async (query = {}) => {
+  // 1. Preluăm page și limit din query (cu valori default de siguranță)
+  const page = parseInt(query.page) || 1;
+  const limit = parseInt(query.limit) || 250; 
+  const skip = (page - 1) * limit;
+
+  // 2. Interogăm baza de date cu sortare obligatorie pentru o paginare stabilă
+  return await Player.find()
+    .sort({ _id: -1 }) // Ordonăm descrescător după ID (cei mai noi primii)
+    .skip(skip)
+    .limit(limit); 
 };
 
-// ... Restul funcțiilor rămân la fel ...
+// --- TEAMS & ALTELE ---
 const createTeam = async (data) => await Team.create(data);
 const getAllTeams = async () => await Team.find();
 
