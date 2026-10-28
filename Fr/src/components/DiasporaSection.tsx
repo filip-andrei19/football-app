@@ -111,8 +111,11 @@ export function DiasporaSection() {
   // Transformă array-urile din fiecare pagină într-o singură listă
   const allPlayers = data ? data.pages.flatMap(page => page) : [];
 
-  // Păstrează logica originală de sortare
-  const sortedPlayers = [...allPlayers].sort((a: Player, b: Player) => {
+  // FILTRU ANTI-DUPLICATE: Elimină jucătorii cu același nume returnați de MongoDB
+  const uniquePlayers = Array.from(new Map(allPlayers.map(p => [p.name, p])).values());
+
+  // Folosește uniquePlayers în loc de allPlayers pentru sortarea originală
+  const sortedPlayers = [...uniquePlayers].sort((a: Player, b: Player) => {
       const teamA = (a.team_name || a.team || "").toLowerCase();
       const teamB = (b.team_name || b.team || "").toLowerCase();
       

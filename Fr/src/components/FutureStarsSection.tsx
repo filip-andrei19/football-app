@@ -98,8 +98,11 @@ export function FutureStarsSection() {
   // Aplatizează array-urile de pagini într-un singur array de jucători
   const allPlayers = data ? data.pages.flatMap(page => page) : [];
 
-  // Procesarea și filtrarea datelor rămâne aceeași
-  const processedPlayers = allPlayers
+  // FILTRU ANTI-DUPLICATE: Elimină jucătorii cu același nume
+  const uniquePlayers = Array.from(new Map(allPlayers.map(p => [p.name, p])).values());
+
+  // Procesarea și filtrarea datelor folosind lista unică
+  const processedPlayers = uniquePlayers
     .filter((p: Player) => {
         const playerAge = getPlayerAge(p);
         return playerAge !== null && playerAge <= 21;
