@@ -16,14 +16,15 @@ exports.addPlayer = async (req, res) => {
   const data = { ...req.body, team: req.body.teamId };
   await handleRequest(res, sportService.createPlayer, data);
 };
-exports.getPlayers = async (req, res) => await handleRequest(res, sportService.getAllPlayers);
-// ADAUGĂ ASTA:
+
+// MODIFICAT: Trimitem req.query pentru a prelua ?page=...&limit=...
+exports.getPlayers = async (req, res) => await handleRequest(res, sportService.getAllPlayers, req.query);
+
 exports.getPlayerById = async (req, res) => await handleRequest(res, sportService.getPlayerById, req.params.id);
 
 // --- TEAMS ---
 exports.addTeam = async (req, res) => await handleRequest(res, sportService.createTeam, req.body);
 exports.getTeams = async (req, res) => await handleRequest(res, sportService.getAllTeams);
-// ADAUGĂ ASTA:
 exports.getTeamById = async (req, res) => await handleRequest(res, sportService.getTeamById, req.params.id);
 
 // --- COMPETITIONS ---

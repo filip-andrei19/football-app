@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const validate = require('../validators/validateHelper');
 
-// Validatoare (asigură-te că fișierele există, altfel comentează liniile astea)
+// Validatoare 
 const { createPlayerSchema } = require('../validators/playerValidator');
 const { createTeamSchema } = require('../validators/teamValidator');
 const { createCompetitionSchema } = require('../validators/competitionValidator');
@@ -13,7 +13,7 @@ const { createMatchSchema } = require('../validators/matchValidator');
 const sportController = require('../controllers/sportController'); 
 
 // --- RUTE ---
-// Ruta finală va fi: /api/sport/players
+// Suportă acum opțional ?page=1&limit=20 pentru paginare / infinite scroll
 router.post('/players', auth, validate(createPlayerSchema), sportController.addPlayer);
 router.get('/players', sportController.getPlayers);       
 router.get('/players/:id', sportController.getPlayerById); 
