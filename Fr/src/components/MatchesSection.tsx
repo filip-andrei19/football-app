@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     Calendar,
     Trophy,
@@ -92,8 +93,7 @@ interface SquadData {
 }
 
 export function MatchesSection({ userEmail }: { userEmail?: string }) {
-    const [matches, setMatches] = useState<Match[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
 
     const [dates, setDates] = useState<{ date: Date; label: string; isToday: boolean }[]>([]);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -154,56 +154,32 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         }
     }, [userEmail]);
 
-    const fetchMatches = async (dateStr: string) => {
-        setLoading(true);
-        try {
-            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/matches?date=${dateStr}`);
-            if (res.ok) {
-                const data = await res.json();
-                setMatches(data);
-            }
-        } catch (err) {
-            console.error("Eroare preluare meciuri", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // === FORMATĂM DATA PENTRU REACT QUERY ===
+    const localDateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000)
+        .toISOString()
+        .split('T')[0];
 
-    useEffect(() => {
-        if (!selectedDate) return;
-        const localDateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000)
-            .toISOString()
-            .split('T')[0];
-        fetchMatches(localDateStr);
-    }, [selectedDate]);
+    // === REACT QUERY PENTRU CACHING ȘI FETCH AUTOMAT ===
+    const { data: matches = [], isLoading: loading } = useQuery({
+        queryKey: ['matches', localDateStr],
+        queryFn: async () => {
+            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/matches?date=${localDateStr}`);
+            if (!res.ok) throw new Error("Eroare preluare meciuri");
+            return res.json();
+        },
+        staleTime: 60 * 1000,       
+        refetchInterval: 60 * 1000, 
+    });
 
-    // === FETCH SILENȚIOS LA FIECARE 60 SECUNDE (FALLBACK PENTRU SOCKET SLEEP) ===
-    useEffect(() => {
-        if (!selectedDate) return;
-        const interval = setInterval(() => {
-            const localDateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000)
-                .toISOString()
-                .split('T')[0];
-            
-            // Fetch silențios, fără setLoading(true) pentru a nu întrerupe UI-ul
-            fetch(`https://football-backend-m2a4.onrender.com/api/sport/matches?date=${localDateStr}`)
-                .then(res => res.ok ? res.json() : null)
-                .then(data => {
-                    if (data) setMatches(data);
-                })
-                .catch(() => {});
-        }, 60000); // 60 de secunde
-
-        return () => clearInterval(interval);
-    }, [selectedDate]);
-
-    // === SOCKET.IO ACTUALIZAT PENTRU NOTIFICĂRI ===
+    // === SOCKET.IO ACTUALIZAT PENTRU A MODIFICA CACHE-UL REACT QUERY ===
     useEffect(() => {
         socket.on("live_match_update", (updatedMatch: Match) => {
-            setMatches(prevMatches => {
-                const index = prevMatches.findIndex(m => m.fixture_id === updatedMatch.fixture_id);
+            queryClient.setQueriesData<Match[]>({ queryKey: ['matches'] }, (oldMatches) => {
+                if (!oldMatches) return oldMatches;
+                const index = oldMatches.findIndex(m => m.fixture_id === updatedMatch.fixture_id);
+                
                 if (index !== -1) {
-                    const oldMatch = prevMatches[index];
+                    const oldMatch = oldMatches[index];
 
                     // Notificări Push la marcarea unui gol în meciurile favorite
                     if (favoriteMatches.includes(updatedMatch.fixture_id)) {
@@ -220,12 +196,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         }
                     }
 
-                    const newMatches = [...prevMatches];
+                    const newMatches = [...oldMatches];
                     newMatches[index] = { ...newMatches[index], ...updatedMatch };
                     return newMatches;
                 }
-                return prevMatches;
+                return oldMatches;
             });
+
             setSelectedMatchDetails(prev =>
                 prev && prev.fixture_id === updatedMatch.fixture_id ? { ...prev, ...updatedMatch } : prev
             );
@@ -233,7 +210,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         return () => {
             socket.off("live_match_update");
         };
-    }, [favoriteMatches]);
+    }, [favoriteMatches, queryClient]);
 
     const toggleFavoriteMatch = async (e: React.MouseEvent, fixtureId: number) => {
         e.stopPropagation();
@@ -258,12 +235,23 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const handleTeamClick = async (e: React.MouseEvent, teamName: string) => {
         e.stopPropagation();
-        setLoadingRoster(true);
-        setSelectedTeam(null);
+        
+        const cachedRoster = queryClient.getQueryData(['teamRoster', teamName]);
+        if (!cachedRoster) {
+            setLoadingRoster(true);
+            setSelectedTeam(null);
+        }
+
         try {
-            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/teams/${encodeURIComponent(teamName)}/roster`);
-            if (!res.ok) throw new Error("Nu am putut prelua lotul. Posibil ca echipa să nu fie încă scanată complet.");
-            const data = await res.json();
+            const data: any = await queryClient.fetchQuery({
+                queryKey: ['teamRoster', teamName],
+                queryFn: async () => {
+                    const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/teams/${encodeURIComponent(teamName)}/roster`);
+                    if (!res.ok) throw new Error("Nu am putut prelua lotul. Posibil ca echipa să nu fie încă scanată complet.");
+                    return res.json();
+                },
+                staleTime: 60 * 60 * 1000, 
+            });
             setSelectedTeam(data);
         } catch (err: any) {
             alert(err.message);
@@ -273,21 +261,34 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     };
 
     const handleMatchClick = async (match: Match) => {
-        setLoadingMatchDetails(true);
+        const cachedDetails = queryClient.getQueryData(['matchDetails', match.fixture_id]);
+        if (!cachedDetails) setLoadingMatchDetails(true);
+
         setSelectedMatchDetails(match);
         setStandingsData([]);
         setLineupViewMode('both');
         setActiveMatchTab(match.status_short === "NS" ? 'standings' : 'events');
 
         try {
-            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/matches/${match.fixture_id}/details`);
-            if (res.ok) {
-                const fullData = await res.json();
-                setSelectedMatchDetails(fullData);
-                setMatches(prev => prev.map(m => (m.fixture_id === fullData.fixture_id ? { ...m, ...fullData } : m)));
-                if (fullData.status_short === "NS" && (!fullData.lineups || fullData.lineups.length === 0)) {
-                    fetchStandings(fullData.league_id);
-                }
+            const fullData: any = await queryClient.fetchQuery({
+                queryKey: ['matchDetails', match.fixture_id],
+                queryFn: async () => {
+                    const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/matches/${match.fixture_id}/details`);
+                    if (!res.ok) throw new Error("Eroare detalii meci");
+                    return res.json();
+                },
+                staleTime: 60 * 1000, 
+            });
+
+            setSelectedMatchDetails(fullData);
+            
+            queryClient.setQueriesData<Match[]>({ queryKey: ['matches'] }, (oldMatches) => {
+                if (!oldMatches) return oldMatches;
+                return oldMatches.map(m => (m.fixture_id === fullData.fixture_id ? { ...m, ...fullData } : m));
+            });
+
+            if (fullData.status_short === "NS" && (!fullData.lineups || fullData.lineups.length === 0)) {
+                fetchStandings(fullData.league_id);
             }
         } catch (err) {
             console.error("Eroare detalii meci:", err);
@@ -298,13 +299,21 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const fetchStandings = async (leagueId: number) => {
         if (standingsData.length > 0) return;
-        setLoadingStandings(true);
+        
+        const cachedStandings = queryClient.getQueryData(['standings', leagueId]);
+        if (!cachedStandings) setLoadingStandings(true);
+
         try {
-            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/standings/${leagueId}`);
-            if (res.ok) {
-                const data = await res.json();
-                setStandingsData(data.table || []);
-            }
+            const data: any = await queryClient.fetchQuery({
+                queryKey: ['standings', leagueId],
+                queryFn: async () => {
+                    const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/standings/${leagueId}`);
+                    if (!res.ok) throw new Error("Eroare clasament");
+                    return res.json();
+                },
+                staleTime: 15 * 60 * 1000, 
+            });
+            setStandingsData(data.table || []);
         } catch (err) {
             console.error("Eroare clasament:", err);
         } finally {
@@ -329,7 +338,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         }
     };
 
-    const filteredMatches = matches.filter(match => {
+    const filteredMatches = matches.filter((match: Match) => {
         const isLive = ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"].includes(match.status_short);
         const isFinished = ["FT", "AET", "PEN"].includes(match.status_short);
         const isFav = favoriteMatches.includes(match.fixture_id);
@@ -340,7 +349,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         return true;
     });
 
-    const groupedMatches = filteredMatches.reduce((acc, match) => {
+    const groupedMatches = filteredMatches.reduce((acc: Record<string, { league_id: number; logo: string; items: Match[] }>, match: Match) => {
         if (!acc[match.league_name]) {
             acc[match.league_name] = { league_id: match.league_id, logo: match.league_logo, items: [] };
         }
@@ -359,7 +368,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         return a.localeCompare(b);
     });
 
-    const liveCount = matches.filter(m => ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"].includes(m.status_short)).length;
+    const liveCount = matches.filter((m: Match) => ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"].includes(m.status_short)).length;
 
     const renderStatus = (match: Match) => {
         const status = match.status_short;
@@ -1513,7 +1522,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             </div>
 
                             <div className="divide-y divide-slate-100">
-                                {groupedMatches[leagueName].items.map(match => {
+                                {groupedMatches[leagueName].items.map((match: Match) => {
                                     const isLive = ["1H", "2H", "HT", "ET", "P", "BT", "LIVE"].includes(match.status_short);
                                     const isFav = favoriteMatches.includes(match.fixture_id);
 
