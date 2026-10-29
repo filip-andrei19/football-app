@@ -284,7 +284,10 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
   const [greeting, setGreeting] = useState("Salut");
 
-  const API_URL = "https://football-backend-m2a4.onrender.com";
+  // SETAREA CORECTĂ A MEDIULUI PENTRU API
+  const API_URL = window.location.hostname === "localhost" 
+      ? "http://localhost:3000" 
+      : "https://football-backend-m2a4.onrender.com";
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -310,7 +313,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         }
       })
       .catch(() => {});
-  }, [user?.email]);
+  }, [user?.email, API_URL]);
 
   const hasActiveProFilters =
     positionFilter !== "Toate" ||
@@ -401,7 +404,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     showProFilters,
     hasActiveProFilters,
     onlyWatchlist,
-    user?.email
+    user?.email,
+    API_URL
   ]);
 
   // Filtrare suplimentară client-side (înălțime, watchlist, sortare pro)

@@ -71,9 +71,9 @@ export function DiasporaSection() {
   const [activeFilter, setActiveFilter] = useState("Toate");
   const { ref, inView } = useInView();
 
-  // Setăm backend-ul pe portul 5000 când suntem local, altfel folosim linkul de Render
+  // Setăm backend-ul pe portul 3000 când suntem local, altfel folosim linkul de Render
   const API_URL = window.location.hostname === "localhost" 
-      ? "http://localhost:5000" 
+      ? "http://localhost:3000" 
       : "https://football-backend-m2a4.onrender.com";
 
   // Funcția de fetch adaptată pentru Infinite Query
