@@ -15,7 +15,7 @@ const getAllPlayers = async (query = {}) => {
 
   let filter = {};
 
-  // 1. Filtru dinamic pentru Diaspora: români care joacă în afara României (league_id diferit de 283)
+  // 1. Filtru dinamic pentru Diaspora
   if (query.diaspora === 'true') {
       filter.nationality = { $regex: /romania/i };
       filter.league_id = { $ne: 283 }; 
@@ -37,9 +37,15 @@ const getAllPlayers = async (query = {}) => {
     .limit(limit); 
 };
 
+// Funcție lipsă care cauza eroarea în controller
+const getPlayerById = async (id) => await Player.findById(id);
+
 // --- TEAMS & ALTELE ---
 const createTeam = async (data) => await Team.create(data);
 const getAllTeams = async () => await Team.find();
+
+// Funcție lipsă care cauza eroarea în controller
+const getTeamById = async (id) => await Team.findById(id);
 
 const createCompetition = async (data) => await Competition.create(data);
 const getAllCompetitions = async () => await Competition.find();
@@ -51,8 +57,8 @@ const createMatch = async (data) => await Match.create(data);
 const getAllMatches = async () => await Match.find();
 
 module.exports = {
-  createPlayer, getAllPlayers,
-  createTeam, getAllTeams,
+  createPlayer, getAllPlayers, getPlayerById,
+  createTeam, getAllTeams, getTeamById,
   createCompetition, getAllCompetitions,
   createCoach, getAllCoaches,
   createMatch, getAllMatches
