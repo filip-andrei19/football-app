@@ -1,9 +1,13 @@
-const { Player, Team } = require('../models/models'); // Verifică să imporți corect modelul
+// Importăm corect modelele din fișierele lor specifice
+const Player = require('../models/player');
+const Team = require('../models/team');
+const Competition = require('../models/competition');
+const Coach = require('../models/coach');
+const Match = require('../models/match');
 
 // --- PLAYERS ---
 const createPlayer = async (data) => await Player.create(data);
 
-// --- MODIFICARE AICI ---
 const getAllPlayers = async (query = {}) => {
   const page = parseInt(query.page) || 1;
   const limit = parseInt(query.limit) || 250; 
