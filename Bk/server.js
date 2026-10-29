@@ -618,18 +618,19 @@ const startServer = async () => {
                 let conditions = [];
 
                 if (diaspora === 'true') {
-                    // Filtrul corect pentru Diaspora: Jucători români care NU joacă în SuperLiga României (283, 284)
-                    // SAU fac parte din lotul Echipei Naționale a României
+                    // Filtrul corectat: Jucători români (cu sau fără diacritice) care nu joacă în liga 283/284
                     conditions.push({
                         $or: [
-                            { nationality: { $regex: /^romania$/i }, league_id: { $nin: [283, 284] } }, { team_name: {$regex: /romania/i } }
+                            { nationality: { $regex: /romania|românia/i }, league_id: { $nin: [283, 284] } }, 
+                            { team_name: {$regex: /romania|românia/i } }
                         ]
                     });
                 } else if (u21 === 'true') {
-                    // Filtrul pentru Future Stars: Căutăm în TOATĂ baza de date toți jucătorii U21
+                    // Filtru pentru U21 asigurat
                     conditions.push({
                         $or: [
-                            { age: { $gt: 0, $lte: 21 } }, { birth_date: {$regex: /^(2005|2006|2007|2008|2009|2010)/ } }
+                            { age: { $gt: 0, $lte: 21 } }, 
+                            { birth_date: {$regex: /^(2005|2006|2007|2008|2009|2010|2011)/ } }
                         ]
                     });
                 }
@@ -695,17 +696,13 @@ const startServer = async () => {
                 }
 
                 const finalQuery = conditions.length > 0 ? { $and: conditions } : {};
-                const hasCustomFilters = Boolean(
-                    search || diaspora === 'true' || u21 === 'true' || position ||
-                    minAge || maxAge || minMinutes || minGoals || minRating || leagueId || nationality || team
-                );
+                
+                // Am adăugat suport pentru paginare (page și limit) din frontend
+                const page = parseInt(req.query.page) || 1;
+                const limitValue = limit ? parseInt(limit) : (diaspora === 'true' || u21 === 'true' ? 12 : 300);
+                const skipValue = (page - 1) * limitValue;
 
-                let playersQuery = Player.find(finalQuery);
-                if (!hasCustomFilters) {
-                    playersQuery = playersQuery.limit(limit ? Number(limit) : 300);
-                } else if (limit) {
-                    playersQuery = playersQuery.limit(Number(limit));
-                }
+                let playersQuery = Player.find(finalQuery).sort({ _id: -1 }).skip(skipValue).limit(limitValue);
 
                 let players = await playersQuery;
 
