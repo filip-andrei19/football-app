@@ -597,28 +597,20 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
+        // ==========================================
+        // RUTA DE PLAYERS PENTRU SCOUTING (CORECATĂ CU SUPORT DE PAGINAȚIE ȘI DIACRITICE)
+        // ==========================================
         app.get('/api/sport/players', async (req, res) => {
             try {
                 const {
-                    search,
-                    diaspora,
-                    u21,
-                    position,
-                    minAge,
-                    maxAge,
-                    minMinutes,
-                    minGoals,
-                    minRating,
-                    leagueId,
-                    nationality,
-                    team,
-                    limit
+                    search, diaspora, u21, position, minAge, maxAge,
+                    minMinutes, minGoals, minRating, leagueId, nationality, team, limit
                 } = req.query;
 
                 let conditions = [];
 
                 if (diaspora === 'true') {
-                    // Filtrul corectat: Jucători români (cu sau fără diacritice) care nu joacă în liga 283/284
+                    // Filtrul corectat: Jucători români (cu sau fără diacritice) care nu joacă în liga internă (283/284)
                     conditions.push({
                         $or: [
                             { nationality: { $regex: /romania|românia/i }, league_id: { $nin: [283, 284] } }, 
@@ -626,7 +618,6 @@ const startServer = async () => {
                         ]
                     });
                 } else if (u21 === 'true') {
-                    // Filtru pentru U21 asigurat
                     conditions.push({
                         $or: [
                             { age: { $gt: 0, $lte: 21 } }, 
@@ -647,7 +638,6 @@ const startServer = async () => {
                     });
                 }
 
-                // Filtre avansate pentru modulul de Scouting Pro
                 if (position && position !== 'Toate') {
                     const posLower = position.toLowerCase();
                     if (posLower.includes('portar') || posLower.includes('goalkeeper')) {
@@ -670,22 +660,10 @@ const startServer = async () => {
                     conditions.push({ age: ageFilter });
                 }
 
-                if (minMinutes) {
-                    conditions.push({ 'statistics_summary.minutes_played': { $gte: Number(minMinutes) } });
-                }
-
-                if (minGoals) {
-                    conditions.push({ 'statistics_summary.total_goals': { $gte: Number(minGoals) } });
-                }
-
-                if (leagueId) {
-                    conditions.push({ league_id: Number(leagueId) });
-                }
-
-                if (nationality) {
-                    conditions.push({ nationality: { $regex: nationality,$options: 'i' } });
-                }
-
+                if (minMinutes) conditions.push({ 'statistics_summary.minutes_played': { $gte: Number(minMinutes) } });
+                if (minGoals) conditions.push({ 'statistics_summary.total_goals': { $gte: Number(minGoals) } });
+                if (leagueId) conditions.push({ league_id: Number(leagueId) });
+                if (nationality) conditions.push({ nationality: { $regex: nationality,$options: 'i' } });
                 if (team) {
                     conditions.push({
                         $or: [
@@ -697,7 +675,6 @@ const startServer = async () => {
 
                 const finalQuery = conditions.length > 0 ? { $and: conditions } : {};
                 
-                // Am adăugat suport pentru paginare (page și limit) din frontend
                 const page = parseInt(req.query.page) || 1;
                 const limitValue = limit ? parseInt(limit) : (diaspora === 'true' || u21 === 'true' ? 12 : 300);
                 const skipValue = (page - 1) * limitValue;
@@ -717,7 +694,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
         });
 
-        // RUTA NOUĂ: COMPARATOR HEAD-TO-HEAD JUCĂTORI
         app.get('/api/sport/players/compare', async (req, res) => {
             try {
                 const { ids } = req.query;
@@ -725,9 +701,7 @@ const startServer = async () => {
                 const idList = String(ids).split(',').map(id => id.trim()).filter(Boolean);
                 const players = await Player.find({ _id: { $in: idList } });
                 res.json(players);
-            } catch (err) {
-                res.status(500).json({ error: "Eroare la compararea jucătorilor." });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare la compararea jucătorilor." }); }
         });
         
         app.get('/api/sport/teams/search', async (req, res) => {
@@ -799,43 +773,33 @@ const startServer = async () => {
                 const { date } = req.query; 
                 if (!date) return res.status(400).json({ error: "Parametrul date este obligatoriu" });
 
-                // Setăm intervalul corect pentru ziua respectivă (00:00:00 până la 23:59:59)
                 const startDate = new Date(`${date}T00:00:00.000Z`);
                 const endDate = new Date(`${date}T23:59:59.999Z`);
 
-                const matches = await Fixture.find({
-                    date: { $gte: startDate,$lte: endDate }
-                }).sort({ league_id: 1, timestamp: 1 });
+                const matches = await Fixture.find({ date: { $gte: startDate,$lte: endDate } }).sort({ league_id: 1, timestamp: 1 });
 
-                // Verificăm dacă există meciuri al căror timp de start a trecut dar au rămas cu "NS" sau agățate în LIVE
                 const nowSec = Math.floor(Date.now() / 1000);
                 const hasOutdatedMatches = matches.some(m =>
                     (m.status_short === "NS" && m.timestamp && m.timestamp < nowSec - 300) ||
                     (["1H", "HT", "2H", "ET", "P", "BT", "LIVE"].includes(m.status_short) && m.timestamp && m.timestamp < nowSec - (130 * 60))
                 );
 
-                // Declanșăm sincronizarea automată în fundal (cu cooldown de 10 minute) dacă există meciuri neactualizate
                 if (hasOutdatedMatches && (Date.now() - lastAutoMatchSyncTime > 10 * 60 * 1000)) {
                     lastAutoMatchSyncTime = Date.now();
                     sync7DaysWindow().catch(err => console.error("Eroare auto-sync meciuri:", err.message));
                 }
 
                 res.json(matches);
-            } catch (err) {
-                res.status(500).json({ error: "Eroare la preluarea meciurilor." });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare la preluarea meciurilor." }); }
         });
         
         app.get('/api/sport/matches/:fixtureId/details', async (req, res) => {
             try {
                 const matchDetails = await getFixtureDetailsOnDemand(req.params.fixtureId);
                 if (!matchDetails) return res.status(404).json({ error: "Meciul nu a fost găsit." });
-                // Trimitem actualizarea și prin Socket.io ca lista de meciuri să actualizeze scorul instantaneu
                 io.emit("live_match_update", matchDetails);
                 res.json(matchDetails);
-            } catch (err) {
-                res.status(500).json({ error: "Eroare la preluarea detaliilor meciului." });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare la preluarea detaliilor meciului." }); }
         });
 
         app.get('/api/sport/standings/:leagueId', async (req, res) => {
@@ -843,9 +807,7 @@ const startServer = async () => {
                 const standings = await getLeagueStandingsOnDemand(req.params.leagueId);
                 if (!standings) return res.status(404).json({ error: "Clasamentul nu este disponibil." });
                 res.json(standings);
-            } catch (err) {
-                res.status(500).json({ error: "Eroare la preluarea clasamentului." });
-            }
+            } catch (err) { res.status(500).json({ error: "Eroare la preluarea clasamentului." }); }
         });
 
         app.get('/api/admin/users', async (req, res) => { const users = await User.find(); res.json(users); });
@@ -864,24 +826,12 @@ const startServer = async () => {
         app.get('/api/admin/hard-reset', async (req, res) => { hardResetAndLoad(); res.send("Reset."); });
         app.get('/api/admin/force-sync', async (req, res) => { runDailySmartSync(); res.send("Sync."); });
         app.get('/api/admin/force-sync-national', async (req, res) => { runNationalTeamSync(); res.send("Sync national."); });
-        
-        app.get('/api/admin/force-matches', async (req, res) => { 
-            sync7DaysWindow(); 
-            res.send("Sincronizarea celor 7 zile de meciuri a pornit în fundal!"); 
-        });
+        app.get('/api/admin/force-matches', async (req, res) => { sync7DaysWindow(); res.send("Sync meciuri pornit."); });
 
-        // RUTA DE CURĂȚARE ROBUSTĂ PENTRU JUCĂTORII STRĂINI DIN DIASPORA
+        // RUTA DE CURĂȚARE ROBUSTĂ PENTRU JUCĂTORII STRĂINI DIN DIASPORA (DEZACTIVATĂ PENTRU A PREVENI ȘTERGERILE)
         app.get('/api/admin/clean-foreign-players', async (req, res) => {
             try {
-                // Trecem la "Necunoscut" pe toți cei care au naționalitatea setată pe România 
-                // dar NU joacă în SuperLiga românească și NICI la Naționala României
-                const result = await Player.updateMany(
-                    { 
-                        nationality: { $regex: /^romania$/i },
-                        team_name: { $nin: ["Romania (Nationala)", "Romania"] },
-                        league_id: { $nin: [283, 284] } }, {$set: { nationality: "Necunoscut" } }
-                );
-                res.send(`Curățare reușită! Au fost actualizați ${result.modifiedCount} jucători străini care aveau naționalitatea eronată.`);
+                res.send(`Această rută a fost dezactivată temporar deoarece ștergea din greșeală jucătorii români din Diaspora (modificându-le naționalitatea în "Necunoscut"). Baza de date este în siguranță!`);
             } catch (err) {
                 res.status(500).send(err.message);
             }
@@ -893,58 +843,33 @@ const startServer = async () => {
         Sentry.setupExpressErrorHandler(app);
 
         cron.schedule('14 12 * * *', async () => { await runDailySmartSync(); }, { timezone: "Europe/Bucharest" });
-
-        // Sincronizare programată atât la 01:00 noaptea, cât și la fiecare 3 ore pentru a menține toate scorurile la zi
         cron.schedule('0 1,9,13,17,21,23 * * *', async () => { await sync7DaysWindow(); }, { timezone: "Europe/Bucharest" });
 
-        // Verificăm la pornire atât meciurile agățate în LIVE, cât și meciurile trecute de ora de start rămase în "NS"
         const nowTimestamp = Math.floor(Date.now() / 1000);
         const stuckMatches = await Fixture.countDocuments({
             $or: [
-                {
-                    status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] },
-                    timestamp: { $lt: nowTimestamp - (130 * 60) }
-                },
-                {
-                    status_short: "NS",
-                    timestamp: { $lt: nowTimestamp - (15 * 60),$gt: nowTimestamp - (3 * 86400) }
-                }
+                { status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] }, timestamp: { $lt: nowTimestamp - (130 * 60) } },
+                { status_short: "NS", timestamp: { $lt: nowTimestamp - (15 * 60),$gt: nowTimestamp - (3 * 86400) } }
             ]
         });
-        if (stuckMatches > 0) {
-            console.log(`Am găsit ${stuckMatches} meciuri rămase neactualizate (NS/LIVE). Pornesc actualizarea ferestrei de 7 zile...`);
-            sync7DaysWindow();
-        }
+        if (stuckMatches > 0) sync7DaysWindow();
 
         setInterval(async () => {
             try {
                 const currentTimestamp = Math.floor(Date.now() / 1000);
                 const startWindow = currentTimestamp + (5 * 60); 
                 const endWindow = currentTimestamp - (180 * 60); 
-                
                 const liveMatchesCount = await Fixture.countDocuments({
                     $or: [
-                        {
-                            timestamp: { $lte: startWindow,$gte: endWindow },
-                            status_short: { $nin: ["FT", "AET", "PEN", "PST", "CANC", "ABD"] }
-                        },
-                        {
-                            status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] },
-                            timestamp: { $gte: currentTimestamp - (6 * 3600) }
-                        }
+                        { timestamp: { $lte: startWindow,$gte: endWindow }, status_short: { $nin: ["FT", "AET", "PEN", "PST", "CANC", "ABD"] } },
+                        { status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] }, timestamp: { $gte: currentTimestamp - (6 * 3600) } }
                     ]
                 });
-                
-                if (liveMatchesCount > 0) {
-                    syncLiveMatches(io);
-                } 
-            } catch (err) {
-                console.log("Eroare verificare live local:", err.message);
-            }
+                if (liveMatchesCount > 0) syncLiveMatches(io);
+            } catch (err) { console.log("Eroare verificare live local:", err.message); }
         }, 30 * 1000);
 
         server.listen(PORT, () => console.log(`Server pornit pe port ${PORT}`));
-
     } catch (error) { console.error("Eroare:", error.message); }
 };
 
