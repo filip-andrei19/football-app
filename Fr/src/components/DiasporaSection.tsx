@@ -71,15 +71,22 @@ export function DiasporaSection() {
   const [activeFilter, setActiveFilter] = useState("Toate");
   const { ref, inView } = useInView();
 
+  // Setăm backend-ul pe portul 5000 când suntem local, altfel folosim linkul de Render
   const API_URL = window.location.hostname === "localhost" 
-      ? "http://localhost:3000" 
+      ? "http://localhost:5000" 
       : "https://football-backend-m2a4.onrender.com";
 
   // Funcția de fetch adaptată pentru Infinite Query
   const fetchDiaspora = async ({ pageParam = 1 }) => {
-    const response = await fetch(`${API_URL}/api/sport/players?diaspora=true&page=${pageParam}&limit=12`);
-    if (!response.ok) throw new Error("Eroare la preluarea datelor Diaspora");
-    return response.json();
+    try {
+      // Adăugăm un timestamp fals (?t=...) pentru a preveni cache-ul agresiv de la React Query / Browser
+      const response = await fetch(`${API_URL}/api/sport/players?diaspora=true&page=${pageParam}&limit=12&t=${Date.now()}`);
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      return await response.json();
+    } catch (err) {
+      console.error("Eroare FETCH Diaspora:", err);
+      throw err;
+    }
   };
 
   // Setup React Query pentru Infinite Scroll

@@ -62,13 +62,18 @@ export function FutureStarsSection() {
   const { ref, inView } = useInView();
 
   const API_URL = window.location.hostname === "localhost" 
-      ? "http://localhost:3000" 
+      ? "http://localhost:5000" 
       : "https://football-backend-m2a4.onrender.com";
 
   const fetchYoungTalents = async ({ pageParam = 1 }) => {
-    const response = await fetch(`${API_URL}/api/sport/players?u21=true&page=${pageParam}&limit=12`);
-    if (!response.ok) throw new Error("Eroare la preluarea datelor");
-    return response.json();
+    try {
+      const response = await fetch(`${API_URL}/api/sport/players?u21=true&page=${pageParam}&limit=12&t=${Date.now()}`);
+      if (!response.ok) throw new Error("Eroare la preluarea datelor");
+      return await response.json();
+    } catch (err) {
+      console.error("Eroare FETCH Future Stars:", err);
+      throw err;
+    }
   };
 
   const {
