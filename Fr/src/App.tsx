@@ -43,18 +43,8 @@ export default function App() {
   // State pentru produsul partajat (din URL)
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
 
-  // Funcție adaptată pentru gestionarea avertismentului de admin
+  // Returnăm direct datele, nu mai ștergem avertismentul aici
   const checkAdminWarnings = (userData: any) => {
-      if (userData && userData.hasAdminDeletedMessages) {
-          // Nu mai afișăm toast. În schimb, apelăm backend-ul să-i scoată flag-ul 
-          // pentru logările următoare, dar lăsăm `hasAdminDeletedMessages` temporar true 
-          // în starea curentă pentru a putea deschide banner-ul
-          fetch(`${(import.meta as any).env.VITE_API_URL || ''}/api/users/clear-warning`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: userData.email })
-          }).catch((err: any) => console.error("Eroare la curățarea avertismentului:", err));
-      }
       return userData;
   };
 
@@ -101,8 +91,19 @@ export default function App() {
   // Funcția care închide mesajul și previne reafișarea lui
   const handleDismissWarning = () => {
       setShowWarning(false);
+      
       if (user?.email) {
+          // Salvăm în memoria browserului
           localStorage.setItem(`warning_ack_${user.email}`, 'true');
+          
+          // Ștergem avertismentul definitiv din Baza de Date
+          const backendUrl = (import.meta as any).env.VITE_API_URL ? `${(import.meta as any).env.VITE_API_URL}/api` : 'https://football-backend-m2a4.onrender.com/api';
+          
+          fetch(`${backendUrl}/users/clear-warning`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: user.email })
+          }).catch((err) => console.error("Eroare la curățarea avertismentului din DB:", err));
       }
       
       // Actualizăm starea locală a utilizatorului ca să nu mai declanșeze nimic
