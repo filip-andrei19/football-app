@@ -2,33 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Users, Newspaper, Ban, CheckCircle, Search, Loader2, Plus, Trash2, ShoppingBag, X, Save, FileText, Edit, Flag, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// --- INTERFEȚE ---
 interface UserData { _id: string; name: string; email: string; role: string; isBanned: boolean; avatar?: string; }
 interface ListingData { _id: string; title: string; category: string; price: string; seller: string; sellerEmail: string; images: string[]; posted: string; }
 interface StoryData { _id: string; title: string; role: string; organization: string; excerpt: string; content: string; date: string; postedAt: string; }
-// NOU: Interfață pentru mesajele raportate
 interface ReportedMessage { _id: string; author: string; message: string; room: string; reportedBy: string[]; timestamp: string; }
 
 const API_URL = (import.meta as any).env.VITE_API_URL ? `${(import.meta as any).env.VITE_API_URL}/api` : 'https://football-backend-m2a4.onrender.com/api';
+
 export function AdminDashboard({ user }: { user: any }) {
-  // Am adăugat 'reports' în lista de tab-uri
   const [activeTab, setActiveTab] = useState<'users' | 'listings' | 'news' | 'reports'>('users');
   
-  // State-uri Date
   const [users, setUsers] = useState<UserData[]>([]);
   const [listings, setListings] = useState<ListingData[]>([]);
   const [stories, setStories] = useState<StoryData[]>([]);
-  const [reportedMessages, setReportedMessages] = useState<ReportedMessage[]>([]); // NOU
+  const [reportedMessages, setReportedMessages] = useState<ReportedMessage[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // State pentru Modal Știre (Adăugare / Editare)
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newStory, setNewStory] = useState({ title: '', role: '', organization: '', excerpt: '', content: '', date: '' });
 
-  // --- 1. FETCH DATA ---
   useEffect(() => { fetchInitialData(); }, []);
 
   const fetchInitialData = async () => {
@@ -43,7 +38,6 @@ export function AdminDashboard({ user }: { user: any }) {
         const resStories = await fetch(`${API_URL}/stories`);
         if (resStories.ok) setStories(await resStories.json());
 
-        // Aducem mesajele raportate
         const resReports = await fetch(`${API_URL}/admin/reported-messages`);
         if (resReports.ok) setReportedMessages(await resReports.json());
 
@@ -51,7 +45,6 @@ export function AdminDashboard({ user }: { user: any }) {
     finally { setLoading(false); }
   };
 
-  // --- LOGICA UTILIZATORI ---
   const handleToggleBan = async (id: string, currentStatus: boolean, name: string) => {
     if (!window.confirm(`Schimbi statusul pentru ${name}?`)) return;
     try {
@@ -63,7 +56,6 @@ export function AdminDashboard({ user }: { user: any }) {
     } catch (err) { toast.error("Eroare server."); }
   };
 
-  // --- LOGICA ANUNȚURI ---
   const handleDeleteListing = async (id: string, title: string) => {
       if(!window.confirm(`Ștergi anunțul "${title}"?`)) return;
       try {
@@ -75,16 +67,13 @@ export function AdminDashboard({ user }: { user: any }) {
       } catch (err) { toast.error("Eroare server."); }
   };
 
-  // --- NOU: LOGICA RAPORTĂRI MESAJE ---
-  
-  // Opțiunea 1: Șterge definitiv mesajul (Avertizează userul)
+  // --- LOGICA RAPORTĂRI MESAJE ---
   const handleDeleteReportedMessage = async (id: string) => {
       if(!window.confirm("Ștergi definitiv acest mesaj? Autorul va primi un avertisment.")) return;
       try {
           const res = await fetch(`${API_URL}/messages/${id}`, { 
               method: 'DELETE', 
               headers: { 'Content-Type': 'application/json' },
-              // Trimitem datele tale de admin pentru a declanșa ramura de 'Hard Delete' de pe server
               body: JSON.stringify({ user: user.name, userRole: user.role, email: user.email })
           });
           if(res.ok) {
@@ -94,7 +83,6 @@ export function AdminDashboard({ user }: { user: any }) {
       } catch (err) { toast.error("Eroare la ștergerea mesajului."); }
   };
 
-  // Opțiunea 2: Ignoră raportul (Curăță bifa de report)
   const handleDismissReport = async (id: string) => {
       try {
           const res = await fetch(`${API_URL}/messages/${id}/dismiss-report`, { method: 'POST' });
@@ -105,8 +93,7 @@ export function AdminDashboard({ user }: { user: any }) {
       } catch (err) { toast.error("Eroare la procesare."); }
   };
 
-
-  // --- LOGICA ȘTIRI (CRUD COMPLET) ---
+  // --- LOGICA ȘTIRI ---
   const openAddModal = () => {
       setEditingId(null);
       setNewStory({ title: '', role: '', organization: '', excerpt: '', content: '', date: '' });
@@ -154,7 +141,6 @@ export function AdminDashboard({ user }: { user: any }) {
       } catch(err) { toast.error("Eroare."); }
   };
 
-  // FILTRARE
   const filteredUsers = users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredListings = listings.filter(l => l.title.toLowerCase().includes(searchTerm.toLowerCase()) || l.seller.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredStories = stories.filter(s => s.title.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -267,7 +253,7 @@ export function AdminDashboard({ user }: { user: any }) {
                     </div>
                 )}
 
-                {/* NOU: 4. TAB RAPORTĂRI */}
+                {/* 4. TAB RAPORTĂRI */}
                 {activeTab === 'reports' && (
                     <div>
                         <div className="mb-6">

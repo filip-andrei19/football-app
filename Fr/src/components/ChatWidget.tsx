@@ -4,6 +4,7 @@ import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users, C
 import toast from 'react-hot-toast';
 
 const socket = io((import.meta as any).env.VITE_API_URL || "https://football-backend-m2a4.onrender.com");
+
 interface Message {
   _id: string; 
   room: string;
@@ -73,6 +74,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   const [showReactionPickerId, setShowReactionPickerId] = useState<string | null>(null);
 
   const API_BASE = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
+
   const renderTextWithLinks = (text: string) => {
     if (!text) return null;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -156,7 +158,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
         setMessageList((currentList) => currentList.map(m => m._id === updatedMsg._id ? updatedMsg : m));
     });
 
-    // NOU: Pentru ștergerile hard din partea adminului
     socket.on("message_hard_deleted", (data: { id: string, author: string }) => {
         setMessageList((currentList) => currentList.filter(m => m._id !== data.id));
     });
@@ -240,7 +241,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
           await fetch(`${API_BASE}/api/messages/${msgId}`, {
               method: 'DELETE',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ user: user.name, userRole: user.role, email: user.email }) 
+              body: JSON.stringify({ user: user.name, userRole: user?.role, email: user?.email }) 
           });
       } catch (err) {}
   };
@@ -271,7 +272,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
       } catch (err) { toast.error("Nu s-a putut fixa mesajul."); }
   };
 
-  // --- NOU: LOGICA RAPORTĂRII ---
   const handleReportMessage = async (msgId: string) => {
       if (!window.confirm("Ești sigur că vrei să raportezi acest mesaj ca fiind neadecvat?")) return;
       try {
@@ -329,7 +329,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
           {isOpen && (
               <div className="bg-white dark:bg-slate-900 w-[350px] md:w-[400px] h-[650px] rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 ring-1 ring-black/5">
                   
-                  {/* --- HEADER --- */}
                   <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center z-20 sticky top-0 backdrop-blur-sm bg-opacity-90 shadow-sm shrink-0">
                       {view === 'chat' && activeRoom.startsWith('listing_') && activeConversationInfo ? (
                           <div className="flex items-center gap-3 w-full min-w-0 pr-2">
@@ -354,10 +353,8 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                       <button onClick={() => setIsOpen(false)} className="hover:bg-gray-100 dark:hover:bg-slate-800 p-1.5 rounded-full transition-colors shrink-0"><X className="w-6 h-6 text-gray-500"/></button>
                   </div>
 
-                  {/* CONTENT AREA */}
                   <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-black/20 relative scrollbar-thin scrollbar-thumb-gray-200" onClick={() => setShowReactionPickerId(null)}>
                       
-                      {/* BANNER MESAJE FIXATE */}
                       {view === 'chat' && pinnedMessages.length > 0 && (
                           <div onClick={() => scrollToMessage(pinnedMessages[0]._id)} className="bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800/50 p-2.5 flex items-center gap-3 sticky top-0 z-10 cursor-pointer hover:bg-yellow-100 transition-colors">
                               <Pin className="w-4 h-4 text-amber-600 shrink-0" />
@@ -368,7 +365,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                           </div>
                       )}
 
-                      {/* --- LISTA CONVERSAȚII --- */}
                       {view === 'list' && (
                           <div className="p-2 space-y-1">
                               <div onClick={() => enterChat("general_chat", "Chat General")} className="bg-white dark:bg-slate-800 p-4 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all flex items-center gap-4 border border-transparent hover:border-gray-100 mb-4 shadow-sm">
@@ -400,7 +396,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                           </div>
                       )}
 
-                      {/* --- CHAT ROOM --- */}
                       {view === 'chat' && (
                           <div className="flex flex-col h-full">
                               <div className="flex-1 p-4 space-y-6 overflow-y-auto">
@@ -416,36 +411,29 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                           <div className="flex justify-center mb-4"><span className="bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-gray-300 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">{formatDateSeparator(dateKey)}</span></div>
                                           <div className="space-y-1">
                                               {groupedMessages[dateKey].map((msg, idx, arr) => {
-                                                  const isMe = msg.author === user.name;
-                                                  const isAdmin = user.role === 'admin' || user.email === 'admin.nou@scout.ro';
+                                                  const isMe = msg.author === user?.name;
+                                                  const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
                                                   const isFirstInGroup = idx === 0 || arr[idx - 1].author !== msg.author;
                                                   
                                                   return (
                                                     <div key={idx} ref={(el) => { messageContainerRefs.current[msg._id] = el; }} className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isFirstInGroup ? "mt-3" : "mt-0.5"}`}>
-                                                          {/* Adăugăm numele autorului dacă nu este mesajul meu */}
                                                           {!isMe && isFirstInGroup && (
                                                               <span className="text-[10px] font-bold text-gray-500 ml-2 mb-0.5">{msg.author}</span>
                                                           )}
                                                           <div className={`group relative flex items-center gap-2 max-w-[90%] ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
                                                               
-                                                              {/* TOOLBAR MESAJ (Apare la Hover) */}
                                                               {!msg.isDeleted && (
                                                                   <div className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-md p-1 rounded-full absolute -top-10 z-[30] ${isMe ? 'right-0' : 'left-0'}`}>
                                                                       <button onClick={(e) => { e.stopPropagation(); setShowReactionPickerId(msg._id); }} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-gray-50 rounded-full" title="Reacționează"><Smile className="w-3.5 h-3.5"/></button>
-                                                                      
                                                                       <button onClick={() => setReplyingTo(msg)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-gray-50 rounded-full" title="Răspunde"><Reply className="w-3.5 h-3.5"/></button>
-                                                                      
                                                                       <button onClick={() => handlePin(msg._id)} className={`p-1.5 hover:bg-gray-50 rounded-full ${msg.isPinned ? 'text-amber-500' : 'text-gray-400 hover:text-amber-500'}`} title={msg.isPinned ? "Scoate de la Fixate" : "Fixează Mesajul"}><Pin className="w-3.5 h-3.5"/></button>
                                                                       
-                                                                      {/* BUTON STERGE: Vizibil pentru autor sau pentru ADMIN */}
                                                                       {(isMe || isAdmin) && <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-50 rounded-full" title="Șterge"><Trash2 className="w-3.5 h-3.5"/></button>}
                                                                       
-                                                                      {/* BUTON RAPORTEAZA: Doar pe mesajele ALTORA */}
                                                                       {!isMe && !isAdmin && <button onClick={() => handleReportMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-gray-50 rounded-full" title="Raportează adminului"><Flag className="w-3.5 h-3.5"/></button>}
                                                                   </div>
                                                               )}
 
-                                                              {/* PICKER EMOJI FLOTANT */}
                                                               {showReactionPickerId === msg._id && (
                                                                   <div className={`absolute -top-20 z-[40] bg-white border border-gray-100 shadow-xl rounded-full px-2 py-1.5 flex gap-1 animate-in zoom-in ${isMe ? 'right-0' : 'left-0'}`}>
                                                                       {AVAILABLE_EMOJIS.map(emoji => (
@@ -454,13 +442,11 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                                                   </div>
                                                               )}
 
-                                                              {/* BULA DE MESAJ */}
                                                               {msg.isDeleted ? (
                                                                   <div className="px-4 py-2 bg-gray-100 border border-gray-200 rounded-full flex items-center gap-2"><Ban className="w-3.5 h-3.5 text-gray-400" /><span className="text-xs font-medium italic text-gray-400">Mesaj șters</span></div>
                                                               ) : (
                                                                   <div className={`relative shadow-sm flex flex-col ${isMe ? "bg-blue-600 text-white rounded-2xl rounded-tr-md" : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-slate-700 rounded-2xl rounded-tl-md"}`}>
                                                                       
-                                                                      {/* PREVIEW REPLY */}
                                                                       {msg.replyTo && (
                                                                           <div onClick={() => scrollToMessage(msg.replyTo!.id)} className={`mx-2 mt-2 p-2 rounded-xl text-xs cursor-pointer border-l-2 ${isMe ? 'bg-blue-700/50 border-white text-blue-100' : 'bg-gray-50 border-blue-500 text-gray-500'}`}>
                                                                               <div className={`font-bold mb-0.5 ${isMe ? 'text-white' : 'text-blue-600'}`}>{msg.replyTo.author}</div>
@@ -485,7 +471,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                                                           </div>
                                                                       )}
 
-                                                                      {/* REACȚII LA MESAJ */}
                                                                       {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                                                                           <div className={`absolute -bottom-3 flex gap-1 bg-white border border-gray-100 shadow-sm rounded-full px-1.5 py-0.5 z-10 ${isMe ? 'right-4' : 'left-4'}`}>
                                                                               {Object.entries(msg.reactions).map(([emoji, usersArr]) => (
@@ -498,7 +483,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                                                   </div>
                                                               )}
                                                           </div>
-                                                          {/* Padding jos dacă există reacții ca să nu se încalece rândurile */}
                                                           {msg.reactions && Object.keys(msg.reactions).length > 0 && !msg.isDeleted && <div className="h-3"></div>}
                                                       </div>
                                                   );
@@ -519,7 +503,6 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                   <div ref={messagesEndRef} />
                               </div>
 
-                              {/* ZONA DE INPUT (Cu Banner Reply și Preview Imagine) */}
                               <div className="bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex flex-col">
                                   
                                   {replyingTo && (
