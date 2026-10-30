@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
-import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users, Check, CheckCheck, Trash2, ExternalLink, Ban, Loader2, Reply, Smile, Pin, MoreHorizontal, Flag } from 'lucide-react';
+import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users, Check, CheckCheck, Trash2, ExternalLink, Ban, Loader2, Reply, Smile, Pin, MoreHorizontal, Flag, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const socket = io((import.meta as any).env.VITE_API_URL || "https://football-backend-m2a4.onrender.com");
@@ -9,6 +9,7 @@ interface Message {
   _id: string; 
   room: string;
   author: string;
+  authorRole?: string; 
   message: string;
   imageUrl?: string;
   time: string;
@@ -74,6 +75,8 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   const [showReactionPickerId, setShowReactionPickerId] = useState<string | null>(null);
 
   const API_BASE = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
+
+  const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
 
   const renderTextWithLinks = (text: string) => {
     if (!text) return null;
@@ -211,7 +214,12 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
       const timeStr = new Date().getHours() + ":" + (new Date().getMinutes() < 10 ? '0' : '') + new Date().getMinutes();
       
       const payload: any = {
-          room: activeRoom, author: user.name, message: currentMessage, imageBase64: selectedImage || "", time: timeStr
+          room: activeRoom, 
+          author: user.name, 
+          authorRole: isAdmin ? 'admin' : 'user', // Trimitem rolul de admin dacă este cazul
+          message: currentMessage, 
+          imageBase64: selectedImage || "", 
+          time: timeStr
       };
 
       if (replyingTo) {
@@ -412,13 +420,15 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                           <div className="space-y-1">
                                               {groupedMessages[dateKey].map((msg, idx, arr) => {
                                                   const isMe = msg.author === user?.name;
-                                                  const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
                                                   const isFirstInGroup = idx === 0 || arr[idx - 1].author !== msg.author;
                                                   
                                                   return (
                                                     <div key={idx} ref={(el) => { messageContainerRefs.current[msg._id] = el; }} className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isFirstInGroup ? "mt-3" : "mt-0.5"}`}>
                                                           {!isMe && isFirstInGroup && (
-                                                              <span className="text-[10px] font-bold text-gray-500 ml-2 mb-0.5">{msg.author}</span>
+                                                              <span className="text-[10px] font-bold text-gray-500 ml-2 mb-0.5">
+                                                                  {msg.authorRole === 'admin' && <ShieldCheck className="inline w-3 h-3 text-red-500 mr-1"/>}
+                                                                  {msg.author}
+                                                              </span>
                                                           )}
                                                           <div className={`group relative flex items-center gap-2 max-w-[90%] ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
                                                               
@@ -430,7 +440,12 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                                                       
                                                                       {(isMe || isAdmin) && <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-50 rounded-full" title="Șterge"><Trash2 className="w-3.5 h-3.5"/></button>}
                                                                       
-                                                                      {!isMe && !isAdmin && <button onClick={() => handleReportMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-gray-50 rounded-full" title="Raportează adminului"><Flag className="w-3.5 h-3.5"/></button>}
+                                                                      {/* AICI ESTE CONDIȚIA CARE ASCUNDE BUTONUL PENTRU MESAJELE TALE */}
+                                                                      {!isMe && !isAdmin && msg.authorRole !== 'admin' && (
+                                                                          <button onClick={() => handleReportMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-gray-50 rounded-full" title="Raportează adminului">
+                                                                              <Flag className="w-3.5 h-3.5"/>
+                                                                          </button>
+                                                                      )}
                                                                   </div>
                                                               )}
 

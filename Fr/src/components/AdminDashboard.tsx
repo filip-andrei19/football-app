@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Users, Newspaper, Ban, CheckCircle, Search, Loader2, Plus, Trash2, ShoppingBag, X, Save, FileText, Edit, Flag, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-interface UserData { _id: string; name: string; email: string; role: string; isBanned: boolean; avatar?: string; }
-interface ListingData { _id: string; title: string; category: string; price: string; seller: string; sellerEmail: string; images: string[]; posted: string; }
+interface UserData { _id: string; name: string; email: string; role: string; isBanned: boolean; avatar?: string; strikes?: number; }
+interface ListingData { _id: string; title: string; category: string; price: string; seller: string; sellerEmail: string; images: string[]; posted: string; reportedBy?: string[]; }
 interface StoryData { _id: string; title: string; role: string; organization: string; excerpt: string; content: string; date: string; postedAt: string; }
-interface ReportedMessage { _id: string; author: string; message: string; room: string; reportedBy: string[]; timestamp: string; }
+interface ReportedMessage { _id: string; author: string; message: string; imageUrl?: string; room: string; reportedBy: string[]; timestamp: string; }
 
 const API_URL = (import.meta as any).env.VITE_API_URL ? `${(import.meta as any).env.VITE_API_URL}/api` : 'https://football-backend-m2a4.onrender.com/api';
 
@@ -16,6 +16,7 @@ export function AdminDashboard({ user }: { user: any }) {
   const [listings, setListings] = useState<ListingData[]>([]);
   const [stories, setStories] = useState<StoryData[]>([]);
   const [reportedMessages, setReportedMessages] = useState<ReportedMessage[]>([]);
+  const [reportedListings, setReportedListings] = useState<ListingData[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,6 +42,9 @@ export function AdminDashboard({ user }: { user: any }) {
         const resReports = await fetch(`${API_URL}/admin/reported-messages`);
         if (resReports.ok) setReportedMessages(await resReports.json());
 
+        const resRepListings = await fetch(`${API_URL}/admin/reported-listings`);
+        if (resRepListings.ok) setReportedListings(await resRepListings.json());
+
     } catch (err) { toast.error("Eroare la încărcarea datelor."); } 
     finally { setLoading(false); }
   };
@@ -62,14 +66,30 @@ export function AdminDashboard({ user }: { user: any }) {
           const res = await fetch(`${API_URL}/listings/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email }) });
           if(res.ok) {
               setListings(prev => prev.filter(l => l._id !== id));
+              setReportedListings(prev => prev.filter(l => l._id !== id));
               toast.success("Anunț șters.");
           }
       } catch (err) { toast.error("Eroare server."); }
   };
 
-  // --- LOGICA RAPORTĂRI MESAJE ---
+  // --- LOGICA RAPORTĂRI & ABATERI ---
+  const handleAddStrike = async (authorName: string) => {
+      if(!window.confirm(`Adaugi o abatere permanentă pentru ${authorName}?`)) return;
+      try {
+          const res = await fetch(`${API_URL}/admin/users/strike`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: authorName })
+          });
+          if(res.ok) {
+              toast.success(`Abatere adăugată cu succes pentru ${authorName}!`);
+              fetchInitialData(); // Reîncarcă lista de useri pentru a actualiza contorul
+          }
+      } catch (err) { toast.error("Eroare la adăugarea abaterii."); }
+  };
+
   const handleDeleteReportedMessage = async (id: string) => {
-      if(!window.confirm("Ștergi definitiv acest mesaj? Autorul va primi un avertisment.")) return;
+      if(!window.confirm("Ștergi definitiv acest mesaj? Autorul va primi un avertisment automat.")) return;
       try {
           const res = await fetch(`${API_URL}/messages/${id}`, { 
               method: 'DELETE', 
@@ -88,7 +108,17 @@ export function AdminDashboard({ user }: { user: any }) {
           const res = await fetch(`${API_URL}/messages/${id}/dismiss-report`, { method: 'POST' });
           if(res.ok) {
               setReportedMessages(prev => prev.filter(m => m._id !== id));
-              toast.success("Raport ignorat.");
+              toast.success("Raport mesaj ignorat.");
+          }
+      } catch (err) { toast.error("Eroare la procesare."); }
+  };
+
+  const handleDismissListingReport = async (id: string) => {
+      try {
+          const res = await fetch(`${API_URL}/listings/${id}/dismiss-report`, { method: 'POST' });
+          if(res.ok) {
+              setReportedListings(prev => prev.filter(l => l._id !== id));
+              toast.success("Raport anunț ignorat.");
           }
       } catch (err) { toast.error("Eroare la procesare."); }
   };
@@ -145,6 +175,8 @@ export function AdminDashboard({ user }: { user: any }) {
   const filteredListings = listings.filter(l => l.title.toLowerCase().includes(searchTerm.toLowerCase()) || l.seller.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredStories = stories.filter(s => s.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  const totalReports = reportedMessages.length + reportedListings.length;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
         
@@ -156,8 +188,8 @@ export function AdminDashboard({ user }: { user: any }) {
                 <div className="bg-slate-800 p-2 md:p-3 rounded-xl border border-slate-700 text-center min-w-[70px]"><div className="text-xl font-bold text-blue-400">{listings.length}</div><div className="text-[10px] text-slate-400 uppercase">Anunțuri</div></div>
                 <div className="bg-slate-800 p-2 md:p-3 rounded-xl border border-slate-700 text-center min-w-[70px]"><div className="text-xl font-bold text-green-400">{stories.length}</div><div className="text-[10px] text-slate-400 uppercase">Știri</div></div>
                 <div className="bg-slate-800 p-2 md:p-3 rounded-xl border border-red-900/30 text-center min-w-[70px] relative">
-                    {reportedMessages.length > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] animate-pulse">{reportedMessages.length}</span>}
-                    <div className="text-xl font-bold text-orange-400">{reportedMessages.length}</div><div className="text-[10px] text-slate-400 uppercase">Raportări</div>
+                    {totalReports > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] animate-pulse">{totalReports}</span>}
+                    <div className="text-xl font-bold text-orange-400">{totalReports}</div><div className="text-[10px] text-slate-400 uppercase">Raportări</div>
                 </div>
             </div>
         </div>
@@ -169,8 +201,8 @@ export function AdminDashboard({ user }: { user: any }) {
                     {tab === 'users' && <Users className="w-4 h-4"/>}
                     {tab === 'listings' && <ShoppingBag className="w-4 h-4"/>}
                     {tab === 'news' && <Newspaper className="w-4 h-4"/>}
-                    {tab === 'reports' && <AlertTriangle className={`w-4 h-4 ${reportedMessages.length > 0 ? 'text-orange-500' : ''}`}/>}
-                    {tab === 'news' ? 'Știri / Eroi' : tab === 'listings' ? 'Anunțuri' : tab === 'reports' ? `Raportări (${reportedMessages.length})` : 'Utilizatori'}
+                    {tab === 'reports' && <AlertTriangle className={`w-4 h-4 ${totalReports > 0 ? 'text-orange-500' : ''}`}/>}
+                    {tab === 'news' ? 'Știri / Eroi' : tab === 'listings' ? 'Anunțuri' : tab === 'reports' ? `Raportări (${totalReports})` : 'Utilizatori'}
                 </button>
             ))}
         </div>
@@ -187,14 +219,27 @@ export function AdminDashboard({ user }: { user: any }) {
                 {activeTab === 'users' && (
                     <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-slate-700">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50 dark:bg-slate-900/50 text-gray-500 font-bold uppercase text-xs"><tr><th className="p-4">User</th><th className="p-4">Email</th><th className="p-4">Status</th><th className="p-4 text-right">Acțiuni</th></tr></thead>
+                            <thead className="bg-gray-50 dark:bg-slate-900/50 text-gray-500 font-bold uppercase text-xs">
+                                <tr>
+                                    <th className="p-4">User</th>
+                                    <th className="p-4">Email</th>
+                                    <th className="p-4 text-center">Abateri</th>
+                                    <th className="p-4">Status</th>
+                                    <th className="p-4 text-right">Acțiuni</th>
+                                </tr>
+                            </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                 {filteredUsers.map(u => (
                                     <tr key={u._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
                                         <td className="p-4 font-bold flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs overflow-hidden">{u.avatar ? <img src={u.avatar} className="w-full h-full object-cover"/> : u.name[0]}</div>{u.name}</td>
                                         <td className="p-4 text-gray-500 font-mono">{u.email}</td>
+                                        <td className="p-4 text-center">
+                                            <span className={`font-bold px-2.5 py-1 rounded-full text-xs ${u.strikes && u.strikes > 0 ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-gray-100 text-gray-500'}`}>
+                                                {u.strikes || 0}
+                                            </span>
+                                        </td>
                                         <td className="p-4">{u.isBanned ? <span className="text-red-600 bg-red-50 px-2 py-1 rounded-full text-xs font-bold">Blocat</span> : <span className="text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-bold">Activ</span>}</td>
-                                        <td className="p-4 text-right">{u.email !== user.email && <button onClick={() => handleToggleBan(u._id, u.isBanned, u.name)} className="text-gray-400 hover:text-blue-600"><Ban className="w-4 h-4"/></button>}</td>
+                                        <td className="p-4 text-right">{u.email !== user.email && <button onClick={() => handleToggleBan(u._id, u.isBanned, u.name)} className="text-gray-400 hover:text-red-600 p-2"><Ban className="w-4 h-4"/></button>}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -238,7 +283,8 @@ export function AdminDashboard({ user }: { user: any }) {
                                             <div className="font-bold text-lg">{story.title}</div>
                                             <div className="text-sm text-gray-500 line-clamp-1">{story.excerpt}</div>
                                             <div className="flex gap-2 mt-1 text-xs font-bold uppercase text-gray-400">
-                                                <span>{story.role}</span> • <span>{story.organization}</span>
+                                                <span>{story.role}</span>
+                                                <span>{story.organization}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -256,6 +302,7 @@ export function AdminDashboard({ user }: { user: any }) {
                 {/* 4. TAB RAPORTĂRI */}
                 {activeTab === 'reports' && (
                     <div>
+                        {/* Secțiunea Raportări Mesaje */}
                         <div className="mb-6">
                             <h3 className="font-bold text-xl flex items-center gap-2">
                                 <Flag className="text-orange-500"/> Moderare Mesaje
@@ -263,7 +310,7 @@ export function AdminDashboard({ user }: { user: any }) {
                             <p className="text-sm text-gray-500 mt-1">Aceste mesaje au fost raportate de către comunitate.</p>
                         </div>
 
-                        <div className="grid gap-4">
+                        <div className="grid gap-4 mb-10">
                             {reportedMessages.map(msg => (
                                 <div key={msg._id} className="bg-red-50/50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30 flex flex-col md:flex-row justify-between gap-4">
                                     <div className="flex-1">
@@ -272,14 +319,25 @@ export function AdminDashboard({ user }: { user: any }) {
                                             <span className="font-bold">{msg.author}</span>
                                             <span className="text-xs text-gray-500">{new Date(msg.timestamp).toLocaleString('ro-RO')}</span>
                                         </div>
-                                        <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 italic">
-                                            "{msg.message}"
+                                        
+                                        <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                                            {msg.message && <div className="italic">"{msg.message}"</div>}
+                                            {msg.imageUrl && (
+                                                <div className="mt-3">
+                                                    <span className="text-xs font-bold text-gray-400 uppercase mb-1 block">Imagine Ataşată:</span>
+                                                    <img src={msg.imageUrl} alt="Conținut raportat" className="max-w-[200px] max-h-48 rounded-lg border border-gray-200 shadow-sm object-cover" />
+                                                </div>
+                                            )}
                                         </div>
+
                                         <div className="mt-2 text-xs font-bold text-orange-600 flex items-center gap-1">
                                             <Users className="w-3 h-3"/> Raportat de {msg.reportedBy.length} utilizator(i)
                                         </div>
                                     </div>
                                     <div className="flex md:flex-col gap-2 justify-center">
+                                        <button onClick={() => handleAddStrike(msg.author)} className="flex-1 bg-orange-50 text-orange-700 hover:bg-orange-100 font-bold py-2 px-4 rounded-lg flex items-center gap-2 border border-orange-200 justify-center">
+                                            <AlertTriangle className="w-4 h-4"/> +1 Abatere
+                                        </button>
                                         <button onClick={() => handleDismissReport(msg._id)} className="flex-1 bg-green-50 text-green-700 hover:bg-green-100 font-bold py-2 px-4 rounded-lg flex items-center gap-2 border border-green-200 justify-center">
                                             <CheckCircle className="w-4 h-4"/> Ignoră
                                         </button>
@@ -290,13 +348,54 @@ export function AdminDashboard({ user }: { user: any }) {
                                 </div>
                             ))}
                             {reportedMessages.length === 0 && (
-                                <div className="text-center py-16 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
-                                    <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3 opacity-50"/>
-                                    <h4 className="font-bold text-gray-700 dark:text-gray-300">Totul este curat!</h4>
-                                    <p className="text-sm text-gray-500 mt-1">Nu există mesaje raportate în acest moment.</p>
-                                </div>
+                                <p className="text-sm text-gray-500 italic">Nu există mesaje raportate.</p>
                             )}
                         </div>
+
+                        {/* Secțiunea Raportări Anunțuri */}
+                        <div className="mb-6 pt-6 border-t border-gray-200 dark:border-slate-700">
+                            <h3 className="font-bold text-xl flex items-center gap-2">
+                                <ShoppingBag className="text-blue-500"/> Moderare Anunțuri
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">Aceste anunțuri au fost semnalate ca fiind neadecvate sau spam.</p>
+                        </div>
+                        
+                        <div className="grid gap-4">
+                            {reportedListings.map(listing => (
+                                <div key={listing._id} className="bg-red-50/50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30 flex flex-col md:flex-row justify-between gap-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="font-bold text-sm bg-blue-600 text-white px-2 py-0.5 rounded shadow-sm">{listing.title}</span>
+                                            <span className="font-bold text-gray-700 dark:text-gray-300">Vânzător: {listing.seller}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{listing.category} - {listing.price}</p>
+                                        
+                                        <div className="mt-3 text-xs font-bold text-orange-600 flex items-center gap-1">
+                                            <Users className="w-3 h-3"/> Raportat de {listing.reportedBy?.length || 0} utilizator(i)
+                                        </div>
+                                    </div>
+                                    <div className="flex md:flex-col gap-2 justify-center">
+                                        <button onClick={() => handleDismissListingReport(listing._id)} className="flex-1 bg-green-50 text-green-700 hover:bg-green-100 font-bold py-2 px-4 rounded-lg flex items-center gap-2 justify-center border border-green-200">
+                                            <CheckCircle className="w-4 h-4"/> Ignoră
+                                        </button>
+                                        <button onClick={() => handleDeleteListing(listing._id, listing.title)} className="flex-1 bg-red-600 text-white hover:bg-red-700 font-bold py-2 px-4 rounded-lg flex items-center gap-2 justify-center shadow">
+                                            <Trash2 className="w-4 h-4"/> Șterge Anunț
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {reportedListings.length === 0 && (
+                                <p className="text-sm text-gray-500 italic">Nu există anunțuri raportate.</p>
+                            )}
+                        </div>
+
+                        {totalReports === 0 && reportedMessages.length === 0 && reportedListings.length === 0 && (
+                            <div className="text-center py-16 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700 mt-4">
+                                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3 opacity-50"/>
+                                <h4 className="font-bold text-gray-700 dark:text-gray-300">Totul este curat!</h4>
+                                <p className="text-sm text-gray-500 mt-1">Nu există mesaje sau anunțuri raportate în acest moment.</p>
+                            </div>
+                        )}
                     </div>
                 )}
                 </>

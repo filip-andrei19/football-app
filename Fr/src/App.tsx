@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogOut, User, Settings, ShieldAlert, Moon, Sun, Calendar } from 'lucide-react';
+import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogOut, User, Settings, ShieldAlert, Moon, Sun, Calendar, AlertTriangle } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast'; 
 
@@ -30,8 +30,11 @@ type Section = 'home' | 'diaspora' | 'stars' | 'heroes' | 'collectors' | 'matche
 export default function App() {
   const [activeSection, setActiveSection] = useState<Section>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState<{name: string, email: string, role?: string, avatar?: string, hasAdminDeletedMessages?: boolean} | null>(null);
+  const [user, setUser] = useState<{name: string, email: string, role?: string, avatar?: string, hasAdminDeletedMessages?: boolean, _id?: string} | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  
+  // State nou pentru avertismentul permanent de pe ecran
+  const [showWarning, setShowWarning] = useState(false);
 
   // State pentru chat
   const [activeChatRoom, setActiveChatRoom] = useState("general_chat");
@@ -40,21 +43,17 @@ export default function App() {
   // State pentru produsul partajat (din URL)
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
 
-  // Funcție pentru gestionarea avertismentului de admin
+  // Funcție adaptată pentru gestionarea avertismentului de admin
   const checkAdminWarnings = (userData: any) => {
       if (userData && userData.hasAdminDeletedMessages) {
-          toast.error(
-              "Avertisment: Unul sau mai multe mesaje ale tale au fost șterse de administrator pentru limbaj sau conținut neadecvat.",
-              { duration: 8000 }
-          );
-          
+          // Nu mai afișăm toast. În schimb, apelăm backend-ul să-i scoată flag-ul 
+          // pentru logările următoare, dar lăsăm `hasAdminDeletedMessages` temporar true 
+          // în starea curentă pentru a putea deschide banner-ul
           fetch(`${(import.meta as any).env.VITE_API_URL || ''}/api/users/clear-warning`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email: userData.email })
           }).catch((err: any) => console.error("Eroare la curățarea avertismentului:", err));
-          
-          userData.hasAdminDeletedMessages = false;
       }
       return userData;
   };
@@ -86,6 +85,31 @@ export default function App() {
     };
     syncUserData();
   }, []);
+
+  // Efect nou care declanșează bannerul dacă userul logat are un mesaj șters
+  // și nu a apăsat deja pe "X" (stocat în localStorage)
+  useEffect(() => {
+      if (user && user.hasAdminDeletedMessages) {
+          // Folosim emailul pentru cheia unică, deoarece _id poate să nu fie tot timpul disponibil la login
+          const aMaiVazutAvertismentul = localStorage.getItem(`warning_ack_${user.email}`);
+          if (!aMaiVazutAvertismentul) {
+              setShowWarning(true);
+          }
+      }
+  }, [user]);
+
+  // Funcția care închide mesajul și previne reafișarea lui
+  const handleDismissWarning = () => {
+      setShowWarning(false);
+      if (user?.email) {
+          localStorage.setItem(`warning_ack_${user.email}`, 'true');
+      }
+      
+      // Actualizăm starea locală a utilizatorului ca să nu mai declanșeze nimic
+      const updatedUser = { ...user, hasAdminDeletedMessages: false } as typeof user;
+      setUser(updatedUser);
+      localStorage.setItem('footballAppUser', JSON.stringify(updatedUser));
+  };
 
   const toggleTheme = () => {
       const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -216,6 +240,26 @@ export default function App() {
       <main className="flex-1 container mx-auto px-4 py-8 relative">
         {renderSection()}
       </main>
+
+      {/* COMPONENTA DE AVERTISMENT ADMIN (Permanentă până la Dismiss) */}
+      {showWarning && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-red-500 rounded-xl p-4 shadow-2xl z-[9999] w-[90%] max-w-sm flex items-start gap-3 animate-in slide-in-from-bottom-5">
+          <AlertTriangle className="text-red-500 w-5 h-5 shrink-0 mt-0.5" />
+          
+          <div className="flex-1">
+            <p className="text-white text-sm font-medium leading-snug">
+              Avertisment: Unul sau mai multe mesaje ale tale au fost șterse de administrator pentru limbaj sau conținut neadecvat.
+            </p>
+          </div>
+          
+          <button 
+            onClick={handleDismissWarning} 
+            className="text-gray-400 hover:text-white p-1 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {user && (
           <ChatWidget 

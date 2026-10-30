@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, AlertTriangle, Loader2, MessageCircle, Share2, Copy, Send, Heart } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, ZoomIn, AlertTriangle, Loader2, MessageCircle, Share2, Copy, Send, Heart, Flag } from 'lucide-react';
 import toast from 'react-hot-toast'; 
 import { SkeletonCard } from './SkeletonCard'; 
 
@@ -30,15 +30,16 @@ interface CollectorsHubProps {
     user: { 
         name: string; 
         email: string; 
+        role?: string;
         avatar?: string;
-        favorites?: string[]; // Adăugat pentru favorite
+        favorites?: string[]; 
     }; 
     onOpenChat: (roomId: string, partner: { name: string, avatar?: string }) => void;
     initialPostId?: string | null;
 }
 
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
-const API_URL = 'https://football-backend-m2a4.onrender.com/api/listings'; 
+const API_URL = (import.meta as any).env.VITE_API_URL ? `${(import.meta as any).env.VITE_API_URL}/api/listings` : 'https://football-backend-m2a4.onrender.com/api/listings'; 
 
 // --- MODAL PARTAJARE ---
 const ShareModal = ({ product, user, onClose }: { product: Product, user: any, onClose: () => void }) => {
@@ -86,6 +87,7 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
                 body: JSON.stringify({
                     room: roomId,
                     author: user.name,
+                    authorRole: user.role === 'admin' ? 'admin' : 'user',
                     message: messageText,
                     time: time
                 })
@@ -150,7 +152,6 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare, o
     <div onClick={() => onClick(product)} className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full cursor-pointer relative">
       <div className="absolute top-3 left-3 z-20 bg-black/50 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"><Maximize2 className="w-4 h-4" /></div>
       
-      {/* NOU: Butonul de Favorite direct pe imagine */}
       <button 
         onClick={(e) => { e.stopPropagation(); onToggleFavorite(product._id); }} 
         className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur hover:bg-white text-gray-400 hover:text-red-500 p-2 rounded-full shadow-sm transition-all"
@@ -177,7 +178,6 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare, o
         <div className="flex justify-between items-start mb-2"><h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-blue-600 transition-colors pr-2">{product.title || "Fără Titlu"}</h3><span className="bg-green-50 text-green-700 px-2 py-1 rounded-lg text-sm font-bold whitespace-nowrap">{product.price || "N/A"}</span></div>
         <p className="text-gray-500 text-sm mb-4 line-clamp-2 flex-1">{product.description || "Fără descriere."}</p>
         
-        {/* FOOTER CU AVATAR, NUME ȘI BUTOANE */}
         <div className="pt-4 border-t border-gray-50 mt-auto flex items-center justify-between">
             <div className="flex items-center gap-3 text-sm text-gray-500">
               {product.sellerAvatar && !avatarError ? (
@@ -212,18 +212,37 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare, o
   );
 };
 
-// --- MODAL VIZUALIZARE (CU DETALII CONTACT REPUSE) ---
-const ProductViewModal = ({ product, onClose, onShare, onToggleFavorite, isFavorite }: { product: Product, onClose: () => void, onShare: (p: Product) => void, onToggleFavorite: (id: string) => void, isFavorite: boolean }) => {
+// --- MODAL VIZUALIZARE (CU DETALII CONTACT REPUSE ȘI BUTON RAPORT) ---
+const ProductViewModal = ({ product, user, onClose, onShare, onToggleFavorite, isFavorite }: { product: Product, user: any, onClose: () => void, onShare: (p: Product) => void, onToggleFavorite: (id: string) => void, isFavorite: boolean }) => {
     const [activeIdx, setActiveIdx] = useState(0);
     const [isZoomed, setIsZoomed] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const images = product.images || [];
     const [avatarError, setAvatarError] = useState(false); 
 
+    const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
+    const isOwner = product.sellerEmail === user.email;
+
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!isZoomed) return;
         const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
         setMousePos({ x: ((e.clientX - left) / width) * 100, y: ((e.clientY - top) / height) * 100 });
+    };
+
+    const handleReportListing = async () => {
+        if (!window.confirm("Ești sigur că vrei să raportezi acest anunț ca fiind neadecvat?")) return;
+        try {
+            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/listings/${product._id}/report`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user: user.name })
+            });
+            if (res.ok) {
+                toast.success("Anunțul a fost raportat administratorilor.");
+            }
+        } catch (err) {
+            toast.error("Eroare la raportare.");
+        }
     };
 
     return (
@@ -252,8 +271,18 @@ const ProductViewModal = ({ product, onClose, onShare, onToggleFavorite, isFavor
                     <div className="mb-6"><span className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase">{product.category || "General"}</span><h2 className="text-3xl font-black text-gray-900 leading-tight mb-2">{product.title}</h2><div className="text-2xl font-bold text-green-600">{product.price}</div></div>
                     <div className="prose prose-sm text-gray-600 mb-8 border-t border-b border-gray-100 py-6"><h4 className="text-gray-900 font-bold mb-2">Descriere:</h4><p className="whitespace-pre-wrap">{product.description}</p></div>
                     
-                    {/* --- ZONA CONTACT VÂNZĂTOR RESTAURATĂ --- */}
-                    <div className="mt-auto bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                    {/* ZONA CONTACT VÂNZĂTOR */}
+                    <div className="mt-auto bg-gray-50 rounded-2xl p-6 border border-gray-100 relative">
+                        {/* BUTON RAPORT (Doar dacă nu e anunțul tău și nu ești admin) */}
+                        {!isOwner && !isAdmin && (
+                            <button 
+                                onClick={handleReportListing}
+                                className="absolute top-4 right-4 flex items-center gap-1 text-[10px] uppercase font-bold text-gray-400 hover:text-orange-500 transition-colors"
+                            >
+                                <Flag className="w-3.5 h-3.5"/> Raportează
+                            </button>
+                        )}
+
                         <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><User className="w-5 h-5 text-blue-600" /> Detalii Contact</h3>
                         <div className="space-y-4">
                             <div className="flex items-center gap-4 mb-4">
@@ -371,7 +400,6 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
       toast.success(`Chat deschis cu ${product.seller}`);
   };
 
-  // NOU: Funcția care comunică cu serverul pentru adăugare/ștergere din Favorite
   const handleToggleFavorite = async (listingId: string) => {
       try {
           const res = await fetch('https://football-backend-m2a4.onrender.com/api/users/favorites/toggle', {
@@ -397,7 +425,6 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
     if (!p) return false;
     const titleMatch = (p.title || "").toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Logica modificată pentru noul TAB de Favorite
     let matchesTab = true;
     if (activeTab === 'my_items') matchesTab = p.sellerEmail === user.email;
     if (activeTab === 'favorites') matchesTab = userFavorites.includes(p._id);
@@ -411,7 +438,6 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div><h2 className="text-3xl font-black text-gray-900 mb-2 flex items-center gap-2"><ShoppingBag className="text-blue-600" /> Collectors Hub</h2><p className="text-gray-500">Piața oficială pentru colecționarii echipei naționale.</p></div>
         
-        {/* TAB-URI ACTUALIZATE */}
         <div className="flex bg-gray-100 p-1 rounded-xl overflow-x-auto w-full md:w-auto">
           <button onClick={() => setActiveTab('market')} className={`px-4 py-2 whitespace-nowrap rounded-lg text-sm font-bold transition-all ${activeTab === 'market' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Toate</button>
           <button onClick={() => setActiveTab('favorites')} className={`px-4 py-2 whitespace-nowrap rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'favorites' ? 'bg-white text-red-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Heart className={`w-4 h-4 ${activeTab==='favorites'?'fill-red-500':''}`} /> Favorite</button>
@@ -463,6 +489,7 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
       {selectedProduct && 
         <ProductViewModal 
             product={selectedProduct} 
+            user={user}
             onClose={() => setSelectedProduct(null)} 
             onShare={(p) => setProductToShare(p)} 
             onToggleFavorite={handleToggleFavorite}
