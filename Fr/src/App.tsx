@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogOut, User, Settings, ShieldAlert, Moon, Sun, Calendar } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast'; 
 
 import { HomeSection } from './components/HomeSection';
 import { DiasporaSection } from './components/DiasporaSection';
@@ -11,7 +12,7 @@ import { AuthPage } from './components/AuthPage';
 import { ProfileSection } from './components/ProfileSection'; 
 import { AdminDashboard } from './components/AdminDashboard'; 
 import { ChatWidget } from './components/ChatWidget'; 
-import { MatchesSection } from './components/MatchesSection'; // 🔥 AM IMPORTAT SECȚIUNEA DE MECIURI
+import { MatchesSection } from './components/MatchesSection';
 
 const Button = ({ children, onClick, variant, className, disabled }: any) => {
   const baseStyle = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50";
@@ -29,7 +30,7 @@ type Section = 'home' | 'diaspora' | 'stars' | 'heroes' | 'collectors' | 'matche
 export default function App() {
   const [activeSection, setActiveSection] = useState<Section>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState<{name: string, email: string, role?: string, avatar?: string} | null>(null);
+  const [user, setUser] = useState<{name: string, email: string, role?: string, avatar?: string, hasAdminDeletedMessages?: boolean} | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   // State pentru chat
@@ -39,12 +40,33 @@ export default function App() {
   // State pentru produsul partajat (din URL)
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
 
+  // Funcție pentru gestionarea avertismentului de admin
+  const checkAdminWarnings = (userData: any) => {
+      if (userData && userData.hasAdminDeletedMessages) {
+          toast.error(
+              "Avertisment: Unul sau mai multe mesaje ale tale au fost șterse de administrator pentru limbaj sau conținut neadecvat.",
+              { duration: 8000 }
+          );
+          
+          fetch(`${(import.meta as any).env.VITE_API_URL || ''}/api/users/clear-warning`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: userData.email })
+          }).catch((err: any) => console.error("Eroare la curățarea avertismentului:", err));
+          
+          userData.hasAdminDeletedMessages = false;
+      }
+      return userData;
+  };
+
   useEffect(() => {
     const syncUserData = async () => {
         const savedUser = localStorage.getItem('footballAppUser');
         if (savedUser) {
-            const localUser = JSON.parse(savedUser);
+            let localUser = JSON.parse(savedUser);
+            localUser = checkAdminWarnings(localUser);
             setUser(localUser);
+            localStorage.setItem('footballAppUser', JSON.stringify(localUser));
         }
         
         const savedTheme = localStorage.getItem('footballAppTheme') as 'light' | 'dark';
@@ -74,8 +96,9 @@ export default function App() {
   };
 
   const handleLoginSuccess = (userData: any) => {
-      setUser(userData);
-      localStorage.setItem('footballAppUser', JSON.stringify(userData));
+      const checkedData = checkAdminWarnings({ ...userData });
+      setUser(checkedData);
+      localStorage.setItem('footballAppUser', JSON.stringify(checkedData));
   };
 
   const handleLogout = () => {
@@ -92,7 +115,6 @@ export default function App() {
 
   const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
 
-  // 🔥 AM ADĂUGAT OPȚIUNEA PENTRU MECIURI ÎN MENIU 🔥
   const navigation = [
     { id: 'home' as Section, label: 'Home', icon: Home },
     { id: 'matches' as Section, label: 'Meciuri', icon: Calendar }, 
@@ -105,7 +127,8 @@ export default function App() {
   const renderSection = () => {
     switch (activeSection) {
       case 'home': return <HomeSection user={user!} onNavigate={setActiveSection} />;
-      case 'matches': return <MatchesSection userEmail={user?.email} />;      case 'diaspora': return <DiasporaSection />;
+      case 'matches': return <MatchesSection userEmail={user?.email} />;      
+      case 'diaspora': return <DiasporaSection />;
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
       case 'collectors': return <CollectorsHubSection user={user!} onOpenChat={handleOpenChat} initialPostId={sharedPostId} />;

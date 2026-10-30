@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
-import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users, Check, CheckCheck, Trash2, ExternalLink, Ban, Loader2, Reply, Smile, Pin, MoreHorizontal } from 'lucide-react';
+import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users, Check, CheckCheck, Trash2, ExternalLink, Ban, Loader2, Reply, Smile, Pin, MoreHorizontal, Flag } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const socket = io("https://football-backend-m2a4.onrender.com");
-
+const socket = io((import.meta as any).env.VITE_API_URL || "https://football-backend-m2a4.onrender.com");
 interface Message {
   _id: string; 
   room: string;
@@ -73,6 +72,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [showReactionPickerId, setShowReactionPickerId] = useState<string | null>(null);
 
+  const API_BASE = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
   const renderTextWithLinks = (text: string) => {
     if (!text) return null;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -113,7 +113,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
 
   const fetchConversations = async () => {
       try {
-          const res = await fetch('https://football-backend-m2a4.onrender.com/api/messages/conversations', {
+          const res = await fetch(`${API_BASE}/api/messages/conversations`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email: user.email, name: user.name })
@@ -156,6 +156,11 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
         setMessageList((currentList) => currentList.map(m => m._id === updatedMsg._id ? updatedMsg : m));
     });
 
+    // NOU: Pentru ștergerile hard din partea adminului
+    socket.on("message_hard_deleted", (data: { id: string, author: string }) => {
+        setMessageList((currentList) => currentList.filter(m => m._id !== data.id));
+    });
+
     socket.on("display_typing", (data: { isTyping: boolean }) => {
         setIsPartnerTyping(data.isTyping);
         scrollToBottom();
@@ -165,6 +170,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
         socket.off("receive_message"); 
         socket.off("load_history"); 
         socket.off("message_updated"); 
+        socket.off("message_hard_deleted");
         socket.off("display_typing");
     }
   }, [activeRoom]);
@@ -212,7 +218,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
       }
       
       try {
-          const res = await fetch('https://football-backend-m2a4.onrender.com/api/messages/send', {
+          const res = await fetch(`${API_BASE}/api/messages/send`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload)
@@ -231,10 +237,10 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   const handleDeleteMessage = async (msgId: string) => {
       if (!window.confirm("Ștergi acest mesaj pentru toată lumea?")) return;
       try {
-          await fetch(`https://football-backend-m2a4.onrender.com/api/messages/${msgId}`, {
+          await fetch(`${API_BASE}/api/messages/${msgId}`, {
               method: 'DELETE',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ user: user.name }) 
+              body: JSON.stringify({ user: user.name, userRole: user.role, email: user.email }) 
           });
       } catch (err) {}
   };
@@ -242,7 +248,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   const handleReact = async (msgId: string, emoji: string) => {
       setShowReactionPickerId(null);
       try {
-          const res = await fetch(`https://football-backend-m2a4.onrender.com/api/messages/${msgId}/react`, {
+          const res = await fetch(`${API_BASE}/api/messages/${msgId}/react`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ emoji, user: user.name }) 
@@ -258,11 +264,28 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
 
   const handlePin = async (msgId: string) => {
       try {
-          await fetch(`https://football-backend-m2a4.onrender.com/api/messages/${msgId}/pin`, {
+          await fetch(`${API_BASE}/api/messages/${msgId}/pin`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
           });
       } catch (err) { toast.error("Nu s-a putut fixa mesajul."); }
+  };
+
+  // --- NOU: LOGICA RAPORTĂRII ---
+  const handleReportMessage = async (msgId: string) => {
+      if (!window.confirm("Ești sigur că vrei să raportezi acest mesaj ca fiind neadecvat?")) return;
+      try {
+          const res = await fetch(`${API_BASE}/api/messages/${msgId}/report`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user: user.name })
+          });
+          if(res.ok) {
+              toast.success("Mesajul a fost raportat către administrator.");
+          }
+      } catch(err) {
+          toast.error("Eroare la raportare.");
+      }
   };
 
   const enterChat = (roomId: string, title: string) => {
@@ -339,7 +362,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                           <div onClick={() => scrollToMessage(pinnedMessages[0]._id)} className="bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800/50 p-2.5 flex items-center gap-3 sticky top-0 z-10 cursor-pointer hover:bg-yellow-100 transition-colors">
                               <Pin className="w-4 h-4 text-amber-600 shrink-0" />
                               <div className="flex-1 truncate">
-                                  <span className="text-[10px] font-black uppercase text-amber-700 block">Mesaj Fixat</span>
+                                  <span className="text-[10px] font-bold uppercase text-amber-700 block">Mesaj Fixat</span>
                                   <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate block">{pinnedMessages[0].message || 'Imagine...'}</span>
                               </div>
                           </div>
@@ -394,21 +417,31 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                           <div className="space-y-1">
                                               {groupedMessages[dateKey].map((msg, idx, arr) => {
                                                   const isMe = msg.author === user.name;
+                                                  const isAdmin = user.role === 'admin' || user.email === 'admin.nou@scout.ro';
                                                   const isFirstInGroup = idx === 0 || arr[idx - 1].author !== msg.author;
                                                   
                                                   return (
                                                     <div key={idx} ref={(el) => { messageContainerRefs.current[msg._id] = el; }} className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isFirstInGroup ? "mt-3" : "mt-0.5"}`}>
+                                                          {/* Adăugăm numele autorului dacă nu este mesajul meu */}
+                                                          {!isMe && isFirstInGroup && (
+                                                              <span className="text-[10px] font-bold text-gray-500 ml-2 mb-0.5">{msg.author}</span>
+                                                          )}
                                                           <div className={`group relative flex items-center gap-2 max-w-[90%] ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
                                                               
                                                               {/* TOOLBAR MESAJ (Apare la Hover) */}
                                                               {!msg.isDeleted && (
                                                                   <div className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-md p-1 rounded-full absolute -top-10 z-[30] ${isMe ? 'right-0' : 'left-0'}`}>
-                                                                      {/* 🔥 FIX AICI: e.stopPropagation() previne închiderea instantanee a picker-ului */}
                                                                       <button onClick={(e) => { e.stopPropagation(); setShowReactionPickerId(msg._id); }} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-gray-50 rounded-full" title="Reacționează"><Smile className="w-3.5 h-3.5"/></button>
                                                                       
                                                                       <button onClick={() => setReplyingTo(msg)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-gray-50 rounded-full" title="Răspunde"><Reply className="w-3.5 h-3.5"/></button>
+                                                                      
                                                                       <button onClick={() => handlePin(msg._id)} className={`p-1.5 hover:bg-gray-50 rounded-full ${msg.isPinned ? 'text-amber-500' : 'text-gray-400 hover:text-amber-500'}`} title={msg.isPinned ? "Scoate de la Fixate" : "Fixează Mesajul"}><Pin className="w-3.5 h-3.5"/></button>
-                                                                      {isMe && <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-50 rounded-full" title="Șterge"><Trash2 className="w-3.5 h-3.5"/></button>}
+                                                                      
+                                                                      {/* BUTON STERGE: Vizibil pentru autor sau pentru ADMIN */}
+                                                                      {(isMe || isAdmin) && <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-50 rounded-full" title="Șterge"><Trash2 className="w-3.5 h-3.5"/></button>}
+                                                                      
+                                                                      {/* BUTON RAPORTEAZA: Doar pe mesajele ALTORA */}
+                                                                      {!isMe && !isAdmin && <button onClick={() => handleReportMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-gray-50 rounded-full" title="Raportează adminului"><Flag className="w-3.5 h-3.5"/></button>}
                                                                   </div>
                                                               )}
 

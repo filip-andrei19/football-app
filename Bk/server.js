@@ -125,6 +125,7 @@ const userSchema = new mongoose.Schema({
     scoutWatchlist: { type: [String], default: [] },
     favoriteMatches: { type: [Number], default: [] },
     isBanned: { type: Boolean, default: false },
+    hasAdminDeletedMessages: { type: Boolean, default: false }, 
     resetPasswordToken: String,
     resetPasswordExpires: Date,
     createdAt: { type: Date, default: Date.now }
@@ -149,6 +150,7 @@ const messageSchema = new mongoose.Schema({
     replyTo: { id: String, author: String, text: String },
     reactions: { type: Object, default: {} },
     isPinned: { type: Boolean, default: false },
+    reportedBy: { type: [String], default: [] }, // <-- NOU: Lista celor care au raportat mesajul
     timestamp: { type: Date, default: Date.now }
 });
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
@@ -295,7 +297,8 @@ const startServer = async () => {
                         role: newUser.role,
                         favorites: newUser.favorites,
                         scoutWatchlist: newUser.scoutWatchlist,
-                        favoriteMatches: newUser.favoriteMatches
+                        favoriteMatches: newUser.favoriteMatches,
+                        hasAdminDeletedMessages: newUser.hasAdminDeletedMessages || false
                     }
                 });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
@@ -320,7 +323,8 @@ const startServer = async () => {
                         avatar: user.avatar,
                         favorites: user.favorites,
                         scoutWatchlist: user.scoutWatchlist || [],
-                        favoriteMatches: user.favoriteMatches || []
+                        favoriteMatches: user.favoriteMatches || [],
+                        hasAdminDeletedMessages: user.hasAdminDeletedMessages || false
                     }
                 });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
@@ -337,9 +341,17 @@ const startServer = async () => {
                     avatar: user.avatar,
                     favorites: user.favorites,
                     scoutWatchlist: user.scoutWatchlist || [],
-                    favoriteMatches: user.favoriteMatches || []
+                    favoriteMatches: user.favoriteMatches || [],
+                    hasAdminDeletedMessages: user.hasAdminDeletedMessages || false
                 }
             });
+        });
+
+        app.post('/api/users/clear-warning', async (req, res) => {
+            try {
+                await User.updateOne({ email: req.body.email }, { $set: { hasAdminDeletedMessages: false } });
+                res.json({ success: true });
+            } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
         app.post('/api/users/forgot-password', async (req, res) => {
@@ -392,7 +404,8 @@ const startServer = async () => {
                         avatar: user.avatar,
                         favorites: user.favorites,
                         scoutWatchlist: user.scoutWatchlist || [],
-                        favoriteMatches: user.favoriteMatches || []
+                        favoriteMatches: user.favoriteMatches || [],
+                        hasAdminDeletedMessages: user.hasAdminDeletedMessages || false
                     }
                 });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
@@ -432,7 +445,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
-        // --- RUTE NOI: WATCHLIST JUCĂTORI (SCOUTING) & MECIURI FAVORITE ---
         app.post('/api/users/watchlist/toggle', async (req, res) => {
             try {
                 const { email, playerId } = req.body;
@@ -518,15 +530,40 @@ const startServer = async () => {
 
         app.delete('/api/messages/:id', async (req, res) => {
             try {
+                const { user, userRole, email } = req.body;
+                const isAdmin = userRole === 'admin' || email === 'admin.nou@scout.ro';
+
                 const msg = await Message.findById(req.params.id);
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
-                if (msg.author !== req.body.user) return res.status(403).json({ error: "Interzis." });
-                if (msg.imageUrl && msg.imageUrl.includes('cloudinary.com')) { await deleteFromCloudinary(msg.imageUrl); }
-                msg.isDeleted = true; msg.message = ""; msg.imageUrl = ""; msg.replyTo = null;
-                await msg.save();
-                io.in(msg.room).emit("message_updated", msg);
-                res.json({ success: true });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+
+                if (isAdmin) {
+                    if (msg.imageUrl && msg.imageUrl.includes('cloudinary.com')) { 
+                        await deleteFromCloudinary(msg.imageUrl); 
+                    }
+                    await Message.findByIdAndDelete(req.params.id);
+                    
+                    await User.updateOne({ name: msg.author }, { $set: { hasAdminDeletedMessages: true } });
+                    
+                    io.in(msg.room).emit("message_hard_deleted", { 
+                        id: req.params.id, 
+                        author: msg.author 
+                    });
+                    return res.json({ success: true });
+                } else {
+                    if (msg.author !== user) return res.status(403).json({ error: "Interzis." });
+                    
+                    if (msg.imageUrl && msg.imageUrl.includes('cloudinary.com')) { 
+                        await deleteFromCloudinary(msg.imageUrl); 
+                    }
+                    msg.isDeleted = true; msg.message = ""; msg.imageUrl = ""; msg.replyTo = null;
+                    await msg.save();
+                    
+                    io.in(msg.room).emit("message_updated", msg);
+                    return res.json({ success: true });
+                }
+            } catch (err) { 
+                res.status(500).json({ error: "Eroare." }); 
+            }
         });
 
         app.post('/api/messages/:id/react', async (req, res) => {
@@ -556,6 +593,48 @@ const startServer = async () => {
                 res.json({ success: true, isPinned: msg.isPinned });
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
+
+        // ==========================================
+        // RUTE NOI PENTRU RAPORTAREA MESAJELOR
+        // ==========================================
+
+        app.post('/api/messages/:id/report', async (req, res) => {
+            try {
+                const { user } = req.body; 
+                const msg = await Message.findById(req.params.id);
+                if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
+
+                if (!msg.reportedBy.includes(user)) {
+                    msg.reportedBy.push(user);
+                    await msg.save();
+                }
+                res.json({ success: true });
+            } catch (err) { res.status(500).json({ error: "Eroare la raportare." }); }
+        });
+
+        app.get('/api/admin/reported-messages', async (req, res) => {
+            try {
+                // Aducem doar mesajele care au cel puțin un element în reportedBy și nu sunt șterse logic
+                const reportedMessages = await Message.find({ 
+                    'reportedBy.0': { $exists: true },
+                    isDeleted: false 
+                }).sort({ timestamp: -1 });
+                res.json(reportedMessages);
+            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+        });
+
+        app.post('/api/messages/:id/dismiss-report', async (req, res) => {
+            try {
+                const msg = await Message.findById(req.params.id);
+                if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
+                
+                msg.reportedBy = []; 
+                await msg.save();
+                res.json({ success: true });
+            } catch (err) { res.status(500).json({ error: "Eroare la ignorare raport." }); }
+        });
+
+        // ==========================================
 
         app.post('/api/listings', async (req, res) => {
             try {
@@ -598,7 +677,7 @@ const startServer = async () => {
         });
 
         // ==========================================
-        // RUTA DE PLAYERS PENTRU SCOUTING (CORECATĂ CU SUPORT DE PAGINAȚIE ȘI DIACRITICE)
+        // RUTA DE PLAYERS PENTRU SCOUTING
         // ==========================================
         app.get('/api/sport/players', async (req, res) => {
             try {
@@ -610,7 +689,6 @@ const startServer = async () => {
                 let conditions = [];
 
                 if (diaspora === 'true') {
-                    // Filtrul corectat: Jucători români (cu sau fără diacritice) care nu joacă în liga internă (283/284)
                     conditions.push({
                         $or: [
                             { nationality: { $regex: /romania|românia/i }, league_id: { $nin: [283, 284] } }, 
@@ -828,7 +906,6 @@ const startServer = async () => {
         app.get('/api/admin/force-sync-national', async (req, res) => { runNationalTeamSync(); res.send("Sync national."); });
         app.get('/api/admin/force-matches', async (req, res) => { sync7DaysWindow(); res.send("Sync meciuri pornit."); });
 
-        // RUTA DE CURĂȚARE ROBUSTĂ PENTRU JUCĂTORII STRĂINI DIN DIASPORA (DEZACTIVATĂ PENTRU A PREVENI ȘTERGERILE)
         app.get('/api/admin/clean-foreign-players', async (req, res) => {
             try {
                 res.send(`Această rută a fost dezactivată temporar deoarece ștergea din greșeală jucătorii români din Diaspora (modificându-le naționalitatea în "Necunoscut"). Baza de date este în siguranță!`);
