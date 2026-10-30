@@ -290,6 +290,28 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                     const p = item.player;
                     const totalStats = calculateTotalStats(item.statistics, teamId);
 
+                    // --- NOU: LOGICĂ PENTRU JUCĂTORII ÎMPRUMUTAȚI ---
+                    let actualTeamName = teamName;
+                    let actualTeamLogo = teamLogo;
+                    let actualLeagueId = totalStats.league_id || leagueId || null;
+
+                    // Verificăm dacă există transferuri recente și jucătorul e împrumutat sau a schimbat echipa sezonul acesta
+                    if (item.transfers && item.transfers.length > 0) {
+                        const currentTransfer = item.transfers[0]; // Cel mai recent transfer
+                        
+                        // Dacă echipa la care a ajuns (teams.in) este diferită de echipa scanată acum
+                        if (currentTransfer.teams && currentTransfer.teams.in && currentTransfer.teams.in.id !== teamId) {
+                            // Dacă transferul s-a făcut în anul curent (ex: 2026-08-30)
+                            const transferYear = new Date(currentTransfer.date).getFullYear();
+                            if (transferYear >= SEASON) {
+                                actualTeamName = currentTransfer.teams.in.name;
+                                actualTeamLogo = currentTransfer.teams.in.logo;
+                                // Pentru a prelua liga corectă a noii echipe, ne bazăm strict pe datele de meci din statistics
+                                actualLeagueId = totalStats.league_id || null;
+                            }
+                        }
+                    }
+
                     const updateData = {
                         api_id: p.id,
                         api_player_id: p.id,
@@ -304,15 +326,15 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         weight: p.weight || null,
                         image: p.photo || "",
                         position: totalStats.position || "Unknown",
-                        team_name: teamName,
-                        team: teamName, 
-                        team_logo: teamLogo,
-                        // Păstrăm liga internă (dacă există în statistici) pentru a nu strica filtrul Diaspora
-                        league_id: totalStats.league_id || leagueId || null,
+                        team_name: actualTeamName,
+                        team: actualTeamName, 
+                        team_logo: actualTeamLogo,
+                        // Folosim ID-ul ligii curente (sau cel dedus din statistici)
+                        league_id: actualLeagueId,
                         detailed_stats: totalStats.detailed_stats || [],
                         statistics_summary: {
-                            team_name: teamName,
-                            team: teamName,
+                            team_name: actualTeamName,
+                            team: actualTeamName,
                             total_goals: totalStats.total_goals || 0,
                             total_assists: totalStats.total_assists || 0,
                             total_appearances: totalStats.total_appearances || 0,
