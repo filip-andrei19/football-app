@@ -47,7 +47,17 @@ export default {
           md: "calc(var(--radius) - 2px)",
           sm: "calc(var(--radius) - 4px)",
         },
+        animation: {
+          'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          'bounce-slow': 'bounce 2s infinite',
+        },
+        keyframes: {
+          pulse: {
+            '0%, 100%': { opacity: 1 },
+            '50%': { opacity: .5 },
+          }
+        }
       },
     },
-    plugins: [require("tailwindcss-animate")], // Acum linia asta va funcționa!
-  }
+    plugins: [require("tailwindcss-animate")],
+}

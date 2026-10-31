@@ -72,7 +72,6 @@ export function AdminDashboard({ user }: { user: any }) {
       } catch (err) { toast.error("Eroare server."); }
   };
 
-  // --- LOGICA RAPORTĂRI & ABATERI ---
   const handleAddStrike = async (authorName: string) => {
       if(!window.confirm(`Adaugi o abatere permanentă pentru ${authorName}?`)) return;
       try {
@@ -82,8 +81,8 @@ export function AdminDashboard({ user }: { user: any }) {
               body: JSON.stringify({ name: authorName })
           });
           if(res.ok) {
-              toast.success(`Abatere adăugată cu succes pentru ${authorName}!`);
-              fetchInitialData(); // Reîncarcă lista de useri pentru a actualiza contorul
+              toast.success(`Abatere (Cartonaș Galben) adăugată pentru ${authorName}!`);
+              fetchInitialData();
           }
       } catch (err) { toast.error("Eroare la adăugarea abaterii."); }
   };
@@ -98,7 +97,7 @@ export function AdminDashboard({ user }: { user: any }) {
           });
           if(res.ok) {
               setReportedMessages(prev => prev.filter(m => m._id !== id));
-              toast.success("Mesaj șters! Autorul a fost avertizat.");
+              toast.success("Mesaj șters! Autorul a primit cartonașul.");
           }
       } catch (err) { toast.error("Eroare la ștergerea mesajului."); }
   };
@@ -108,7 +107,7 @@ export function AdminDashboard({ user }: { user: any }) {
           const res = await fetch(`${API_URL}/messages/${id}/dismiss-report`, { method: 'POST' });
           if(res.ok) {
               setReportedMessages(prev => prev.filter(m => m._id !== id));
-              toast.success("Raport mesaj ignorat.");
+              toast.success("Avantaj lăsat (Raport ignorat).");
           }
       } catch (err) { toast.error("Eroare la procesare."); }
   };
@@ -118,12 +117,11 @@ export function AdminDashboard({ user }: { user: any }) {
           const res = await fetch(`${API_URL}/listings/${id}/dismiss-report`, { method: 'POST' });
           if(res.ok) {
               setReportedListings(prev => prev.filter(l => l._id !== id));
-              toast.success("Raport anunț ignorat.");
+              toast.success("Avantaj lăsat (Raport ignorat).");
           }
       } catch (err) { toast.error("Eroare la procesare."); }
   };
 
-  // --- LOGICA ȘTIRI ---
   const openAddModal = () => {
       setEditingId(null);
       setNewStory({ title: '', role: '', organization: '', excerpt: '', content: '', date: '' });
@@ -137,7 +135,7 @@ export function AdminDashboard({ user }: { user: any }) {
   };
 
   const handleSaveStory = async () => {
-      if(!newStory.title || !newStory.excerpt) return toast.error("Completează titlul și rezumatul!");
+      if(!newStory.title || !newStory.excerpt) return toast.error("Completează datele esențiale!");
       try {
           let res;
           if (editingId) {
@@ -150,23 +148,23 @@ export function AdminDashboard({ user }: { user: any }) {
               const savedStory = await res.json();
               if (editingId) {
                   setStories(prev => prev.map(s => s._id === editingId ? savedStory : s));
-                  toast.success("Articol actualizat!");
+                  toast.success("Erou actualizat pe panou!");
               } else {
                   setStories([savedStory, ...stories]);
-                  toast.success("Articol publicat!");
+                  toast.success("Erou transferat pe teren!");
               }
               setShowStoryModal(false);
           }
-      } catch(err) { toast.error("Eroare la salvare."); }
+      } catch(err) { toast.error("Eroare la transfer."); }
   };
 
   const handleDeleteStory = async (id: string) => {
-      if(!window.confirm("Ștergi acest articol?")) return;
+      if(!window.confirm("Ștergi acest erou de pe teren?")) return;
       try {
           const res = await fetch(`${API_URL}/admin/stories/${id}`, { method: 'DELETE' });
           if(res.ok) {
               setStories(prev => prev.filter(s => s._id !== id));
-              toast.success("Articol șters.");
+              toast.success("Erou retras.");
           }
       } catch(err) { toast.error("Eroare."); }
   };
@@ -178,222 +176,338 @@ export function AdminDashboard({ user }: { user: any }) {
   const totalReports = reportedMessages.length + reportedListings.length;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
+    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20 relative">
         
-        {/* HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-center bg-slate-900 text-white p-8 rounded-3xl shadow-xl border border-slate-800">
-            <div><h1 className="text-3xl font-black mb-2 flex items-center gap-3"><ShieldCheck className="h-8 w-8 text-red-500" /> Admin Dashboard</h1><p className="text-slate-400">Panou de control.</p></div>
-            <div className="flex gap-2 flex-wrap mt-4 md:mt-0 justify-center">
-                <div className="bg-slate-800 p-2 md:p-3 rounded-xl border border-slate-700 text-center min-w-[70px]"><div className="text-xl font-bold">{users.length}</div><div className="text-[10px] text-slate-400 uppercase">Useri</div></div>
-                <div className="bg-slate-800 p-2 md:p-3 rounded-xl border border-slate-700 text-center min-w-[70px]"><div className="text-xl font-bold text-blue-400">{listings.length}</div><div className="text-[10px] text-slate-400 uppercase">Anunțuri</div></div>
-                <div className="bg-slate-800 p-2 md:p-3 rounded-xl border border-slate-700 text-center min-w-[70px]"><div className="text-xl font-bold text-green-400">{stories.length}</div><div className="text-[10px] text-slate-400 uppercase">Știri</div></div>
-                <div className="bg-slate-800 p-2 md:p-3 rounded-xl border border-red-900/30 text-center min-w-[70px] relative">
-                    {totalReports > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] animate-pulse">{totalReports}</span>}
-                    <div className="text-xl font-bold text-orange-400">{totalReports}</div><div className="text-[10px] text-slate-400 uppercase">Raportări</div>
+        {/* FUNDAL SPORTIV (Sediul Central) */}
+        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none rounded-3xl opacity-[0.03] dark:opacity-[0.05]">
+           <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,#000_20px,#000_22px)]"></div>
+        </div>
+
+        {/* HEADER TACTIC */}
+        <div className="flex flex-col md:flex-row justify-between items-center bg-slate-900 border-b-4 border-rose-600 text-white p-6 sm:p-8 rounded-3xl shadow-xl relative overflow-hidden">
+            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,rgba(225,29,72,0.3),transparent_70%)]"></div>
+            
+            <div className="relative z-10 text-center md:text-left">
+                <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter mb-2 flex items-center justify-center md:justify-start gap-3 drop-shadow-md">
+                    <ShieldCheck className="h-8 w-8 sm:h-10 sm:w-10 text-rose-500" /> 
+                    Comisia <span className="text-rose-500">Centrală</span>
+                </h1>
+                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs sm:text-sm">
+                    Panoul de control / Arbitraj și Transferuri
+                </p>
+            </div>
+
+            <div className="flex gap-2 sm:gap-3 flex-wrap mt-6 md:mt-0 justify-center relative z-10">
+                <div className="bg-slate-950 p-2 sm:p-3 rounded-2xl border-2 border-slate-800 text-center min-w-[70px] sm:min-w-[80px] shadow-inner">
+                    <div className="text-xl sm:text-2xl font-black">{users.length}</div>
+                    <div className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">Useri</div>
+                </div>
+                <div className="bg-slate-950 p-2 sm:p-3 rounded-2xl border-2 border-slate-800 text-center min-w-[70px] sm:min-w-[80px] shadow-inner">
+                    <div className="text-xl sm:text-2xl font-black text-blue-500">{listings.length}</div>
+                    <div className="text-[9px] sm:text-[10px] font-black text-blue-500/70 uppercase tracking-widest mt-1">Anunțuri</div>
+                </div>
+                <div className="bg-slate-950 p-2 sm:p-3 rounded-2xl border-2 border-slate-800 text-center min-w-[70px] sm:min-w-[80px] shadow-inner">
+                    <div className="text-xl sm:text-2xl font-black text-emerald-500">{stories.length}</div>
+                    <div className="text-[9px] sm:text-[10px] font-black text-emerald-500/70 uppercase tracking-widest mt-1">Articole</div>
+                </div>
+                <div className="bg-rose-950/40 p-2 sm:p-3 rounded-2xl border-2 border-rose-900/50 text-center min-w-[70px] sm:min-w-[80px] relative shadow-inner">
+                    {totalReports > 0 && <span className="absolute -top-2 -right-2 bg-rose-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-black animate-pulse shadow-[0_0_10px_rgba(225,29,72,0.8)] border border-rose-400">{totalReports}</span>}
+                    <div className="text-xl sm:text-2xl font-black text-amber-500">{totalReports}</div>
+                    <div className="text-[9px] sm:text-[10px] font-black text-amber-500/70 uppercase tracking-widest mt-1">VAR</div>
                 </div>
             </div>
         </div>
 
-        {/* MENIU */}
-        <div className="flex gap-2 overflow-x-auto pb-2 border-b border-gray-200 dark:border-slate-700">
-            {['users', 'listings', 'news', 'reports'].map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 font-bold rounded-lg transition-colors flex items-center gap-2 capitalize whitespace-nowrap ${activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800'}`}>
-                    {tab === 'users' && <Users className="w-4 h-4"/>}
-                    {tab === 'listings' && <ShoppingBag className="w-4 h-4"/>}
-                    {tab === 'news' && <Newspaper className="w-4 h-4"/>}
-                    {tab === 'reports' && <AlertTriangle className={`w-4 h-4 ${totalReports > 0 ? 'text-orange-500' : ''}`}/>}
-                    {tab === 'news' ? 'Știri / Eroi' : tab === 'listings' ? 'Anunțuri' : tab === 'reports' ? `Raportări (${totalReports})` : 'Utilizatori'}
-                </button>
-            ))}
+        {/* MENIU TACTIC */}
+        <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 border-b-2 border-slate-200 dark:border-slate-800 scrollbar-hide">
+            {[
+                { id: 'users', label: 'Echipe / Lot', icon: Users },
+                { id: 'listings', label: 'Piața Transferuri', icon: ShoppingBag },
+                { id: 'news', label: 'Sala Trofeelor', icon: Newspaper },
+                { id: 'reports', label: `Camera VAR (${totalReports})`, icon: AlertTriangle }
+            ].map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                    <button 
+                        key={tab.id} 
+                        onClick={() => setActiveTab(tab.id as any)} 
+                        className={`px-4 sm:px-6 py-3 font-black uppercase tracking-wider rounded-xl transition-all flex items-center gap-2.5 whitespace-nowrap text-xs sm:text-sm border-2 ${
+                            isActive 
+                            ? 'bg-rose-600 border-rose-500 text-white shadow-[0_4px_15px_rgba(225,29,72,0.3)] translate-y-[-2px]' 
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-rose-500/50 hover:text-rose-500'
+                        }`}
+                    >
+                        <tab.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? 'text-white' : (tab.id === 'reports' && totalReports > 0 ? 'text-amber-500 animate-pulse' : '')}`}/>
+                        {tab.label}
+                    </button>
+                )
+            })}
         </div>
 
         {/* CONTENT */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 min-h-[400px]">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border-2 border-slate-200 dark:border-slate-800 p-4 sm:p-6 min-h-[500px]">
             {activeTab !== 'reports' && (
-                <div className="relative max-w-md mb-6"><Search className="absolute left-3 top-3 text-gray-400 w-5 h-5" /><input type="text" placeholder="Caută..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-900 outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/></div>
+                <div className="relative max-w-lg mb-6 mx-auto sm:mx-0">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Search className="text-slate-400 w-5 h-5" />
+                    </div>
+                    <input 
+                        type="text" 
+                        placeholder="CAUTĂ (NUME, EMAIL SAU TITLU)..." 
+                        className="w-full pl-12 pr-4 py-3 sm:py-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:border-rose-500 dark:focus:border-rose-500 transition-colors font-black uppercase tracking-widest text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400"
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
             )}
 
-            {loading ? <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div> : (
+            {loading ? (
+                <div className="flex flex-col justify-center items-center py-20 gap-4">
+                    <div className="w-16 h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="font-black uppercase tracking-widest text-slate-500">Se preiau datele oficiale...</p>
+                </div>
+            ) : (
                 <>
-                {/* 1. USERS TAB */}
+                {/* 1. USERS TAB (Lista de jucători) */}
                 {activeTab === 'users' && (
-                    <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-slate-700">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50 dark:bg-slate-900/50 text-gray-500 font-bold uppercase text-xs">
+                    <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 dark:border-slate-800">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[10px] sm:text-xs">
                                 <tr>
-                                    <th className="p-4">User</th>
-                                    <th className="p-4">Email</th>
-                                    <th className="p-4 text-center">Abateri</th>
-                                    <th className="p-4">Status</th>
-                                    <th className="p-4 text-right">Acțiuni</th>
+                                    <th className="p-4 sm:p-5">Jucător / Cont</th>
+                                    <th className="p-4 sm:p-5 hidden md:table-cell">Contact</th>
+                                    <th className="p-4 sm:p-5 text-center">Cartonașe</th>
+                                    <th className="p-4 sm:p-5">Eligibilitate</th>
+                                    <th className="p-4 sm:p-5 text-right">Arbitraj</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                            <tbody className="divide-y-2 divide-slate-100 dark:divide-slate-800">
                                 {filteredUsers.map(u => (
-                                    <tr key={u._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                                        <td className="p-4 font-bold flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs overflow-hidden">{u.avatar ? <img src={u.avatar} className="w-full h-full object-cover"/> : u.name[0]}</div>{u.name}</td>
-                                        <td className="p-4 text-gray-500 font-mono">{u.email}</td>
-                                        <td className="p-4 text-center">
-                                            <span className={`font-bold px-2.5 py-1 rounded-full text-xs ${u.strikes && u.strikes > 0 ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-gray-100 text-gray-500'}`}>
+                                    <tr key={u._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                        <td className="p-4 sm:p-5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-black text-slate-600 dark:text-slate-300 overflow-hidden border border-slate-300 dark:border-slate-600 shadow-sm shrink-0">
+                                                    {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover"/> : u.name[0].toUpperCase()}
+                                                </div>
+                                                <span className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-xs sm:text-sm">{u.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4 sm:p-5 text-slate-500 font-bold text-xs hidden md:table-cell">{u.email}</td>
+                                        <td className="p-4 sm:p-5 text-center">
+                                            <span className={`inline-flex items-center justify-center w-6 h-8 rounded-sm font-black shadow-sm border ${u.strikes && u.strikes > 0 ? 'bg-amber-400 text-slate-900 border-amber-500' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-transparent'}`}>
                                                 {u.strikes || 0}
                                             </span>
                                         </td>
-                                        <td className="p-4">{u.isBanned ? <span className="text-red-600 bg-red-50 px-2 py-1 rounded-full text-xs font-bold">Blocat</span> : <span className="text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-bold">Activ</span>}</td>
-                                        <td className="p-4 text-right">{u.email !== user.email && <button onClick={() => handleToggleBan(u._id, u.isBanned, u.name)} className="text-gray-400 hover:text-red-600 p-2"><Ban className="w-4 h-4"/></button>}</td>
+                                        <td className="p-4 sm:p-5">
+                                            {u.isBanned 
+                                            ? <span className="text-rose-600 bg-rose-100 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">Suspendat</span> 
+                                            : <span className="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">Titular</span>}
+                                        </td>
+                                        <td className="p-4 sm:p-5 text-right">
+                                            {u.email !== user.email && (
+                                                <button 
+                                                    onClick={() => handleToggleBan(u._id, u.isBanned, u.name)} 
+                                                    title={u.isBanned ? "Ridică suspendarea" : "Cartonaș Roșu (Ban)"}
+                                                    className="inline-flex p-2.5 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-600 hover:border-rose-500 transition-colors shadow-sm"
+                                                >
+                                                    <Ban className="w-4 h-4 sm:w-5 sm:h-5 font-bold"/>
+                                                </button>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                        {filteredUsers.length === 0 && <div className="text-center py-10 font-bold text-slate-500 uppercase tracking-widest">Niciun jucător găsit.</div>}
                     </div>
                 )}
 
-                {/* 2. LISTINGS TAB */}
+                {/* 2. LISTINGS TAB (Piața de transferuri/anunțuri) */}
                 {activeTab === 'listings' && (
-                     <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-slate-700">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50 dark:bg-slate-900/50 text-gray-500 font-bold uppercase text-xs"><tr><th className="p-4">Produs</th><th className="p-4">Preț</th><th className="p-4">Vânzător</th><th className="p-4 text-right">Acțiuni</th></tr></thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                     <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 dark:border-slate-800">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[10px] sm:text-xs">
+                                <tr>
+                                    <th className="p-4 sm:p-5">Articol / Categorie</th>
+                                    <th className="p-4 sm:p-5">Cotă (Preț)</th>
+                                    <th className="p-4 sm:p-5 hidden sm:table-cell">Impresar (Vânzător)</th>
+                                    <th className="p-4 sm:p-5 text-right">Acțiuni</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y-2 divide-slate-100 dark:divide-slate-800">
                                 {filteredListings.map(l => (
-                                    <tr key={l._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                                        <td className="p-4"><div className="font-bold">{l.title}</div><div className="text-xs text-blue-500 uppercase">{l.category}</div></td>
-                                        <td className="p-4 font-bold text-green-600">{l.price}</td>
-                                        <td className="p-4 text-gray-500">{l.seller}</td>
-                                        <td className="p-4 text-right"><button onClick={() => handleDeleteListing(l._id, l.title)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4"/></button></td>
+                                    <tr key={l._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                        <td className="p-4 sm:p-5">
+                                            <div className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-xs sm:text-sm">{l.title}</div>
+                                            <div className="text-[10px] font-black text-blue-500 mt-1 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded w-fit border border-blue-200 dark:border-blue-800">{l.category}</div>
+                                        </td>
+                                        <td className="p-4 sm:p-5 font-black text-emerald-600 dark:text-emerald-400 text-sm sm:text-base">{l.price}</td>
+                                        <td className="p-4 sm:p-5 text-slate-500 font-bold text-xs hidden sm:table-cell uppercase">{l.seller}</td>
+                                        <td className="p-4 sm:p-5 text-right">
+                                            <button 
+                                                onClick={() => handleDeleteListing(l._id, l.title)} 
+                                                className="inline-flex p-2.5 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-500 transition-colors shadow-sm"
+                                            >
+                                                <Trash2 className="w-4 h-4 sm:w-5 sm:h-5"/>
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                        {filteredListings.length === 0 && <div className="text-center py-10 font-bold text-slate-500 uppercase tracking-widest">Niciun transfer activ.</div>}
                     </div>
                 )}
 
                 {/* 3. NEWS / HEROES TAB */}
                 {activeTab === 'news' && (
                     <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-bold text-xl">Articole Publicate</h3>
-                            <button onClick={openAddModal} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 shadow-lg"><Plus className="w-4 h-4" /> Adaugă Erou</button>
+                        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 border-b-2 border-slate-100 dark:border-slate-800 pb-4">
+                            <h3 className="font-black text-lg sm:text-xl uppercase tracking-widest text-slate-900 dark:text-white">Lista Legendelor</h3>
+                            <button 
+                                onClick={openAddModal} 
+                                className="w-full sm:w-auto bg-emerald-600 text-white px-5 py-3 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 border-b-4 border-emerald-800 hover:bg-emerald-500 hover:translate-y-[2px] hover:border-b-2 transition-all"
+                            >
+                                <Plus className="w-4 h-4 font-bold" /> Legitimație Nouă
+                            </button>
                         </div>
 
                         <div className="grid gap-4">
                             {filteredStories.map(story => (
-                                <div key={story._id} className="flex items-center justify-between bg-gray-50 dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-700">
-                                    <div className="flex items-center gap-4">
-                                        <div className="bg-blue-100 text-blue-600 p-3 rounded-lg"><Newspaper className="w-6 h-6"/></div>
-                                        <div>
-                                            <div className="font-bold text-lg">{story.title}</div>
-                                            <div className="text-sm text-gray-500 line-clamp-1">{story.excerpt}</div>
-                                            <div className="flex gap-2 mt-1 text-xs font-bold uppercase text-gray-400">
-                                                <span>{story.role}</span>
-                                                <span>{story.organization}</span>
+                                <div key={story._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50 dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-500 transition-colors gap-4">
+                                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                                        <div className="bg-white dark:bg-slate-900 text-emerald-500 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
+                                            <Newspaper className="w-6 h-6 sm:w-8 sm:h-8"/>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-black text-base sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight truncate">{story.title}</div>
+                                            <div className="text-xs text-slate-500 font-bold line-clamp-1 mt-1">{story.excerpt}</div>
+                                            <div className="flex gap-2 mt-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                                                <span className="bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded">{story.role}</span>
+                                                <span className="bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">{story.organization}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => openEditModal(story)} className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-colors"><Edit className="w-5 h-5"/></button>
-                                        <button onClick={() => handleDeleteStory(story._id)} className="text-red-500 hover:bg-red-100 p-2 rounded-lg transition-colors"><Trash2 className="w-5 h-5"/></button>
+                                    <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                        <button onClick={() => openEditModal(story)} className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-600 hover:border-emerald-500 transition shadow-sm">
+                                            <Edit className="w-4 h-4 sm:w-5 sm:h-5"/>
+                                        </button>
+                                        <button onClick={() => handleDeleteStory(story._id)} className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-600 hover:border-rose-500 transition shadow-sm">
+                                            <Trash2 className="w-4 h-4 sm:w-5 sm:h-5"/>
+                                        </button>
                                     </div>
                                 </div>
                             ))}
-                            {filteredStories.length === 0 && <div className="text-center py-10 text-gray-400">Nu există articole. Adaugă unul!</div>}
+                            {filteredStories.length === 0 && <div className="text-center py-10 font-bold text-slate-500 uppercase tracking-widest">Niciun erou adăugat încă.</div>}
                         </div>
                     </div>
                 )}
 
-                {/* 4. TAB RAPORTĂRI */}
+                {/* 4. TAB VAR (RAPORTĂRI) */}
                 {activeTab === 'reports' && (
                     <div>
                         {/* Secțiunea Raportări Mesaje */}
                         <div className="mb-6">
-                            <h3 className="font-bold text-xl flex items-center gap-2">
-                                <Flag className="text-orange-500"/> Moderare Mesaje
+                            <h3 className="font-black text-lg sm:text-xl flex items-center gap-2 uppercase tracking-widest text-slate-900 dark:text-white">
+                                <Flag className="text-amber-500 w-6 h-6"/> Incidente Teren (Chat)
                             </h3>
-                            <p className="text-sm text-gray-500 mt-1">Aceste mesaje au fost raportate de către comunitate.</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1 uppercase">Monitorizare derapaje reclamate de fani.</p>
                         </div>
 
-                        <div className="grid gap-4 mb-10">
+                        <div className="grid gap-5 mb-12">
                             {reportedMessages.map(msg => (
-                                <div key={msg._id} className="bg-red-50/50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30 flex flex-col md:flex-row justify-between gap-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="font-bold text-sm bg-slate-800 text-white px-2 py-0.5 rounded uppercase">{msg.room === 'general_chat' ? 'Hub' : 'Produs'}</span>
-                                            <span className="font-bold">{msg.author}</span>
-                                            <span className="text-xs text-gray-500">{new Date(msg.timestamp).toLocaleString('ro-RO')}</span>
+                                <div key={msg._id} className="bg-rose-50/50 dark:bg-rose-900/10 p-4 sm:p-6 rounded-3xl border-2 border-rose-200 dark:border-rose-900/50 flex flex-col lg:flex-row justify-between gap-5 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-2 h-full bg-rose-500"></div>
+                                    <div className="flex-1 pl-2">
+                                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                                            <span className="font-black text-[10px] bg-slate-900 text-white px-2.5 py-1 rounded-md uppercase tracking-widest">{msg.room === 'general_chat' ? 'Tribună (Hub)' : 'Peluza (Produs)'}</span>
+                                            <span className="font-black text-slate-900 dark:text-white uppercase tracking-tight">{msg.author}</span>
+                                            <span className="text-[10px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-md">{new Date(msg.timestamp).toLocaleString('ro-RO')}</span>
                                         </div>
                                         
-                                        <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
-                                            {msg.message && <div className="italic">"{msg.message}"</div>}
+                                        <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative">
+                                            <div className="absolute top-2 right-3 text-4xl text-slate-200 dark:text-slate-800 font-serif leading-none">"</div>
+                                            {msg.message && <div className="italic font-bold text-slate-700 dark:text-slate-300 relative z-10">{msg.message}</div>}
                                             {msg.imageUrl && (
-                                                <div className="mt-3">
-                                                    <span className="text-xs font-bold text-gray-400 uppercase mb-1 block">Imagine Ataşată:</span>
-                                                    <img src={msg.imageUrl} alt="Conținut raportat" className="max-w-[200px] max-h-48 rounded-lg border border-gray-200 shadow-sm object-cover" />
+                                                <div className="mt-4 relative z-10">
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Probă Video/Foto (VAR):</span>
+                                                    <img src={msg.imageUrl} alt="Conținut raportat" className="max-w-[200px] sm:max-w-[300px] max-h-48 rounded-xl border-2 border-slate-200 dark:border-slate-700 shadow-sm object-cover" />
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className="mt-2 text-xs font-bold text-orange-600 flex items-center gap-1">
-                                            <Users className="w-3 h-3"/> Raportat de {msg.reportedBy.length} utilizator(i)
+                                        <div className="mt-4 text-xs font-black text-amber-600 uppercase tracking-widest flex items-center gap-1.5">
+                                            <Users className="w-4 h-4"/> Semnalat de {msg.reportedBy.length} spectatori
                                         </div>
                                     </div>
-                                    <div className="flex md:flex-col gap-2 justify-center">
-                                        <button onClick={() => handleAddStrike(msg.author)} className="flex-1 bg-orange-50 text-orange-700 hover:bg-orange-100 font-bold py-2 px-4 rounded-lg flex items-center gap-2 border border-orange-200 justify-center">
-                                            <AlertTriangle className="w-4 h-4"/> +1 Abatere
+                                    <div className="flex lg:flex-col gap-2 justify-center shrink-0">
+                                        <button onClick={() => handleAddStrike(msg.author)} className="flex-1 bg-white dark:bg-slate-800 text-amber-600 hover:text-amber-500 hover:border-amber-500 font-black uppercase text-[10px] sm:text-xs py-3 px-4 rounded-xl flex items-center gap-2 border-2 border-amber-200 dark:border-amber-900/50 justify-center shadow-sm transition">
+                                            <div className="w-3 h-4 bg-amber-400 rounded-sm shadow-sm border border-amber-500"></div> Galben (+1)
                                         </button>
-                                        <button onClick={() => handleDismissReport(msg._id)} className="flex-1 bg-green-50 text-green-700 hover:bg-green-100 font-bold py-2 px-4 rounded-lg flex items-center gap-2 border border-green-200 justify-center">
-                                            <CheckCircle className="w-4 h-4"/> Ignoră
+                                        <button onClick={() => handleDismissReport(msg._id)} className="flex-1 bg-white dark:bg-slate-800 text-emerald-600 hover:text-emerald-500 hover:border-emerald-500 font-black uppercase text-[10px] sm:text-xs py-3 px-4 rounded-xl flex items-center gap-2 border-2 border-emerald-200 dark:border-emerald-900/50 justify-center shadow-sm transition">
+                                            <CheckCircle className="w-4 h-4"/> Avantaj
                                         </button>
-                                        <button onClick={() => handleDeleteReportedMessage(msg._id)} className="flex-1 bg-red-600 text-white hover:bg-red-700 font-bold py-2 px-4 rounded-lg flex items-center gap-2 justify-center shadow">
-                                            <Trash2 className="w-4 h-4"/> Șterge
+                                        <button onClick={() => handleDeleteReportedMessage(msg._id)} className="flex-1 bg-rose-600 text-white hover:bg-rose-500 border-b-4 border-rose-800 hover:border-b-2 hover:translate-y-[2px] font-black uppercase text-[10px] sm:text-xs py-3 px-4 rounded-xl flex items-center gap-2 justify-center transition">
+                                            <div className="w-3 h-4 bg-rose-500 rounded-sm shadow-sm border border-white"></div> Roșu (Șterge)
                                         </button>
                                     </div>
                                 </div>
                             ))}
                             {reportedMessages.length === 0 && (
-                                <p className="text-sm text-gray-500 italic">Nu există mesaje raportate.</p>
+                                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl text-center border-2 border-dashed border-slate-200 dark:border-slate-700">Fair-play total. Niciun mesaj la VAR.</p>
                             )}
                         </div>
 
                         {/* Secțiunea Raportări Anunțuri */}
-                        <div className="mb-6 pt-6 border-t border-gray-200 dark:border-slate-700">
-                            <h3 className="font-bold text-xl flex items-center gap-2">
-                                <ShoppingBag className="text-blue-500"/> Moderare Anunțuri
+                        <div className="mb-6 pt-8 border-t-2 border-slate-100 dark:border-slate-800">
+                            <h3 className="font-black text-lg sm:text-xl flex items-center gap-2 uppercase tracking-widest text-slate-900 dark:text-white">
+                                <ShoppingBag className="text-blue-500 w-6 h-6"/> Incidente Transferuri
                             </h3>
-                            <p className="text-sm text-gray-500 mt-1">Aceste anunțuri au fost semnalate ca fiind neadecvate sau spam.</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1 uppercase">Piața de mercato raportată de comunitate.</p>
                         </div>
                         
-                        <div className="grid gap-4">
+                        <div className="grid gap-5">
                             {reportedListings.map(listing => (
-                                <div key={listing._id} className="bg-red-50/50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30 flex flex-col md:flex-row justify-between gap-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="font-bold text-sm bg-blue-600 text-white px-2 py-0.5 rounded shadow-sm">{listing.title}</span>
-                                            <span className="font-bold text-gray-700 dark:text-gray-300">Vânzător: {listing.seller}</span>
+                                <div key={listing._id} className="bg-blue-50/50 dark:bg-blue-900/10 p-4 sm:p-6 rounded-3xl border-2 border-blue-200 dark:border-blue-900/50 flex flex-col lg:flex-row justify-between gap-5 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-2 h-full bg-blue-500"></div>
+                                    <div className="flex-1 pl-2">
+                                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                                            <span className="font-black text-xs sm:text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg shadow-sm uppercase tracking-tight">{listing.title}</span>
                                         </div>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{listing.category} - {listing.price}</p>
+                                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400 mt-2 uppercase flex items-center gap-2">
+                                            <span className="bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded text-[10px] tracking-widest text-slate-500">IMPRESAR:</span> 
+                                            {listing.seller}
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-1 uppercase">{listing.category} <span className="text-emerald-500 mx-2">•</span> {listing.price}</p>
                                         
-                                        <div className="mt-3 text-xs font-bold text-orange-600 flex items-center gap-1">
-                                            <Users className="w-3 h-3"/> Raportat de {listing.reportedBy?.length || 0} utilizator(i)
+                                        <div className="mt-4 text-xs font-black text-amber-600 uppercase tracking-widest flex items-center gap-1.5">
+                                            <Users className="w-4 h-4"/> Semnalat de {listing.reportedBy?.length || 0} utilizatori
                                         </div>
                                     </div>
-                                    <div className="flex md:flex-col gap-2 justify-center">
-                                        <button onClick={() => handleDismissListingReport(listing._id)} className="flex-1 bg-green-50 text-green-700 hover:bg-green-100 font-bold py-2 px-4 rounded-lg flex items-center gap-2 justify-center border border-green-200">
-                                            <CheckCircle className="w-4 h-4"/> Ignoră
+                                    <div className="flex lg:flex-col gap-2 justify-center shrink-0">
+                                        <button onClick={() => handleDismissListingReport(listing._id)} className="flex-1 bg-white dark:bg-slate-800 text-emerald-600 hover:text-emerald-500 hover:border-emerald-500 font-black uppercase text-[10px] sm:text-xs py-3 px-4 rounded-xl flex items-center gap-2 border-2 border-emerald-200 dark:border-emerald-900/50 justify-center shadow-sm transition">
+                                            <CheckCircle className="w-4 h-4"/> Transfer Curat
                                         </button>
-                                        <button onClick={() => handleDeleteListing(listing._id, listing.title)} className="flex-1 bg-red-600 text-white hover:bg-red-700 font-bold py-2 px-4 rounded-lg flex items-center gap-2 justify-center shadow">
-                                            <Trash2 className="w-4 h-4"/> Șterge Anunț
+                                        <button onClick={() => handleDeleteListing(listing._id, listing.title)} className="flex-1 bg-rose-600 text-white hover:bg-rose-500 border-b-4 border-rose-800 hover:border-b-2 hover:translate-y-[2px] font-black uppercase text-[10px] sm:text-xs py-3 px-4 rounded-xl flex items-center gap-2 justify-center transition">
+                                            <Trash2 className="w-4 h-4"/> Anulează Transfer
                                         </button>
                                     </div>
                                 </div>
                             ))}
                             {reportedListings.length === 0 && (
-                                <p className="text-sm text-gray-500 italic">Nu există anunțuri raportate.</p>
+                                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl text-center border-2 border-dashed border-slate-200 dark:border-slate-700">Piața este liniștită.</p>
                             )}
                         </div>
 
                         {totalReports === 0 && reportedMessages.length === 0 && reportedListings.length === 0 && (
-                            <div className="text-center py-16 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700 mt-4">
-                                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3 opacity-50"/>
-                                <h4 className="font-bold text-gray-700 dark:text-gray-300">Totul este curat!</h4>
-                                <p className="text-sm text-gray-500 mt-1">Nu există mesaje sau anunțuri raportate în acest moment.</p>
+                            <div className="text-center py-20 bg-slate-50 dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 mt-6 relative overflow-hidden">
+                                {/* SVG Minge cu Bifa */}
+                                <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,transparent_0,transparent_100px,#10b981_101px,#10b981_105px,transparent_106px)]"></div>
+                                <div className="relative z-10 w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-emerald-500">
+                                    <CheckCircle className="w-10 h-10"/>
+                                </div>
+                                <h4 className="font-black text-2xl uppercase tracking-widest text-slate-800 dark:text-white relative z-10">Meci Fără Incidente</h4>
+                                <p className="text-sm font-bold text-slate-500 mt-2 uppercase tracking-widest relative z-10">VAR-ul nu are nimic de analizat momentan.</p>
                             </div>
                         )}
                     </div>
@@ -402,32 +516,56 @@ export function AdminDashboard({ user }: { user: any }) {
             )}
         </div>
 
-        {/* MODAL ADĂUGARE / EDITARE ȘTIRE */}
+        {/* MODAL ADĂUGARE / EDITARE ȘTIRE (Formular de Legitimație) */}
         {showStoryModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-                <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                    <div className="p-6 border-b dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800">
-                        <h3 className="text-xl font-bold flex items-center gap-2">
-                            <FileText className="text-blue-600"/> 
-                            {editingId ? 'Editează Articol' : 'Publică Articol Nou'}
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[92vh] border-4 border-emerald-600/30">
+                    
+                    <div className="p-5 sm:p-6 border-b-4 border-emerald-500 flex justify-between items-center bg-slate-900 text-white relative overflow-hidden">
+                        <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)]"></div>
+                        <h3 className="text-lg sm:text-xl font-black uppercase tracking-widest flex items-center gap-3 relative z-10">
+                            <div className="bg-emerald-500/20 p-2 rounded-lg"><FileText className="w-5 h-5 text-emerald-400"/></div>
+                            {editingId ? 'Actualizează Fișa' : 'Emite Legitimație Nouă'}
                         </h3>
-                        <button onClick={() => setShowStoryModal(false)}><X className="w-6 h-6 text-gray-500"/></button>
+                        <button onClick={() => setShowStoryModal(false)} className="relative z-10 bg-slate-800 hover:bg-rose-500 hover:border-rose-500 p-2 rounded-full border border-slate-700 transition">
+                            <X className="w-5 h-5 font-bold"/>
+                        </button>
                     </div>
-                    <div className="p-6 overflow-y-auto space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><label className="block text-xs font-bold uppercase mb-1">Nume Erou (Titlu)</label><input className="w-full p-3 border rounded-xl dark:bg-slate-800 dark:border-slate-600" value={newStory.title} onChange={e => setNewStory({...newStory, title: e.target.value})} /></div>
-                            <div><label className="block text-xs font-bold uppercase mb-1">Data (Ex: 1994)</label><input className="w-full p-3 border rounded-xl dark:bg-slate-800 dark:border-slate-600" value={newStory.date} onChange={e => setNewStory({...newStory, date: e.target.value})} /></div>
+                    
+                    <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 bg-slate-50 dark:bg-slate-950">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                            <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 mb-1.5">Nume Erou (Titlu)</label>
+                                <input className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 p-3 rounded-xl font-bold uppercase tracking-tight text-sm outline-none focus:border-emerald-500 transition-colors text-slate-900 dark:text-white" value={newStory.title} onChange={e => setNewStory({...newStory, title: e.target.value})} placeholder="EX: ION GOLEA" />
+                            </div>
+                            <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 mb-1.5">An / Perioadă (Ex: 1994)</label>
+                                <input className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 p-3 rounded-xl font-bold uppercase tracking-tight text-sm outline-none focus:border-emerald-500 transition-colors text-slate-900 dark:text-white" value={newStory.date} onChange={e => setNewStory({...newStory, date: e.target.value})} placeholder="EX: 1994-2002" />
+                            </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><label className="block text-xs font-bold uppercase mb-1">Rol (ex: Magazioner)</label><input className="w-full p-3 border rounded-xl dark:bg-slate-800 dark:border-slate-600" value={newStory.role} onChange={e => setNewStory({...newStory, role: e.target.value})} /></div>
-                            <div><label className="block text-xs font-bold uppercase mb-1">Club / Organizație</label><input className="w-full p-3 border rounded-xl dark:bg-slate-800 dark:border-slate-600" value={newStory.organization} onChange={e => setNewStory({...newStory, organization: e.target.value})} /></div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                            <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 mb-1.5">Rol (ex: Magazioner)</label>
+                                <input className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 p-3 rounded-xl font-bold uppercase tracking-tight text-sm outline-none focus:border-emerald-500 transition-colors text-slate-900 dark:text-white" value={newStory.role} onChange={e => setNewStory({...newStory, role: e.target.value})} placeholder="FUNCȚIA" />
+                            </div>
+                            <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 mb-1.5">Club / Teren</label>
+                                <input className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 p-3 rounded-xl font-bold uppercase tracking-tight text-sm outline-none focus:border-emerald-500 transition-colors text-slate-900 dark:text-white" value={newStory.organization} onChange={e => setNewStory({...newStory, organization: e.target.value})} placeholder="ECHIPA SAU STADIONUL" />
+                            </div>
                         </div>
-                        <div><label className="block text-xs font-bold uppercase mb-1">Rezumat (apare pe card)</label><input className="w-full p-3 border rounded-xl dark:bg-slate-800 dark:border-slate-600" value={newStory.excerpt} onChange={e => setNewStory({...newStory, excerpt: e.target.value})} /></div>
-                        <div><label className="block text-xs font-bold uppercase mb-1">Povestea Completă</label><textarea className="w-full p-3 border rounded-xl h-40 dark:bg-slate-800 dark:border-slate-600" value={newStory.content} onChange={e => setNewStory({...newStory, content: e.target.value})} ></textarea></div>
+                        <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 mb-1.5">Scurtă Prezentare (Card)</label>
+                            <input className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 p-3 rounded-xl font-bold text-sm outline-none focus:border-emerald-500 transition-colors text-slate-900 dark:text-white" value={newStory.excerpt} onChange={e => setNewStory({...newStory, excerpt: e.target.value})} placeholder="Descriere scurtă pentru vitrină..." />
+                        </div>
+                        <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 flex-1">
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 mb-1.5">Povestea Completă</label>
+                            <textarea className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 p-3 rounded-xl min-h-[150px] font-medium text-sm outline-none focus:border-emerald-500 transition-colors text-slate-900 dark:text-white resize-y" value={newStory.content} onChange={e => setNewStory({...newStory, content: e.target.value})} placeholder="Detaliază cariera sau momentul istoric..." ></textarea>
+                        </div>
                     </div>
-                    <div className="p-4 border-t dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
-                        <button onClick={handleSaveStory} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 flex justify-center gap-2">
-                            <Save className="w-5 h-5"/> {editingId ? 'Salvează Modificările' : 'Publică'}
+                    
+                    <div className="p-4 sm:p-6 border-t-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                        <button onClick={handleSaveStory} className="w-full bg-emerald-600 text-white font-black uppercase tracking-widest text-sm sm:text-base py-4 rounded-xl hover:bg-emerald-500 border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px] transition-all flex justify-center items-center gap-3">
+                            <Save className="w-5 h-5"/> {editingId ? 'Salvează Fișa Oficială' : 'Înregistrează Eroul'}
                         </button>
                     </div>
                 </div>

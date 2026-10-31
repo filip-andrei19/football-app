@@ -16,12 +16,13 @@ import {
   Check,
   Sparkles,
   Ruler,
-  Weight
+  Weight,
+  AlertTriangle // <--- Adaugă asta aici
 } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
-// 1. INTERFAȚA PLAYER (Actualizată cu noile câmpuri din DB)
+// 1. INTERFAȚA PLAYER (Păstrată integral)
 interface DetailedStat {
   competition: string;
   type: string;
@@ -134,7 +135,7 @@ const computeScoutingMetrics = (player: Player) => {
   };
 };
 
-// Componentă SVG Radar Chart (Stil SofaScore)
+// Componentă SVG Radar Chart (Stilizat pentru tematica de teren)
 const PlayerRadarChart = ({
   primaryPlayer,
   secondaryPlayer
@@ -169,7 +170,7 @@ const PlayerRadarChart = ({
 
   return (
     <div className="flex flex-col items-center">
-      <svg width={size} height={size} className="overflow-visible">
+      <svg width={size} height={size} className="overflow-visible drop-shadow-md">
         {[25, 50, 75, 100].map((level) => {
           const pts = axes
             .map((_, idx) => {
@@ -182,7 +183,7 @@ const PlayerRadarChart = ({
               key={level}
               points={pts}
               fill="none"
-              stroke="#cbd5e1"
+              stroke="rgba(16, 185, 129, 0.3)" // Verde teren pentru linii radar
               strokeWidth="1"
               strokeDasharray={level < 100 ? "3 3" : undefined}
             />
@@ -198,7 +199,7 @@ const PlayerRadarChart = ({
               y1={center}
               x2={end.x}
               y2={end.y}
-              stroke="#cbd5e1"
+              stroke="rgba(16, 185, 129, 0.4)"
               strokeWidth="1"
             />
           );
@@ -207,17 +208,17 @@ const PlayerRadarChart = ({
         {m2 && (
           <polygon
             points={buildPolygonPoints(m2.radar)}
-            fill="rgba(59, 130, 246, 0.25)"
+            fill="rgba(59, 130, 246, 0.4)" // Albastru pt comparator
             stroke="#2563eb"
-            strokeWidth="2.5"
+            strokeWidth="3"
           />
         )}
 
         <polygon
           points={buildPolygonPoints(m1.radar)}
-          fill="rgba(16, 185, 129, 0.30)"
-          stroke="#059669"
-          strokeWidth="2.5"
+          fill="rgba(250, 204, 21, 0.4)" // Galben/Auriu pentru jucătorul principal (MVP style)
+          stroke="#facc15"
+          strokeWidth="3"
         />
 
         {m1.radar.map((item, idx) => {
@@ -225,13 +226,13 @@ const PlayerRadarChart = ({
           const labelPos = getCoordinates(idx, 120);
           return (
             <g key={idx}>
-              <circle cx={pt1.x} cy={pt1.y} r="4" fill="#059669" />
+              <circle cx={pt1.x} cy={pt1.y} r="4" fill="#facc15" stroke="#fff" strokeWidth="1.5" />
               <text
                 x={labelPos.x}
                 y={labelPos.y}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                className="text-[10px] font-black fill-slate-700 dark:fill-slate-300 uppercase tracking-wider"
+                className="text-[10px] font-black fill-slate-700 dark:fill-slate-200 uppercase tracking-wider"
               >
                 {item.label} ({item.value})
               </text>
@@ -296,7 +297,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     else setGreeting("Bună seara");
   }, []);
 
-  // Încărcăm Watchlist-ul utilizatorului
+  // Încărcăm Watchlist-ul
   useEffect(() => {
     if (!user?.email) return;
     fetch(`${API_URL}/api/users/watchlist/${encodeURIComponent(user.email)}`)
@@ -323,7 +324,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     minGoalsFilter > 0 ||
     parseFloat(minRatingFilter) > 0;
 
-  // Efect pentru căutare dinamică pe server (Jucători sau Echipe) + Filtre Scouting Pro
+  // Efect pentru căutare
   useEffect(() => {
     const fetchResults = async () => {
       if (onlyWatchlist && searchMode === 'players') {
@@ -394,21 +395,12 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
     return () => clearTimeout(timeoutId);
   }, [
-    searchTerm,
-    searchMode,
-    positionFilter,
-    maxAgeFilter,
-    minMinutesFilter,
-    minGoalsFilter,
-    minRatingFilter,
-    showProFilters,
-    hasActiveProFilters,
-    onlyWatchlist,
-    user?.email,
-    API_URL
+    searchTerm, searchMode, positionFilter, maxAgeFilter,
+    minMinutesFilter, minGoalsFilter, minRatingFilter,
+    showProFilters, hasActiveProFilters, onlyWatchlist,
+    user?.email, API_URL
   ]);
 
-  // Filtrare suplimentară client-side (înălțime, watchlist, sortare pro)
   const displayedPlayers = useMemo(() => {
     return players
       .filter((p) => {
@@ -436,18 +428,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         if (sortBy === 'minutes') return mB.minutes - mA.minutes;
         return mB.rating - mA.rating || mB.goals - mA.goals;
       });
-  }, [
-    players,
-    onlyWatchlist,
-    watchlistIds,
-    positionFilter,
-    maxAgeFilter,
-    minHeightFilter,
-    minMinutesFilter,
-    minGoalsFilter,
-    minRatingFilter,
-    sortBy
-  ]);
+  }, [players, onlyWatchlist, watchlistIds, positionFilter, maxAgeFilter, minHeightFilter, minMinutesFilter, minGoalsFilter, minRatingFilter, sortBy]);
 
   const toggleWatchlist = async (e: React.MouseEvent, player: Player) => {
     e.stopPropagation();
@@ -500,7 +481,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     setOnlyWatchlist(false);
   };
 
-  // Funcție pentru deschiderea lotului echipei
   const handleTeamClick = async (teamName: string) => {
     setLoadingRoster(true);
     setSelectedTeam(null);
@@ -517,84 +497,94 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     }
   };
 
-  const showResults =
-    searchTerm.trim().length > 0 ||
-    hasActiveProFilters ||
-    showProFilters ||
-    onlyWatchlist;
-
+  const showResults = searchTerm.trim().length > 0 || hasActiveProFilters || showProFilters || onlyWatchlist;
   const firstName = user?.name ? user.name.split(' ')[0] : 'Scouter';
 
   return (
-    <div className="relative min-h-[80vh] py-10 overflow-hidden">
+    <div className="relative min-h-[80vh] py-10 overflow-hidden rounded-3xl">
 
-      {/* MODAL LOT ECHIPĂ */}
+      {/* FUNDAL ANIMAT - TEMATICA GAZON / STADION */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none">
+         {/* Liniile de teren pe fundal (pitch pattern) */}
+        <div className="absolute inset-0 opacity-[0.04] dark:opacity-[0.06] bg-[repeating-linear-gradient(0deg,transparent,transparent_60px,#fff_60px,#fff_62px),repeating-linear-gradient(90deg,transparent,transparent_60px,#fff_60px,#fff_62px)]"></div>
+        {/* Lumini de nocturnă blurate */}
+        <div className="absolute top-0 left-1/4 w-[40vw] h-[40vw] rounded-full bg-emerald-500/20 blur-[150px] animate-pulse"></div>
+        <div className="absolute top-[20%] right-[10%] w-[30vw] h-[30vw] rounded-full bg-blue-500/10 blur-[120px]"></div>
+      </div>
+
+      {/* MODAL LOT ECHIPĂ (Stilizat ca un panou de la marginea terenului) */}
       {selectedTeam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
-          <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="bg-slate-900 text-white p-4 sm:p-6 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white p-1.5 sm:p-2 rounded-xl shrink-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm transition-opacity">
+          <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300">
+            
+            {/* Header Echipa - stil Scoreboard */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-4 sm:p-6 flex items-center justify-between shrink-0 border-b-4 border-emerald-500">
+              <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white p-2 rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
                   <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-xl sm:text-3xl font-black truncate">{selectedTeam.teamInfo.name}</h2>
-                  <p className="text-xs sm:text-sm text-slate-400 font-medium truncate">{selectedTeam.teamInfo.totalPlayers} Jucători în Lot</p>
+                  <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{selectedTeam.teamInfo.name}</h2>
+                  <p className="text-sm sm:text-base text-emerald-400 font-bold uppercase tracking-widest mt-1 truncate">
+                    ⚽ LOTUL OFICIAL • {selectedTeam.teamInfo.totalPlayers} Jucători
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedTeam(null)} className="p-2 sm:p-3 bg-white/10 hover:bg-white/20 rounded-full transition text-lg sm:text-xl shrink-0 ml-2">
-                ✕
+              <button onClick={() => setSelectedTeam(null)} className="p-3 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 transition text-white shrink-0 ml-2">
+                <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="overflow-y-auto p-3 sm:p-6 bg-slate-50 space-y-6 flex-1">
+
+            {/* Lista jucatorilor din lot */}
+            <div className="overflow-y-auto p-3 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-6 flex-1">
               {([
-                { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-600" },
-                { title: "Fundași", data: selectedTeam.squad.Defenders, color: "text-blue-600" },
-                { title: "Mijlocași", data: selectedTeam.squad.Midfielders, color: "text-emerald-600" },
-                { title: "Atacanți", data: selectedTeam.squad.Attackers, color: "text-rose-600" }
+                { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-500 border-amber-500", bg: "bg-amber-500/10" },
+                { title: "Fundași", data: selectedTeam.squad.Defenders, color: "text-blue-500 border-blue-500", bg: "bg-blue-500/10" },
+                { title: "Mijlocași", data: selectedTeam.squad.Midfielders, color: "text-emerald-500 border-emerald-500", bg: "bg-emerald-500/10" },
+                { title: "Atacanți", data: selectedTeam.squad.Attackers, color: "text-rose-500 border-rose-500", bg: "bg-rose-500/10" }
               ]).map((section, idx) => section.data.length > 0 && (
-                <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                  <div className="bg-slate-100/50 px-3 sm:px-4 py-2 sm:py-3 border-b border-slate-100">
-                    <h3 className={`font-black uppercase tracking-wider text-sm sm:text-base ${section.color}`}>{section.title}</h3>
+                <div key={idx} className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border-2 border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <div className={`px-4 py-3 border-l-4 ${section.color} ${section.bg} border-b border-b-slate-100 dark:border-b-slate-800`}>
+                    <h3 className={`font-black uppercase tracking-wider text-sm sm:text-base ${section.color.split(' ')[0]}`}>{section.title}</h3>
                   </div>
-                  <div className="divide-y divide-slate-50">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {section.data.map(p => {
                       const isSelectedForCompare = compareList.some(item => item._id === p._id);
                       return (
-                        <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between p-2.5 sm:p-3 hover:bg-slate-50 transition gap-2 cursor-pointer">
-                          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                            <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border border-slate-200 shrink-0" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
+                        <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between p-3 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition gap-2 cursor-pointer">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
                             <div className="min-w-0 flex-1">
-                              <p className="font-bold text-slate-800 text-sm sm:text-base truncate" title={p.name}>{p.name}</p>
-                              <div className="flex gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 truncate">
+                              <p className="font-bold text-slate-900 dark:text-white text-sm sm:text-base truncate uppercase tracking-tight" title={p.name}>{p.name}</p>
+                              <div className="flex gap-2 text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase">
                                 {p.age && <span className="shrink-0">{p.age} ani</span>}
                                 {p.nationality && <span className="truncate">{p.nationality}</span>}
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 sm:gap-4 text-center shrink-0">
-                            <div className="w-[38px] sm:w-[50px]">
-                              <p className="text-[8px] sm:text-[10px] text-slate-400 font-bold uppercase">Meciuri</p>
-                              <p className="font-black text-slate-700 text-sm sm:text-base">{p.statistics_summary?.total_appearances || 0}</p>
+                          <div className="flex items-center gap-2 sm:gap-5 text-center shrink-0">
+                            <div className="w-[45px] sm:w-[50px] bg-slate-50 dark:bg-slate-800 p-1.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                              <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase">Meciuri</p>
+                              <p className="font-black text-slate-800 dark:text-white text-sm sm:text-base">{p.statistics_summary?.total_appearances || 0}</p>
                             </div>
-                            <div className="w-[38px] sm:w-[50px]">
-                              <p className="text-[8px] sm:text-[10px] text-slate-400 font-bold uppercase">Goluri</p>
-                              <p className="font-black text-slate-700 text-sm sm:text-base">{p.statistics_summary?.total_goals || 0}</p>
+                            <div className="w-[45px] sm:w-[50px] bg-slate-50 dark:bg-slate-800 p-1.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                              <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase">Goluri</p>
+                              <p className="font-black text-emerald-600 dark:text-emerald-400 text-sm sm:text-base">{p.statistics_summary?.total_goals || 0}</p>
                             </div>
-                            <div className="w-[38px] sm:w-[50px]">
-                              <p className="text-[8px] sm:text-[10px] text-slate-400 font-bold uppercase">Rating</p>
+                            <div className="w-[45px] sm:w-[50px] bg-amber-50 dark:bg-amber-900/10 p-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                              <p className="text-[9px] sm:text-[10px] text-amber-600 font-black uppercase">Rating</p>
                               <p className="font-black text-amber-600 text-sm sm:text-base">{p.statistics_summary?.rating ? parseFloat(p.statistics_summary.rating).toFixed(2) : "-"}</p>
                             </div>
                             <button
                               onClick={(e) => toggleComparePlayer(e, p)}
                               title="Compară jucătorul"
-                              className={`p-2 rounded-xl border transition ${
+                              className={`p-2.5 rounded-xl border-2 transition ${
                                 isSelectedForCompare
-                                  ? 'bg-emerald-600 text-white border-emerald-600'
-                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700'
+                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600'
                               }`}
                             >
-                              <Scale className="w-4 h-4" />
+                              <Scale className="w-5 h-5" />
                             </button>
                           </div>
                         </div>
@@ -608,60 +598,63 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         </div>
       )}
 
-      {/* FUNDAL ANIMAT */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none">
-        <div className="absolute top-0 left-0 -translate-x-1/4 -translate-y-1/4 w-[500px] h-[500px] rounded-full bg-emerald-600/20 blur-[100px] animate-pulse-slow"></div>
-        <div className="absolute top-[30%] right-0 translate-x-1/4 w-[400px] h-[400px] rounded-full bg-blue-500/20 blur-[100px] animate-pulse-slow delay-1000"></div>
-        <div className="absolute bottom-0 left-[20%] translate-y-1/4 w-[600px] h-[600px] rounded-full bg-yellow-500/15 blur-[120px] animate-pulse-slow delay-2000"></div>
-      </div>
-
       <div className="relative z-10 space-y-10">
         
-        {/* HEADER PERSONALIZAT */}
+        {/* HEADER ACASĂ - SPORTIV */}
         <section className="text-center space-y-4 px-4">
           <div className="inline-block">
-            <h1 className="text-4xl font-black tracking-tight lg:text-6xl text-slate-900 drop-shadow-sm">
-              {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-blue-500 to-yellow-500">{firstName}</span>!
+            <h1 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter text-slate-900 dark:text-white drop-shadow-sm">
+              {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-600">{firstName}</span>!
             </h1>
           </div>
           
-          <p className="text-lg text-slate-700 font-medium max-w-2xl mx-auto">
+          <p className="text-sm sm:text-lg text-slate-600 dark:text-slate-300 font-bold max-w-2xl mx-auto uppercase tracking-widest border-b-2 border-emerald-500/20 pb-4 inline-block">
             Baza de date este pregătită. Pe cine analizăm astăzi?
           </p>
           
-          <div className="max-w-3xl mx-auto mt-8 relative z-10">
-            {/* COMUTATOR CĂUTARE + BUTOANE SCOUTING PRO & WATCHLIST */}
-            <div className="flex flex-wrap items-center justify-center gap-2.5 mb-6">
-              <div className="bg-white/70 backdrop-blur-md p-1.5 rounded-full inline-flex shadow-sm border border-white/60">
+          <div className="max-w-4xl mx-auto mt-8 relative z-10">
+            {/* COMUTATOARE CĂUTARE & BUTOANE (Stil Butoane Echipament/Tabelă) */}
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+              
+              {/* Grup Căutare */}
+              <div className="bg-slate-200/50 dark:bg-slate-800/50 p-1.5 rounded-xl inline-flex border-2 border-slate-300/50 dark:border-slate-700/50 backdrop-blur">
                 <button
                   onClick={() => { setSearchMode('players'); setSearchTerm(''); }}
-                  className={`px-4 sm:px-6 py-2 rounded-full text-sm font-bold transition-all ${searchMode === 'players' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-5 py-2.5 rounded-lg text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                    searchMode === 'players' 
+                    ? 'bg-emerald-600 text-white shadow-md border-b-4 border-emerald-800' 
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
+                  }`}
                 >
-                  👤 Caută Jucători
+                  👤 Jucători
                 </button>
                 <button
                   onClick={() => { setSearchMode('teams'); setSearchTerm(''); setOnlyWatchlist(false); setShowProFilters(false); }}
-                  className={`px-4 sm:px-6 py-2 rounded-full text-sm font-bold transition-all ${searchMode === 'teams' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-5 py-2.5 rounded-lg text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                    searchMode === 'teams' 
+                    ? 'bg-emerald-600 text-white shadow-md border-b-4 border-emerald-800' 
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
+                  }`}
                 >
-                  🛡️ Caută Echipe
+                  🛡️ Echipe
                 </button>
               </div>
 
               {searchMode === 'players' && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => {
                       setShowProFilters(!showProFilters);
                       if (onlyWatchlist) setOnlyWatchlist(false);
                     }}
-                    className={`px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm border ${
+                    className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center gap-2 border-2 ${
                       showProFilters || hasActiveProFilters
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/20'
-                        : 'bg-white/80 text-slate-700 border-slate-200 hover:bg-white'
+                        ? 'bg-slate-900 text-emerald-400 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                        : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-emerald-500'
                     }`}
                   >
                     <SlidersHorizontal className="w-4 h-4" />
-                    Filtre Scouting Pro
+                    Filtre Tactică
                   </button>
 
                   <button
@@ -669,153 +662,90 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                       setOnlyWatchlist(!onlyWatchlist);
                       setSearchMode('players');
                     }}
-                    className={`px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm border ${
+                    className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center gap-2 border-2 ${
                       onlyWatchlist
-                        ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-amber-500/20'
-                        : 'bg-white/80 text-slate-700 border-slate-200 hover:bg-white'
+                        ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-[0_0_15px_rgba(245,158,11,0.4)]'
+                        : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-amber-500'
                     }`}
                   >
                     <Bookmark className={`w-4 h-4 ${onlyWatchlist ? 'fill-slate-950' : 'text-amber-500'}`} />
-                    Watchlist ({watchlistIds.length})
+                    Listă Scurtă ({watchlistIds.length})
                   </button>
                 </div>
               )}
             </div>
 
-            {/* BARA DE CĂUTARE */}
-            <div className="relative group max-w-xl mx-auto">
-              <div className="absolute -inset-1.5 bg-gradient-to-r from-emerald-600 via-blue-500 to-yellow-500 rounded-full blur-md opacity-40 group-hover:opacity-70 transition duration-500"></div>
-              <div className="relative">
-                <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-5 top-1/2 transform -translate-y-1/2 h-6 w-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            {/* BARA DE CĂUTARE (Stilizată ca un banner de stadion) */}
+            <div className="relative group max-w-2xl mx-auto">
+              <div className="absolute -inset-2 bg-emerald-500/20 rounded-2xl blur-lg group-hover:bg-emerald-500/30 transition duration-500"></div>
+              <div className="relative border-4 border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xl bg-white dark:bg-slate-900">
+                <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-5 top-1/2 transform -translate-y-1/2 h-6 w-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
                   type="text"
-                  placeholder={searchMode === 'players' ? "Caută un jucător (ex: Saka, Hagi, Coman)..." : "Caută un club (ex: Liverpool, FCSB)..."}
-                  className="w-full pl-14 pr-12 py-5 text-lg font-medium border-0 rounded-full shadow-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all bg-white/90 backdrop-blur-xl placeholder:text-slate-400 text-slate-900"
+                  placeholder={searchMode === 'players' ? "CAUTĂ JUCĂTOR (EX: HAGI, COMAN)..." : "CAUTĂ CLUB (EX: FCSB, RAPID)..."}
+                  className="w-full pl-14 pr-12 py-5 text-lg font-black uppercase tracking-wide border-0 bg-transparent focus:ring-0 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
-                    className="absolute right-5 top-1/2 -translate-y-1/2 p-1 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-rose-500 text-white hover:bg-rose-600 border-b-2 border-rose-700 transition"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-5 h-5 font-bold" />
                   </button>
                 )}
               </div>
             </div>
 
-            {/* PANOUL EXTINS DE FILTRE SCOUTING PRO */}
+            {/* PANOUL TACTIC (Filtre Scouting Pro) - Textura de tablă de antrenor */}
             {searchMode === 'players' && showProFilters && (
-              <div className="mt-6 bg-white/95 backdrop-blur-xl border border-emerald-200 rounded-3xl p-5 shadow-2xl text-left animate-in fade-in duration-200">
-                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-emerald-600" />
-                    <span className="font-black text-xs sm:text-sm uppercase tracking-wider text-slate-800">
-                      Motor Avansat de Scouting ({displayedPlayers.length} jucători afișați)
+              <div className="mt-8 bg-slate-900 border-4 border-emerald-600/50 rounded-3xl p-6 shadow-2xl text-left animate-in fade-in duration-300 relative overflow-hidden">
+                {/* Linii vagi de tactică pe fundal */}
+                <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,transparent_0,transparent_100px,#fff_101px,#fff_103px,transparent_104px)]"></div>
+                
+                <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 pb-4 mb-5 border-b-2 border-slate-700/50">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500/20 rounded-lg border border-emerald-500/50">
+                      <Sparkles className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <span className="font-black text-sm sm:text-base uppercase tracking-widest text-white">
+                      Tablă Tactică: {displayedPlayers.length} jucători găsiți
                     </span>
                   </div>
                   <button
                     onClick={resetProFilters}
-                    className="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+                    className="text-xs font-black uppercase tracking-widest text-rose-400 hover:text-rose-300 flex items-center gap-1.5 bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" /> Resetează filtrele
+                    <RotateCcw className="w-4 h-4" /> Resetează Tactică
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
-                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Poziție în Teren</label>
-                    <select
-                      value={positionFilter}
-                      onChange={(e) => setPositionFilter(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
-                    >
-                      <option value="Toate">Toate pozițiile</option>
-                      <option value="Portari">Portari (GK)</option>
-                      <option value="Fundași">Fundași (DEF)</option>
-                      <option value="Mijlocași">Mijlocași (MID)</option>
-                      <option value="Atacanți">Atacanți (FWD)</option>
-                    </select>
-                  </div>
-
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
-                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Vârstă Maximă</label>
-                    <select
-                      value={maxAgeFilter}
-                      onChange={(e) => setMaxAgeFilter(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
-                    >
-                      <option value="">Orice vârstă</option>
-                      <option value="19">Sub 19 ani (U19)</option>
-                      <option value="21">Sub 21 ani (U21)</option>
-                      <option value="23">Sub 23 ani (U23)</option>
-                      <option value="26">Sub 26 ani</option>
-                      <option value="30">Sub 30 ani</option>
-                    </select>
-                  </div>
-
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
-                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Minutaj Minim Sezon</label>
-                    <select
-                      value={minMinutesFilter}
-                      onChange={(e) => setMinMinutesFilter(Number(e.target.value))}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
-                    >
-                      <option value={0}>Orice minutaj</option>
-                      <option value={180}>Minim 180' (2+ meciuri)</option>
-                      <option value={450}>Minim 450' (5+ meciuri)</option>
-                      <option value={900}>Minim 900' (Titular)</option>
-                      <option value={1500}>Minim 1500' (Om de bază)</option>
-                    </select>
-                  </div>
-
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
-                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Rating Minim SofaScore</label>
-                    <select
-                      value={minRatingFilter}
-                      onChange={(e) => setMinRatingFilter(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
-                    >
-                      <option value="0">Orice notă</option>
-                      <option value="6.5">Peste 6.50</option>
-                      <option value="6.8">Peste 6.80</option>
-                      <option value="7.0">Peste 7.00 (Formă bună)</option>
-                      <option value="7.3">Peste 7.30 (Elită)</option>
-                    </select>
-                  </div>
-
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
-                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Înălțime Minimă</label>
-                    <select
-                      value={minHeightFilter}
-                      onChange={(e) => setMinHeightFilter(Number(e.target.value))}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
-                    >
-                      <option value={0}>Orice înălțime</option>
-                      <option value={175}>Minim 175 cm</option>
-                      <option value={180}>Minim 180 cm</option>
-                      <option value={185}>Minim 185 cm</option>
-                      <option value={190}>Minim 190 cm</option>
-                    </select>
-                  </div>
-
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
-                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Ordonează Rezultatele</label>
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as any)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
-                    >
-                      <option value="rating">⭐ Rating Mediu</option>
-                      <option value="per90">⚡ Contribuții (G+A) / 90'</option>
-                      <option value="goals">⚽ Total Goluri</option>
-                      <option value="assists">🎯 Total Pase Decisive</option>
-                      <option value="minutes">⏱️ Minute Jucate</option>
-                    </select>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 relative z-10">
+                  {/* Select-uri stilizate dark/sport */}
+                  {[
+                    { label: "Poziție în Teren", value: positionFilter, set: setPositionFilter, opts: [["Toate", "Toate pozițiile"], ["Portari", "Portari (GK)"], ["Fundași", "Fundași (DEF)"], ["Mijlocași", "Mijlocași (MID)"], ["Atacanți", "Atacanți (FWD)"]] },
+                    { label: "Vârstă Maximă", value: maxAgeFilter, set: setMaxAgeFilter, opts: [["", "Orice vârstă"], ["19", "Sub 19 ani (U19)"], ["21", "Sub 21 ani (U21)"], ["23", "Sub 23 ani (U23)"], ["26", "Sub 26 ani"], ["30", "Sub 30 ani"]] },
+                    { label: "Minutaj Minim (Sezon)", value: minMinutesFilter, set: (v:any)=>setMinMinutesFilter(Number(v)), opts: [[0, "Orice minutaj"], [180, "Minim 180' (2+ meciuri)"], [450, "Minim 450' (5+ meciuri)"], [900, "Minim 900' (Titular)"], [1500, "Minim 1500' (Om de bază)"]] },
+                    { label: "Rating Minim (SofaScore)", value: minRatingFilter, set: setMinRatingFilter, opts: [["0", "Orice notă"], ["6.5", "Peste 6.50"], ["6.8", "Peste 6.80"], ["7.0", "Peste 7.00 (Formă bună)"], ["7.3", "Peste 7.30 (Elită)"]] },
+                    { label: "Înălțime Minimă", value: minHeightFilter, set: (v:any)=>setMinHeightFilter(Number(v)), opts: [[0, "Orice înălțime"], [175, "Minim 175 cm"], [180, "Minim 180 cm"], [185, "Minim 185 cm"], [190, "Minim 190 cm"]] },
+                    { label: "Ordonează După", value: sortBy, set: setSortBy, opts: [["rating", "⭐ Rating Mediu"], ["per90", "⚡ Contribuții (G+A) / 90'"], ["goals", "⚽ Total Goluri"], ["assists", "🎯 Total Pase Decisive"], ["minutes", "⏱️ Minute Jucate"]] }
+                  ].map((field, i) => (
+                    <div key={i} className="bg-slate-800/80 p-3 rounded-xl border border-slate-700 focus-within:border-emerald-500 transition-colors">
+                      <label className="block text-[11px] font-black uppercase text-emerald-400 tracking-widest mb-1.5">{field.label}</label>
+                      <select
+                        value={field.value as string|number}
+                        onChange={(e) => field.set(e.target.value)}
+                        className="w-full bg-slate-900 border-2 border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm font-bold text-white outline-none focus:border-emerald-500 transition-colors cursor-pointer uppercase"
+                      >
+                        {field.opts.map(([val, text]) => (
+                          <option key={String(val)} value={val}>{text}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -823,39 +753,40 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         </section>
 
         {/* GRID REZULTATE */}
-        <section className="px-6 container mx-auto pb-20 relative z-10">
+        <section className="px-4 container mx-auto pb-24 relative z-10">
           {loading && (
             <div className="flex justify-center items-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-emerald-500"></div>
             </div>
           )}
 
           {loadingRoster && (
-            <div className="fixed inset-0 z-[60] bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-emerald-600 mb-4"></div>
-              <h3 className="text-xl font-black text-slate-800 animate-pulse">Încărcăm Lotul...</h3>
+            <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
+              <div className="w-20 h-20 border-8 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_20px_rgba(16,185,129,0.5)]"></div>
+              <h3 className="text-2xl font-black uppercase tracking-widest text-emerald-400 animate-pulse">Analizăm Lotul...</h3>
             </div>
           )}
           
-          {error && <div className="text-center text-red-600 font-bold py-10 bg-red-50/50 rounded-xl">{error}</div>}
+          {error && <div className="text-center text-rose-500 font-black border-4 border-rose-500 bg-rose-950/50 py-6 px-10 rounded-2xl uppercase tracking-widest max-w-lg mx-auto">{error}</div>}
           
           {!showResults && !loading && (
-            <div className="text-center py-20 opacity-60">
-              <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto opacity-20 mb-6 hidden sm:grid">
-                <div className="h-32 bg-slate-300 rounded-2xl rotate-[-6deg]"></div>
-                <div className="h-32 bg-slate-300 rounded-2xl translate-y-[-10px]"></div>
-                <div className="h-32 bg-slate-300 rounded-2xl rotate-[6deg]"></div>
+            <div className="text-center py-20">
+              <div className="w-24 h-24 mx-auto mb-6 opacity-30 text-emerald-600 dark:text-emerald-500">
+                {/* SVG minge teren simpla */}
+                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C14.07 4 15.95 4.8 17.38 6.13L15.22 8.3C14.33 7.84 13.26 7.56 12 7.56C10.74 7.56 9.67 7.84 8.78 8.3L6.62 6.13C8.05 4.8 9.93 4 12 4ZM5.6 7.42L7.75 9.58C6.9 10.71 6.36 12.1 6.36 13.62C6.36 14.54 6.54 15.42 6.86 16.23L4.61 17.9C4.22 16.7 4 15.39 4 14C4 11.59 4.61 9.32 5.6 7.42ZM7.92 18.52L10.15 16.85C10.66 17.15 11.23 17.36 11.83 17.47V20C10.37 19.78 9.04 19.26 7.92 18.52ZM12.17 20V17.47C12.77 17.36 13.34 17.15 13.85 16.85L16.08 18.52C14.96 19.26 13.63 19.78 12.17 20ZM17.14 16.23C17.46 15.42 17.64 14.54 17.64 13.62C17.64 12.1 17.1 10.71 16.25 9.58L18.4 7.42C19.39 9.32 20 11.59 20 14C20 15.39 19.78 16.7 19.39 17.9L17.14 16.23ZM15.22 10.13L16.75 8.6C17.53 9.77 18 11.16 18 12.62C18 13.78 17.7 14.86 17.18 15.82L15.65 14.3C15.88 13.78 16 13.22 16 12.62C16 11.71 15.71 10.87 15.22 10.13Z" />
+                </svg>
               </div>
-              <p className="text-xl font-bold text-slate-800">Totul e calm momentan.</p>
-              <p className="text-slate-600">
-                Tastează în bară pentru a căuta {searchMode === 'players' ? 'un jucător' : 'o echipă'} sau deschide <strong>Filtrele Scouting Pro</strong>.
+              <h3 className="text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 mb-2">Așteptăm Fluierul de Start...</h3>
+              <p className="text-slate-500 font-bold uppercase text-sm">
+                Caută {searchMode === 'players' ? 'un jucător' : 'o echipă'} sau setează o tactică din Filtrele Pro.
               </p>
             </div>
           )}
 
-          {/* AFISARE JUCATORI (Carduri îmbogățite cu Rating, Per 90', Watchlist & Comparator) */}
+          {/* AFISARE JUCATORI (Carduri stilizate fotbal/TV Broadcast) */}
           {showResults && !loading && searchMode === 'players' && displayedPlayers.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 animate-in slide-in-from-bottom-8 duration-700">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 animate-in slide-in-from-bottom-8 duration-700">
               {displayedPlayers.map((player) => {
                 const teamNameStr = player.team_name || player.team || "Club Necunoscut";
                 const isNationalOnly = teamNameStr.toLowerCase().includes("nationala") || teamNameStr.toLowerCase() === "romania";
@@ -867,81 +798,77 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   <div
                     key={player._id}
                     onClick={() => setSelectedPlayer(player)}
-                    className="relative group bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-4 flex flex-col items-center text-center cursor-pointer hover:shadow-xl hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-300 hover:-translate-y-1"
+                    className="relative group bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col items-center cursor-pointer hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
                   >
-                    {/* Butoane flotante sus: Watchlist (stânga) și Compară (dreapta) */}
-                    <button
-                      onClick={(e) => toggleWatchlist(e, player)}
-                      title={isWatched ? "Elimină din Watchlist" : "Salvează în Watchlist"}
-                      className={`absolute top-2.5 left-2.5 p-1.5 rounded-lg border transition z-10 ${
-                        isWatched
-                          ? 'bg-amber-500 text-slate-950 border-amber-500'
-                          : 'bg-slate-50 text-slate-400 border-slate-200/80 hover:text-amber-500'
-                      }`}
-                    >
-                      <Bookmark className={`w-3.5 h-3.5 ${isWatched ? 'fill-slate-950' : ''}`} />
-                    </button>
+                    {/* Header Card (Tricolor sau Culoare Club vagă) */}
+                    <div className="w-full h-12 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex justify-between px-2 pt-2 border-b-2 border-emerald-500">
+                       <button
+                        onClick={(e) => toggleWatchlist(e, player)}
+                        className={`p-1.5 rounded-lg border-2 h-fit transition z-10 bg-white dark:bg-slate-900 ${
+                          isWatched
+                            ? 'border-amber-500 text-amber-500'
+                            : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:text-amber-500 hover:border-amber-500'
+                        }`}
+                      >
+                        <Bookmark className={`w-4 h-4 ${isWatched ? 'fill-current' : ''}`} />
+                      </button>
+                      <button
+                        onClick={(e) => toggleComparePlayer(e, player)}
+                        className={`p-1.5 rounded-lg border-2 h-fit transition z-10 bg-white dark:bg-slate-900 ${
+                          isSelectedForCompare
+                            ? 'border-emerald-600 text-emerald-600'
+                            : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:text-emerald-600 hover:border-emerald-600'
+                        }`}
+                      >
+                        {isSelectedForCompare ? <Check className="w-4 h-4" /> : <Scale className="w-4 h-4" />}
+                      </button>
+                    </div>
 
-                    <button
-                      onClick={(e) => toggleComparePlayer(e, player)}
-                      title="Compară jucătorul (Head-to-Head)"
-                      className={`absolute top-2.5 right-2.5 p-1.5 rounded-lg border transition z-10 ${
-                        isSelectedForCompare
-                          ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'bg-slate-50 text-slate-400 border-slate-200/80 hover:text-emerald-600'
-                      }`}
-                    >
-                      {isSelectedForCompare ? <Check className="w-3.5 h-3.5" /> : <Scale className="w-3.5 h-3.5" />}
-                    </button>
-
-                    <div className="relative mb-3 mt-3">
+                    <div className="relative -mt-8 mb-2 z-10">
                       <img
                         src={player.image || GENERIC_USER_IMAGE}
                         alt={player.name}
-                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-100 dark:border-slate-700 shadow-sm bg-gray-50 dark:bg-slate-900 group-hover:border-emerald-500 transition-colors"
+                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-white dark:border-slate-900 shadow-md bg-white dark:bg-slate-800"
                         onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                       />
                       {isNationalOnly && (
-                        <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-xs rounded-full w-6 h-6 flex items-center justify-center shadow border border-white dark:border-slate-800">
+                        <div className="absolute bottom-0 right-0 bg-yellow-400 text-xs rounded-full w-7 h-7 flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900">
                           🇷🇴
                         </div>
                       )}
                       {metrics.rating > 0 && (
-                        <div className="absolute -bottom-1 -left-1 bg-slate-900 text-amber-400 text-[10px] font-black px-1.5 py-0.5 rounded-md shadow border border-white flex items-center gap-0.5">
-                          <Star className="w-2.5 h-2.5 fill-amber-400" /> {metrics.rating.toFixed(1)}
+                        <div className="absolute -bottom-1 -left-2 bg-slate-900 text-amber-400 text-[11px] font-black px-2 py-0.5 rounded-lg shadow-md border-2 border-white dark:border-slate-900 flex items-center gap-0.5">
+                          <Star className="w-3 h-3 fill-amber-400" /> {metrics.rating.toFixed(1)}
                         </div>
                       )}
                     </div>
                     
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-white leading-tight mb-1 truncate w-full">
-                      {player.name}
-                    </h3>
-                    
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium truncate w-full justify-center">
-                      {player.team_logo ? (
-                        <img src={player.team_logo} alt={teamNameStr} className="w-4 h-4 object-contain" />
-                      ) : (
-                        <Shield className="w-3.5 h-3.5" />
-                      )}
-                      <span className="truncate">{teamNameStr}</span>
-                    </div>
-                    
-                    <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
-                        {player.position || "Jucător"}
-                      </span>
-                      {player.age && (
-                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">
-                          {player.age}a
+                    <div className="px-3 pb-3 w-full text-center flex-1 flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1 truncate w-full" title={player.name}>
+                          {player.name}
+                        </h3>
+                        
+                        <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold truncate w-full uppercase mb-2">
+                          {player.team_logo ? (
+                            <img src={player.team_logo} alt={teamNameStr} className="w-4 h-4 object-contain" />
+                          ) : (
+                            <Shield className="w-3.5 h-3.5" />
+                          )}
+                          <span className="truncate">{teamNameStr}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-auto pt-3 border-t-2 border-slate-100 dark:border-slate-800 w-full flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 rounded-md border border-emerald-100 dark:border-emerald-800">
+                          {player.position || "N/A"}
                         </span>
-                      )}
-                    </div>
-
-                    {/* Mini rezumat G/A pe card */}
-                    <div className="w-full mt-3 pt-2 border-t border-slate-100 flex items-center justify-around text-[11px] font-bold text-slate-600">
-                      <span>{metrics.apps}M</span>
-                      <span className="text-emerald-600">{metrics.goals}G</span>
-                      <span className="text-blue-600">{metrics.assists}A</span>
+                        
+                        <div className="flex text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 divide-x-2 divide-slate-200 dark:divide-slate-700">
+                           <div className="px-2 py-1 text-emerald-600 dark:text-emerald-400" title="Goluri">{metrics.goals}G</div>
+                           <div className="px-2 py-1 text-blue-600 dark:text-blue-400" title="Pase Decisive">{metrics.assists}A</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -949,15 +876,16 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
           )}
 
-          {/* AFISARE ECHIPE */}
+          {/* AFISARE ECHIPE (Stil Embleme Pe Stadion) */}
           {showResults && !loading && searchMode === 'teams' && teams.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
               {teams.map((team, idx) => (
-                <div key={idx} onClick={() => handleTeamClick(team.team_name)} className="bg-white/90 backdrop-blur-sm p-4 sm:p-6 rounded-3xl shadow-lg hover:shadow-2xl border border-white hover:border-emerald-200 transition-all cursor-pointer group flex flex-col items-center text-center">
-                  <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 bg-slate-50 rounded-2xl p-2 sm:p-3 shadow-inner group-hover:scale-110 transition-transform">
-                    <img src={team.team_logo} alt={team.team_name} className="w-full h-full object-contain" />
+                <div key={idx} onClick={() => handleTeamClick(team.team_name)} className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-lg hover:shadow-2xl border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all cursor-pointer group flex flex-col items-center text-center">
+                  <div className="w-20 h-20 sm:w-28 sm:h-28 mb-4 bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 shadow-inner group-hover:scale-110 transition-transform">
+                    <img src={team.team_logo} alt={team.team_name} className="w-full h-full object-contain drop-shadow-md" />
                   </div>
-                  <h4 className="font-black text-sm sm:text-lg text-slate-800 leading-tight">{team.team_name}</h4>
+                  <h4 className="font-black text-sm sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight">{team.team_name}</h4>
+                  <div className="mt-2 w-8 h-1 bg-emerald-500 rounded-full group-hover:w-16 transition-all"></div>
                 </div>
               ))}
             </div>
@@ -965,11 +893,13 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
           {/* FĂRĂ REZULTATE */}
           {showResults && !loading && ((searchMode === 'players' && displayedPlayers.length === 0) || (searchMode === 'teams' && teams.length === 0)) && (
-            <div className="text-center py-16 bg-white/85 backdrop-blur-md rounded-3xl shadow-xl max-w-2xl mx-auto mt-10 border border-white/50">
-              <div className="text-6xl mb-4 opacity-80">🤷‍♂️</div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">Niciun rezultat găsit.</h3>
-              <p className="text-slate-600 font-medium">
-                Asigură-te că {searchMode === 'players' ? 'jucătorul' : 'echipa'} se află în baza de date sau relaxează filtrele active.
+            <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl shadow-xl max-w-2xl mx-auto border-2 border-slate-200 dark:border-slate-800">
+              <div className="w-16 h-16 mx-auto bg-rose-100 dark:bg-rose-900/30 text-rose-500 rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2">Fluier Final. Niciun rezultat.</h3>
+              <p className="text-slate-500 font-bold">
+                Jucătorul sau echipa nu se află în baza de date, sau tactica aleasă este prea strictă.
               </p>
             </div>
           )}
@@ -980,24 +910,25 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
       {/* BARĂ PLUTITOARE PENTRU COMPARATORUL HEAD-TO-HEAD */}
       {/* ========================================================= */}
       {compareList.length > 0 && (
-      <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-[55] bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border border-emerald-500/40 flex items-center gap-4 max-w-xl w-[92%] justify-between animate-in slide-in-from-bottom-5">          <div className="flex items-center gap-3 overflow-hidden">
-            <Scale className="w-5 h-5 text-emerald-400 shrink-0" />
+      <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[55] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
+          <div className="flex items-center gap-3 overflow-hidden">
+            <Scale className="w-6 h-6 text-emerald-400 shrink-0 animate-pulse" />
             <div className="flex items-center gap-2 overflow-hidden">
               {compareList.map((p) => (
-                <div key={p._id} className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xl text-xs font-bold truncate">
-                  <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-5 h-5 rounded-full object-cover" />
-                  <span className="truncate max-w-[95px]">{p.name}</span>
+                <div key={p._id} className="flex items-center gap-2 bg-slate-800 border border-slate-600 pl-1 pr-2 py-1 rounded-xl text-xs font-black uppercase tracking-wider text-white truncate">
+                  <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-6 h-6 rounded-md object-cover" />
+                  <span className="truncate max-w-[80px] sm:max-w-[120px]">{p.name}</span>
                   <button
                     onClick={(e) => toggleComparePlayer(e, p)}
-                    className="text-slate-400 hover:text-white ml-1"
+                    className="text-slate-400 hover:text-rose-400 ml-1 bg-slate-900 p-0.5 rounded"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               ))}
               {compareList.length === 1 && (
-                <span className="text-xs text-slate-400 italic hidden sm:inline">
-                  + Selectează încă 1 jucător
+                <span className="text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-widest hidden sm:inline border border-dashed border-emerald-500/50 px-2 py-1 rounded-lg">
+                  + Selectează Adversar
                 </span>
               )}
             </div>
@@ -1007,83 +938,79 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             <button
               disabled={compareList.length < 2}
               onClick={() => setShowCompareModal(true)}
-              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition border-b-4 ${
                 compareList.length === 2
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/30'
-                  : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                  ? 'bg-emerald-500 border-emerald-700 text-slate-950 hover:bg-emerald-400 hover:translate-y-[2px] hover:border-b-2'
+                  : 'bg-slate-800 border-slate-900 text-slate-500 cursor-not-allowed'
               }`}
             >
-              Compară ({compareList.length}/2)
-            </button>
-            <button
-              onClick={() => setCompareList([])}
-              className="p-2 text-slate-400 hover:text-white rounded-lg"
-              title="Golește comparatorul"
-            >
-              <X className="w-4 h-4" />
+              VS ({compareList.length}/2)
             </button>
           </div>
         </div>
       )}
 
       {/* ========================================================= */}
-      {/* MODAL DETALII JUCĂTOR (CU RADAR CHART & METRICI PER 90') */}
+      {/* MODAL DETALII JUCĂTOR (STIL FIȘĂ JUCĂTOR / CARTONAȘ) */}
       {/* ========================================================= */}
       {selectedPlayer && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setSelectedPlayer(null)}
         >
           <div
-            className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-slate-700"
+            className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[92vh] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border-4 border-emerald-600/30"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header Modal */}
-            <div className="relative bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-800 shrink-0 px-6 py-8">
+            {/* Header Modal - Teren / Stadion */}
+            <div className="relative bg-slate-900 shrink-0 px-4 sm:px-8 py-6 sm:py-8 border-b-4 border-emerald-500 overflow-hidden">
+              {/* Textura teren iarba */}
+              <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#10b981_20px,#10b981_22px),repeating-linear-gradient(90deg,transparent,transparent_20px,#10b981_20px,#10b981_22px)]"></div>
+              
               <button
                 onClick={() => setSelectedPlayer(null)}
-                className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 backdrop-blur rounded-full p-2 text-white transition-colors z-10"
+                className="absolute top-4 right-4 bg-slate-950/50 border border-white/20 hover:bg-rose-500 hover:border-rose-500 rounded-full p-2 text-white transition-colors z-20"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 font-bold" />
               </button>
               
-              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 relative z-0">
+              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 sm:gap-6 relative z-10">
                 <img
                   src={selectedPlayer.image || GENERIC_USER_IMAGE}
                   alt={selectedPlayer.name}
-                  className="w-28 h-28 md:w-36 md:h-36 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-xl bg-white dark:bg-slate-800 shrink-0"
+                  className="w-32 h-32 md:w-40 md:h-40 rounded-2xl object-cover border-4 border-white shadow-2xl bg-slate-800 shrink-0"
                   onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                 />
                 
-                <div className="text-white drop-shadow-md text-center sm:text-left flex-1 min-w-0">
-                  <h2 className="text-3xl md:text-4xl font-black truncate">{selectedPlayer.name}</h2>
-                  <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 opacity-90">
+                <div className="text-white text-center sm:text-left flex-1 min-w-0">
+                  <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter truncate drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">{selectedPlayer.name}</h2>
+                  <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
                     {selectedPlayer.team_logo && (
-                      <img src={selectedPlayer.team_logo} alt="logo" className="w-6 h-6 bg-white rounded-full p-0.5 object-contain" />
+                      <img src={selectedPlayer.team_logo} alt="logo" className="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-md p-1 object-contain" />
                     )}
-                    <span className="font-bold text-lg truncate">{selectedPlayer.team_name || selectedPlayer.team}</span>
+                    <span className="font-bold text-lg sm:text-xl text-emerald-400 uppercase tracking-widest truncate">{selectedPlayer.team_name || selectedPlayer.team}</span>
                   </div>
                 </div>
 
-                {/* Butoane acțiuni scouter în Header */}
-                <div className="flex sm:flex-col gap-2 shrink-0">
+                {/* Butoane Acțiuni Modal */}
+                <div className="flex sm:flex-col gap-2 shrink-0 mt-4 sm:mt-0">
                   <button
                     onClick={(e) => toggleWatchlist(e, selectedPlayer)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 shadow-md transition ${
+                    className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 border-b-4 transition ${
                       watchlistIds.includes(selectedPlayer._id)
-                        ? 'bg-amber-400 text-slate-950'
-                        : 'bg-white text-slate-900 hover:bg-emerald-50'
+                        ? 'bg-amber-500 border-amber-700 text-slate-950'
+                        : 'bg-white border-slate-300 text-slate-900 hover:bg-emerald-50'
                     }`}
                   >
                     <Bookmark className="w-4 h-4 fill-current" />
-                    {watchlistIds.includes(selectedPlayer._id) ? 'În Watchlist' : 'Watchlist'}
+                    {watchlistIds.includes(selectedPlayer._id) ? 'În Listă' : 'Listă'}
                   </button>
                   <button
                     onClick={(e) => {
                       toggleComparePlayer(e, selectedPlayer);
                       setSelectedPlayer(null);
                     }}
-                    className="px-3.5 py-2 rounded-xl text-xs font-black uppercase bg-slate-900/80 hover:bg-slate-900 text-white flex items-center gap-1.5 shadow-md transition"
+                    className="px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-slate-800 border-b-4 border-slate-950 hover:bg-slate-700 text-white flex items-center gap-2 transition"
                   >
                     <Scale className="w-4 h-4" /> Compară
                   </button>
@@ -1092,54 +1019,53 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
 
             {/* Conținut Derulabil */}
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-50 dark:bg-slate-900">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50 dark:bg-slate-950">
               
-              {/* Info Bar */}
+              {/* Info Bar - Detalii Fizice */}
               <div className="flex flex-wrap justify-center sm:justify-start gap-3 mb-8">
-                <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 shadow-sm">
+                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
                   <Globe className="w-4 h-4 text-emerald-500" />
-                  {selectedPlayer.nationality || "Necunoscut"}
+                  {selectedPlayer.nationality || "N/A"}
                 </div>
-                <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 shadow-sm">
+                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
                   <UserIcon className="w-4 h-4 text-emerald-500" />
-                  {selectedPlayer.age ? `${selectedPlayer.age} ani` : "-"}
+                  {selectedPlayer.age ? `${selectedPlayer.age} ANI` : "N/A"}
                 </div>
-                <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 shadow-sm">
+                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
                   <Activity className="w-4 h-4 text-emerald-500" />
                   {selectedPlayer.height || "-"} / {selectedPlayer.weight || "-"}
                 </div>
-                <div className="flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-sm font-bold text-emerald-700 dark:text-emerald-400 shadow-sm">
-                  {selectedPlayer.position || "Necunoscut"}
+                <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/40 px-4 py-2 rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+                  {selectedPlayer.position || "N/A"}
                 </div>
               </div>
 
-              {/* Statistici Cumulate */}
-              <h3 className="text-lg font-black text-slate-800 dark:text-white mb-3 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-yellow-500" /> Rezumat Sezon
+              {/* Statistici Cumulate (Scoruri Mari TV Style) */}
+              <h3 className="text-lg font-black uppercase tracking-widest text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b-2 border-emerald-500/20 pb-2">
+                <Trophy className="w-6 h-6 text-amber-500" /> Cifrele Sezonului
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 text-center shadow-sm">
-                  <span className="block text-2xl font-black text-slate-800 dark:text-white">{selectedPlayer.statistics_summary?.total_appearances || 0}</span>
-                  <span className="text-[10px] uppercase text-gray-400 font-bold">Meciuri</span>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-10">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center">
+                  <span className="block text-3xl font-black text-slate-900 dark:text-white">{selectedPlayer.statistics_summary?.total_appearances || 0}</span>
+                  <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Meciuri</span>
                 </div>
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 text-center shadow-sm border-b-4 border-b-emerald-500">
-                  <span className="block text-2xl font-black text-emerald-600 dark:text-emerald-400">{selectedPlayer.statistics_summary?.total_goals || 0}</span>
-                  <span className="text-[10px] uppercase text-gray-400 font-bold">Goluri</span>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center border-b-4 border-b-emerald-500">
+                  <span className="block text-3xl font-black text-emerald-600 dark:text-emerald-400">{selectedPlayer.statistics_summary?.total_goals || 0}</span>
+                  <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Goluri</span>
                 </div>
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 text-center shadow-sm border-b-4 border-b-red-500">
-                  <span className="block text-2xl font-black text-red-600 dark:text-red-400">{selectedPlayer.statistics_summary?.total_assists || 0}</span>
-                  <span className="text-[10px] uppercase text-gray-400 font-bold">Pase Decisive</span>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center border-b-4 border-b-blue-500">
+                  <span className="block text-3xl font-black text-blue-600 dark:text-blue-400">{selectedPlayer.statistics_summary?.total_assists || 0}</span>
+                  <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Pase Decisive</span>
                 </div>
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 text-center shadow-sm">
-                  <span className="block text-2xl font-black text-slate-800 dark:text-white">{selectedPlayer.statistics_summary?.minutes_played || 0}'</span>
-                  <span className="text-[10px] uppercase text-gray-400 font-bold">Minute</span>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center">
+                  <span className="block text-3xl font-black text-slate-900 dark:text-white">{selectedPlayer.statistics_summary?.minutes_played || 0}'</span>
+                  <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Minute</span>
                 </div>
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 text-center shadow-sm">
-                  <span className="block text-2xl font-black text-yellow-500 flex items-center justify-center gap-1">
-                    <Star className="w-4 h-4 fill-yellow-500" />
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-amber-300 dark:border-amber-700 text-center flex flex-col justify-center bg-amber-50/50 dark:bg-amber-900/10">
+                  <span className="block text-3xl font-black text-amber-500 flex items-center justify-center gap-1">
                     {selectedPlayer.statistics_summary?.rating ? parseFloat(selectedPlayer.statistics_summary.rating).toFixed(2) : "-"}
                   </span>
-                  <span className="text-[10px] uppercase text-gray-400 font-bold">Rating Mediu</span>
+                  <span className="text-[10px] uppercase tracking-widest text-amber-600/80 font-bold mt-1">Rating SofaScore</span>
                 </div>
               </div>
 
@@ -1147,34 +1073,34 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               {(() => {
                 const m = computeScoutingMetrics(selectedPlayer);
                 return (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center bg-white dark:bg-slate-800 p-5 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm mb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-900 p-6 rounded-3xl shadow-xl mb-10 border-4 border-emerald-600/30">
                     <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-                        <Activity className="w-4 h-4 text-emerald-500" /> Profil Radar (Atribute Scouter)
+                      <h4 className="text-xs font-black uppercase tracking-widest text-emerald-400 mb-4 flex items-center gap-2">
+                        <Activity className="w-4 h-4" /> Analiza Scouter (Radar)
                       </h4>
                       <PlayerRadarChart primaryPlayer={selectedPlayer} />
                     </div>
 
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                        <TrendingUp className="w-4 h-4 text-emerald-500" /> Randament Raportat la 90 Minute
+                    <div className="space-y-4 flex flex-col justify-center">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" /> Randament Raportat la 90 Minute
                       </h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-emerald-50/70 dark:bg-emerald-900/20 p-3.5 rounded-xl border border-emerald-200/60">
-                          <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400">Goluri / 90'</span>
-                          <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{m.goalsPer90}</p>
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                        <div className="bg-slate-800 p-4 rounded-2xl border-2 border-emerald-500/30 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Goluri / 90'</span>
+                          <p className="text-3xl font-black text-white mt-1">{m.goalsPer90}</p>
                         </div>
-                        <div className="bg-blue-50/70 dark:bg-blue-900/20 p-3.5 rounded-xl border border-blue-200/60">
-                          <span className="text-[10px] font-black uppercase text-blue-700 dark:text-blue-400">Pase Decisive / 90'</span>
-                          <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{m.assistsPer90}</p>
+                        <div className="bg-slate-800 p-4 rounded-2xl border-2 border-blue-500/30 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Assist / 90'</span>
+                          <p className="text-3xl font-black text-white mt-1">{m.assistsPer90}</p>
                         </div>
-                        <div className="bg-amber-50/70 dark:bg-amber-900/20 p-3.5 rounded-xl border border-amber-200/60">
-                          <span className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">Contribuții (G+A) / 90'</span>
-                          <p className="text-2xl font-black text-amber-600 mt-0.5">{m.contributionsPer90}</p>
+                        <div className="bg-slate-800 p-4 rounded-2xl border-2 border-amber-500/30 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">Contribuții (G+A)/90'</span>
+                          <p className="text-3xl font-black text-amber-400 mt-1">{m.contributionsPer90}</p>
                         </div>
-                        <div className="bg-slate-100 dark:bg-slate-700 p-3.5 rounded-xl border border-slate-200 dark:border-slate-600">
-                          <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-300">Minute / Contribuție</span>
-                          <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
+                        <div className="bg-slate-800 p-4 rounded-2xl border-2 border-slate-700 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Min/Contribuție</span>
+                          <p className="text-3xl font-black text-white mt-1">
                             {m.minsPerContribution > 0 ? `${m.minsPerContribution}'` : '-'}
                           </p>
                         </div>
@@ -1184,41 +1110,41 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 );
               })()}
 
-              {/* TABEL DETALIAT PE COMPETIȚII */}
-              <h3 className="text-lg font-black text-slate-800 dark:text-white mb-3 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-emerald-500" /> Detalii pe Competiții
+              {/* TABEL DETALIAT PE COMPETIȚII (Stil Tabelă) */}
+              <h3 className="text-lg font-black uppercase tracking-widest text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b-2 border-emerald-500/20 pb-2">
+                <MapPin className="w-6 h-6 text-emerald-500" /> Situație Competițională
               </h3>
               
               {(!selectedPlayer.detailed_stats || selectedPlayer.detailed_stats.length === 0) ? (
-                <div className="text-center p-6 bg-white dark:bg-slate-800 rounded-xl border border-dashed border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-400">
-                  Nu sunt date disponibile pe competiții pentru acest jucător momentan.
+                <div className="text-center p-8 bg-white dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-sm">
+                  DATE COMPETIȚIONALE INDISPONIBILE 🚫
                 </div>
               ) : (
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-slate-900/50">
+                      <thead className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800/80 border-b-2 border-slate-200 dark:border-slate-700">
                         <tr>
-                          <th className="px-4 py-3 font-bold">Competiție</th>
-                          <th className="px-4 py-3 font-bold text-center">Meciuri</th>
-                          <th className="px-4 py-3 font-bold text-center">Goluri</th>
-                          <th className="px-4 py-3 font-bold text-center">Pase</th>
-                          <th className="px-4 py-3 font-bold text-center hidden sm:table-cell">Minute</th>
+                          <th className="px-4 py-4 font-black">Competiție</th>
+                          <th className="px-4 py-4 font-black text-center">Meciuri</th>
+                          <th className="px-4 py-4 font-black text-center">Goluri</th>
+                          <th className="px-4 py-4 font-black text-center">Pase</th>
+                          <th className="px-4 py-4 font-black text-center hidden sm:table-cell">Minute</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {selectedPlayer.detailed_stats.map((stat, idx) => (
-                          <tr key={idx} className="border-b dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <td className="px-4 py-3 font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                          <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td className="px-4 py-4 font-bold text-slate-900 dark:text-white flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 uppercase">
                               {stat.competition}
-                              <span className="text-[9px] font-normal px-1.5 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-300 rounded uppercase tracking-wider">
+                              <span className="text-[9px] font-black px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded tracking-widest w-fit">
                                 {stat.type}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-center font-medium text-slate-700 dark:text-slate-300">{stat.appearances}</td>
-                            <td className="px-4 py-3 text-center font-black text-emerald-600 dark:text-emerald-400">{stat.goals}</td>
-                            <td className="px-4 py-3 text-center font-black text-red-600 dark:text-red-400">{stat.assists}</td>
-                            <td className="px-4 py-3 text-center text-slate-500 hidden sm:table-cell">{stat.minutes}'</td>
+                            <td className="px-4 py-4 text-center font-black text-slate-800 dark:text-slate-200">{stat.appearances}</td>
+                            <td className="px-4 py-4 text-center font-black text-emerald-600 dark:text-emerald-400">{stat.goals}</td>
+                            <td className="px-4 py-4 text-center font-black text-blue-600 dark:text-blue-400">{stat.assists}</td>
+                            <td className="px-4 py-4 text-center font-bold text-slate-500 hidden sm:table-cell">{stat.minutes}'</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1237,25 +1163,27 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
       {/* ========================================================= */}
       {showCompareModal && compareList.length === 2 && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-slate-900/75 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setShowCompareModal(false)}
         >
           <div
-            className="bg-white w-full max-w-4xl max-h-[92vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200"
+            className="bg-slate-900 w-full max-w-4xl max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border-4 border-emerald-600/50"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-slate-900 text-white p-4 sm:p-6 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <Scale className="w-6 h-6 text-emerald-400" />
-                <h2 className="text-lg sm:text-2xl font-black uppercase tracking-wide">
-                  Comparator Head-to-Head Scouter
+            <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-center justify-between border-b-2 border-emerald-600/30">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/20 rounded-lg">
+                  <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+                </div>
+                <h2 className="text-base sm:text-2xl font-black uppercase tracking-widest">
+                  MECI DIRECT: <span className="text-emerald-400">Analiză</span>
                 </h2>
               </div>
               <button
                 onClick={() => setShowCompareModal(false)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-full"
+                className="p-2.5 bg-slate-800 hover:bg-rose-500 hover:border-rose-500 border border-slate-700 rounded-full transition text-white"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 font-bold" />
               </button>
             </div>
 
@@ -1266,66 +1194,81 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               const m2 = computeScoutingMetrics(p2);
 
               const rows = [
-                { label: "Rating Mediu", v1: m1.rating, v2: m2.rating, format: (v: number) => (v > 0 ? v.toFixed(2) : "-") },
+                { label: "Rating SofaScore", v1: m1.rating, v2: m2.rating, format: (v: number) => (v > 0 ? v.toFixed(2) : "-") },
                 { label: "Meciuri Jucate", v1: m1.apps, v2: m2.apps, format: (v: number) => String(v) },
                 { label: "Minute Jucate", v1: m1.minutes, v2: m2.minutes, format: (v: number) => `${v}'` },
-                { label: "Goluri Marcate", v1: m1.goals, v2: m2.goals, format: (v: number) => String(v) },
+                { label: "Total Goluri", v1: m1.goals, v2: m2.goals, format: (v: number) => String(v) },
                 { label: "Pase Decisive", v1: m1.assists, v2: m2.assists, format: (v: number) => String(v) },
                 { label: "Goluri / 90'", v1: m1.goalsPer90, v2: m2.goalsPer90, format: (v: number) => String(v) },
-                { label: "Contribuții (G+A) / 90'", v1: m1.contributionsPer90, v2: m2.contributionsPer90, format: (v: number) => String(v) }
+                { label: "Contribuții / 90'", v1: m1.contributionsPer90, v2: m2.contributionsPer90, format: (v: number) => String(v) }
               ];
 
               return (
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50 space-y-6">
-                  <div className="grid grid-cols-2 gap-4 bg-white p-4 rounded-2xl border border-slate-200">
-                    <div className="flex flex-col items-center text-center border-r border-slate-100 pr-2">
-                      <img src={p1.image || GENERIC_USER_IMAGE} alt={p1.name} className="w-20 h-20 rounded-full object-cover border-4 border-emerald-500 shadow-md mb-2" />
-                      <h3 className="font-black text-base sm:text-lg text-slate-900">{p1.name}</h3>
-                      <span className="text-xs font-bold text-emerald-600">{p1.team || p1.team_name} • {p1.position}</span>
+                <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-900 space-y-6">
+                  {/* Carduri Jucători VS */}
+                  <div className="grid grid-cols-[1fr_auto_1fr] gap-2 sm:gap-4 items-center bg-slate-800 p-4 sm:p-6 rounded-3xl border-2 border-slate-700 relative overflow-hidden">
+                     {/* Linie V mijloc */}
+                     <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1 bg-slate-700/50 skew-x-[-15deg]"></div>
+
+                    <div className="flex flex-col items-center text-center relative z-10">
+                      <img src={p1.image || GENERIC_USER_IMAGE} alt={p1.name} className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.3)] mb-3 bg-white" />
+                      <h3 className="font-black text-sm sm:text-xl text-white uppercase tracking-tight">{p1.name}</h3>
+                      <span className="text-[10px] sm:text-xs font-black tracking-widest text-emerald-400 mt-1 uppercase bg-emerald-900/40 px-2 py-1 rounded">{p1.team || p1.team_name}</span>
                     </div>
-                    <div className="flex flex-col items-center text-center pl-2">
-                      <img src={p2.image || GENERIC_USER_IMAGE} alt={p2.name} className="w-20 h-20 rounded-full object-cover border-4 border-blue-600 shadow-md mb-2" />
-                      <h3 className="font-black text-base sm:text-lg text-slate-900">{p2.name}</h3>
-                      <span className="text-xs font-bold text-blue-600">{p2.team || p2.team_name} • {p2.position}</span>
+                    
+                    <div className="relative z-10 flex flex-col items-center justify-center">
+                       <span className="text-3xl sm:text-5xl font-black italic text-slate-700 tracking-tighter">VS</span>
+                    </div>
+
+                    <div className="flex flex-col items-center text-center relative z-10">
+                      <img src={p2.image || GENERIC_USER_IMAGE} alt={p2.name} className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] mb-3 bg-white" />
+                      <h3 className="font-black text-sm sm:text-xl text-white uppercase tracking-tight">{p2.name}</h3>
+                      <span className="text-[10px] sm:text-xs font-black tracking-widest text-blue-400 mt-1 uppercase bg-blue-900/40 px-2 py-1 rounded">{p2.team || p2.team_name}</span>
                     </div>
                   </div>
 
-                  <div className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col items-center">
-                    <div className="flex items-center gap-6 text-xs font-black uppercase mb-2">
-                      <span className="flex items-center gap-1.5 text-emerald-600">
-                        <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> {p1.name}
+                  <div className="bg-slate-800 p-4 sm:p-6 rounded-3xl border-2 border-slate-700 flex flex-col items-center">
+                    <div className="flex items-center gap-6 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
+                      <span className="flex items-center gap-2 text-yellow-400">
+                        <span className="w-3 h-3 rounded-sm bg-yellow-400 inline-block shadow-[0_0_10px_#facc15]"></span> {p1.name}
                       </span>
-                      <span className="flex items-center gap-1.5 text-blue-600">
-                        <span className="w-3 h-3 rounded-full bg-blue-600 inline-block"></span> {p2.name}
+                      <span className="flex items-center gap-2 text-blue-400">
+                        <span className="w-3 h-3 rounded-sm bg-blue-500 inline-block shadow-[0_0_10px_#3b82f6]"></span> {p2.name}
                       </span>
                     </div>
                     <PlayerRadarChart primaryPlayer={p1} secondaryPlayer={p2} />
                   </div>
 
-                  <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 space-y-4">
+                  <div className="bg-slate-800 p-4 sm:p-8 rounded-3xl border-2 border-slate-700 space-y-5">
                     {rows.map((r, idx) => {
                       const total = r.v1 + r.v2;
                       const p1Pct = total > 0 ? Math.round((r.v1 / total) * 100) : 50;
                       const p2Pct = 100 - p1Pct;
                       const p1Wins = r.v1 > r.v2;
                       const p2Wins = r.v2 > r.v1;
+                      const isTie = r.v1 === r.v2;
 
                       return (
-                        <div key={idx} className="space-y-1.5">
-                          <div className="flex justify-between text-xs sm:text-sm font-bold">
-                            <span className={p1Wins ? "text-emerald-600 font-black" : "text-slate-600"}>
+                        <div key={idx} className="space-y-2">
+                          <div className="flex justify-between text-xs sm:text-sm font-black uppercase tracking-widest">
+                            <span className={p1Wins ? "text-yellow-400" : (isTie ? "text-slate-400" : "text-slate-500")}>
                               {r.format(r.v1)}
                             </span>
-                            <span className="text-slate-400 uppercase text-[11px] font-black tracking-wider">
+                            <span className="text-slate-300">
                               {r.label}
                             </span>
-                            <span className={p2Wins ? "text-blue-600 font-black" : "text-slate-600"}>
+                            <span className={p2Wins ? "text-blue-400" : (isTie ? "text-slate-400" : "text-slate-500")}>
                               {r.format(r.v2)}
                             </span>
                           </div>
-                          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden flex">
-                            <div style={{ width: `${p1Pct}%` }} className="bg-emerald-500 h-full transition-all" />
-                            <div style={{ width: `${p2Pct}%` }} className="bg-blue-600 h-full transition-all" />
+                          
+                          <div className="w-full h-3 sm:h-4 bg-slate-900 rounded-sm overflow-hidden flex border border-slate-700">
+                            <div style={{ width: `${p1Pct}%` }} className="bg-gradient-to-r from-yellow-600 to-yellow-400 h-full transition-all relative">
+                               {p1Wins && <div className="absolute right-0 top-0 bottom-0 w-1 bg-white"></div>}
+                            </div>
+                            <div style={{ width: `${p2Pct}%` }} className="bg-gradient-to-l from-blue-700 to-blue-500 h-full transition-all relative">
+                               {p2Wins && <div className="absolute left-0 top-0 bottom-0 w-1 bg-white"></div>}
+                            </div>
                           </div>
                         </div>
                       );

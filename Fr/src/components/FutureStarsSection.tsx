@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { Sparkles, Star, MapPin, Ruler, Weight, Calendar, Clock, Zap, Filter, Loader2 } from 'lucide-react';
+import { Sparkles, Star, MapPin, Ruler, Weight, Calendar, Clock, Zap, Filter, Loader2, Shield } from 'lucide-react';
 
 interface Player {
   _id: string;
@@ -28,18 +28,18 @@ interface Player {
 }
 
 const FutureStarSkeleton = () => (
-  <div className="rounded-2xl overflow-hidden border border-amber-100/50 bg-white/60 shadow-sm animate-pulse h-[480px] flex flex-col">
-    <div className="h-28 bg-gray-200 w-full relative"></div>
+  <div className="rounded-2xl overflow-hidden border-4 border-amber-200/50 dark:border-amber-900/30 bg-white dark:bg-slate-900 shadow-xl animate-pulse h-[480px] flex flex-col">
+    <div className="h-28 bg-amber-100 dark:bg-amber-900/20 w-full relative"></div>
     <div className="pt-14 pb-2 px-4 flex flex-col items-center space-y-3 flex-1">
-        <div className="h-16 w-16 bg-gray-300 rounded-full -mt-20 border-4 border-white"></div>
-        <div className="h-6 bg-gray-300 rounded w-3/4"></div>
-        <div className="h-4 bg-gray-300 rounded w-1/2"></div>
-        <div className="w-full grid grid-cols-2 gap-2 mt-4">
-            <div className="h-16 bg-gray-200 rounded"></div>
-            <div className="h-16 bg-gray-200 rounded"></div>
+        <div className="h-20 w-20 bg-amber-200 dark:bg-amber-800 rounded-full -mt-20 border-4 border-white dark:border-slate-900 shadow-md"></div>
+        <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-3/4 mt-4"></div>
+        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/2"></div>
+        <div className="w-full grid grid-cols-2 gap-3 mt-6">
+            <div className="h-16 bg-slate-100 dark:bg-slate-800/50 rounded-xl"></div>
+            <div className="h-16 bg-slate-100 dark:bg-slate-800/50 rounded-xl"></div>
         </div>
     </div>
-    <div className="h-12 bg-gray-100 w-full mt-auto"></div>
+    <div className="h-16 bg-slate-50 dark:bg-slate-950 w-full mt-auto border-t-2 border-slate-100 dark:border-slate-800"></div>
   </div>
 );
 
@@ -61,7 +61,6 @@ export function FutureStarsSection() {
   const [activeFilter, setActiveFilter] = useState("Toate");
   const { ref, inView } = useInView();
 
-  // Setăm backend-ul pe portul 3000 când suntem local, altfel folosim linkul de Render
   const API_URL = window.location.hostname === "localhost" 
       ? "http://localhost:3000" 
       : "https://football-backend-m2a4.onrender.com";
@@ -90,7 +89,6 @@ export function FutureStarsSection() {
     queryFn: fetchYoungTalents,
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
-      // Dacă backend-ul returnează mai puțin decât limita (12), înseamnă că nu mai sunt pagini
       return lastPage.length === 12 ? allPages.length + 1 : undefined;
     },
   });
@@ -101,13 +99,9 @@ export function FutureStarsSection() {
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Aplatizează array-urile de pagini într-un singur array de jucători
   const allPlayers = data ? data.pages.flatMap(page => page) : [];
-
-  // FILTRU ANTI-DUPLICATE: Elimină jucătorii cu același nume
   const uniquePlayers = Array.from(new Map(allPlayers.map(p => [p.name, p])).values());
 
-  // Procesarea și filtrarea datelor folosind lista unică
   const processedPlayers = uniquePlayers
     .filter((p: Player) => {
         const playerAge = getPlayerAge(p);
@@ -143,190 +137,193 @@ export function FutureStarsSection() {
   };
 
   if (status === 'error') {
-    return <div className="text-center py-20 text-red-500 font-bold">A apărut o eroare: {(error as Error).message}</div>;
+    return <div className="text-center py-20 text-rose-500 font-black uppercase tracking-widest text-xl">Meci Întrerupt: {(error as Error).message}</div>;
   }
 
   return (
-    <div className="relative min-h-[80vh] py-10 overflow-hidden bg-slate-50 dark:bg-slate-900">
+    <div className="relative min-h-[80vh] py-10 overflow-hidden bg-transparent z-0">
       
-      {/* FUNDAL "GOLDEN MESH" */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-50">
-          <div className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 w-[600px] h-[600px] rounded-full bg-amber-400/20 blur-[100px]"></div>
-          <div className="absolute bottom-0 left-0 -translate-x-1/4 translate-y-1/4 w-[500px] h-[500px] rounded-full bg-yellow-200/30 blur-[120px]"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-orange-100/20 blur-[100px]"></div>
+      {/* FUNDAL ANIMAT - STADION / LUMINILE ARENEI (Varianta Aurie/Stele) */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none">
+          <div className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 w-[50vw] h-[50vw] rounded-full bg-amber-400/10 dark:bg-amber-500/15 blur-[120px] animate-pulse"></div>
+          <div className="absolute bottom-0 left-0 -translate-x-1/4 translate-y-1/4 w-[40vw] h-[40vw] rounded-full bg-yellow-300/10 dark:bg-yellow-400/15 blur-[120px] animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full bg-orange-400/5 dark:bg-orange-500/10 blur-[150px] animate-pulse delay-2000"></div>
       </div>
 
-      {/* --- HEADER --- */}
-      <section className="text-center space-y-6 px-4 relative z-10 mb-8">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50/80 backdrop-blur text-amber-700 text-sm font-bold mb-2 border border-amber-200 shadow-sm">
-          <Sparkles className="h-4 w-4 text-amber-500" />
-          Scouting Report 2026
+      {/* --- HEADER TACTIC (SCOUTING BOARD) --- */}
+      <section className="text-center space-y-4 px-4 relative z-10 mb-10">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-slate-900 border-2 border-amber-400 shadow-md">
+          <Sparkles className="w-5 h-5 text-amber-400" />
+          <span className="text-amber-400 font-black uppercase tracking-widest text-xs sm:text-sm">Scouting Report / Next Gen</span> 
         </div>
         
-        <h1 className="text-4xl font-black tracking-tighter lg:text-7xl uppercase text-slate-900 dark:text-white drop-shadow-sm">
-          <span className="bg-clip-text text-transparent bg-gradient-to-b from-amber-500 to-yellow-600">
-            Future Stars
-          </span>
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tighter text-slate-900 dark:text-white drop-shadow-sm flex items-center justify-center gap-3">
+          Future <span className="text-amber-500">Stars</span>
         </h1>
         
-        <p className="max-w-2xl mx-auto text-slate-600 dark:text-slate-400 text-lg font-medium">
+        <p className="max-w-2xl mx-auto text-slate-600 dark:text-slate-300 text-sm sm:text-base font-bold uppercase tracking-widest border-b-2 border-amber-500/20 pb-4 inline-block">
             Cele mai promițătoare talente U21 din fotbalul intern și internațional.
         </p>
       </section>
 
-      {/* --- ZONA DE BUTOANE (FILTRE) --- */}
+      {/* --- FILTRE (STIL TABELĂ MARCAJ) --- */}
       <section className="px-4 container mx-auto relative z-10 mb-10 flex justify-center">
-          <div className="flex flex-wrap justify-center gap-2 bg-white/60 backdrop-blur-md p-2 rounded-2xl border border-amber-100 shadow-lg">
-              {FILTERS.map((filter) => (
-                  <button
-                      key={filter}
-                      onClick={() => setActiveFilter(filter)}
-                      className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
-                          activeFilter === filter 
-                          ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 transform scale-105' 
-                          : 'bg-transparent text-slate-600 hover:bg-amber-50 hover:text-amber-700'
-                      }`}
-                  >
-                      {activeFilter === filter && <Filter className="w-3 h-3" />}
-                      {filter}
-                  </button>
-              ))}
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-3 bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur-md p-2 rounded-xl border-2 border-slate-300/50 dark:border-slate-700/50">
+              {FILTERS.map((filter) => {
+                  const isActive = activeFilter === filter;
+                  return (
+                      <button
+                          key={filter}
+                          onClick={() => setActiveFilter(filter)}
+                          className={`px-4 sm:px-6 py-2.5 rounded-lg text-xs sm:text-sm font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 border-b-4 ${
+                              isActive 
+                              ? 'bg-amber-500 text-slate-950 border-amber-700 shadow-[0_4px_15px_rgba(245,158,11,0.3)] translate-y-[-2px]' 
+                              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:border-amber-500/50 hover:text-amber-500'
+                          }`}
+                      >
+                          {isActive && <Filter className="w-3.5 h-3.5" />}
+                          {filter}
+                      </button>
+                  );
+              })}
           </div>
       </section>
 
       {/* --- GRILA DE JUCĂTORI --- */}
-      <section className="px-4 container mx-auto relative z-10">
+      <section className="px-4 sm:px-6 container mx-auto relative z-10">
         {status === 'pending' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <FutureStarSkeleton key={i} />)}
             </div>
         ) : filteredPlayers.length === 0 && !isFetching ? (
-            <div className="text-center py-20 bg-white/50 backdrop-blur rounded-3xl border border-dashed border-gray-300 max-w-2xl mx-auto">
-                <div className="text-6xl mb-4">🧤⚽</div>
-                <p className="text-xl font-bold text-slate-700">Nu am găsit jucători pentru filtrul "{activeFilter}".</p>
-                <p className="text-slate-500 mt-2">Încearcă altă poziție.</p>
-                <button onClick={() => setActiveFilter("Toate")} className="mt-4 text-amber-600 font-bold hover:underline">Arată tot lotul</button>
+            <div className="flex flex-col items-center justify-center py-20 bg-slate-50 dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-center px-4 max-w-2xl mx-auto shadow-xl">
+                <div className="bg-amber-400 p-5 rounded-full mb-4 shadow-[0_0_20px_rgba(245,158,11,0.4)]">
+                    <span className="text-4xl leading-none block">🧤⚽</span>
+                </div>
+                <h3 className="text-2xl font-black uppercase tracking-widest text-slate-900 dark:text-white">Fără Talente</h3>
+                <p className="text-slate-500 font-bold mt-2 uppercase tracking-wide">Nu am găsit tineri jucători pentru "{activeFilter}".</p>
+                <button onClick={() => setActiveFilter("Toate")} className="mt-6 text-amber-600 dark:text-amber-500 font-black uppercase tracking-widest border-b-2 border-amber-600 hover:text-amber-500 transition-colors pb-1">
+                    Arată tot lotul tinerilor
+                </button>
             </div>
         ) : (
             <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-in slide-in-from-bottom-8 duration-700">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 animate-in slide-in-from-bottom-8 duration-700">
                 {filteredPlayers.map((player) => {
                     const stats = player.statistics_summary || { total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0" };
                     const rating = stats.rating ? parseFloat(stats.rating).toFixed(2) : null;
                     const hasBioData = player.birth_date || player.birth_place || player.height || player.weight || player.nationality;
                     const displayAge = getPlayerAge(player) || player.age || 21;
+                    const teamNameStr = player.team || player.team_name || "Club";
                     
                     return (
-                        <div key={player._id} className="group relative bg-white/90 backdrop-blur-md dark:bg-slate-800/90 border border-amber-100 dark:border-slate-700 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-amber-500/20 transition-all duration-300 hover:-translate-y-2 flex flex-col h-full">
+                        <div key={player._id} className="group relative bg-white dark:bg-slate-900 border-4 border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden hover:shadow-2xl hover:shadow-amber-500/20 hover:border-amber-400 dark:hover:border-amber-500 transition-all duration-300 hover:-translate-y-2 flex flex-col h-full">
                             
-                            {/* 1. TOP CARD */}
-                            <div className="relative h-28 bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400 overflow-visible">
-                                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:8px_8px]"></div>
+                            {/* 1. TOP CARD (Gazon Tactic & Aur) */}
+                            <div className="relative h-32 bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 overflow-visible border-b-4 border-slate-900">
+                                <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#000_10px,#000_12px)]"></div>
                                 
                                 {/* Badge Vârstă */}
-                                <div className="absolute top-3 left-3 bg-white/90 backdrop-blur text-amber-800 text-xs font-bold px-2 py-1 rounded-lg shadow-sm z-10 flex items-center gap-1">
-                                    <Zap className="w-3 h-3 fill-amber-500 text-amber-500" /> U{displayAge}
+                                <div className="absolute top-3 left-3 bg-slate-900 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-md z-10 flex items-center gap-1.5 uppercase tracking-widest border border-slate-700">
+                                    <Zap className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> U{displayAge}
                                 </div>
 
                                 {/* Badge Rating */}
                                 {rating && (
-                                    <div className="absolute top-3 right-3 bg-slate-900/90 backdrop-blur text-yellow-400 text-xs font-bold px-2 py-1 rounded-lg shadow-sm z-10 flex items-center gap-1 border border-yellow-500/30">
-                                        <Star className="w-3 h-3 fill-yellow-400" /> {rating}
+                                    <div className="absolute top-3 right-3 bg-slate-900 text-yellow-400 text-xs font-black px-3 py-1.5 rounded-lg shadow-md z-10 flex items-center gap-1.5 uppercase tracking-widest border border-slate-700">
+                                        <Star className="w-3.5 h-3.5 fill-yellow-400" /> {rating}
                                     </div>
                                 )}
 
-                                {/* Imagine */}
-                                <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 group-hover:scale-110 transition-transform duration-300">
+                                {/* Imagine (Cu Ramă Sportivă) */}
+                                <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 group-hover:scale-110 group-hover:-translate-y-2 transition-transform duration-500 z-20">
                                     <img 
                                         src={player.image || "https://via.placeholder.com/150"} 
                                         alt={player.name}
-                                        className="h-24 w-24 rounded-full object-cover border-[4px] border-white dark:border-slate-800 shadow-xl bg-white"
+                                        className="h-24 w-24 sm:h-28 sm:w-28 rounded-full object-cover border-[6px] border-white dark:border-slate-900 shadow-[0_10px_20px_rgba(0,0,0,0.5)] bg-slate-100 dark:bg-slate-800"
                                         onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/150?text=No+Img"; }}
                                     />
                                 </div>
                             </div>
 
                             {/* 2. MAIN INFO */}
-                            <div className="pt-14 pb-2 px-4 text-center">
-                                <h3 className="font-bold text-lg text-gray-900 dark:text-white leading-tight mb-1 truncate" title={player.name}>
-                                    {player.name}
-                                </h3>
-                                <div className="flex justify-center items-center gap-2 text-xs text-gray-500 font-semibold uppercase tracking-wider">
-                                    {/* Afișare Echipă (dacă există) */}
-                                    {(player.team || player.team_name) && (
-                                        <>
-                                            {player.team_logo && (
-                                                <img src={player.team_logo} alt="Logo" className="w-4 h-4 object-contain" />
-                                            )}
-                                            <span className="truncate max-w-[100px]">{player.team || player.team_name}</span>
-                                            <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                        </>
-                                    )}
-                                    <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{player.position}</span>
+                            <div className="pt-14 pb-4 px-4 text-center border-b-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex-1 flex flex-col">
+                                <div>
+                                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-none mb-2 uppercase tracking-tighter truncate" title={player.name}>
+                                        {player.name}
+                                    </h3>
+                                    <div className="flex justify-center items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-3">
+                                        <Shield className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                        <span className="truncate max-w-[120px]">{teamNameStr}</span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-auto flex justify-center">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 bg-amber-400 px-3 py-1 rounded shadow-sm border-b-2 border-amber-600">
+                                        {player.position || "JUCĂTOR"}
+                                    </span>
                                 </div>
                             </div>
 
                             {/* 3. BIO GRID (afișat condiționat) */}
                             {hasBioData && (
-                                <div className="px-4 py-3 flex-1">
-                                    <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-700/30 rounded-xl p-3 border border-slate-100 dark:border-slate-700">
+                                <div className="px-4 py-3 bg-white dark:bg-slate-900">
+                                    <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800/80 rounded-xl p-3 border-2 border-slate-200 dark:border-slate-700">
                                         {player.birth_date && (
                                             <div className="flex flex-col">
-                                                <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><Calendar className="w-3 h-3" /> Născut</div>
-                                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{formatDate(player.birth_date)}</span>
+                                                <div className="flex items-center gap-1.5 text-[9px] text-slate-500 font-black uppercase tracking-widest"><Calendar className="w-3 h-3 text-emerald-500" /> Născut</div>
+                                                <span className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">{formatDate(player.birth_date)}</span>
                                             </div>
                                         )}
                                         {(player.birth_place || player.nationality) && (
                                             <div className="flex flex-col">
-                                                <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><MapPin className="w-3 h-3" /> Origine</div>
-                                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate" title={player.birth_place || player.nationality}>
+                                                <div className="flex items-center gap-1.5 text-[9px] text-slate-500 font-black uppercase tracking-widest"><MapPin className="w-3 h-3 text-rose-500" /> Origine</div>
+                                                <span className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5" title={player.birth_place || player.nationality}>
                                                     {player.birth_place || player.nationality}
                                                 </span>
                                             </div>
                                         )}
                                         {player.height && (
                                             <div className="flex flex-col">
-                                                <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><Ruler className="w-3 h-3" /> Înălțime</div>
-                                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{player.height}</span>
+                                                <div className="flex items-center gap-1.5 text-[9px] text-slate-500 font-black uppercase tracking-widest"><Ruler className="w-3 h-3 text-blue-500" /> Înălțime</div>
+                                                <span className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{player.height}</span>
                                             </div>
                                         )}
                                         {player.weight && (
                                             <div className="flex flex-col">
-                                                <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-bold"><Weight className="w-3 h-3" /> Greutate</div>
-                                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{player.weight}</span>
+                                                <div className="flex items-center gap-1.5 text-[9px] text-slate-500 font-black uppercase tracking-widest"><Weight className="w-3 h-3 text-amber-500" /> Greutate</div>
+                                                <span className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{player.weight}</span>
                                             </div>
                                         )}
                                     </div>
                                 </div>
                             )}
 
-                            {/* 4. STATS FOOTER */}
-                            <div className="mt-auto border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/50">
-                                <div className="grid grid-cols-3 divide-x divide-gray-200 dark:divide-slate-700 py-3 text-center">
-                                    <div>
-                                        <span className="block text-lg font-black text-gray-800 dark:text-white">{stats.total_appearances}</span>
-                                        <span className="text-[9px] uppercase text-gray-400 font-bold">Meciuri</span>
+                            {/* 4. STATS FOOTER (Stil Tabelă) */}
+                            <div className="border-t-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3">
+                                <div className="grid grid-cols-3 divide-x-2 divide-slate-100 dark:divide-slate-800 text-center">
+                                    <div className="flex flex-col justify-center">
+                                        <span className="block text-xl font-black text-slate-900 dark:text-white leading-none">{stats.total_appearances}</span>
+                                        <span className="text-[9px] uppercase tracking-widest text-slate-500 font-black mt-1">Meciuri</span>
                                     </div>
-                                    <div>
-                                        <div className="flex items-center justify-center gap-1">
-                                            <span className="text-lg font-black text-green-600">{stats.total_goals}</span>
-                                            <span className="text-gray-300">/</span>
-                                            <span className="text-lg font-black text-blue-600">{stats.total_assists}</span>
+                                    <div className="flex flex-col justify-center">
+                                        <div className="flex items-center justify-center gap-1 leading-none">
+                                            <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{stats.total_goals}</span>
+                                            <span className="text-slate-300 dark:text-slate-600 font-bold">/</span>
+                                            <span className="text-xl font-black text-blue-600 dark:text-blue-400">{stats.total_assists}</span>
                                         </div>
-                                        <span className="text-[9px] uppercase text-gray-400 font-bold">Gol / Pasă</span>
+                                        <span className="text-[9px] uppercase tracking-widest text-slate-500 font-black mt-1">G / A</span>
                                     </div>
-                                    <div>
+                                    <div className="flex flex-col justify-center">
                                         {stats.minutes_played !== undefined ? (
                                             <>
-                                                <div className="flex items-center justify-center gap-1 text-amber-600 font-bold">
-                                                    <Clock className="w-3 h-3" /> {stats.minutes_played}'
+                                                <div className="flex items-center justify-center gap-1 text-amber-600 font-black text-sm leading-none">
+                                                    <Clock className="w-3.5 h-3.5" /> {stats.minutes_played}'
                                                 </div>
-                                                <span className="text-[9px] uppercase text-gray-400 font-bold">Minute</span>
+                                                <span className="text-[9px] uppercase tracking-widest text-slate-500 font-black mt-1.5">Minute</span>
                                             </>
                                         ) : (
-                                            <div className="flex items-center justify-center h-full">
-                                                <span className="text-gray-400 font-bold">-</span>
-                                            </div>
+                                            <span className="text-slate-400 font-bold">-</span>
                                         )}
                                     </div>
                                 </div>
@@ -338,16 +335,18 @@ export function FutureStarsSection() {
                 </div>
 
                 {/* --- ELEMENTUL INVIZIBIL PENTRU DECLANȘAREA SCROLL-ULUI --- */}
-                <div ref={ref} className="w-full flex justify-center py-10 mt-4">
+                <div ref={ref} className="w-full flex justify-center py-10 mt-6">
                     {isFetchingNextPage ? (
-                        <div className="flex items-center gap-2 text-amber-600 font-bold">
-                            <Loader2 className="w-6 h-6 animate-spin" />
-                            Încărcăm mai mulți jucători...
+                        <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-6 py-3 rounded-xl shadow-lg border-2 border-amber-500 text-amber-600 font-black uppercase tracking-widest text-xs sm:text-sm">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Căutăm noi talente...
                         </div>
                     ) : hasNextPage ? (
                         <div className="h-10"></div>
                     ) : (
-                        <div className="text-slate-400 font-medium text-sm">Ai ajuns la finalul listei.</div>
+                        <div className="bg-slate-900 text-white px-6 py-3 rounded-xl shadow-lg font-black uppercase tracking-widest text-xs sm:text-sm border-2 border-slate-700">
+                            Fluier Final. Aceștia sunt toți jucătorii U21.
+                        </div>
                     )}
                 </div>
             </>

@@ -14,13 +14,18 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { ChatWidget } from './components/ChatWidget'; 
 import { MatchesSection } from './components/MatchesSection';
 
+// Noul buton cu design sportiv care folosește „linii de teren” și texturi fotbalistice
 const Button = ({ children, onClick, variant, className, disabled }: any) => {
-  const baseStyle = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50";
+  const baseStyle = "inline-flex items-center justify-center rounded-lg text-sm font-bold uppercase tracking-wider transition-all duration-300 h-10 px-4 py-2 outline-none disabled:opacity-50 border shadow-sm";
   const variants: any = {
-    default: "bg-blue-600 text-white hover:bg-blue-700 shadow-md",
-    ghost: "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200",
-    secondary: "bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white",
-    destructive: "text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+    // Verde intens de gazon cu margini de teren (alb/contur luminos)
+    default: "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500/50 hover:shadow-[0_0_15px_rgba(16,185,129,0.4)]",
+    // Buton discret care imită plasele de poartă sau scaunele
+    ghost: "border-transparent text-slate-700 hover:text-emerald-600 dark:text-slate-200 dark:hover:text-emerald-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50",
+    // Gri sportiv pentru secțiuni neutre
+    secondary: "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700",
+    // Roșu "Fault" sau "Cartonaș roșu" pentru actiuni distructive sau deconectare
+    destructive: "bg-rose-600 hover:bg-rose-500 text-white border-rose-500/50 hover:shadow-[0_0_15px_rgba(244,63,94,0.4)]"
   };
   return <button onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant || 'default']} ${className || ''}`}>{children}</button>;
 };
@@ -166,102 +171,160 @@ export default function App() {
   if (!user) return <><Toaster /><AuthPage onLoginSuccess={handleLoginSuccess} /></>;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-gray-900 dark:text-white flex flex-col font-sans transition-colors duration-300">
-      <Toaster position="bottom-right" toastOptions={{ style: { background: '#333', color: '#fff' } }} />
+    // S-a aplicat o textură subtilă de gazon natural („bg-grid-pattern” sau gradient de meci de noapte în funcție de mod)
+    <div className="min-h-screen bg-slate-50 dark:bg-emerald-950/20 text-slate-900 dark:text-emerald-50 flex flex-col font-sans transition-colors duration-500 relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-slate-50 to-slate-100 dark:from-emerald-950/30 dark:via-slate-950 dark:to-slate-950">
+      
+      {/* Background decorativ subtil pentru meci de noapte în modul dark (efect de nocturnă și linii vagi de teren) */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05] bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+      
+      <Toaster position="bottom-right" toastOptions={{ style: { background: '#064e3b', color: '#fff', border: '1px solid #10b981' } }} />
 
-      <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur transition-colors duration-300">
+      {/* Header cu aspect modern-sportiv de fanzone / tribună */}
+      <header className="sticky top-0 z-50 border-b-2 border-emerald-500/20 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md transition-colors duration-300 shadow-md">
+        
+        {/* Tri-colorul românesc subtil în partea de sus a headerului ca o bandă de meci */}
+        <div className="h-[4px] w-full bg-gradient-to-r from-blue-600 via-yellow-400 to-red-600"></div>
+
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => setActiveSection('home')}>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 via-yellow-500 to-red-600 shadow-md">
-                <span className="text-lg font-bold text-white">RO</span>
+            
+            {/* Logo de club fotbalistic / scouting */}
+            <div className="flex items-center gap-3 cursor-pointer select-none group" onClick={() => setActiveSection('home')}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 via-yellow-500 to-red-600 shadow-[0_4px_10px_rgba(0,0,0,0.15)] transform group-hover:scale-105 transition-transform">
+                <span className="text-lg font-extrabold text-white tracking-tighter">RO</span>
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-lg font-bold leading-none">România<br/><span className="text-blue-600 dark:text-blue-400">Scout</span></h1>
+                <h1 className="text-xl font-black leading-none uppercase tracking-tight text-slate-800 dark:text-white">România<br/>
+                  <span className="text-emerald-600 dark:text-emerald-400 text-sm font-bold tracking-wider">Scout</span>
+                </h1>
               </div>
             </div>
 
-            <nav className="hidden md:flex items-center gap-1">
-              {navigation.map((item) => (
-                  <Button key={item.id} variant={activeSection === item.id ? 'secondary' : 'ghost'} onClick={() => setActiveSection(item.id)} className="gap-2">
-                    <item.icon className="h-4 w-4" /> {item.label}
-                  </Button>
-              ))}
+            {/* Meniu tip marcaj de teren (sportiv/dinamic) */}
+            <nav className="hidden md:flex items-center gap-1.5">
+              {navigation.map((item) => {
+                  const isActive = activeSection === item.id;
+                  return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveSection(item.id)}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-extrabold uppercase tracking-wider transition-all duration-300 ${
+                          isActive 
+                            ? "bg-emerald-600 text-white border-2 border-emerald-400/30 shadow-md shadow-emerald-900/10" 
+                            : "text-slate-700 dark:text-slate-200 hover:bg-emerald-500/10 border-2 border-transparent hover:border-emerald-500/20"
+                        }`}
+                      >
+                        <item.icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} /> 
+                        {item.label}
+                      </button>
+                  );
+              })}
             </nav>
 
-            <div className="flex items-center gap-2">
-              <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+            {/* Secțiunea de login și acțiuni din dreapta */}
+            <div className="flex items-center gap-2.5">
+              <button onClick={toggleTheme} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all">
                   {theme === 'light' ? <Moon className="h-5 w-5 text-slate-600" /> : <Sun className="h-5 w-5 text-yellow-400" />}
               </button>
 
-              <div className="hidden md:flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-slate-700">
+              <div className="hidden md:flex items-center gap-2 ml-1 pl-3 border-l-2 border-slate-200 dark:border-slate-800">
                  {isAdmin && (
-                     <Button variant={activeSection === 'admin' ? 'default' : 'ghost'} onClick={() => setActiveSection('admin')} className="text-red-600 hover:text-red-700 font-bold border border-red-100 dark:border-red-900/30">
-                        <ShieldAlert className="h-4 w-4 mr-1" /> Admin
+                     <Button 
+                       variant="destructive" 
+                       onClick={() => setActiveSection('admin')} 
+                       className={`border-rose-500 font-extrabold text-xs uppercase tracking-widest ${
+                         activeSection === 'admin' 
+                           ? 'bg-rose-700 hover:bg-rose-600 border-rose-400' 
+                           : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                       }`}
+                     >
+                        <ShieldAlert className="h-4 w-4 mr-1.5" /> Admin
                      </Button>
                  )}
-                 <Button variant={activeSection === 'profile' ? 'secondary' : 'ghost'} onClick={() => setActiveSection('profile')} className="gap-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-300 overflow-hidden">
+                 <Button 
+                   variant={activeSection === 'profile' ? 'secondary' : 'ghost'} 
+                   onClick={() => setActiveSection('profile')} 
+                   className="gap-2.5 px-3 border border-slate-200 dark:border-slate-800"
+                 >
+                    {/* Rama avatarului are model hexagonal / cusătură de minge de fotbal */}
+                    <div className="w-6.5 h-6.5 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-xs font-black text-emerald-700 dark:text-emerald-300 overflow-hidden ring-2 ring-emerald-500/30">
                         {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover"/> : user.name.charAt(0)}
                     </div>
-                    <span className="max-w-[100px] truncate">{user.name.split(' ')[0]}</span>
+                    <span className="max-w-[100px] truncate uppercase tracking-wider">{user.name.split(' ')[0]}</span>
                  </Button>
-                 <Button variant="destructive" onClick={handleLogout} className="gap-2 ml-1" title="Deconectare">
+                 <Button variant="destructive" onClick={handleLogout} className="gap-2 ml-1 h-10 border-rose-600/30 font-bold" title="Deconectare">
                      <LogOut className="h-4 w-4" />
-                     <span className="hidden lg:inline">Ieșire</span>
+                     <span className="hidden lg:inline">Ieşire</span>
                  </Button>
               </div>
               
-              <Button variant="ghost" className="md:hidden px-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <Button variant="ghost" className="md:hidden px-2 h-10 border border-slate-200 dark:border-slate-800 hover:bg-emerald-500/10 hover:border-emerald-500/20" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
                 {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </Button>
             </div>
           </div>
         </div>
 
+        {/* Meniu mobil ajustat sportiv */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-4 shadow-lg flex flex-col gap-2">
-            {navigation.map((item) => (
-              <Button key={item.id} variant={activeSection === item.id ? 'secondary' : 'ghost'} onClick={() => { setActiveSection(item.id); setMobileMenuOpen(false); }} className="w-full justify-start gap-3 h-12">
-                <item.icon className="h-5 w-5" /> {item.label}
-              </Button>
-            ))}
+          <div className="md:hidden border-t-2 border-emerald-500/20 bg-white dark:bg-slate-900 px-4 py-4 shadow-lg flex flex-col gap-2 animate-in slide-in-from-top-5">
+            {navigation.map((item) => {
+              const isActive = activeSection === item.id;
+              return (
+                <Button 
+                  key={item.id} 
+                  variant={isActive ? 'default' : 'ghost'} 
+                  onClick={() => { setActiveSection(item.id); setMobileMenuOpen(false); }} 
+                  className={`w-full justify-start gap-3.5 h-12 border ${isActive ? 'bg-emerald-600 border-emerald-400/30' : 'border-transparent text-left'}`}
+                >
+                  <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} /> {item.label}
+                </Button>
+              );
+            })}
             {isAdmin && (
-                <Button variant="destructive" onClick={() => { setActiveSection('admin'); setMobileMenuOpen(false); }} className="w-full justify-start gap-3 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200">
+                <Button variant="destructive" onClick={() => { setActiveSection('admin'); setMobileMenuOpen(false); }} className="w-full justify-start gap-3.5 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border border-rose-500/30 h-12">
                     <ShieldAlert className="h-5 w-5" /> Panou Administrator
                 </Button>
             )}
-            <div className="border-t border-gray-100 dark:border-slate-800 my-2"></div>
-            <Button variant="ghost" onClick={() => { setActiveSection('profile'); setMobileMenuOpen(false); }} className="w-full justify-start gap-3"><Settings className="h-5 w-5" /> Profilul Meu</Button>
-            <Button variant="destructive" onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="w-full justify-start gap-3"><LogOut className="h-5 w-5" /> Deconectare</Button>
+            <div className="border-t border-slate-100 dark:border-slate-800 my-2"></div>
+            <Button variant="ghost" onClick={() => { setActiveSection('profile'); setMobileMenuOpen(false); }} className="w-full justify-start gap-3.5 h-12"><Settings className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /> Profilul Meu</Button>
+            <Button variant="destructive" onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="w-full justify-start gap-3.5 h-12"><LogOut className="h-5 w-5" /> Deconectare</Button>
           </div>
         )}
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-8 relative">
+      {/* Secțiunea centrală (Gazon/Matchday decorat cu elemente de stadion) */}
+      <main className="flex-1 container mx-auto px-4 py-8 relative z-10">
         {renderSection()}
       </main>
 
-      {/* COMPONENTA DE AVERTISMENT ADMIN (Permanentă până la Dismiss) */}
+      {/* AVERTISMENT ADMIN (Permanent până la Dismiss - Redesenat ca un cartonaș de avertizare în stil de arbitraj, 100% fotbal) */}
       {showWarning && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-red-500 rounded-xl p-4 shadow-2xl z-[9999] w-[90%] max-w-sm flex items-start gap-3 animate-in slide-in-from-bottom-5">
-          <AlertTriangle className="text-red-500 w-5 h-5 shrink-0 mt-0.5" />
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-rose-500 rounded-2xl p-4.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[9999] w-[90%] max-w-sm flex items-start gap-3.5 animate-in slide-in-from-bottom-5">
+          {/* Cartonaș de avertizare (sport) în loc de o alertă generică */}
+          <div className="w-6.5 h-9 rounded bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.6)] flex items-center justify-center shrink-0 border border-rose-400 self-center">
+            <span className="text-xs font-black text-white leading-none">!</span>
+          </div>
           
           <div className="flex-1">
-            <p className="text-white text-sm font-medium leading-snug">
-              Avertisment: Unul sau mai multe mesaje ale tale au fost șterse de administrator pentru limbaj sau conținut neadecvat.
+            <h4 className="text-rose-500 text-xs font-extrabold uppercase tracking-widest mb-1 flex items-center gap-1">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Cartonaş Roşu / Penalty
+            </h4>
+            <p className="text-slate-100 text-sm font-bold leading-snug tracking-wide">
+              Administratorul ți-a șters unul sau mai multe mesaje pentru limbaj sau conduită neadecvată pe forum.
             </p>
           </div>
           
           <button 
             onClick={handleDismissWarning} 
-            className="text-gray-400 hover:text-white p-1 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors shrink-0"
+            className="text-slate-400 hover:text-white p-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-800 rounded-full transition-colors shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
+      {/* Widget-ul de chat de jos (cu starea sa, redesenat sportiv cu minge / radar fotbalistic în components/ChatWidget.tsx) */}
       {user && (
           <ChatWidget 
             key={activeChatRoom} 

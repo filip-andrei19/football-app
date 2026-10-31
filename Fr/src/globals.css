@@ -31,11 +31,38 @@
 }
 
 @layer base {
-  * { @apply border-border; }
-  body { @apply bg-background text-foreground; }
+  * { 
+    @apply border-border; 
+  }
+  
+  html, body { 
+    /* Am suprascris ușor bg-ul aici pentru a ne asigura că tema "Modern Arena" domină pe întreg ecranul */
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-emerald-50 transition-colors duration-500; 
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @layer utilities {
-  /* Doar siguranța pentru imagini */
+  /* Siguranța pentru imagini (păstrată din fișierul original) */
   img, video { max-width: 100%; height: auto; }
+
+  /* Clasă utilitară personalizată pentru a ascunde bara de scroll pe orizontală la meniuri (ex: Tab-uri) */
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Bara de scroll subțire, elegantă, pentru ferestrele de chat și popup-urile de loturi */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+  }
 }

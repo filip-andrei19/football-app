@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
-import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users, Check, CheckCheck, Trash2, ExternalLink, Ban, Loader2, Reply, Smile, Pin, MoreHorizontal, Flag, ShieldCheck } from 'lucide-react';
+import { MessageCircle, X, Send, User, ChevronLeft, Image as ImageIcon, Users, Check, CheckCheck, Trash2, ExternalLink, Ban, Loader2, Reply, Smile, Pin, Flag, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const socket = io((import.meta as any).env.VITE_API_URL || "https://football-backend-m2a4.onrender.com");
@@ -36,7 +36,7 @@ interface ChatWidgetProps {
   onClose?: () => void;
 }
 
-const AVAILABLE_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+const AVAILABLE_EMOJIS = ['⚽', '❤️', '😂', '😮', '😢', '🔥'];
 
 const formatDateSeparator = (dateString: string) => {
     const date = new Date(dateString);
@@ -44,16 +44,16 @@ const formatDateSeparator = (dateString: string) => {
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (date.toDateString() === now.toDateString()) return "Astăzi";
-    if (date.toDateString() === yesterday.toDateString()) return "Ieri";
-    return date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (date.toDateString() === now.toDateString()) return "ZI DE MECI (AZI)";
+    if (date.toDateString() === yesterday.toDateString()) return "ANTRENAMENT (IERI)";
+    return date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
 };
 
 export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<'list' | 'chat'>('list');
   const [activeRoom, setActiveRoom] = useState(initialRoomID || "general_chat");
-  const [activeTitle, setActiveTitle] = useState("Chat General");
+  const [activeTitle, setActiveTitle] = useState("Tribuna Oficială");
   
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messageList, setMessageList] = useState<Message[]>([]);
@@ -87,7 +87,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
         if (part.match(urlRegex)) {
             const displayText = part.length > 30 ? part.substring(0, 27) + "..." : part;
             return (
-                <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="underline text-blue-200 hover:text-white font-bold inline-flex items-center gap-1 mx-1 break-all" title={part}>
+                <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="underline text-emerald-300 hover:text-emerald-100 font-black inline-flex items-center gap-1 mx-1 break-all tracking-wider" title={part}>
                     {displayText} <ExternalLink className="w-3 h-3"/>
                 </a>
             );
@@ -108,7 +108,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
   useEffect(() => {
     if (initialRoomID && initialRoomID !== "general_chat") {
         setActiveRoom(initialRoomID);
-        setActiveTitle("Produs Selectat"); 
+        setActiveTitle("Negocieri Transfer"); 
         setView('chat');
         setIsOpen(true);
     }
@@ -185,15 +185,15 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
       const element = messageContainerRefs.current[msgId];
       if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "center" });
-          element.classList.add("bg-yellow-100", "dark:bg-slate-700", "transition-colors", "duration-1000");
-          setTimeout(() => element.classList.remove("bg-yellow-100", "dark:bg-slate-700"), 2000);
+          element.classList.add("bg-emerald-500/20", "transition-colors", "duration-1000", "rounded-2xl");
+          setTimeout(() => element.classList.remove("bg-emerald-500/20", "rounded-2xl"), 2000);
       }
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-          if (file.size > 5 * 1024 * 1024) return toast.error("Imaginea este prea mare! (Max 5MB)");
+          if (file.size > 5 * 1024 * 1024) return toast.error("Fotografia e prea grea (Max 5MB)");
           const reader = new FileReader();
           reader.onloadend = () => { setSelectedImage(reader.result as string); };
           reader.readAsDataURL(file);
@@ -216,14 +216,14 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
       const payload: any = {
           room: activeRoom, 
           author: user.name, 
-          authorRole: isAdmin ? 'admin' : 'user', // Trimitem rolul de admin dacă este cazul
+          authorRole: isAdmin ? 'admin' : 'user',
           message: currentMessage, 
           imageBase64: selectedImage || "", 
           time: timeStr
       };
 
       if (replyingTo) {
-          payload.replyTo = { id: replyingTo._id, author: replyingTo.author, text: replyingTo.message || "Imagine" };
+          payload.replyTo = { id: replyingTo._id, author: replyingTo.author, text: replyingTo.message || "Fotografie" };
       }
       
       try {
@@ -238,13 +238,13 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
               setSelectedImage(null);
               setReplyingTo(null);
               socket.emit("stop_typing", activeRoom);
-          } else { toast.error("Eroare la trimiterea mesajului."); }
-      } catch (e) { toast.error("Eroare de conexiune."); } finally { setIsSending(false); }
+          } else { toast.error("Eroare pe traseu."); }
+      } catch (e) { toast.error("Eroare de conexiune la stadion."); } finally { setIsSending(false); }
     }
   };
 
   const handleDeleteMessage = async (msgId: string) => {
-      if (!window.confirm("Ștergi acest mesaj pentru toată lumea?")) return;
+      if (!window.confirm("Anulezi mesajul definitiv?")) return;
       try {
           await fetch(`${API_BASE}/api/messages/${msgId}`, {
               method: 'DELETE',
@@ -264,10 +264,10 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
           });
           
           if (!res.ok) {
-              toast.error("Serverul se actualizează. Mai așteaptă un pic!");
+              toast.error("Tabela se actualizează. Mai așteaptă!");
           }
       } catch (err) { 
-          toast.error("Nu s-a putut adăuga reacția. Eroare rețea."); 
+          toast.error("Fără conexiune la rețea."); 
       }
   };
 
@@ -277,11 +277,11 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
           });
-      } catch (err) { toast.error("Nu s-a putut fixa mesajul."); }
+      } catch (err) { toast.error("Eroare la prinderea mesajului."); }
   };
 
   const handleReportMessage = async (msgId: string) => {
-      if (!window.confirm("Ești sigur că vrei să raportezi acest mesaj ca fiind neadecvat?")) return;
+      if (!window.confirm("Chemi VAR-ul pentru acest mesaj neadecvat?")) return;
       try {
           const res = await fetch(`${API_BASE}/api/messages/${msgId}/report`, {
               method: 'POST',
@@ -289,10 +289,10 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
               body: JSON.stringify({ user: user.name })
           });
           if(res.ok) {
-              toast.success("Mesajul a fost raportat către administrator.");
+              toast.success("Incidentul a fost trimis Comisiei Centrale.");
           }
       } catch(err) {
-          toast.error("Eroare la raportare.");
+          toast.error("Eroare la arbitraj.");
       }
   };
 
@@ -319,178 +319,235 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
 
   return (
     <>
+        {/* Lightbox Imagini (VAR Review Style) */}
         {lightboxImage && (
-            <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setLightboxImage(null)}>
-                <button className="absolute top-6 right-6 text-white/50 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 transition-all"><X className="w-8 h-8"/></button>
-                <img src={lightboxImage} alt="Fullscreen" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+            <div className="fixed inset-0 z-[200] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setLightboxImage(null)}>
+                <button className="absolute top-6 right-6 text-white bg-slate-900 border-2 border-slate-700 hover:bg-rose-600 hover:border-rose-500 rounded-xl p-3 transition-all">
+                    <X className="w-6 h-6 font-bold"/>
+                </button>
+                <div className="relative border-4 border-slate-800 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+                    <div className="absolute top-0 right-0 bg-rose-600 text-white text-[10px] font-black px-3 py-1 uppercase tracking-widest z-10 border-b-2 border-l-2 border-slate-900 rounded-bl-lg">Analiză Foto</div>
+                    <img src={lightboxImage} alt="Fullscreen" className="max-w-full max-h-[85vh] object-contain" onClick={(e) => e.stopPropagation()} />
+                </div>
             </div>
         )}
 
-        <div className="fixed bottom-4 right-4 z-[100] flex flex-col items-end font-sans">
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[100] flex flex-col items-end font-sans">
+          {/* BUTON DESCHIDERE (Stil Minge / Radar) */}
           {!isOpen && (
-              <button onClick={() => setIsOpen(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-4 rounded-full shadow-2xl transition-transform hover:scale-110 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
-                  <MessageCircle className="w-7 h-7" />
-                  <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+              <button onClick={() => setIsOpen(true)} className="group bg-slate-900 border-4 border-emerald-500 hover:bg-slate-800 text-emerald-400 p-4 rounded-full shadow-[0_10px_25px_rgba(16,185,129,0.3)] hover:shadow-[0_10px_25px_rgba(16,185,129,0.5)] transition-all hover:scale-110 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
+                  <div className="absolute inset-0 rounded-full border border-emerald-400 opacity-0 group-hover:opacity-100 group-hover:animate-ping"></div>
+                  <MessageCircle className="w-8 h-8" />
+                  <span className="absolute top-[-4px] right-[-4px] w-4 h-4 bg-rose-500 rounded-full border-2 border-slate-900 animate-pulse"></span>
               </button>
           )}
 
           {isOpen && (
-              <div className="bg-white dark:bg-slate-900 w-[350px] md:w-[400px] h-[650px] rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 ring-1 ring-black/5">
+              <div className="bg-white dark:bg-slate-900 w-[350px] md:w-[420px] h-[65vh] min-h-[500px] max-h-[750px] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-4 border-emerald-600/30 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10">
                   
-                  <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center z-20 sticky top-0 backdrop-blur-sm bg-opacity-90 shadow-sm shrink-0">
+                  {/* HEADER WIDGET (Scor / Status) */}
+                  <div className="bg-slate-950 p-4 border-b-4 border-emerald-600 flex justify-between items-center z-20 shrink-0 relative overflow-hidden">
+                      <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)] pointer-events-none"></div>
+                      
                       {view === 'chat' && activeRoom.startsWith('listing_') && activeConversationInfo ? (
-                          <div className="flex items-center gap-3 w-full min-w-0 pr-2">
-                              <button onClick={goBack} className="hover:bg-gray-100 dark:hover:bg-slate-800 p-1.5 rounded-full transition-colors shrink-0"><ChevronLeft className="w-6 h-6 text-gray-700 dark:text-gray-300"/></button>
-                              <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
-                                  {activeConversationInfo.image ? <img src={activeConversationInfo.image} className="w-full h-full object-cover" /> : <ImageIcon className="w-5 h-5 text-gray-400 m-2.5"/>}
+                          <div className="flex items-center gap-3 w-full min-w-0 pr-2 relative z-10">
+                              <button onClick={goBack} className="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl border border-slate-700 transition-colors shrink-0"><ChevronLeft className="w-5 h-5 text-emerald-400"/></button>
+                              <div className="w-10 h-10 rounded-xl bg-slate-800 overflow-hidden shrink-0 border-2 border-emerald-500/50">
+                                  {activeConversationInfo.image ? <img src={activeConversationInfo.image} className="w-full h-full object-cover" /> : <ImageIcon className="w-5 h-5 text-slate-500 m-2"/>}
                               </div>
                               <div className="flex-1 min-w-0">
-                                  <h2 className="font-bold text-gray-900 dark:text-white truncate text-sm">{activeTitle}</h2>
-                                  <span className="text-[10px] text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded-full">Anunț Market</span>
+                                  <h2 className="font-black text-white uppercase tracking-tight truncate text-sm">{activeTitle}</h2>
+                                  <span className="text-[9px] text-blue-400 font-black bg-blue-900/30 border border-blue-800 px-2 py-0.5 rounded uppercase tracking-widest mt-0.5 inline-block">Negocieri Transfer</span>
                               </div>
                           </div>
                       ) : (
-                          <div className="flex items-center gap-3">
-                              {view === 'chat' && <button onClick={goBack} className="hover:bg-gray-100 dark:hover:bg-slate-800 p-1.5 rounded-full transition-colors"><ChevronLeft className="w-6 h-6 text-gray-700 dark:text-gray-300"/></button>}
+                          <div className="flex items-center gap-3 relative z-10">
+                              {view === 'chat' && <button onClick={goBack} className="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl border border-slate-700 transition-colors"><ChevronLeft className="w-5 h-5 text-emerald-400"/></button>}
                               <div className="flex flex-col">
-                                  <span className="font-bold text-base text-gray-900 dark:text-white truncate max-w-[180px]">{view === 'list' ? 'Mesaje' : activeTitle}</span>
-                                  {view === 'chat' && isPartnerTyping && <span className="text-[10px] text-blue-500 font-medium animate-pulse">Scrie...</span>}
+                                  <span className="font-black text-white uppercase tracking-widest text-sm truncate max-w-[180px]">{view === 'list' ? 'Canale de Discuție' : activeTitle}</span>
+                                  {view === 'chat' && isPartnerTyping && <span className="text-[10px] text-emerald-400 font-black uppercase tracking-widest animate-pulse mt-0.5">Se antrenează (Scrie)...</span>}
                               </div>
                           </div>
                       )}
-                      <button onClick={() => setIsOpen(false)} className="hover:bg-gray-100 dark:hover:bg-slate-800 p-1.5 rounded-full transition-colors shrink-0"><X className="w-6 h-6 text-gray-500"/></button>
+                      <button onClick={() => setIsOpen(false)} className="relative z-10 bg-slate-800 hover:bg-rose-600 p-2 rounded-xl border border-slate-700 transition-colors shrink-0"><X className="w-5 h-5 text-white"/></button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-black/20 relative scrollbar-thin scrollbar-thumb-gray-200" onClick={() => setShowReactionPickerId(null)}>
+                  {/* ZONA CENTRALĂ (Teren) */}
+                  <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 relative scrollbar-thin scrollbar-thumb-emerald-500/30" onClick={() => setShowReactionPickerId(null)}>
                       
+                      {/* Fundal Teren subtil */}
+                      <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none bg-[repeating-linear-gradient(0deg,transparent,transparent_40px,#000_40px,#000_42px),repeating-linear-gradient(90deg,transparent,transparent_40px,#000_40px,#000_42px)]"></div>
+
+                      {/* MESAJ FIXAT (Tabelă) */}
                       {view === 'chat' && pinnedMessages.length > 0 && (
-                          <div onClick={() => scrollToMessage(pinnedMessages[0]._id)} className="bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800/50 p-2.5 flex items-center gap-3 sticky top-0 z-10 cursor-pointer hover:bg-yellow-100 transition-colors">
-                              <Pin className="w-4 h-4 text-amber-600 shrink-0" />
+                          <div onClick={() => scrollToMessage(pinnedMessages[0]._id)} className="bg-slate-900 border-b-2 border-amber-500 p-3 flex items-center gap-3 sticky top-0 z-20 cursor-pointer hover:bg-slate-800 transition-colors shadow-md">
+                              <div className="bg-amber-500/20 p-1.5 rounded-lg border border-amber-500/50">
+                                  <Pin className="w-4 h-4 text-amber-400 shrink-0" />
+                              </div>
                               <div className="flex-1 truncate">
-                                  <span className="text-[10px] font-bold uppercase text-amber-700 block">Mesaj Fixat</span>
-                                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate block">{pinnedMessages[0].message || 'Imagine...'}</span>
+                                  <span className="text-[9px] font-black uppercase tracking-widest text-amber-400 block mb-0.5">Anunț Oficial (Fixat)</span>
+                                  <span className="text-xs font-bold text-white truncate block">{pinnedMessages[0].message || 'Fotografie/Document'}</span>
                               </div>
                           </div>
                       )}
 
+                      {/* VEDERE LISTĂ (Camere) */}
                       {view === 'list' && (
-                          <div className="p-2 space-y-1">
-                              <div onClick={() => enterChat("general_chat", "Chat General")} className="bg-white dark:bg-slate-800 p-4 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all flex items-center gap-4 border border-transparent hover:border-gray-100 mb-4 shadow-sm">
-                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md"><Users className="w-6 h-6"/></div>
+                          <div className="p-3 sm:p-4 space-y-4 relative z-10">
+                              
+                              <div onClick={() => enterChat("general_chat", "Tribuna Oficială")} className="bg-white dark:bg-slate-900 p-4 rounded-2xl cursor-pointer hover:border-emerald-500 transition-all flex items-center gap-4 border-2 border-slate-200 dark:border-slate-800 shadow-sm group">
+                                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform shadow-inner"><Users className="w-7 h-7"/></div>
                                   <div>
-                                      <h4 className="font-bold text-sm text-gray-900 dark:text-white">Chat General</h4>
-                                      <p className="text-xs text-gray-500 font-medium">Comunitatea Scouting</p>
+                                      <h4 className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wider">Tribuna Oficială</h4>
+                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Discuții Libere Comunitate</p>
                                   </div>
                               </div>
-                              <div className="text-xs font-bold text-gray-400 px-4 py-2 uppercase tracking-wider">Anunțuri Private</div>
+                              
+                              <div className="flex items-center gap-3 px-2">
+                                  <div className="h-0.5 flex-1 bg-slate-200 dark:bg-slate-800"></div>
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Negocieri Private</span>
+                                  <div className="h-0.5 flex-1 bg-slate-200 dark:bg-slate-800"></div>
+                              </div>
+                              
                               {conversations.length === 0 ? (
-                                  <div className="text-center py-10 opacity-50 flex flex-col items-center"><MessageCircle className="w-10 h-10 mb-2 text-gray-300"/><p className="text-xs">Nu ai conversații încă.</p></div>
+                                  <div className="text-center py-10 opacity-70 flex flex-col items-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-900/50">
+                                      <MessageCircle className="w-10 h-10 mb-3 text-slate-400"/>
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nicio discuție activă.</p>
+                                  </div>
                               ) : (
-                                  conversations.map((conv) => (
-                                      <div key={conv.roomId} onClick={() => enterChat(conv.roomId, conv.title)} className="bg-white dark:bg-slate-800 p-3 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center gap-3 group">
-                                          {conv.image ? <img src={conv.image} className="w-12 h-12 rounded-full object-cover bg-gray-200 shadow-sm border-2 border-white dark:border-slate-700"/> : <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400"><ImageIcon className="w-5 h-5"/></div>}
+                                  <div className="space-y-2">
+                                  {conversations.map((conv) => (
+                                      <div key={conv.roomId} onClick={() => enterChat(conv.roomId, conv.title)} className="bg-white dark:bg-slate-900 p-3 rounded-2xl cursor-pointer hover:border-blue-500 transition-all flex items-center gap-3 border-2 border-slate-200 dark:border-slate-800 group shadow-sm">
+                                          {conv.image ? (
+                                              <img src={conv.image} className="w-12 h-12 rounded-xl object-cover bg-slate-100 border-2 border-slate-200 dark:border-slate-700 group-hover:border-blue-500 transition-colors shrink-0"/>
+                                          ) : (
+                                              <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center border-2 border-slate-200 dark:border-slate-700 shrink-0"><ImageIcon className="w-5 h-5 text-slate-400"/></div>
+                                          )}
                                           <div className="overflow-hidden flex-1">
-                                              <div className="flex justify-between items-center">
-                                                  <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate max-w-[140px]">{conv.title}</h4>
-                                                  <span className="text-[10px] text-gray-400">{new Date(conv.timestamp).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</span>
+                                              <div className="flex justify-between items-start mb-1">
+                                                  <h4 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate max-w-[130px]" title={conv.title}>{conv.title}</h4>
+                                                  <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0">{new Date(conv.timestamp).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</span>
                                               </div>
-                                              <p className={`text-xs truncate w-full mt-0.5 ${conv.lastMessage === "" ? "italic text-gray-400" : "text-gray-500 group-hover:text-gray-700"}`}>
-                                                  {conv.lastMessage === "" ? "Mesaj șters" : conv.lastMessage}
+                                              <p className={`text-[11px] font-bold truncate w-full ${conv.lastMessage === "" ? "italic text-rose-500" : "text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400"}`}>
+                                                  {conv.lastMessage === "" ? "Semnal Pierdut (Șters)" : conv.lastMessage}
                                               </p>
                                           </div>
                                       </div>
-                                  ))
+                                  ))}
+                                  </div>
                               )}
                           </div>
                       )}
 
+                      {/* VEDERE CHAT */}
                       {view === 'chat' && (
-                          <div className="flex flex-col h-full">
-                              <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+                          <div className="flex flex-col h-full relative z-10">
+                              <div className="flex-1 p-3 sm:p-4 space-y-6 overflow-y-auto">
                                   {Object.keys(groupedMessages).length === 0 && (
-                                      <div className="flex flex-col items-center justify-center h-full text-center p-6 opacity-60">
-                                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-3 text-blue-500"><MessageCircle className="w-8 h-8"/></div>
-                                          <p className="text-sm font-bold">Începe conversația!</p>
+                                      <div className="flex flex-col items-center justify-center h-full text-center p-6 opacity-70">
+                                          <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 text-emerald-500 border-2 border-emerald-500/30">
+                                              <MessageCircle className="w-8 h-8"/>
+                                          </div>
+                                          <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">Terenul e pregătit. Dă pasa!</p>
                                       </div>
                                   )}
 
                                   {Object.keys(groupedMessages).map((dateKey) => (
                                       <div key={dateKey}>
-                                          <div className="flex justify-center mb-4"><span className="bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-gray-300 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">{formatDateSeparator(dateKey)}</span></div>
+                                          <div className="flex justify-center mb-5 mt-2">
+                                              <span className="bg-slate-900 border-2 border-slate-800 text-white text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-lg shadow-sm">
+                                                  {formatDateSeparator(dateKey)}
+                                              </span>
+                                          </div>
                                           <div className="space-y-1">
                                               {groupedMessages[dateKey].map((msg, idx, arr) => {
                                                   const isMe = msg.author === user?.name;
                                                   const isFirstInGroup = idx === 0 || arr[idx - 1].author !== msg.author;
                                                   
                                                   return (
-                                                    <div key={idx} ref={(el) => { messageContainerRefs.current[msg._id] = el; }} className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isFirstInGroup ? "mt-3" : "mt-0.5"}`}>
+                                                    <div key={idx} ref={(el) => { messageContainerRefs.current[msg._id] = el; }} className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isFirstInGroup ? "mt-4" : "mt-1"}`}>
+                                                          {/* NUME AUTOR (Pentru alții) */}
                                                           {!isMe && isFirstInGroup && (
-                                                              <span className="text-[10px] font-bold text-gray-500 ml-2 mb-0.5">
-                                                                  {msg.authorRole === 'admin' && <ShieldCheck className="inline w-3 h-3 text-red-500 mr-1"/>}
+                                                              <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-2 mb-1 flex items-center gap-1">
+                                                                  {msg.authorRole === 'admin' && <ShieldCheck className="w-3 h-3 text-rose-500"/>}
                                                                   {msg.author}
                                                               </span>
                                                           )}
-                                                          <div className={`group relative flex items-center gap-2 max-w-[90%] ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
+
+                                                          <div className={`group relative flex items-center gap-2 max-w-[92%] ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
                                                               
+                                                              {/* TOOLBAR ACȚIUNI MESAJ */}
                                                               {!msg.isDeleted && (
-                                                                  <div className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-md p-1 rounded-full absolute -top-10 z-[30] ${isMe ? 'right-0' : 'left-0'}`}>
-                                                                      <button onClick={(e) => { e.stopPropagation(); setShowReactionPickerId(msg._id); }} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-gray-50 rounded-full" title="Reacționează"><Smile className="w-3.5 h-3.5"/></button>
-                                                                      <button onClick={() => setReplyingTo(msg)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-gray-50 rounded-full" title="Răspunde"><Reply className="w-3.5 h-3.5"/></button>
-                                                                      <button onClick={() => handlePin(msg._id)} className={`p-1.5 hover:bg-gray-50 rounded-full ${msg.isPinned ? 'text-amber-500' : 'text-gray-400 hover:text-amber-500'}`} title={msg.isPinned ? "Scoate de la Fixate" : "Fixează Mesajul"}><Pin className="w-3.5 h-3.5"/></button>
+                                                                  <div className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-slate-900 border border-slate-700 shadow-lg p-1.5 rounded-xl absolute -top-12 z-[30] ${isMe ? 'right-0' : 'left-0'}`}>
+                                                                      <button onClick={(e) => { e.stopPropagation(); setShowReactionPickerId(msg._id); }} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-slate-800 rounded-lg transition-colors" title="Reacționează"><Smile className="w-4 h-4"/></button>
+                                                                      <button onClick={() => setReplyingTo(msg)} className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded-lg transition-colors" title="Dă Replica"><Reply className="w-4 h-4"/></button>
+                                                                      <button onClick={() => handlePin(msg._id)} className={`p-1.5 hover:bg-slate-800 rounded-lg transition-colors ${msg.isPinned ? 'text-amber-500' : 'text-slate-400 hover:text-amber-400'}`} title={msg.isPinned ? "Scoate de la Fixate" : "Fixează Mesajul pe Tabelă"}><Pin className="w-4 h-4"/></button>
                                                                       
-                                                                      {(isMe || isAdmin) && <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-50 rounded-full" title="Șterge"><Trash2 className="w-3.5 h-3.5"/></button>}
+                                                                      {(isMe || isAdmin) && <button onClick={() => handleDeleteMessage(msg._id)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-slate-800 rounded-lg transition-colors" title="Anulează Pasa (Șterge)"><Trash2 className="w-4 h-4"/></button>}
                                                                       
-                                                                      {/* AICI ESTE CONDIȚIA CARE ASCUNDE BUTONUL PENTRU MESAJELE TALE */}
                                                                       {!isMe && !isAdmin && msg.authorRole !== 'admin' && (
-                                                                          <button onClick={() => handleReportMessage(msg._id)} className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-gray-50 rounded-full" title="Raportează adminului">
-                                                                              <Flag className="w-3.5 h-3.5"/>
+                                                                          <button onClick={() => handleReportMessage(msg._id)} className="p-1.5 text-slate-400 hover:text-orange-500 hover:bg-slate-800 rounded-lg transition-colors" title="Cheamă VAR-ul (Raportează)">
+                                                                              <Flag className="w-4 h-4"/>
                                                                           </button>
                                                                       )}
                                                                   </div>
                                                               )}
 
+                                                              {/* PICKER REACȚII */}
                                                               {showReactionPickerId === msg._id && (
-                                                                  <div className={`absolute -top-20 z-[40] bg-white border border-gray-100 shadow-xl rounded-full px-2 py-1.5 flex gap-1 animate-in zoom-in ${isMe ? 'right-0' : 'left-0'}`}>
+                                                                  <div className={`absolute -top-14 z-[40] bg-slate-900 border-2 border-slate-700 shadow-xl rounded-2xl px-2 py-1.5 flex gap-2 animate-in zoom-in ${isMe ? 'right-0' : 'left-0'}`}>
                                                                       {AVAILABLE_EMOJIS.map(emoji => (
-                                                                          <button key={emoji} onClick={(e) => { e.stopPropagation(); handleReact(msg._id, emoji); }} className="hover:scale-125 transition-transform text-lg px-1">{emoji}</button>
+                                                                          <button key={emoji} onClick={(e) => { e.stopPropagation(); handleReact(msg._id, emoji); }} className="hover:scale-125 hover:-translate-y-1 transition-all text-xl px-1">{emoji}</button>
                                                                       ))}
                                                                   </div>
                                                               )}
 
+                                                              {/* CONȚINUT MESAJ */}
                                                               {msg.isDeleted ? (
-                                                                  <div className="px-4 py-2 bg-gray-100 border border-gray-200 rounded-full flex items-center gap-2"><Ban className="w-3.5 h-3.5 text-gray-400" /><span className="text-xs font-medium italic text-gray-400">Mesaj șters</span></div>
+                                                                  <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800/50 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl flex items-center gap-2">
+                                                                      <Ban className="w-3.5 h-3.5 text-slate-400" />
+                                                                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Joc Oprit (Șters)</span>
+                                                                  </div>
                                                               ) : (
-                                                                  <div className={`relative shadow-sm flex flex-col ${isMe ? "bg-blue-600 text-white rounded-2xl rounded-tr-md" : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-slate-700 rounded-2xl rounded-tl-md"}`}>
+                                                                  <div className={`relative shadow-md flex flex-col border-2 ${isMe ? "bg-emerald-600 border-emerald-500 text-white rounded-2xl rounded-tr-sm" : "bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 rounded-2xl rounded-tl-sm"}`}>
                                                                       
+                                                                      {/* REPLY BOX */}
                                                                       {msg.replyTo && (
-                                                                          <div onClick={() => scrollToMessage(msg.replyTo!.id)} className={`mx-2 mt-2 p-2 rounded-xl text-xs cursor-pointer border-l-2 ${isMe ? 'bg-blue-700/50 border-white text-blue-100' : 'bg-gray-50 border-blue-500 text-gray-500'}`}>
-                                                                              <div className={`font-bold mb-0.5 ${isMe ? 'text-white' : 'text-blue-600'}`}>{msg.replyTo.author}</div>
-                                                                              <div className="truncate max-w-[200px]">{msg.replyTo.text}</div>
+                                                                          <div onClick={() => scrollToMessage(msg.replyTo!.id)} className={`mx-2 mt-2 p-2.5 rounded-xl text-xs cursor-pointer border-l-4 ${isMe ? 'bg-emerald-800/40 border-emerald-300 text-emerald-100' : 'bg-slate-100 dark:bg-slate-800 border-blue-500 text-slate-600 dark:text-slate-300'}`}>
+                                                                              <div className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isMe ? 'text-emerald-300' : 'text-blue-500'}`}>{msg.replyTo.author}</div>
+                                                                              <div className="truncate max-w-[200px] font-bold">{msg.replyTo.text}</div>
                                                                           </div>
                                                                       )}
 
+                                                                      {/* IMAGINE */}
                                                                       {msg.imageUrl && (
-                                                                          <div className="relative overflow-hidden rounded-2xl cursor-pointer" onClick={() => setLightboxImage(msg.imageUrl!)}>
-                                                                              <img src={msg.imageUrl} className={`max-w-[260px] w-full max-h-64 object-cover ${msg.replyTo ? 'mt-2' : ''}`} />
-                                                                              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
-                                                                              <div className="absolute bottom-1.5 right-2 text-white/90 text-[10px] flex items-center gap-1 drop-shadow-md">{msg.time} {isMe && <CheckCheck className="w-3.5 h-3.5 text-white" />}</div>
+                                                                          <div className="relative overflow-hidden rounded-xl cursor-pointer m-1" onClick={() => setLightboxImage(msg.imageUrl!)}>
+                                                                              <img src={msg.imageUrl} className={`max-w-[260px] sm:max-w-[280px] w-full max-h-64 object-cover border-2 border-transparent hover:border-white/50 transition-colors rounded-lg ${msg.replyTo ? 'mt-1' : ''}`} />
+                                                                              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-900/90 to-transparent pointer-events-none rounded-b-lg"></div>
+                                                                              <div className="absolute bottom-2 right-2 text-white font-black text-[9px] uppercase tracking-widest flex items-center gap-1 drop-shadow-md">
+                                                                                  {msg.time} {isMe && <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />}
+                                                                              </div>
                                                                           </div>
                                                                       )}
 
+                                                                      {/* TEXT */}
                                                                       {msg.message && (
-                                                                          <div className="px-4 py-2.5 text-[14px]">
+                                                                          <div className="px-4 py-3 text-sm font-medium leading-snug">
                                                                               {renderTextWithLinks(msg.message)}
                                                                               {!msg.imageUrl && (
-                                                                                  <div className={`text-[10px] flex justify-end items-center gap-1 mt-1 ${isMe ? "text-blue-200" : "text-gray-400"}`}>{msg.time} {isMe && <CheckCheck className="w-3.5 h-3.5 opacity-90" />}</div>
+                                                                                  <div className={`text-[9px] font-black uppercase tracking-widest flex justify-end items-center gap-1 mt-1.5 ${isMe ? "text-emerald-200" : "text-slate-400"}`}>
+                                                                                      {msg.time} {isMe && <CheckCheck className="w-3.5 h-3.5" />}
+                                                                                  </div>
                                                                               )}
                                                                           </div>
                                                                       )}
 
+                                                                      {/* REACȚII AFIȘATE JOS */}
                                                                       {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                                                                          <div className={`absolute -bottom-3 flex gap-1 bg-white border border-gray-100 shadow-sm rounded-full px-1.5 py-0.5 z-10 ${isMe ? 'right-4' : 'left-4'}`}>
+                                                                          <div className={`absolute -bottom-3.5 flex gap-1 bg-slate-900 border-2 border-slate-700 shadow-md rounded-lg px-2 py-0.5 z-10 ${isMe ? 'right-4' : 'left-4'}`}>
                                                                               {Object.entries(msg.reactions).map(([emoji, usersArr]) => (
-                                                                                  <button key={emoji} onClick={() => handleReact(msg._id, emoji)} className={`text-[10px] font-bold flex items-center gap-1 px-1 rounded-full ${usersArr.includes(user.name) ? 'bg-blue-50 text-blue-600' : 'bg-transparent text-gray-500 hover:bg-gray-50'}`}>
-                                                                                      <span>{emoji}</span><span>{usersArr.length}</span>
+                                                                                  <button key={emoji} onClick={() => handleReact(msg._id, emoji)} className={`text-[10px] font-black flex items-center gap-1.5 px-1.5 py-0.5 rounded-md transition-colors ${usersArr.includes(user.name) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-transparent text-slate-300 hover:bg-slate-800'}`}>
+                                                                                      <span className="text-sm">{emoji}</span><span>{usersArr.length}</span>
                                                                                   </button>
                                                                               ))}
                                                                           </div>
@@ -498,7 +555,8 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                                                   </div>
                                                               )}
                                                           </div>
-                                                          {msg.reactions && Object.keys(msg.reactions).length > 0 && !msg.isDeleted && <div className="h-3"></div>}
+                                                          {/* Spațiu extra dacă există reacții ca să nu se suprapună */}
+                                                          {msg.reactions && Object.keys(msg.reactions).length > 0 && !msg.isDeleted && <div className="h-4"></div>}
                                                       </div>
                                                   );
                                               })}
@@ -507,55 +565,62 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                   ))}
                                   
                                   {isPartnerTyping && (
-                                      <div className="flex items-center gap-2 mt-2 ml-2 animate-in fade-in slide-in-from-bottom-2">
-                                          <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-tl-none flex gap-1 shadow-sm">
-                                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+                                      <div className="flex items-center gap-2 mt-3 ml-3 animate-in fade-in slide-in-from-bottom-2">
+                                          <div className="bg-slate-900 border-2 border-slate-800 px-4 py-3 rounded-2xl rounded-tl-sm flex gap-1.5 shadow-sm">
+                                              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce"></div>
                                           </div>
                                       </div>
                                   )}
-                                  <div ref={messagesEndRef} />
+                                  <div ref={messagesEndRef} className="h-2" />
                               </div>
 
-                              <div className="bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex flex-col">
+                              {/* ZONA DE INPUT (Control Panel) */}
+                              <div className="bg-white dark:bg-slate-900 border-t-4 border-slate-200 dark:border-slate-800 flex flex-col z-20">
                                   
                                   {replyingTo && (
-                                      <div className="px-4 py-2 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center">
-                                          <div className="flex flex-col min-w-0 flex-1 border-l-2 border-blue-500 pl-2">
-                                              <span className="text-[10px] font-bold text-blue-600 uppercase">Răspunzi lui {replyingTo.author}</span>
-                                              <span className="text-xs text-gray-600 truncate">{replyingTo.message || "Imagine..."}</span>
+                                      <div className="px-4 py-2.5 bg-slate-100 dark:bg-slate-950 border-b-2 border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                                          <div className="flex flex-col min-w-0 flex-1 border-l-4 border-blue-500 pl-3">
+                                              <span className="text-[9px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest">Replică pentru {replyingTo.author}</span>
+                                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate mt-0.5">{replyingTo.message || "Imagine (Analiză VAR)"}</span>
                                           </div>
-                                          <button onClick={() => setReplyingTo(null)} className="p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4"/></button>
+                                          <button onClick={() => setReplyingTo(null)} className="p-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-rose-500 hover:text-white rounded-lg transition-colors ml-2"><X className="w-4 h-4 font-bold"/></button>
                                       </div>
                                   )}
 
                                   {selectedImage && (
-                                      <div className="px-3 pt-2 pb-1 flex items-center gap-2">
-                                          <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-gray-200">
+                                      <div className="px-4 pt-3 pb-1 flex items-center gap-3 bg-slate-50 dark:bg-slate-900">
+                                          <div className="relative w-14 h-14 rounded-xl overflow-hidden border-2 border-emerald-500 shadow-md">
                                               <img src={selectedImage} className="w-full h-full object-cover" />
-                                              <button onClick={() => setSelectedImage(null)} className="absolute top-0.5 right-0.5 bg-red-500 text-white p-0.5 rounded-full"><X className="w-3 h-3"/></button>
+                                              <button onClick={() => setSelectedImage(null)} className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-lg hover:bg-rose-500"><X className="w-3 h-3 font-bold"/></button>
                                           </div>
-                                          <span className="text-xs text-gray-500 font-medium">Poză pregătită</span>
+                                          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500">Fișier Încărcat</span>
                                       </div>
                                   )}
 
-                                  <div className="p-3 flex gap-2 items-end">
+                                  <div className="p-3 sm:p-4 flex gap-2 items-end bg-white dark:bg-slate-900">
                                       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageSelect} />
-                                      <button onClick={() => fileInputRef.current?.click()} className="text-gray-400 hover:text-blue-600 p-2.5 transition-colors bg-gray-50 hover:bg-blue-50 rounded-full"><ImageIcon className="w-5 h-5"/></button>
+                                      <button onClick={() => fileInputRef.current?.click()} className="text-slate-500 hover:text-emerald-600 p-3 transition-colors bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-200 dark:hover:border-emerald-800/50">
+                                          <ImageIcon className="w-5 h-5"/>
+                                      </button>
 
-                                      <div className="flex-1 bg-gray-50 dark:bg-slate-800 rounded-2xl flex items-center px-4 py-1 border border-gray-200 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/10 transition-all">
+                                      <div className="flex-1 bg-slate-50 dark:bg-slate-950 rounded-2xl flex items-center px-4 py-1.5 border-2 border-slate-200 dark:border-slate-800 focus-within:border-emerald-500 dark:focus-within:border-emerald-600 transition-all">
                                           <input 
                                               type="text" 
                                               value={currentMessage} 
                                               onChange={handleInputChange}
                                               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                                              placeholder="Scrie un mesaj..." 
-                                              className="w-full bg-transparent border-none outline-none text-sm py-2.5"
+                                              placeholder="SCRIE AICI..." 
+                                              className="w-full bg-transparent border-none outline-none text-sm font-bold placeholder:text-slate-400 dark:placeholder:text-slate-600 placeholder:uppercase py-2.5 text-slate-900 dark:text-white"
                                           />
                                       </div>
-                                      <button onClick={sendMessage} disabled={isSending || (!currentMessage.trim() && !selectedImage)} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white p-3 rounded-full shadow-md transition-all active:scale-95 flex-shrink-0">
-                                          {isSending ? <Loader2 className="w-5 h-5 animate-spin"/> : <Send className="w-5 h-5 ml-0.5"/>}
+                                      <button 
+                                          onClick={sendMessage} 
+                                          disabled={isSending || (!currentMessage.trim() && !selectedImage)} 
+                                          className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:border-slate-400 dark:disabled:border-slate-700 text-white p-3.5 rounded-xl transition-all active:scale-95 flex-shrink-0 border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px] disabled:translate-y-0 disabled:border-b-4 disabled:text-slate-500"
+                                      >
+                                          {isSending ? <Loader2 className="w-5 h-5 animate-spin"/> : <Send className="w-5 h-5"/>}
                                       </button>
                                   </div>
                               </div>
