@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, ArrowRight, Shield, Star, Activity, CheckCircle, Ticket, Zap } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, Shield, Star, Activity, CheckCircle, Ticket, Zap, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import stadionImg from '../Photo/stadion.jpg';
@@ -17,6 +17,8 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -144,7 +146,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                         <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-l-xl border-r-2 border-slate-200 dark:border-slate-700 group-focus-within:bg-emerald-500 group-focus-within:border-emerald-600 transition-colors">
                             <User className="h-5 w-5 text-slate-400 group-focus-within:text-white transition-colors" />
                         </div>
-                        <input type="text" className="w-full pl-16 pr-4 py-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none transition-all focus:border-emerald-500 dark:focus:border-emerald-500 font-bold uppercase tracking-wide text-sm text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" placeholder="EX: ION GOLEA" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required={!isLogin} />
+                        <input type="text" className="w-full pl-16 pr-4 py-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none transition-all focus:border-emerald-500 dark:focus:border-emerald-500 font-bold tracking-wide text-sm text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" placeholder="Ex: Ion Golea" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required={!isLogin} />
                     </div>
                 </div>
                 )}
@@ -155,7 +157,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                         <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-l-xl border-r-2 border-slate-200 dark:border-slate-700 group-focus-within:bg-emerald-500 group-focus-within:border-emerald-600 transition-colors">
                             <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-white transition-colors" />
                         </div>
-                        <input type="email" className="w-full pl-16 pr-4 py-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none transition-all focus:border-emerald-500 dark:focus:border-emerald-500 font-bold uppercase tracking-wide text-sm text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" placeholder="SCOUT@EXEMPLU.RO" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required />
+                        <input type="email" className="w-full pl-16 pr-4 py-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none transition-all focus:border-emerald-500 dark:focus:border-emerald-500 font-bold tracking-wide text-sm text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" placeholder="scout@exemplu.ro" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required />
                     </div>
                 </div>
 
@@ -165,7 +167,10 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                         <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-l-xl border-r-2 border-slate-200 dark:border-slate-700 group-focus-within:bg-emerald-500 group-focus-within:border-emerald-600 transition-colors">
                             <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-white transition-colors" />
                         </div>
-                        <input type="password" className="w-full pl-16 pr-4 py-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none transition-all focus:border-emerald-500 dark:focus:border-emerald-500 font-bold tracking-wide text-sm text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required />
+                        <input type={showPassword ? "text" : "password"} className="w-full pl-16 pr-12 py-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none transition-all focus:border-emerald-500 dark:focus:border-emerald-500 font-bold tracking-wide text-sm text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors p-2">
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
                     </div>
                 </div>
 
@@ -176,7 +181,10 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                         <div className={`absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center rounded-l-xl border-r-2 transition-colors ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'bg-rose-100 dark:bg-rose-900/50 border-rose-200 dark:border-rose-800' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 group-focus-within:bg-emerald-500 group-focus-within:border-emerald-600'}`}>
                             <CheckCircle className={`h-5 w-5 transition-colors ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'text-rose-500' : 'text-slate-400 group-focus-within:text-white'}`} />
                         </div>
-                        <input type="password" className={`w-full pl-16 pr-4 py-4 rounded-xl border-2 outline-none transition-all font-bold tracking-wide text-sm text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'border-rose-500 bg-rose-50 dark:bg-rose-950 focus:border-rose-600' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-emerald-500 dark:focus:border-emerald-500'}`} placeholder="REPETĂ CODUL" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} required={!isLogin} />
+                        <input type={showConfirmPassword ? "text" : "password"} className={`w-full pl-16 pr-12 py-4 rounded-xl border-2 outline-none transition-all font-bold tracking-wide text-sm text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'border-rose-500 bg-rose-50 dark:bg-rose-950 focus:border-rose-600' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-emerald-500 dark:focus:border-emerald-500'}`} placeholder="Repetă codul" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} required={!isLogin} />
+                         <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors p-2">
+                            {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
                     </div>
                 </div>
                 )}

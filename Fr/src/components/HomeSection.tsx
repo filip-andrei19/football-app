@@ -15,9 +15,7 @@ import {
   RotateCcw,
   Check,
   Sparkles,
-  Ruler,
-  Weight,
-  AlertTriangle // <--- Adaugă asta aici
+  AlertTriangle 
 } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
@@ -183,7 +181,7 @@ const PlayerRadarChart = ({
               key={level}
               points={pts}
               fill="none"
-              stroke="rgba(16, 185, 129, 0.3)" // Verde teren pentru linii radar
+              stroke="rgba(16, 185, 129, 0.3)" 
               strokeWidth="1"
               strokeDasharray={level < 100 ? "3 3" : undefined}
             />
@@ -208,7 +206,7 @@ const PlayerRadarChart = ({
         {m2 && (
           <polygon
             points={buildPolygonPoints(m2.radar)}
-            fill="rgba(59, 130, 246, 0.4)" // Albastru pt comparator
+            fill="rgba(59, 130, 246, 0.4)" 
             stroke="#2563eb"
             strokeWidth="3"
           />
@@ -216,7 +214,7 @@ const PlayerRadarChart = ({
 
         <polygon
           points={buildPolygonPoints(m1.radar)}
-          fill="rgba(250, 204, 21, 0.4)" // Galben/Auriu pentru jucătorul principal (MVP style)
+          fill="rgba(250, 204, 21, 0.4)" 
           stroke="#facc15"
           strokeWidth="3"
         />
@@ -259,7 +257,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
-  // --- STATE PENTRU SCOUTING PRO, WATCHLIST ȘI COMPARATOR ---
   const [showProFilters, setShowProFilters] = useState(false);
   const [positionFilter, setPositionFilter] = useState("Toate");
   const [maxAgeFilter, setMaxAgeFilter] = useState<string>("");
@@ -285,7 +282,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
   const [greeting, setGreeting] = useState("Salut");
 
-  // SETAREA CORECTĂ A MEDIULUI PENTRU API
   const API_URL = window.location.hostname === "localhost" 
       ? "http://localhost:3000" 
       : "https://football-backend-m2a4.onrender.com";
@@ -297,7 +293,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     else setGreeting("Bună seara");
   }, []);
 
-  // Încărcăm Watchlist-ul
   useEffect(() => {
     if (!user?.email) return;
     fetch(`${API_URL}/api/users/watchlist/${encodeURIComponent(user.email)}`)
@@ -324,7 +319,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     minGoalsFilter > 0 ||
     parseFloat(minRatingFilter) > 0;
 
-  // Efect pentru căutare
   useEffect(() => {
     const fetchResults = async () => {
       if (onlyWatchlist && searchMode === 'players') {
@@ -503,21 +497,16 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   return (
     <div className="relative min-h-[80vh] py-10 overflow-hidden rounded-3xl">
 
-      {/* FUNDAL ANIMAT - TEMATICA GAZON / STADION */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none">
-         {/* Liniile de teren pe fundal (pitch pattern) */}
         <div className="absolute inset-0 opacity-[0.04] dark:opacity-[0.06] bg-[repeating-linear-gradient(0deg,transparent,transparent_60px,#fff_60px,#fff_62px),repeating-linear-gradient(90deg,transparent,transparent_60px,#fff_60px,#fff_62px)]"></div>
-        {/* Lumini de nocturnă blurate */}
         <div className="absolute top-0 left-1/4 w-[40vw] h-[40vw] rounded-full bg-emerald-500/20 blur-[150px] animate-pulse"></div>
         <div className="absolute top-[20%] right-[10%] w-[30vw] h-[30vw] rounded-full bg-blue-500/10 blur-[120px]"></div>
       </div>
 
-      {/* MODAL LOT ECHIPĂ (Stilizat ca un panou de la marginea terenului) */}
       {selectedTeam && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm transition-opacity">
           <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300">
             
-            {/* Header Echipa - stil Scoreboard */}
             <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-4 sm:p-6 flex items-center justify-between shrink-0 border-b-4 border-emerald-500">
               <div className="flex items-center gap-4 sm:gap-6 min-w-0">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white p-2 rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
@@ -535,7 +524,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               </button>
             </div>
 
-            {/* Lista jucatorilor din lot */}
             <div className="overflow-y-auto p-3 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-6 flex-1">
               {([
                 { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-500 border-amber-500", bg: "bg-amber-500/10" },
@@ -600,7 +588,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
       <div className="relative z-10 space-y-10">
         
-        {/* HEADER ACASĂ - SPORTIV */}
         <section className="text-center space-y-4 px-4">
           <div className="inline-block">
             <h1 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter text-slate-900 dark:text-white drop-shadow-sm">
@@ -613,10 +600,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           </p>
           
           <div className="max-w-4xl mx-auto mt-8 relative z-10">
-            {/* COMUTATOARE CĂUTARE & BUTOANE (Stil Butoane Echipament/Tabelă) */}
             <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
               
-              {/* Grup Căutare */}
               <div className="bg-slate-200/50 dark:bg-slate-800/50 p-1.5 rounded-xl inline-flex border-2 border-slate-300/50 dark:border-slate-700/50 backdrop-blur">
                 <button
                   onClick={() => { setSearchMode('players'); setSearchTerm(''); }}
@@ -675,7 +660,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               )}
             </div>
 
-            {/* BARA DE CĂUTARE (Stilizată ca un banner de stadion) */}
             <div className="relative group max-w-2xl mx-auto">
               <div className="absolute -inset-2 bg-emerald-500/20 rounded-2xl blur-lg group-hover:bg-emerald-500/30 transition duration-500"></div>
               <div className="relative border-4 border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xl bg-white dark:bg-slate-900">
@@ -684,8 +668,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 </svg>
                 <input
                   type="text"
-                  placeholder={searchMode === 'players' ? "CAUTĂ JUCĂTOR (EX: HAGI, COMAN)..." : "CAUTĂ CLUB (EX: FCSB, RAPID)..."}
-                  className="w-full pl-14 pr-12 py-5 text-lg font-black uppercase tracking-wide border-0 bg-transparent focus:ring-0 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white"
+                  placeholder={searchMode === 'players' ? "Caută jucător (Ex: Hagi, Coman)..." : "Caută club (Ex: FCSB, Rapid)..."}
+                  className="w-full pl-14 pr-12 py-5 text-lg font-black tracking-wide border-0 bg-transparent focus:ring-0 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -700,10 +684,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               </div>
             </div>
 
-            {/* PANOUL TACTIC (Filtre Scouting Pro) - Textura de tablă de antrenor */}
             {searchMode === 'players' && showProFilters && (
               <div className="mt-8 bg-slate-900 border-4 border-emerald-600/50 rounded-3xl p-6 shadow-2xl text-left animate-in fade-in duration-300 relative overflow-hidden">
-                {/* Linii vagi de tactică pe fundal */}
                 <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,transparent_0,transparent_100px,#fff_101px,#fff_103px,transparent_104px)]"></div>
                 
                 <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 pb-4 mb-5 border-b-2 border-slate-700/50">
@@ -724,7 +706,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 relative z-10">
-                  {/* Select-uri stilizate dark/sport */}
                   {[
                     { label: "Poziție în Teren", value: positionFilter, set: setPositionFilter, opts: [["Toate", "Toate pozițiile"], ["Portari", "Portari (GK)"], ["Fundași", "Fundași (DEF)"], ["Mijlocași", "Mijlocași (MID)"], ["Atacanți", "Atacanți (FWD)"]] },
                     { label: "Vârstă Maximă", value: maxAgeFilter, set: setMaxAgeFilter, opts: [["", "Orice vârstă"], ["19", "Sub 19 ani (U19)"], ["21", "Sub 21 ani (U21)"], ["23", "Sub 23 ani (U23)"], ["26", "Sub 26 ani"], ["30", "Sub 30 ani"]] },
@@ -752,7 +733,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           </div>
         </section>
 
-        {/* GRID REZULTATE */}
         <section className="px-4 container mx-auto pb-24 relative z-10">
           {loading && (
             <div className="flex justify-center items-center py-20">
@@ -772,7 +752,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           {!showResults && !loading && (
             <div className="text-center py-20">
               <div className="w-24 h-24 mx-auto mb-6 opacity-30 text-emerald-600 dark:text-emerald-500">
-                {/* SVG minge teren simpla */}
                 <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C14.07 4 15.95 4.8 17.38 6.13L15.22 8.3C14.33 7.84 13.26 7.56 12 7.56C10.74 7.56 9.67 7.84 8.78 8.3L6.62 6.13C8.05 4.8 9.93 4 12 4ZM5.6 7.42L7.75 9.58C6.9 10.71 6.36 12.1 6.36 13.62C6.36 14.54 6.54 15.42 6.86 16.23L4.61 17.9C4.22 16.7 4 15.39 4 14C4 11.59 4.61 9.32 5.6 7.42ZM7.92 18.52L10.15 16.85C10.66 17.15 11.23 17.36 11.83 17.47V20C10.37 19.78 9.04 19.26 7.92 18.52ZM12.17 20V17.47C12.77 17.36 13.34 17.15 13.85 16.85L16.08 18.52C14.96 19.26 13.63 19.78 12.17 20ZM17.14 16.23C17.46 15.42 17.64 14.54 17.64 13.62C17.64 12.1 17.1 10.71 16.25 9.58L18.4 7.42C19.39 9.32 20 11.59 20 14C20 15.39 19.78 16.7 19.39 17.9L17.14 16.23ZM15.22 10.13L16.75 8.6C17.53 9.77 18 11.16 18 12.62C18 13.78 17.7 14.86 17.18 15.82L15.65 14.3C15.88 13.78 16 13.22 16 12.62C16 11.71 15.71 10.87 15.22 10.13Z" />
                 </svg>
@@ -784,7 +763,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
           )}
 
-          {/* AFISARE JUCATORI (Carduri stilizate fotbal/TV Broadcast) */}
           {showResults && !loading && searchMode === 'players' && displayedPlayers.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 animate-in slide-in-from-bottom-8 duration-700">
               {displayedPlayers.map((player) => {
@@ -800,7 +778,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     onClick={() => setSelectedPlayer(player)}
                     className="relative group bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col items-center cursor-pointer hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
                   >
-                    {/* Header Card (Tricolor sau Culoare Club vagă) */}
                     <div className="w-full h-12 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex justify-between px-2 pt-2 border-b-2 border-emerald-500">
                        <button
                         onClick={(e) => toggleWatchlist(e, player)}
@@ -876,7 +853,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
           )}
 
-          {/* AFISARE ECHIPE (Stil Embleme Pe Stadion) */}
           {showResults && !loading && searchMode === 'teams' && teams.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
               {teams.map((team, idx) => (
@@ -891,7 +867,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
           )}
 
-          {/* FĂRĂ REZULTATE */}
           {showResults && !loading && ((searchMode === 'players' && displayedPlayers.length === 0) || (searchMode === 'teams' && teams.length === 0)) && (
             <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl shadow-xl max-w-2xl mx-auto border-2 border-slate-200 dark:border-slate-800">
               <div className="w-16 h-16 mx-auto bg-rose-100 dark:bg-rose-900/30 text-rose-500 rounded-full flex items-center justify-center mb-4">
@@ -906,9 +881,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         </section>
       </div>
 
-      {/* ========================================================= */}
-      {/* BARĂ PLUTITOARE PENTRU COMPARATORUL HEAD-TO-HEAD */}
-      {/* ========================================================= */}
       {compareList.length > 0 && (
       <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[55] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
           <div className="flex items-center gap-3 overflow-hidden">
@@ -950,9 +922,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* MODAL DETALII JUCĂTOR (STIL FIȘĂ JUCĂTOR / CARTONAȘ) */}
-      {/* ========================================================= */}
       {selectedPlayer && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300"
@@ -962,9 +931,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[92vh] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border-4 border-emerald-600/30"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header Modal - Teren / Stadion */}
             <div className="relative bg-slate-900 shrink-0 px-4 sm:px-8 py-6 sm:py-8 border-b-4 border-emerald-500 overflow-hidden">
-              {/* Textura teren iarba */}
               <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#10b981_20px,#10b981_22px),repeating-linear-gradient(90deg,transparent,transparent_20px,#10b981_20px,#10b981_22px)]"></div>
               
               <button
@@ -992,7 +959,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   </div>
                 </div>
 
-                {/* Butoane Acțiuni Modal */}
                 <div className="flex sm:flex-col gap-2 shrink-0 mt-4 sm:mt-0">
                   <button
                     onClick={(e) => toggleWatchlist(e, selectedPlayer)}
@@ -1018,10 +984,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               </div>
             </div>
 
-            {/* Conținut Derulabil */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50 dark:bg-slate-950">
               
-              {/* Info Bar - Detalii Fizice */}
               <div className="flex flex-wrap justify-center sm:justify-start gap-3 mb-8">
                 <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
                   <Globe className="w-4 h-4 text-emerald-500" />
@@ -1040,7 +1004,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 </div>
               </div>
 
-              {/* Statistici Cumulate (Scoruri Mari TV Style) */}
               <h3 className="text-lg font-black uppercase tracking-widest text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b-2 border-emerald-500/20 pb-2">
                 <Trophy className="w-6 h-6 text-amber-500" /> Cifrele Sezonului
               </h3>
@@ -1069,7 +1032,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 </div>
               </div>
 
-              {/* ANALIZĂ SCOUTING PRO: GRAFIC RADAR & METRICI PER 90' */}
               {(() => {
                 const m = computeScoutingMetrics(selectedPlayer);
                 return (
@@ -1110,7 +1072,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 );
               })()}
 
-              {/* TABEL DETALIAT PE COMPETIȚII (Stil Tabelă) */}
               <h3 className="text-lg font-black uppercase tracking-widest text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b-2 border-emerald-500/20 pb-2">
                 <MapPin className="w-6 h-6 text-emerald-500" /> Situație Competițională
               </h3>
@@ -1158,9 +1119,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* MODAL COMPARATOR HEAD-TO-HEAD (2 JUCĂTORI FAȚĂ ÎN FAȚĂ) */}
-      {/* ========================================================= */}
       {showCompareModal && compareList.length === 2 && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300"
@@ -1205,9 +1163,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
               return (
                 <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-900 space-y-6">
-                  {/* Carduri Jucători VS */}
                   <div className="grid grid-cols-[1fr_auto_1fr] gap-2 sm:gap-4 items-center bg-slate-800 p-4 sm:p-6 rounded-3xl border-2 border-slate-700 relative overflow-hidden">
-                     {/* Linie V mijloc */}
                      <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1 bg-slate-700/50 skew-x-[-15deg]"></div>
 
                     <div className="flex flex-col items-center text-center relative z-10">
