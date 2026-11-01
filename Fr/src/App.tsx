@@ -17,13 +17,9 @@ import { MatchesSection } from './components/MatchesSection';
 const Button = ({ children, onClick, variant, className, disabled, title }: any) => {
   const baseStyle = "inline-flex items-center justify-center rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all duration-300 h-10 sm:h-12 px-4 sm:px-5 outline-none disabled:opacity-50 border-b-4 hover:border-b-2 hover:translate-y-[2px] shadow-sm";
   const variants: any = {
-    // Verde intens de gazon cu margini de teren (alb/contur luminos)
     default: "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-800",
-    // Buton discret care imită plasele de poartă sau scaunele
     ghost: "border-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:border-b-4 hover:translate-y-0",
-    // Gri sportiv pentru secțiuni neutre
     secondary: "bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white border-slate-300 dark:border-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800",
-    // Roșu "Fault" sau "Cartonaș roșu" pentru actiuni distructive sau deconectare
     destructive: "bg-rose-600 hover:bg-rose-500 text-white border-rose-800"
   };
   return <button onClick={onClick} disabled={disabled} title={title} className={`${baseStyle} ${variants[variant || 'default']} ${className || ''}`}>{children}</button>;
@@ -43,6 +39,9 @@ export default function App() {
   const [activeChatPartner, setActiveChatPartner] = useState<{ name: string, avatar?: string } | null>(null);
 
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
+  
+  // State pentru a stoca înregistrarea Service Worker-ului și a forța ecranul de update
+  const [updateRegistration, setUpdateRegistration] = useState<any>(null);
 
   const checkAdminWarnings = (userData: any) => {
       return userData;
@@ -84,6 +83,27 @@ export default function App() {
           }
       }
   }, [user]);
+
+  // LOGICĂ UPDATE OBLIGATORIU
+  useEffect(() => {
+    const handleUpdate = (e: any) => {
+      // Afișează ecranul de blocare obligând utilizatorul să facă update
+      setUpdateRegistration(e.detail);
+    };
+
+    window.addEventListener('pwa-update-available', handleUpdate);
+    
+    // Când noul Service Worker preia controlul, reîncărcăm pagina automat
+    let refreshing = false;
+    navigator.serviceWorker?.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
+
+    return () => window.removeEventListener('pwa-update-available', handleUpdate);
+  }, []);
 
   const handleDismissWarning = () => {
       setShowWarning(false);
@@ -295,7 +315,6 @@ export default function App() {
       {/* AVERTISMENT ADMIN (Cartonaș Roșu VAR) */}
       {showWarning && (
         <div className="fixed bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border-4 border-rose-600 rounded-3xl p-5 shadow-[0_20px_50px_rgba(225,29,72,0.5)] z-[9999] w-[92%] max-w-md flex items-start gap-4 animate-in slide-in-from-bottom-5">
-          {/* Cartonaș de avertizare */}
           <div className="w-8 h-12 rounded bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.8)] flex items-center justify-center shrink-0 border-2 border-white self-center -rotate-12">
             <span className="text-xl font-black text-white leading-none">!</span>
           </div>
@@ -326,6 +345,36 @@ export default function App() {
             roomID={activeChatRoom} 
             chatPartner={activeChatPartner}
           />
+      )}
+
+      {/* ECRAN DE BLOCARE PENTRU UPDATE OBLIGATORIU */}
+      {updateRegistration && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in duration-500">
+          <div className="bg-slate-900 border-4 border-emerald-600 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(16,185,129,0.3)] w-full max-w-sm text-center flex flex-col items-center">
+            
+            <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.5)] mb-5 animate-bounce">
+               <span className="text-white font-black text-3xl leading-none">↑</span>
+            </div>
+            
+            <h3 className="text-emerald-400 font-black uppercase tracking-widest text-xl mb-3">Update Necesar</h3>
+            
+            <p className="text-slate-300 text-sm font-bold mb-8 leading-snug">
+              Echipa a adus modificări tactice importante. Pentru a continua vizualizarea platformei, este obligatoriu să instalezi noua versiune.
+            </p>
+            
+            <button 
+              onClick={() => {
+                if (updateRegistration.waiting) {
+                  updateRegistration.waiting.postMessage('SKIP_WAITING');
+                }
+              }} 
+              className="w-full py-4 text-sm font-black uppercase tracking-widest text-white bg-emerald-600 rounded-xl border-b-4 border-emerald-800 hover:translate-y-[2px] hover:border-b-2 transition-all shadow-md cursor-pointer"
+            >
+              Instalează Acum
+            </button>
+            
+          </div>
+        </div>
       )}
     </div>
   );

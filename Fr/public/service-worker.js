@@ -1,24 +1,30 @@
-// Versiunea 2.0 - Update Design Modern Arena (Forțează refresh la toți utilizatorii)
+// Versiunea 2.1 - Update PWA cu notificare personalizată (Modern Arena)
 
-const CACHE_NAME = 'scoutpro-cache-v2.0'; // Nume nou pentru a invalida memoria veche a telefoanelor
+const CACHE_NAME = 'scoutpro-cache-v2.1'; // Nume nou pentru noul cache
 const urlsToCache = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
-    // 1. Forțează noul Service Worker să se instaleze imediat, fără să aștepte
-    self.skipWaiting();
-    
+    // Nu mai forțăm instalarea instantanee (am scos self.skipWaiting de aici).
+    // Aplicația va aștepta confirmarea utilizatorului din bannerul personalizat.
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
     );
 });
 
-// 2. Evenimentul 'activate' preia controlul și ȘTERGE memoria veche (VITAL pentru telefoane)
+// NOU: Ascultăm comanda trimisă de la butonul tău personalizat (din App.tsx)
+self.addEventListener('message', (event) => {
+    if (event.data === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
+
+// Evenimentul 'activate' șterge cache-ul vechi când primește permisiunea
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
-                    // Dacă numele cache-ului vechi nu este cel actual (v2.0), îl ștergem definitiv
+                    // Ștergem orice cache care nu este cel actual (v2.1)
                     if (cacheName !== CACHE_NAME) {
                         console.log('Se șterge vechiul echipament (cache):', cacheName);
                         return caches.delete(cacheName);

@@ -21,7 +21,7 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- === SCRIPT ÎNREGISTRARE SERVICE WORKER CU AUTO-UPDATE === -->
+    <!-- === SCRIPT ÎNREGISTRARE SERVICE WORKER (Comunică cu interfața) === -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -34,9 +34,9 @@
                 const installingWorker = reg.installing;
                 installingWorker.onstatechange = () => {
                   if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // Când detectează un fișier nou, forțează refresh-ul paginii o singură dată
-                    console.log('Update nou detectat! Se reîncarcă terenul...');
-                    window.location.reload();
+                    // În loc să dăm refresh automat, trimitem semnalul către App.tsx
+                    // pentru a declanșa ecranul de blocare obligatoriu (overlay-ul)
+                    window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: reg }));
                   }
                 };
               };
