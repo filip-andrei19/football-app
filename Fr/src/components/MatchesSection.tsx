@@ -557,46 +557,46 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             <div
                 key={item?.player?.id || `${pName}-${idx}`}
                 onClick={() => handleLineupPlayerClick(pName)}
-                className="cursor-pointer group flex flex-col items-center select-none w-[65px] sm:w-[85px] z-10"
+                className="cursor-pointer group flex flex-col items-center select-none w-[50px] sm:w-[85px] z-10 mx-1"
                 title={`${pName} (#${pNum}) - Poziție: ${pPos || 'Titular'}`}
             >
                 <div className="relative">
                     <div
-                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full ${shirtStyle} font-black text-sm sm:text-base flex items-center justify-center border-4 group-hover:scale-110 transition-transform`}
+                        className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full ${shirtStyle} font-black text-xs sm:text-base flex items-center justify-center border-[3px] sm:border-4 group-hover:scale-110 transition-transform`}
                     >
                         {pNum}
                     </div>
 
                     {ratingNum > 0 && (
                         <span
-                            className={`absolute -top-1.5 -right-3 ${ratingBg} text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border border-white/30`}
+                            className={`absolute -top-1.5 -right-2 sm:-right-3 ${ratingBg} text-white text-[8px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.5 rounded shadow-sm border border-white/30`}
                         >
                             {ratingNum.toFixed(1)}
                         </span>
                     )}
 
                     {badges.goals > 0 && (
-                        <span className="absolute -bottom-1.5 -right-2 bg-white text-[10px] rounded-full px-1 shadow border border-slate-200 font-black text-slate-900">
+                        <span className="absolute -bottom-1 -right-1 sm:-bottom-1.5 sm:-right-2 bg-white text-[8px] sm:text-[10px] rounded-full px-1 shadow border border-slate-200 font-black text-slate-900">
                             ⚽{badges.goals > 1 ? badges.goals : ''}
                         </span>
                     )}
 
                     {(badges.yellow || badges.red) && (
                         <span
-                            className={`absolute -top-1 -left-1.5 w-3 h-4 rounded-sm shadow border border-white/50 ${
+                            className={`absolute -top-1 -left-1 w-2.5 h-3 sm:w-3 sm:h-4 rounded-sm shadow border border-white/50 ${
                                 badges.red ? 'bg-red-600' : 'bg-yellow-400'
                             }`}
                         />
                     )}
 
                     {badges.subOut && (
-                        <span className="absolute -bottom-1.5 -left-2 bg-slate-900 text-white text-[8px] rounded-full w-4 h-4 flex items-center justify-center shadow border border-white/50">
+                        <span className="absolute -bottom-1 -left-1 sm:-bottom-1.5 sm:-left-2 bg-slate-900 text-white text-[7px] sm:text-[8px] rounded-full w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center shadow border border-white/50">
                             🔄
                         </span>
                     )}
                 </div>
 
-                <div className="mt-1 bg-slate-950/90 text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded shadow-md max-w-full truncate text-center border border-white/10 uppercase tracking-widest">
+                <div className="mt-1 bg-slate-950/90 text-white text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md max-w-full text-center border border-white/10 uppercase tracking-widest leading-tight w-full break-words">
                     {shortName}
                 </div>
             </div>
@@ -786,11 +786,26 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                 </div>
                                                                 <div className="text-xl sm:text-2xl mx-3 sm:mx-4 shrink-0 drop-shadow-md">{icon}</div>
                                                                 <div className="flex-1 min-w-0">
-                                                                    <p className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-xs sm:text-sm truncate">{ev.player?.name}</p>
-                                                                    {ev.assist?.name && (
-                                                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate mt-0.5">
-                                                                            {ev.type === "subst" ? `Iese: ${ev.assist.name}` : `Pasă: ${ev.assist.name}`}
-                                                                        </p>
+                                                                    {ev.type === "subst" ? (
+                                                                        <>
+                                                                            <p className="font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-tight text-xs sm:text-sm truncate">
+                                                                                INTRĂ: {ev.assist?.name || "N/A"}
+                                                                            </p>
+                                                                            <p className="text-[10px] font-bold text-rose-600 dark:text-rose-500 uppercase tracking-widest truncate mt-0.5">
+                                                                                IESE: {ev.player?.name}
+                                                                            </p>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <p className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-xs sm:text-sm truncate">
+                                                                                {ev.player?.name}
+                                                                            </p>
+                                                                            {ev.assist?.name && (
+                                                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate mt-0.5">
+                                                                                    Pasă: {ev.assist.name}
+                                                                                </p>
+                                                                            )}
+                                                                        </>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -872,35 +887,35 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         <div
                                                             className={`relative w-full ${
                                                                 lineupViewMode === 'both' ? 'h-[850px] sm:h-[950px]' : 'h-[600px] sm:h-[700px]'
-                                                            } rounded-3xl overflow-hidden shadow-2xl border-8 border-slate-900 flex flex-col justify-between p-3 sm:p-5 select-none`}
+                                                            } rounded-3xl overflow-hidden shadow-2xl border-4 sm:border-8 border-slate-900 flex flex-col justify-between p-1 sm:p-5 select-none`}
                                                             style={{
                                                                 backgroundImage: 'repeating-linear-gradient(to bottom, #10b981 0px, #10b981 50px, #059669 50px, #059669 100px)'
                                                             }}
                                                         >
                                                             {/* Marcaje Teren */}
-                                                            <div className="absolute inset-3 border-4 border-white/50 rounded-xl pointer-events-none"></div>
-                                                            <div className="absolute top-1/2 inset-x-3 h-1 bg-white/50 -translate-y-1/2 pointer-events-none"></div>
-                                                            <div className="absolute top-1/2 left-1/2 w-32 h-32 sm:w-40 sm:h-40 border-4 border-white/50 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-                                                            <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-white/70 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+                                                            <div className="absolute inset-2 sm:inset-3 border-4 border-white/50 rounded-xl pointer-events-none"></div>
+                                                            <div className="absolute top-1/2 inset-x-2 sm:inset-x-3 h-1 bg-white/50 -translate-y-1/2 pointer-events-none"></div>
+                                                            <div className="absolute top-1/2 left-1/2 w-24 h-24 sm:w-40 sm:h-40 border-4 border-white/50 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+                                                            <div className="absolute top-1/2 left-1/2 w-2 h-2 sm:w-3 sm:h-3 bg-white/70 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
                                                             
                                                             {/* Careuri */}
-                                                            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-48 sm:w-64 h-24 border-b-4 border-x-4 border-white/50 pointer-events-none"></div>
-                                                            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 sm:w-32 h-10 border-b-4 border-x-4 border-white/50 pointer-events-none"></div>
-                                                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-48 sm:w-64 h-24 border-t-4 border-x-4 border-white/50 pointer-events-none"></div>
-                                                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-24 sm:w-32 h-10 border-t-4 border-x-4 border-white/50 pointer-events-none"></div>
+                                                            <div className="absolute top-2 sm:top-3 left-1/2 -translate-x-1/2 w-40 sm:w-64 h-16 sm:h-24 border-b-4 border-x-4 border-white/50 pointer-events-none"></div>
+                                                            <div className="absolute top-2 sm:top-3 left-1/2 -translate-x-1/2 w-20 sm:w-32 h-8 sm:h-10 border-b-4 border-x-4 border-white/50 pointer-events-none"></div>
+                                                            <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 w-40 sm:w-64 h-16 sm:h-24 border-t-4 border-x-4 border-white/50 pointer-events-none"></div>
+                                                            <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 w-20 sm:w-32 h-8 sm:h-10 border-t-4 border-x-4 border-white/50 pointer-events-none"></div>
 
                                                             {lineupViewMode === 'both' ? (
                                                                 <>
                                                                     <div className="flex-1 flex flex-col justify-around relative z-10 pb-4 pt-1">
                                                                         {homeRowsTopDown.map((rowItems, rIdx) => (
-                                                                            <div key={`home-row-${rIdx}`} className="flex items-center justify-around px-2">
+                                                                            <div key={`home-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">
                                                                                 {rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, false, pIdx))}
                                                                             </div>
                                                                         ))}
                                                                     </div>
                                                                     <div className="flex-1 flex flex-col justify-around relative z-10 pt-4 pb-1">
                                                                         {awayRowsBottomUp.map((rowItems, rIdx) => (
-                                                                            <div key={`away-row-${rIdx}`} className="flex items-center justify-around px-2">
+                                                                            <div key={`away-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">
                                                                                 {rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, true, pIdx))}
                                                                             </div>
                                                                         ))}
@@ -909,7 +924,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                             ) : (
                                                                 <div className="flex-1 flex flex-col justify-around relative z-10 py-4">
                                                                     {singleTeamRows.map((rowItems, rIdx) => (
-                                                                        <div key={`single-row-${rIdx}`} className="flex items-center justify-around px-2">
+                                                                        <div key={`single-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">
                                                                             {rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, lineupViewMode === 'away', pIdx))}
                                                                         </div>
                                                                     ))}
@@ -985,31 +1000,53 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                 </div>
                                             ) : (
                                                 <div className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 p-5 sm:p-8 space-y-6 shadow-sm">
-                                                    {selectedMatchDetails.statistics[0].statistics.map((statItem: any, idx: number) => {
-                                                        const homeValRaw = statItem.value ?? 0;
-                                                        const awayValRaw = selectedMatchDetails.statistics?.[1]?.statistics?.[idx]?.value ?? 0;
-                                                        const homeNum = parseFloat(String(homeValRaw).replace('%', '')) || 0;
-                                                        const awayNum = parseFloat(String(awayValRaw).replace('%', '')) || 0;
-                                                        const total = homeNum + awayNum;
-                                                        const homePercent = total > 0 ? Math.round((homeNum / total) * 100) : 50;
-                                                        const awayPercent = 100 - homePercent;
+                                                    {(() => {
+                                                        const homeStats = selectedMatchDetails.statistics[0].statistics;
+                                                        const awayStats = selectedMatchDetails.statistics[1].statistics;
+                                                        
+                                                        // Listă cu metricile importante pe care vrem să le afișăm la început
+                                                        const priorityTypes = ["Ball Possession", "Total Shots", "Shots on Goal", "Corner Kicks"];
+                                                        
+                                                        // Separăm statisticile în "prioritare" și "restul"
+                                                        const sortedStats = [...homeStats].sort((a, b) => {
+                                                            const aIndex = priorityTypes.indexOf(a.type);
+                                                            const bIndex = priorityTypes.indexOf(b.type);
+                                                            
+                                                            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+                                                            if (aIndex !== -1) return -1;
+                                                            if (bIndex !== -1) return 1;
+                                                            return 0; // restul rămân în ordinea originală
+                                                        });
 
-                                                        return (
-                                                            <div key={idx} className="space-y-2">
-                                                                <div className="flex justify-between text-sm sm:text-base font-black">
-                                                                    <span className="text-slate-900 dark:text-white w-10 text-left">{homeValRaw}</span>
-                                                                    <span className="text-slate-400 uppercase text-[10px] tracking-widest text-center flex-1">
-                                                                        {translateStatLabel(statItem.type)}
-                                                                    </span>
-                                                                    <span className="text-slate-900 dark:text-white w-10 text-right">{awayValRaw}</span>
+                                                        return sortedStats.map((statItem: any, idx: number) => {
+                                                            const homeValRaw = statItem.value ?? 0;
+                                                            // Găsim valoarea corespunzătoare pentru echipa away folosind tipul statisticii
+                                                            const awayStatItem = awayStats.find((s: any) => s.type === statItem.type);
+                                                            const awayValRaw = awayStatItem?.value ?? 0;
+                                                            
+                                                            const homeNum = parseFloat(String(homeValRaw).replace('%', '')) || 0;
+                                                            const awayNum = parseFloat(String(awayValRaw).replace('%', '')) || 0;
+                                                            const total = homeNum + awayNum;
+                                                            const homePercent = total > 0 ? Math.round((homeNum / total) * 100) : 50;
+                                                            const awayPercent = 100 - homePercent;
+
+                                                            return (
+                                                                <div key={statItem.type} className="space-y-2">
+                                                                    <div className="flex justify-between text-sm sm:text-base font-black">
+                                                                        <span className="text-slate-900 dark:text-white w-10 text-left">{homeValRaw}</span>
+                                                                        <span className="text-slate-400 uppercase text-[10px] tracking-widest text-center flex-1">
+                                                                            {translateStatLabel(statItem.type)}
+                                                                        </span>
+                                                                        <span className="text-slate-900 dark:text-white w-10 text-right">{awayValRaw}</span>
+                                                                    </div>
+                                                                    <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex border border-slate-200 dark:border-slate-700">
+                                                                        <div style={{ width: `${homePercent}%` }} className="bg-emerald-500 h-full transition-all"></div>
+                                                                        <div style={{ width: `${awayPercent}%` }} className="bg-blue-500 h-full transition-all"></div>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex border border-slate-200 dark:border-slate-700">
-                                                                    <div style={{ width: `${homePercent}%` }} className="bg-emerald-500 h-full transition-all"></div>
-                                                                    <div style={{ width: `${awayPercent}%` }} className="bg-blue-500 h-full transition-all"></div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
+                                                            );
+                                                        });
+                                                    })()}
                                                 </div>
                                             )}
                                         </div>
