@@ -2,6 +2,9 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx' 
 import './globals.css'
+import "@fontsource/montserrat/400.css";
+import "@fontsource/montserrat/700.css";
+import "@fontsource/montserrat/900.css";
 import * as Sentry from "@sentry/react";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 

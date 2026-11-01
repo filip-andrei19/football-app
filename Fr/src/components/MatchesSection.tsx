@@ -596,7 +596,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     )}
                 </div>
 
-                <div className="mt-1 bg-slate-950/90 text-white text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md max-w-full text-center border border-white/10 uppercase tracking-widest leading-tight w-full break-words">
+                <div className="mt-1 bg-slate-950/90 text-white text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md max-w-full text-center border border-white/10 tracking-wide leading-tight w-full break-words">
                     {shortName}
                 </div>
             </div>
@@ -635,7 +635,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             {loadingRoster && (
                 <div className="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
                     <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
-                    <h3 className="text-xl font-black uppercase tracking-widest text-emerald-400 mt-4 animate-pulse">Scanăm Lotul...</h3>
+                    <h3 className="text-xl font-black tracking-widest text-emerald-400 mt-4 animate-pulse uppercase">Scanăm Lotul...</h3>
                 </div>
             )}
 
@@ -661,7 +661,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 <X className="w-5 h-5 font-bold" />
                             </button>
 
-                            <div className="flex items-center justify-center gap-2 text-[10px] sm:text-xs text-emerald-400 font-black uppercase tracking-widest mb-6 relative z-10">
+                            <div className="flex items-center justify-center gap-2 text-[10px] sm:text-xs text-emerald-400 font-black tracking-widest mb-6 relative z-10 uppercase">
                                 {selectedMatchDetails.league_logo && (
                                     <img
                                         src={selectedMatchDetails.league_logo}
@@ -685,7 +685,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                             className="w-full h-full object-contain"
                                         />
                                     </div>
-                                    <span className="font-black text-xs sm:text-base uppercase tracking-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
+                                    <span className="font-black text-xs sm:text-base tracking-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
                                         {selectedMatchDetails.home_team_name}
                                     </span>
                                 </div>
@@ -712,7 +712,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                             className="w-full h-full object-contain"
                                         />
                                     </div>
-                                    <span className="font-black text-xs sm:text-base uppercase tracking-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
+                                    <span className="font-black text-xs sm:text-base tracking-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
                                         {selectedMatchDetails.away_team_name}
                                     </span>
                                 </div>
@@ -752,7 +752,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             {loadingMatchDetails ? (
                                 <div className="flex flex-col items-center justify-center py-16">
                                     <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                    <p className="text-xs font-black uppercase tracking-widest text-slate-500">Se decriptează foaia de joc...</p>
+                                    <p className="text-xs font-black tracking-widest text-slate-500 uppercase">Se decriptează foaia de joc...</p>
                                 </div>
                             ) : (
                                 <>
@@ -760,13 +760,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     {activeMatchTab === 'events' && (
                                         <div>
                                             {!selectedMatchDetails.events || selectedMatchDetails.events.length === 0 ? (
-                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-widest text-xs">
+                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">
                                                     Niciun eveniment notabil până acum.
                                                 </div>
                                             ) : (
                                                 <div className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 divide-y-2 divide-slate-100 dark:divide-slate-800 overflow-hidden shadow-sm">
                                                     {selectedMatchDetails.ht_home_goals !== null && selectedMatchDetails.ht_home_goals !== undefined && (
-                                                        <div className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-black text-center py-2.5 text-[10px] sm:text-xs uppercase tracking-widest">
+                                                        <div className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-black text-center py-2.5 text-[10px] sm:text-xs tracking-widest uppercase">
                                                             Pauză (HT) • Scor: <span className="text-slate-900 dark:text-white">{selectedMatchDetails.ht_home_goals} - {selectedMatchDetails.ht_away_goals}</span>
                                                         </div>
                                                     )}
@@ -788,20 +788,20 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                 <div className="flex-1 min-w-0">
                                                                     {ev.type === "subst" ? (
                                                                         <>
-                                                                            <p className="font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-tight text-xs sm:text-sm truncate">
+                                                                            <p className="font-black text-emerald-600 dark:text-emerald-500 tracking-tight text-xs sm:text-sm truncate uppercase">
                                                                                 INTRĂ: {ev.assist?.name || "N/A"}
                                                                             </p>
-                                                                            <p className="text-[10px] font-bold text-rose-600 dark:text-rose-500 uppercase tracking-widest truncate mt-0.5">
+                                                                            <p className="text-[10px] font-bold text-rose-600 dark:text-rose-500 tracking-widest truncate mt-0.5 uppercase">
                                                                                 IESE: {ev.player?.name}
                                                                             </p>
                                                                         </>
                                                                     ) : (
                                                                         <>
-                                                                            <p className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-xs sm:text-sm truncate">
+                                                                            <p className="font-black text-slate-900 dark:text-white tracking-tight text-xs sm:text-sm truncate">
                                                                                 {ev.player?.name}
                                                                             </p>
                                                                             {ev.assist?.name && (
-                                                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate mt-0.5">
+                                                                                <p className="text-[10px] font-bold text-slate-500 tracking-widest truncate mt-0.5">
                                                                                     Pasă: {ev.assist.name}
                                                                                 </p>
                                                                             )}
@@ -813,7 +813,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                     })}
                                                     
                                                     {["FT", "AET", "PEN"].includes(selectedMatchDetails.status_short) && (
-                                                        <div className="bg-slate-900 border-t-4 border-emerald-500 text-white font-black text-center py-3 text-[10px] sm:text-xs uppercase tracking-widest">
+                                                        <div className="bg-slate-900 border-t-4 border-emerald-500 text-white font-black text-center py-3 text-[10px] sm:text-xs tracking-widest uppercase">
                                                             Fluier Final • <span className="text-emerald-400">Scor Oficial: {selectedMatchDetails.home_goals} - {selectedMatchDetails.away_goals}</span>
                                                         </div>
                                                     )}
@@ -826,7 +826,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     {activeMatchTab === 'lineups' && (
                                         <div>
                                             {!selectedMatchDetails.lineups || selectedMatchDetails.lineups.length === 0 ? (
-                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-widest text-xs">
+                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">
                                                     Antrenorii nu au trimis foaia de joc.
                                                 </div>
                                             ) : (
@@ -834,7 +834,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                     <div className="flex flex-wrap items-center justify-center gap-2 bg-slate-200 dark:bg-slate-800 p-2 rounded-2xl max-w-lg mx-auto shadow-inner border border-slate-300 dark:border-slate-700">
                                                         <button
                                                             onClick={() => setLineupViewMode('both')}
-                                                            className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${
+                                                            className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] sm:text-xs font-black tracking-widest transition-all uppercase ${
                                                                 lineupViewMode === 'both'
                                                                     ? 'bg-emerald-600 text-white shadow-md'
                                                                     : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
@@ -844,7 +844,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         </button>
                                                         <button
                                                             onClick={() => setLineupViewMode('home')}
-                                                            className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${
+                                                            className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] sm:text-xs font-black tracking-widest transition-all flex items-center justify-center gap-1.5 uppercase ${
                                                                 lineupViewMode === 'home'
                                                                     ? 'bg-slate-900 text-white shadow-md border border-slate-700'
                                                                     : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
@@ -855,7 +855,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         </button>
                                                         <button
                                                             onClick={() => setLineupViewMode('away')}
-                                                            className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${
+                                                            className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] sm:text-xs font-black tracking-widest transition-all flex items-center justify-center gap-1.5 uppercase ${
                                                                 lineupViewMode === 'away'
                                                                     ? 'bg-blue-600 text-white shadow-md border border-blue-500'
                                                                     : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
@@ -870,15 +870,15 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         <div className="flex items-center justify-between bg-slate-900 border-2 border-slate-800 text-white px-4 py-4 rounded-2xl shadow-xl">
                                                             <div className="flex items-center gap-2 min-w-0">
                                                                 {homeTeamLineup?.team?.logo && <img src={homeTeamLineup.team.logo} className="w-7 h-7 object-contain bg-white rounded-lg p-1 shrink-0" />}
-                                                                <span className="font-black uppercase tracking-tight text-xs sm:text-sm truncate hidden sm:inline">{homeTeamLineup?.team?.name || selectedMatchDetails.home_team_name}</span>
+                                                                <span className="font-black tracking-tight text-xs sm:text-sm truncate hidden sm:inline">{homeTeamLineup?.team?.name || selectedMatchDetails.home_team_name}</span>
                                                                 {homeTeamLineup?.formation && <span className="bg-emerald-600 border border-emerald-500 text-white font-black text-[10px] sm:text-[11px] px-2.5 py-1 rounded-md shrink-0 ml-1 shadow-sm tracking-widest">{homeTeamLineup.formation}</span>}
                                                             </div>
 
-                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 text-center px-2">Dispunere Tactică</span>
+                                                            <span className="text-[10px] font-black tracking-widest text-slate-500 text-center px-2 uppercase">Dispunere Tactică</span>
 
                                                             <div className="flex items-center justify-end gap-2 min-w-0">
                                                                 {awayTeamLineup?.formation && <span className="bg-blue-600 border border-blue-500 text-white font-black text-[10px] sm:text-[11px] px-2.5 py-1 rounded-md shrink-0 mr-1 shadow-sm tracking-widest">{awayTeamLineup.formation}</span>}
-                                                                <span className="font-black uppercase tracking-tight text-xs sm:text-sm truncate hidden sm:inline text-right">{awayTeamLineup?.team?.name || selectedMatchDetails.away_team_name}</span>
+                                                                <span className="font-black tracking-tight text-xs sm:text-sm truncate hidden sm:inline text-right">{awayTeamLineup?.team?.name || selectedMatchDetails.away_team_name}</span>
                                                                 {awayTeamLineup?.team?.logo && <img src={awayTeamLineup.team.logo} className="w-7 h-7 object-contain bg-white rounded-lg p-1 shrink-0" />}
                                                             </div>
                                                         </div>
@@ -942,17 +942,17 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                         <div className="flex items-center justify-between pb-4 border-b-2 border-slate-100 dark:border-slate-800">
                                                                             <div className="flex items-center gap-3 min-w-0">
                                                                                 {teamLineup.team?.logo && <img src={teamLineup.team.logo} className="w-8 h-8 object-contain bg-slate-100 rounded-lg p-1" />}
-                                                                                <span className="font-black text-sm sm:text-base text-slate-900 dark:text-white uppercase tracking-tight truncate">{teamLineup.team?.name}</span>
+                                                                                <span className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight truncate">{teamLineup.team?.name}</span>
                                                                             </div>
                                                                             {teamLineup.coach?.name && (
                                                                                 <div className="flex flex-col items-end">
-                                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Antrenor</span>
-                                                                                    <strong className="text-xs text-slate-900 dark:text-white uppercase tracking-wide">{teamLineup.coach.name}</strong>
+                                                                                    <span className="text-[9px] font-black text-slate-400 tracking-widest uppercase">Antrenor</span>
+                                                                                    <strong className="text-xs text-slate-900 dark:text-white tracking-wide">{teamLineup.coach.name}</strong>
                                                                                 </div>
                                                                             )}
                                                                         </div>
 
-                                                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
+                                                                        <h4 className="text-[10px] font-black tracking-widest text-slate-500 px-1 uppercase">
                                                                             Banca de Rezerve
                                                                         </h4>
                                                                         <div className="grid grid-cols-1 gap-2">
@@ -968,13 +968,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                                             <span className={`w-8 h-8 rounded-lg font-black flex items-center justify-center text-xs shrink-0 border-2 ${isAway ? 'bg-slate-900 text-white border-blue-500' : 'bg-white text-slate-900 border-slate-300'}`}>
                                                                                                 {sub.player?.number || "-"}
                                                                                             </span>
-                                                                                            <span className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 uppercase tracking-tight truncate">
+                                                                                            <span className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 tracking-tight truncate">
                                                                                                 {sub.player?.name}
                                                                                             </span>
                                                                                             {badges.subOut && <span className="text-xs" title="A intrat pe teren">🔄</span>}
                                                                                             {badges.goals > 0 && <span className="text-xs">⚽</span>}
                                                                                         </div>
-                                                                                        <span className="text-[9px] font-black px-2 py-1 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md uppercase tracking-widest shrink-0">
+                                                                                        <span className="text-[9px] font-black px-2 py-1 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md tracking-widest shrink-0 uppercase">
                                                                                             {sub.player?.pos || "-"}
                                                                                         </span>
                                                                                     </div>
@@ -995,7 +995,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     {activeMatchTab === 'stats' && (
                                         <div>
                                             {!selectedMatchDetails.statistics || selectedMatchDetails.statistics.length < 2 ? (
-                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-widest text-xs">
+                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">
                                                     Datele statistice nu au fost procesate încă.
                                                 </div>
                                             ) : (
@@ -1034,7 +1034,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                 <div key={statItem.type} className="space-y-2">
                                                                     <div className="flex justify-between text-sm sm:text-base font-black">
                                                                         <span className="text-slate-900 dark:text-white w-10 text-left">{homeValRaw}</span>
-                                                                        <span className="text-slate-400 uppercase text-[10px] tracking-widest text-center flex-1">
+                                                                        <span className="text-slate-400 text-[10px] tracking-widest text-center flex-1 uppercase">
                                                                             {translateStatLabel(statItem.type)}
                                                                         </span>
                                                                         <span className="text-slate-900 dark:text-white w-10 text-right">{awayValRaw}</span>
@@ -1058,10 +1058,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                             {loadingStandings ? (
                                                 <div className="flex flex-col items-center justify-center py-16">
                                                     <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Se preia clasamentul oficial...</span>
+                                                    <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase">Se preia clasamentul oficial...</span>
                                                 </div>
                                             ) : !standingsData || standingsData.length === 0 ? (
-                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-widest text-xs">
+                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">
                                                     Clasamentul nu este disponibil în arhivă.
                                                 </div>
                                             ) : (
@@ -1070,7 +1070,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         <div key={gIdx} className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
                                                             <div className="overflow-x-auto">
                                                                 <table className="w-full text-xs sm:text-sm text-left">
-                                                                    <thead className="bg-slate-900 text-slate-400 font-black uppercase tracking-widest text-[9px] border-b-2 border-slate-700">
+                                                                    <thead className="bg-slate-900 text-slate-400 font-black tracking-widest text-[9px] border-b-2 border-slate-700 uppercase">
                                                                         <tr>
                                                                             <th className="py-4 px-3 text-center w-12">Loc</th>
                                                                             <th className="py-4 px-3">Formație</th>
@@ -1095,7 +1095,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                                     </td>
                                                                                     <td className="py-3.5 px-3 flex items-center gap-3">
                                                                                         <img src={row.team?.logo} alt="logo" className="w-6 h-6 object-contain bg-white rounded p-0.5" />
-                                                                                        <span className={`font-black uppercase tracking-tight truncate ${isCurrentTeam ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                                                                                        <span className={`font-black tracking-tight truncate ${isCurrentTeam ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                                                                                             {row.team?.name}
                                                                                         </span>
                                                                                     </td>
@@ -1145,8 +1145,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     className="w-16 h-16 sm:w-20 sm:h-20 object-contain bg-white rounded-2xl p-2 shadow-inner"
                                 />
                                 <div>
-                                    <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter leading-none mb-1">{selectedTeam.teamInfo.name}</h2>
-                                    <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-400">Lot Oficial • {selectedTeam.teamInfo.totalPlayers} Jucători</p>
+                                    <h2 className="text-2xl sm:text-4xl font-black tracking-tighter leading-none mb-1">{selectedTeam.teamInfo.name}</h2>
+                                    <p className="text-[10px] sm:text-xs font-black tracking-widest text-emerald-400 uppercase">Lot Oficial • {selectedTeam.teamInfo.totalPlayers} Jucători</p>
                                 </div>
                             </div>
                             <button onClick={() => setSelectedTeam(null)} className="p-3 bg-slate-800 hover:bg-rose-600 border border-slate-700 rounded-xl transition-colors">
@@ -1164,7 +1164,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     sec.data.length > 0 && (
                                         <div key={idx} className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
                                             <div className={`bg-slate-100 dark:bg-slate-950 px-5 py-3 border-l-4 ${sec.border}`}>
-                                                <h3 className={`font-black uppercase tracking-widest text-xs sm:text-sm ${sec.color}`}>{sec.title}</h3>
+                                                <h3 className={`font-black tracking-widest text-xs sm:text-sm uppercase ${sec.color}`}>{sec.title}</h3>
                                             </div>
                                             <div className="divide-y-2 divide-slate-100 dark:divide-slate-800">
                                                 {sec.data.map(p => (
@@ -1179,17 +1179,17 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                 alt={p.name}
                                                                 className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700 bg-white"
                                                             />
-                                                            <span className="font-black text-sm sm:text-base text-slate-900 dark:text-white uppercase tracking-tight truncate">{p.name}</span>
+                                                            <span className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight truncate">{p.name}</span>
                                                         </div>
                                                         <div className="flex gap-2 sm:gap-4 text-center shrink-0">
                                                             <div className="bg-slate-100 dark:bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 min-w-[50px]">
-                                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Meciuri</span>
+                                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-400 tracking-widest block mb-0.5 uppercase">Meciuri</span>
                                                                 <p className="font-black text-sm sm:text-base text-slate-900 dark:text-white leading-none">
                                                                     {p.statistics_summary?.total_appearances || 0}
                                                                 </p>
                                                             </div>
                                                             <div className="bg-slate-100 dark:bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 min-w-[50px]">
-                                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Goluri</span>
+                                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-400 tracking-widest block mb-0.5 uppercase">Goluri</span>
                                                                 <p className="font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400 leading-none">
                                                                     {p.statistics_summary?.total_goals || 0}
                                                                 </p>
@@ -1236,12 +1236,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 />
                                 
                                 <div className="text-white text-center sm:text-left flex-1 min-w-0">
-                                    <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter truncate drop-shadow-md leading-none mb-2">{selectedPlayer.name}</h2>
+                                    <h2 className="text-3xl md:text-5xl font-black tracking-tighter truncate drop-shadow-md leading-none mb-2">{selectedPlayer.name}</h2>
                                     <div className="flex items-center justify-center sm:justify-start gap-2">
                                         {selectedPlayer.team_logo && (
                                             <img src={selectedPlayer.team_logo} alt="logo" className="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-md p-1 object-contain" />
                                         )}
-                                        <span className="font-bold text-lg sm:text-xl text-emerald-400 uppercase tracking-widest truncate">
+                                        <span className="font-bold text-lg sm:text-xl text-emerald-400 tracking-widest truncate">
                                             {selectedPlayer.team_name || selectedPlayer.team}
                                         </span>
                                     </div>
@@ -1252,21 +1252,21 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50 dark:bg-slate-950">
                             
                             <div className="flex flex-wrap justify-center sm:justify-start gap-3 mb-8">
-                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black tracking-wider text-slate-800 dark:text-slate-200 uppercase">
                                     <Globe className="w-4 h-4 text-emerald-500" /> {selectedPlayer.nationality || "N/A"}
                                 </div>
-                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black tracking-wider text-slate-800 dark:text-slate-200 uppercase">
                                     <UserIcon className="w-4 h-4 text-emerald-500" /> {selectedPlayer.age ? `${selectedPlayer.age} ANI` : "N/A"}
                                 </div>
-                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black tracking-wider text-slate-800 dark:text-slate-200 uppercase">
                                     <Activity className="w-4 h-4 text-emerald-500" /> {selectedPlayer.height || "-"} / {selectedPlayer.weight || "-"}
                                 </div>
-                                <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/40 px-4 py-2 rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+                                <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/40 px-4 py-2 rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-xs sm:text-sm font-black tracking-wider text-emerald-800 dark:text-emerald-400 uppercase">
                                     {selectedPlayer.position || "N/A"}
                                 </div>
                             </div>
 
-                            <h3 className="text-lg font-black uppercase tracking-widest text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b-2 border-emerald-500/20 pb-2">
+                            <h3 className="text-lg font-black tracking-widest text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b-2 border-emerald-500/20 pb-2 uppercase">
                                 <Trophy className="w-6 h-6 text-amber-500" /> Cifrele Sezonului
                             </h3>
                             
@@ -1275,47 +1275,47 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     <span className="block text-3xl font-black text-slate-900 dark:text-white leading-none">
                                         {selectedPlayer.statistics_summary?.total_appearances || 0}
                                     </span>
-                                    <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-2">Meciuri</span>
+                                    <span className="text-[10px] tracking-widest text-slate-400 font-bold mt-2 uppercase">Meciuri</span>
                                 </div>
                                 <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center border-b-4 border-b-emerald-500 shadow-sm">
                                     <span className="block text-3xl font-black text-emerald-600 dark:text-emerald-400 leading-none">
                                         {selectedPlayer.statistics_summary?.total_goals || 0}
                                     </span>
-                                    <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-2">Goluri</span>
+                                    <span className="text-[10px] tracking-widest text-slate-400 font-bold mt-2 uppercase">Goluri</span>
                                 </div>
                                 <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center border-b-4 border-b-blue-500 shadow-sm">
                                     <span className="block text-3xl font-black text-blue-600 dark:text-blue-400 leading-none">
                                         {selectedPlayer.statistics_summary?.total_assists || 0}
                                     </span>
-                                    <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-2">Pase Dec.</span>
+                                    <span className="text-[10px] tracking-widest text-slate-400 font-bold mt-2 uppercase">Pase Dec.</span>
                                 </div>
                                 <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center shadow-sm">
                                     <span className="block text-3xl font-black text-slate-900 dark:text-white leading-none">
                                         {selectedPlayer.statistics_summary?.minutes_played || 0}'
                                     </span>
-                                    <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-2">Minute</span>
+                                    <span className="text-[10px] tracking-widest text-slate-400 font-bold mt-2 uppercase">Minute</span>
                                 </div>
                                 <div className="bg-amber-50/50 dark:bg-amber-900/10 p-4 rounded-2xl border-2 border-amber-300 dark:border-amber-700 text-center flex flex-col justify-center shadow-sm">
                                     <span className="block text-3xl font-black text-amber-500 leading-none">
                                         {selectedPlayer.statistics_summary?.rating ? parseFloat(selectedPlayer.statistics_summary.rating).toFixed(2) : "-"}
                                     </span>
-                                    <span className="text-[10px] uppercase tracking-widest text-amber-600/80 font-bold mt-2">SofaScore</span>
+                                    <span className="text-[10px] tracking-widest text-amber-600/80 font-bold mt-2 uppercase">SofaScore</span>
                                 </div>
                             </div>
 
-                            <h3 className="text-lg font-black uppercase tracking-widest text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b-2 border-emerald-500/20 pb-2">
+                            <h3 className="text-lg font-black tracking-widest text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b-2 border-emerald-500/20 pb-2 uppercase">
                                 <MapPin className="w-6 h-6 text-emerald-500" /> Situație Competițională
                             </h3>
                             
                             {!selectedPlayer.detailed_stats || selectedPlayer.detailed_stats.length === 0 ? (
-                                <div className="text-center p-8 bg-white dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-sm">
+                                <div className="text-center p-8 bg-white dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold tracking-widest text-sm uppercase">
                                     DATE COMPETIȚIONALE INDISPONIBILE 🚫
                                 </div>
                             ) : (
                                 <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm text-left">
-                                            <thead className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800/80 border-b-2 border-slate-200 dark:border-slate-700">
+                                            <thead className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 tracking-widest bg-slate-100 dark:bg-slate-800/80 border-b-2 border-slate-200 dark:border-slate-700 uppercase">
                                                 <tr>
                                                     <th className="px-4 py-4 font-black">Competiție</th>
                                                     <th className="px-4 py-4 font-black text-center">Meciuri</th>
@@ -1327,9 +1327,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                             <tbody className="divide-y-2 divide-slate-100 dark:divide-slate-800">
                                                 {selectedPlayer.detailed_stats.map((stat, idx) => (
                                                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                                        <td className="px-4 py-4 font-bold text-slate-900 dark:text-white flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 uppercase">
+                                                        <td className="px-4 py-4 font-bold text-slate-900 dark:text-white flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                                                             {stat.competition}
-                                                            <span className="text-[9px] font-black px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded tracking-widest w-fit">
+                                                            <span className="text-[9px] font-black px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded tracking-widest w-fit uppercase">
                                                                 {stat.type}
                                                             </span>
                                                         </td>
@@ -1356,15 +1356,15 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         <Activity className="w-8 h-8 text-emerald-400" />
                     </div>
                     <div>
-                        <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none mb-1 drop-shadow-sm">Scoruri <span className="text-emerald-500">Live</span></h1>
-                        <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-500">Tabelă Oficială Meciuri</span>
+                        <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none mb-1 drop-shadow-sm uppercase">Scoruri <span className="text-emerald-500">Live</span></h1>
+                        <span className="text-[10px] sm:text-xs font-black tracking-widest text-slate-500 uppercase">Tabelă Oficială Meciuri</span>
                     </div>
                 </div>
 
                 <div className="flex bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border-2 border-slate-300/50 dark:border-slate-700/50 p-1.5 overflow-x-auto scrollbar-hide shadow-sm">
                     <button
                         onClick={() => setSubFilter('all')}
-                        className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap border-b-2 ${
+                        className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all whitespace-nowrap border-b-2 uppercase ${
                             subFilter === 'all' 
                             ? 'bg-slate-900 text-white border-slate-950 shadow-md translate-y-[-2px]' 
                             : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
@@ -1374,7 +1374,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     </button>
                     <button
                         onClick={() => setSubFilter('live')}
-                        className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-b-2 whitespace-nowrap ${
+                        className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all flex items-center justify-center gap-2 border-b-2 whitespace-nowrap uppercase ${
                             subFilter === 'live' 
                             ? 'bg-rose-600 text-white border-rose-800 shadow-[0_4px_15px_rgba(225,29,72,0.3)] translate-y-[-2px]' 
                             : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
@@ -1385,7 +1385,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     </button>
                     <button
                         onClick={() => setSubFilter('finished')}
-                        className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap border-b-2 ${
+                        className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all whitespace-nowrap border-b-2 uppercase ${
                             subFilter === 'finished' 
                             ? 'bg-slate-900 text-white border-slate-950 shadow-md translate-y-[-2px]' 
                             : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
@@ -1395,7 +1395,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     </button>
                     <button
                         onClick={() => setSubFilter('favorites')}
-                        className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-b-2 whitespace-nowrap ${
+                        className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all flex items-center justify-center gap-2 border-b-2 whitespace-nowrap uppercase ${
                             subFilter === 'favorites' 
                             ? 'bg-amber-500 text-slate-950 border-amber-700 shadow-[0_4px_15px_rgba(245,158,11,0.3)] translate-y-[-2px]' 
                             : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
@@ -1415,7 +1415,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             <button
                                 key={idx}
                                 onClick={() => setSelectedDate(dObj.date)}
-                                className={`flex-1 py-3 px-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all border-b-4 ${
+                                className={`flex-1 py-3 px-2 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all border-b-4 uppercase ${
                                     isSelected 
                                     ? 'bg-emerald-600 text-white border-emerald-800 shadow-md translate-y-[-2px]' 
                                     : 'border-transparent text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -1432,13 +1432,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             {loading ? (
                 <div className="flex flex-col justify-center items-center py-20 relative z-10">
                     <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-500 animate-pulse">Se aprinde nocturna...</span>
+                    <span className="text-xs font-black tracking-widest text-slate-500 animate-pulse uppercase">Se aprinde nocturna...</span>
                 </div>
             ) : sortedLeagueNames.length === 0 ? (
                 <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl shadow-xl border-4 border-dashed border-slate-200 dark:border-slate-800 relative z-10">
                     <Calendar className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-700 mb-4" />
-                    <h3 className="text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2">Teren Închis</h3>
-                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Niciun meci programat pentru data selectată.</p>
+                    <h3 className="text-2xl font-black tracking-widest text-slate-800 dark:text-white mb-2 uppercase">Teren Închis</h3>
+                    <p className="text-slate-500 font-bold tracking-widest text-xs uppercase">Niciun meci programat pentru data selectată.</p>
                 </div>
             ) : (
                 <div className="space-y-6 relative z-10">
@@ -1454,7 +1454,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 ) : (
                                     <Trophy className="w-6 h-6 text-slate-400" />
                                 )}
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm sm:text-base drop-shadow-sm">{leagueName}</h3>
+                                <h3 className="font-black text-slate-900 dark:text-white tracking-widest text-sm sm:text-base drop-shadow-sm uppercase">{leagueName}</h3>
                             </div>
 
                             <div className="divide-y-2 divide-slate-100 dark:divide-slate-800/50">
@@ -1489,7 +1489,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         className="flex items-center gap-3 overflow-hidden w-[80%]"
                                                     >
                                                         <img src={match.home_team_logo} className="w-6 h-6 object-contain bg-white rounded-md p-0.5 shrink-0" />
-                                                        <span className={`font-black uppercase tracking-tight text-sm truncate w-full ${match.home_goals !== null && match.away_goals !== null && match.home_goals > match.away_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                                                        <span className={`font-black tracking-tight text-sm truncate w-full ${match.home_goals !== null && match.away_goals !== null && match.home_goals > match.away_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                                                             {match.home_team_name}
                                                         </span>
                                                     </div>
@@ -1504,7 +1504,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         className="flex items-center gap-3 overflow-hidden w-[80%]"
                                                     >
                                                         <img src={match.away_team_logo} className="w-6 h-6 object-contain bg-white rounded-md p-0.5 shrink-0" />
-                                                        <span className={`font-black uppercase tracking-tight text-sm truncate w-full ${match.home_goals !== null && match.away_goals !== null && match.away_goals > match.home_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                                                        <span className={`font-black tracking-tight text-sm truncate w-full ${match.home_goals !== null && match.away_goals !== null && match.away_goals > match.home_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                                                             {match.away_team_name}
                                                         </span>
                                                     </div>
@@ -1520,7 +1520,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                     onClick={e => handleTeamClick(e, match.home_team_name)}
                                                     className="flex-1 flex items-center justify-end gap-4 text-right hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                                                 >
-                                                    <span className={`font-black uppercase tracking-tight text-lg truncate ${match.home_goals !== null && match.away_goals !== null && match.home_goals > match.away_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 group-hover:text-emerald-600'}`}>
+                                                    <span className={`font-black tracking-tight text-lg truncate ${match.home_goals !== null && match.away_goals !== null && match.home_goals > match.away_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 group-hover:text-emerald-600'}`}>
                                                         {match.home_team_name}
                                                     </span>
                                                     <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center p-1.5 shrink-0">
@@ -1545,7 +1545,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                     <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center p-1.5 shrink-0">
                                                         <img src={match.away_team_logo} className="w-full h-full object-contain" />
                                                     </div>
-                                                    <span className={`font-black uppercase tracking-tight text-lg truncate ${match.home_goals !== null && match.away_goals !== null && match.away_goals > match.home_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 group-hover:text-emerald-600'}`}>
+                                                    <span className={`font-black tracking-tight text-lg truncate ${match.home_goals !== null && match.away_goals !== null && match.away_goals > match.home_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 group-hover:text-emerald-600'}`}>
                                                         {match.away_team_name}
                                                     </span>
                                                 </div>
