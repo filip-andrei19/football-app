@@ -1430,15 +1430,49 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* LISTA MECIURI */}
             {loading ? (
-                <div className="flex flex-col justify-center items-center py-20 relative z-10">
-                    <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
-                    <span className="text-xs font-black tracking-widest text-slate-500 animate-pulse uppercase">Se aprinde nocturna...</span>
+                <div className="space-y-6 relative z-10">
+                    {[1, 2, 3].map((leagueSkeleton) => (
+                        <div key={leagueSkeleton} className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border-2 border-slate-100 dark:border-slate-800 overflow-hidden">
+                            <div className="bg-slate-50 dark:bg-slate-950/50 px-5 py-4 border-b-2 border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                                <div className="w-7 h-7 rounded bg-slate-200 dark:bg-slate-800 animate-pulse"></div>
+                                <div className="w-48 h-5 rounded bg-slate-200 dark:bg-slate-800 animate-pulse"></div>
+                            </div>
+                            <div className="divide-y-2 divide-slate-50 dark:divide-slate-800/50">
+                                {[1, 2].map((matchSkeleton) => (
+                                    <div key={matchSkeleton} className="flex items-center justify-between p-4 animate-pulse">
+                                        <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-800 mr-6"></div>
+                                        <div className="flex-1 flex items-center justify-between ml-6">
+                                            <div className="flex items-center gap-4 flex-1 justify-end">
+                                                <div className="w-24 sm:w-32 h-4 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                                                <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
+                                            </div>
+                                            <div className="px-6 py-2 mx-6 w-24 h-10 rounded-2xl bg-slate-200 dark:bg-slate-800"></div>
+                                            <div className="flex items-center gap-4 flex-1 justify-start">
+                                                <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
+                                                <div className="w-24 sm:w-32 h-4 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             ) : sortedLeagueNames.length === 0 ? (
-                <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl shadow-xl border-4 border-dashed border-slate-200 dark:border-slate-800 relative z-10">
-                    <Calendar className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-700 mb-4" />
-                    <h3 className="text-2xl font-black tracking-widest text-slate-800 dark:text-white mb-2 uppercase">Teren Închis</h3>
-                    <p className="text-slate-500 font-bold tracking-widest text-xs uppercase">Niciun meci programat pentru data selectată.</p>
+                <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl shadow-sm border-2 border-dashed border-slate-300 dark:border-slate-800 relative z-10 overflow-hidden">
+                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-emerald-500/10 [mask-image:linear-gradient(to_top,white,transparent)]"></div>
+                    <div className="relative z-10 flex flex-col items-center justify-center mb-6">
+                        <div className="relative">
+                            <Calendar className="w-20 h-20 text-slate-300 dark:text-slate-700" />
+                            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-slate-50 dark:bg-slate-800 border-4 border-white dark:border-slate-900 rounded-full flex items-center justify-center">
+                                <X className="w-4 h-4 text-slate-400" />
+                            </div>
+                        </div>
+                    </div>
+                    <h3 className="text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2 relative z-10">Stadion Închis</h3>
+                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs relative z-10 max-w-sm mx-auto">
+                        Foaia de arbitraj este goală. Nu avem niciun meci programat pentru data sau filtrele selectate.
+                    </p>
                 </div>
             ) : (
                 <div className="space-y-6 relative z-10">

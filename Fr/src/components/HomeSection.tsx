@@ -20,7 +20,7 @@ import {
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
-// 1. INTERFAȚA PLAYER (Păstrată integral)
+// 1. INTERFAȚA PLAYER
 interface DetailedStat {
   competition: string;
   type: string;
@@ -734,7 +734,25 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         </section>
 
         <section className="px-4 container mx-auto pb-24 relative z-10">
-          {loading && (
+          
+          {loading && searchMode === 'players' && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col items-center animate-pulse h-[260px]">
+                  <div className="w-full h-12 bg-slate-200 dark:bg-slate-800 border-b-2 border-slate-300 dark:border-slate-700"></div>
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-slate-300 dark:bg-slate-700 -mt-8 mb-4 border-4 border-white dark:border-slate-900"></div>
+                  <div className="w-3/4 h-4 bg-slate-200 dark:bg-slate-800 rounded mb-2"></div>
+                  <div className="w-1/2 h-3 bg-slate-200 dark:bg-slate-800 rounded mb-auto"></div>
+                  <div className="w-full h-10 bg-slate-100 dark:bg-slate-800 mt-4 flex justify-between p-2">
+                    <div className="w-1/3 h-full bg-slate-200 dark:bg-slate-700 rounded"></div>
+                    <div className="w-1/3 h-full bg-slate-200 dark:bg-slate-700 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {loading && searchMode === 'teams' && (
             <div className="flex justify-center items-center py-20">
               <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-emerald-500"></div>
             </div>
@@ -867,14 +885,26 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
           )}
 
+          {/* EMPTY STATE ILUSTRAT CĂUTARE */}
           {showResults && !loading && ((searchMode === 'players' && displayedPlayers.length === 0) || (searchMode === 'teams' && teams.length === 0)) && (
-            <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl shadow-xl max-w-2xl mx-auto border-2 border-slate-200 dark:border-slate-800">
-              <div className="w-16 h-16 mx-auto bg-rose-100 dark:bg-rose-900/30 text-rose-500 rounded-full flex items-center justify-center mb-4">
-                <AlertTriangle className="w-8 h-8" />
+            <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl shadow-sm border-2 border-dashed border-slate-300 dark:border-slate-800 max-w-2xl mx-auto relative overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.05),transparent_50%)]"></div>
+              
+              <div className="relative z-10 flex justify-center items-center mb-6">
+                <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center relative shadow-inner border-4 border-white dark:border-slate-900 z-10">
+                  {searchMode === 'players' ? <UserIcon className="w-10 h-10 text-slate-400" /> : <Shield className="w-10 h-10 text-slate-400" />}
+                </div>
+                <div className="absolute w-32 h-32 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-full animate-[spin_10s_linear_infinite]"></div>
+                <div className="absolute w-10 h-10 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center -right-2 top-0 z-20">
+                  <AlertTriangle className="w-5 h-5 text-rose-500" />
+                </div>
               </div>
-              <h3 className="text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2">Fluier Final. Niciun rezultat.</h3>
-              <p className="text-slate-500 font-bold">
-                Jucătorul sau echipa nu se află în baza de date, sau tactica aleasă este prea strictă.
+              
+              <h3 className="text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2 relative z-10">
+                {searchMode === 'players' ? 'Niciun Jucător Găsit' : 'Nicio Echipă Găsită'}
+              </h3>
+              <p className="text-slate-500 font-bold max-w-sm mx-auto relative z-10">
+                Lărgește aria de selecție. Resetează filtrele din tabla tactică sau verifică dacă numele este scris corect.
               </p>
             </div>
           )}
