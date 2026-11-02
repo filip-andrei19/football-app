@@ -22,7 +22,8 @@ import {
     History,
     ArrowUp,
     ArrowDown,
-    Minus
+    Minus,
+    Heart
 } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
@@ -743,7 +744,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 originalRank: row.rank
             }));
 
-            // Adăugăm datele de la meciurile live în curs
             const liveLeagueMatches = matches.filter((m: Match) => 
                 m.league_id === selectedMatchDetails?.league_id && 
                 ["1H", "2H", "HT", "ET", "P", "BT", "LIVE"].includes(m.status_short)
@@ -777,7 +777,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     }
                 }
             });
-            // Reordonare după puncte live și golaveraj
+
             liveTable.sort((a: any, b: any) => {
                 if (b.livePoints !== a.livePoints) return b.livePoints - a.livePoints;
                 const aGD = a.liveGoalsFor - a.liveGoalsAgainst;
@@ -786,7 +786,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 return b.liveGoalsFor - a.liveGoalsFor;
             });
 
-            // Atribuire rank live și trend
             return liveTable.map((row: any, idx: number) => ({
                 ...row,
                 liveRank: idx + 1,
@@ -800,6 +799,149 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-[0.03] dark:opacity-[0.05]">
                 <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,#000_20px,#000_22px)]"></div>
             </div>
+
+            {/* HEADER & DATE SELECTOR BAR */}
+            <div className="mb-8 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900 border-2 border-slate-800 p-4 rounded-3xl shadow-xl text-white">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-emerald-500/20 rounded-2xl border border-emerald-500/30">
+                            <Calendar className="w-6 h-6 text-emerald-400" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight">Program Meciuri</h2>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{matches.length} Meciuri găsite în arhivă</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+                        {[
+                            { id: 'all', label: 'Toate' },
+                            { id: 'live', label: `Live (${liveCount})` },
+                            { id: 'finished', label: 'Terminate' },
+                            { id: 'favorites', label: `Favorite (${favoriteMatches.length})` }
+                        ].map((fil) => (
+                            <button
+                                key={fil.id}
+                                onClick={() => setSubFilter(fil.id as any)}
+                                className={`px-3 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all ${
+                                    subFilter === fil.id
+                                        ? 'bg-emerald-600 text-white shadow-md'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                                }`}
+                            >
+                                {fil.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* SCROLLER ZILE */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {dates.map((item, idx) => {
+                        const isSelected = item.date.toDateString() === selectedDate.toDateString();
+                        return (
+                            <button
+                                key={idx}
+                                onClick={() => setSelectedDate(item.date)}
+                                className={`flex-1 min-w-[90px] py-3 px-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${
+                                    isSelected
+                                        ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-900/30 scale-[1.02]'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-emerald-500'
+                                }`}
+                            >
+                                <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{item.label}</span>
+                                <span className="text-xs sm:text-sm font-black mt-0.5">
+                                    {item.date.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' })}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* LISTA DE MECIURI PE LIGI */}
+            {loading ? (
+                <div className="flex flex-col items-center justify-center py-24">
+                    <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400 animate-pulse">Se scanează transmisiile live...</p>
+                </div>
+            ) : filteredMatches.length === 0 ? (
+                <div className="text-center py-24 bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 max-w-lg mx-auto p-8 shadow-sm">
+                    <Trophy className="w-12 h-12 text-slate-400 mx-auto mb-4 opacity-40" />
+                    <h3 className="text-xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2">Niciun Meci Disponibil</h3>
+                    <p className="text-slate-500 font-bold uppercase text-xs">Nu există meciuri înregistrate pentru filtrul sau data selectată.</p>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {sortedLeagueNames.map((leagueName) => {
+                        const leagueData = groupedMatches[leagueName];
+                        return (
+                            <div key={leagueName} className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                                <div className="bg-slate-100 dark:bg-slate-950 px-4 sm:px-6 py-3 border-b-2 border-slate-200 dark:border-slate-800 flex items-center gap-3">
+                                    {leagueData.logo ? (
+                                        <img src={leagueData.logo} alt={leagueName} className="w-6 h-6 object-contain bg-white rounded-md p-0.5" />
+                                    ) : (
+                                        <Globe className="w-5 h-5 text-emerald-500" />
+                                    )}
+                                    <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white uppercase tracking-wider">{leagueName}</h3>
+                                </div>
+                                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {leagueData.items.map((match: Match) => {
+                                        const isFav = favoriteMatches.includes(match.fixture_id);
+                                        return (
+                                            <div
+                                                key={match.fixture_id}
+                                                onClick={() => handleMatchClick(match)}
+                                                className="flex items-center justify-between p-3 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer gap-2 group"
+                                            >
+                                                <button
+                                                    onClick={(e) => toggleFavoriteMatch(e, match.fixture_id)}
+                                                    className={`p-2 rounded-xl border transition shrink-0 ${isFav ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-amber-500'}`}
+                                                    title="Marchează la favorite"
+                                                >
+                                                    <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+                                                </button>
+
+                                                <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 px-2 min-w-0">
+                                                    <div className="flex items-center justify-end gap-2 text-right min-w-0">
+                                                        <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white uppercase tracking-tight truncate" title={match.home_team_name}>
+                                                            {match.home_team_name}
+                                                        </span>
+                                                        <img src={match.home_team_logo} alt="home" className="w-6 h-6 sm:w-7 sm:h-7 object-contain bg-white rounded-lg p-0.5 shrink-0" />
+                                                    </div>
+
+                                                    <div className="px-3 py-1.5 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-center shrink-0 min-w-[75px] sm:min-w-[90px]">
+                                                        {match.status_short === "NS" ? (
+                                                            <span className="text-slate-500 font-black text-xs">
+                                                                {new Date(match.timestamp * 1000).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                                                                {match.home_goals ?? 0} - {match.away_goals ?? 0}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 text-left min-w-0">
+                                                        <img src={match.away_team_logo} alt="away" className="w-6 h-6 sm:w-7 sm:h-7 object-contain bg-white rounded-lg p-0.5 shrink-0" />
+                                                        <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white uppercase tracking-tight truncate" title={match.away_team_name}>
+                                                            {match.away_team_name}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="w-[70px] sm:w-[90px] text-right shrink-0">
+                                                    {renderStatus(match)}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
             
             {loadingRoster && (
                 <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
@@ -811,10 +953,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             {selectedMatchDetails && (
                 <div className="fixed inset-0 z-[99995] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
                     <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
-                        {/* SCOREBOARD HEADER */}
                         <div className="bg-slate-950 border-b-4 border-emerald-600 text-white p-4 sm:p-6 shrink-0 relative overflow-hidden">
-                            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.2),transparent_70%)] pointer-events-none"></div>
-                            <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(90deg,transparent,transparent_2px,#fff_2px,#fff_4px)] pointer-events-none" style={{ backgroundSize: '4px 100%' }}></div>
                             <button onClick={() => setSelectedMatchDetails(null)} className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 bg-slate-800 hover:bg-rose-600 border border-slate-700 rounded-full transition-colors z-20">
                                 <X className="w-5 h-5 font-bold" />
                             </button>
@@ -845,7 +984,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             </div>
                         </div>
 
-                        {/* NAVIGARE TAB-URI */}
                         <div className="flex border-b-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shrink-0 overflow-x-auto scrollbar-hide">
                             {[
                                 { id: 'events', label: 'Evenimente', icon: Clock }, 
@@ -863,7 +1001,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             })}
                         </div>
 
-                        {/* CONȚINUT TAB-URI */}
                         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50 dark:bg-slate-900">
                             {loadingMatchDetails ? (
                                 <div className="flex flex-col items-center justify-center py-16">
@@ -874,7 +1011,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 <>
                                     {activeMatchTab === 'h2h' && renderH2HSection()}
 
-                                    {/* EVENIMENTE */}
                                     {activeMatchTab === 'events' && (
                                         <div>
                                             {!selectedMatchDetails.events || selectedMatchDetails.events.length === 0 ? (
@@ -908,15 +1044,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                             </div>
                                                         );
                                                     })}
-                                                    {["FT", "AET", "PEN"].includes(selectedMatchDetails.status_short) && (
-                                                        <div className="bg-slate-900 border-t-4 border-emerald-500 text-white font-black text-center py-3 text-[10px] sm:text-xs tracking-widest uppercase">Fluier Final • <span className="text-emerald-400">Scor Oficial: {selectedMatchDetails.home_goals} - {selectedMatchDetails.away_goals}</span></div>
-                                                    )}
                                                 </div>
                                             )}
                                         </div>
                                     )}
 
-                                    {/* LINEUPS (Teren de Fotbal) */}
                                     {activeMatchTab === 'lineups' && (
                                         <div>
                                             {!selectedMatchDetails.lineups || selectedMatchDetails.lineups.length === 0 ? (
@@ -935,102 +1067,38 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         </button>
                                                     </div>
 
-                                                    <div className="space-y-6">
-                                                        <div className="flex items-center justify-between bg-slate-900 border-2 border-slate-800 text-white px-4 py-4 rounded-2xl shadow-xl">
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                {homeTeamLineup?.team?.logo && <img src={homeTeamLineup.team.logo} className="w-7 h-7 object-contain bg-white rounded-lg p-1 shrink-0" />}
-                                                                <span className="font-black tracking-tight text-xs sm:text-sm truncate hidden sm:inline">{homeTeamLineup?.team?.name || selectedMatchDetails.home_team_name}</span>
-                                                                {homeTeamLineup?.formation && <span className="bg-emerald-600 border border-emerald-500 text-white font-black text-[10px] sm:text-[11px] px-2.5 py-1 rounded-md shrink-0 ml-1 shadow-sm tracking-widest">{homeTeamLineup.formation}</span>}
-                                                            </div>
-                                                            <span className="text-[10px] font-black tracking-widest text-slate-500 text-center px-2 uppercase">Dispunere Tactică</span>
-                                                            <div className="flex items-center justify-end gap-2 min-w-0">
-                                                                {awayTeamLineup?.formation && <span className="bg-blue-600 border border-blue-500 text-white font-black text-[10px] sm:text-[11px] px-2.5 py-1 rounded-md shrink-0 mr-1 shadow-sm tracking-widest">{awayTeamLineup.formation}</span>}
-                                                                <span className="font-black tracking-tight text-xs sm:text-sm truncate hidden sm:inline text-right">{awayTeamLineup?.team?.name || selectedMatchDetails.away_team_name}</span>
-                                                                {awayTeamLineup?.team?.logo && <img src={awayTeamLineup.team.logo} className="w-7 h-7 object-contain bg-white rounded-lg p-1 shrink-0" />}
-                                                            </div>
-                                                        </div>
+                                                    <div className={`relative w-full ${lineupViewMode === 'both' ? 'h-[850px] sm:h-[950px]' : 'h-[600px] sm:h-[700px]'} rounded-3xl overflow-hidden shadow-2xl border-4 sm:border-8 border-slate-900 flex flex-col justify-between p-1 sm:p-5 select-none`} style={{ backgroundImage: 'repeating-linear-gradient(to bottom, #10b981 0px, #10b981 50px, #059669 50px, #059669 100px)' }}>
+                                                        <div className="absolute inset-2 sm:inset-3 border-4 border-white/50 rounded-xl pointer-events-none"></div>
+                                                        <div className="absolute top-1/2 inset-x-2 sm:inset-x-3 h-1 bg-white/50 -translate-y-1/2 pointer-events-none"></div>
+                                                        <div className="absolute top-1/2 left-1/2 w-24 h-24 sm:w-40 sm:h-40 border-4 border-white/50 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+                                                        <div className="absolute top-1/2 left-1/2 w-2 h-2 sm:w-3 sm:h-3 bg-white/70 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
 
-                                                        {/* TERENUL (Pitch) */}
-                                                        <div className={`relative w-full ${lineupViewMode === 'both' ? 'h-[850px] sm:h-[950px]' : 'h-[600px] sm:h-[700px]'} rounded-3xl overflow-hidden shadow-2xl border-4 sm:border-8 border-slate-900 flex flex-col justify-between p-1 sm:p-5 select-none`} style={{ backgroundImage: 'repeating-linear-gradient(to bottom, #10b981 0px, #10b981 50px, #059669 50px, #059669 100px)' }}>
-                                                            <div className="absolute inset-2 sm:inset-3 border-4 border-white/50 rounded-xl pointer-events-none"></div>
-                                                            <div className="absolute top-1/2 inset-x-2 sm:inset-x-3 h-1 bg-white/50 -translate-y-1/2 pointer-events-none"></div>
-                                                            <div className="absolute top-1/2 left-1/2 w-24 h-24 sm:w-40 sm:h-40 border-4 border-white/50 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-                                                            <div className="absolute top-1/2 left-1/2 w-2 h-2 sm:w-3 sm:h-3 bg-white/70 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-                                                            
-                                                            <div className="absolute top-2 sm:top-3 left-1/2 -translate-x-1/2 w-40 sm:w-64 h-16 sm:h-24 border-b-4 border-x-4 border-white/50 pointer-events-none"></div>
-                                                            <div className="absolute top-2 sm:top-3 left-1/2 -translate-x-1/2 w-20 sm:w-32 h-8 sm:h-10 border-b-4 border-x-4 border-white/50 pointer-events-none"></div>
-                                                            <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 w-40 sm:w-64 h-16 sm:h-24 border-t-4 border-x-4 border-white/50 pointer-events-none"></div>
-                                                            <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 w-20 sm:w-32 h-8 sm:h-10 border-t-4 border-x-4 border-white/50 pointer-events-none"></div>
-
-                                                            {lineupViewMode === 'both' ? (
-                                                                <>
-                                                                    <div className="flex-1 flex flex-col justify-around relative z-10 pb-4 pt-1">
-                                                                        {homeRowsTopDown.map((rowItems, rIdx) => (
-                                                                            <div key={`home-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, false, pIdx))}</div>
-                                                                        ))}
-                                                                    </div>
-                                                                    <div className="flex-1 flex flex-col justify-around relative z-10 pt-4 pb-1">
-                                                                        {awayRowsBottomUp.map((rowItems, rIdx) => (
-                                                                            <div key={`away-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, true, pIdx))}</div>
-                                                                        ))}
-                                                                    </div>
-                                                                </>
-                                                            ) : (
-                                                                <div className="flex-1 flex flex-col justify-around relative z-10 py-4">
-                                                                    {singleTeamRows.map((rowItems, rIdx) => (
-                                                                        <div key={`single-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, lineupViewMode === 'away', pIdx))}</div>
+                                                        {lineupViewMode === 'both' ? (
+                                                            <>
+                                                                <div className="flex-1 flex flex-col justify-around relative z-10 pb-4 pt-1">
+                                                                    {homeRowsTopDown.map((rowItems, rIdx) => (
+                                                                        <div key={`home-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, false, pIdx))}</div>
                                                                     ))}
                                                                 </div>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Rezerve */}
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                            {[homeTeamLineup, awayTeamLineup].map((teamLineup: any, tIdx: number) => {
-                                                                if (!teamLineup) return null;
-                                                                const isAway = tIdx === 1;
-                                                                return (
-                                                                    <div key={tIdx} className="bg-white dark:bg-slate-950 p-4 sm:p-5 rounded-3xl border-2 border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                                                                        <div className="flex items-center justify-between pb-4 border-b-2 border-slate-100 dark:border-slate-800">
-                                                                            <div className="flex items-center gap-3 min-w-0">
-                                                                                {teamLineup.team?.logo && <img src={teamLineup.team.logo} className="w-8 h-8 object-contain bg-slate-100 rounded-lg p-1" />}
-                                                                                <span className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight truncate">{teamLineup.team?.name}</span>
-                                                                            </div>
-                                                                            {teamLineup.coach?.name && (
-                                                                                <div className="flex flex-col items-end">
-                                                                                    <span className="text-[9px] font-black text-slate-400 tracking-widest uppercase">Antrenor</span>
-                                                                                    <strong className="text-xs text-slate-900 dark:text-white tracking-wide">{teamLineup.coach.name}</strong>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                        <h4 className="text-[10px] font-black tracking-widest text-slate-500 px-1 uppercase">Banca de Rezerve</h4>
-                                                                        <div className="grid grid-cols-1 gap-2">
-                                                                            {teamLineup.substitutes?.map((sub: any, sIdx: number) => {
-                                                                                const badges = getPlayerMatchBadges(sub.player?.name, sub.player?.id);
-                                                                                return (
-                                                                                    <div key={sIdx} onClick={() => handleLineupPlayerClick(sub.player?.name)} className="py-2.5 px-3 flex items-center justify-between bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
-                                                                                        <div className="flex items-center gap-3 min-w-0">
-                                                                                            <span className={`w-8 h-8 rounded-lg font-black flex items-center justify-center text-xs shrink-0 border-2 ${isAway ? 'bg-slate-900 text-white border-blue-500' : 'bg-white text-slate-900 border-slate-300'}`}>{sub.player?.number || "-"}</span>
-                                                                                            <span className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 tracking-tight truncate">{sub.player?.name}</span>
-                                                                                            {badges.subOut && <span className="text-xs" title="A intrat pe teren">🔄</span>}
-                                                                                            {badges.goals > 0 && <span className="text-xs">⚽</span>}
-                                                                                        </div>
-                                                                                        <span className="text-[9px] font-black px-2 py-1 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md tracking-widest shrink-0 uppercase">{sub.player?.pos || "-"}</span>
-                                                                                    </div>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
+                                                                <div className="flex-1 flex flex-col justify-around relative z-10 pt-4 pb-1">
+                                                                    {awayRowsBottomUp.map((rowItems, rIdx) => (
+                                                                        <div key={`away-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, true, pIdx))}</div>
+                                                                    ))}
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="flex-1 flex flex-col justify-around relative z-10 py-4">
+                                                                {singleTeamRows.map((rowItems, rIdx) => (
+                                                                    <div key={`single-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, lineupViewMode === 'away', pIdx))}</div>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
                                     )}
 
-                                    {/* STATISTICI + ATTACK MOMENTUM */}
                                     {activeMatchTab === 'stats' && (
                                         <div>
                                             {!selectedMatchDetails.statistics || selectedMatchDetails.statistics.length < 2 ? (
@@ -1042,16 +1110,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         {(() => {
                                                             const homeStats = selectedMatchDetails.statistics[0].statistics;
                                                             const awayStats = selectedMatchDetails.statistics[1].statistics;
-                                                            const priorityTypes = ["Ball Possession", "Total Shots", "Shots on Goal", "Corner Kicks"];
-                                                            const sortedStats = [...homeStats].sort((a, b) => {
-                                                                const aIndex = priorityTypes.indexOf(a.type);
-                                                                const bIndex = priorityTypes.indexOf(b.type);
-                                                                if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-                                                                if (aIndex !== -1) return -1;
-                                                                if (bIndex !== -1) return 1;
-                                                                return 0; 
-                                                            });
-                                                            return sortedStats.map((statItem: any) => {
+                                                            return homeStats.map((statItem: any) => {
                                                                 const homeValRaw = statItem.value ?? 0;
                                                                 const awayStatItem = awayStats.find((s: any) => s.type === statItem.type);
                                                                 const awayValRaw = awayStatItem?.value ?? 0;
@@ -1081,7 +1140,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         </div>
                                     )}
 
-                                    {/* CLASAMENT LIVE UPDATE */}
                                     {activeMatchTab === 'standings' && (
                                         <div>
                                             {loadingStandings ? (
@@ -1146,7 +1204,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 </div>
             )}
 
-            {/* MODAL LOT (Echipa Extinsă) - ACTUALIZAT CU DESIGN COMPLET SI BUTON COMPARARE */}
+            {/* MODAL LOT (Echipa Extinsă) */}
             {selectedTeam && (
                 <div className="fixed inset-0 z-[99996] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md transition-opacity" onClick={() => setSelectedTeam(null)}>
                     <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-slate-700 animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
@@ -1228,20 +1286,16 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 </div>
             )}
 
-            {/* MODAL DETALII JUCĂTOR (Scouting Card) - ACTUALIZAT PENTRU COMPARARE SI WATCHLIST */}
+            {/* MODAL DETALII JUCĂTOR (Scouting Card) */}
             {selectedPlayer && (
                 <div className="fixed inset-0 z-[99997] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPlayer(null)}>
                     <div className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[95vh] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
                         <div className="relative bg-slate-900 shrink-0 px-5 sm:px-8 py-6 sm:py-8 border-b-4 border-emerald-500 overflow-hidden">
-                            <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#10b981_20px,#10b981_22px),repeating-linear-gradient(90deg,transparent,transparent_20px,#10b981_20px,#10b981_22px)] pointer-events-none"></div>
-                            
                             <button onClick={() => setSelectedPlayer(null)} className="absolute top-4 right-4 bg-slate-950/50 border border-white/20 hover:bg-rose-500 hover:border-rose-500 rounded-full p-2 text-white transition-colors z-20">
                                 <X className="w-5 h-5 font-bold" />
                             </button>
-                            
                             <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 sm:gap-6 relative z-10">
                                 <img src={selectedPlayer.image || GENERIC_USER_IMAGE} alt={selectedPlayer.name} className="w-32 h-32 md:w-40 md:h-40 rounded-2xl object-cover border-4 border-white shadow-2xl bg-slate-800 shrink-0" onError={e => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
-                                
                                 <div className="text-white text-center sm:text-left flex-1 min-w-0">
                                     <h2 className="text-3xl md:text-5xl font-black tracking-tighter break-words whitespace-normal drop-shadow-md leading-tight mb-2 uppercase">{selectedPlayer.name}</h2>
                                     <div className="flex items-center justify-center sm:justify-start gap-2">
@@ -1249,7 +1303,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         <span className="font-bold text-lg sm:text-xl text-emerald-400 tracking-widest truncate uppercase">{selectedPlayer.team_name || selectedPlayer.team}</span>
                                     </div>
                                 </div>
-
                                 <div className="flex sm:flex-col gap-2 shrink-0 mt-4 sm:mt-0">
                                     <button
                                         onClick={(e) => toggleWatchlist(e, selectedPlayer)}
@@ -1276,7 +1329,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50 dark:bg-slate-950">
-                            
                             <div className="flex flex-wrap justify-center sm:justify-start gap-3 mb-8">
                                 <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black tracking-wider text-slate-800 dark:text-slate-200 uppercase">
                                     <Globe className="w-4 h-4 text-emerald-500" /> {selectedPlayer.nationality || "N/A"}
@@ -1355,48 +1407,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     </div>
                                 );
                             })()}
-
-                            <h3 className="text-lg font-black tracking-widest text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b-2 border-emerald-500/20 pb-2 uppercase">
-                                <MapPin className="w-6 h-6 text-emerald-500" /> Situație Competițională
-                            </h3>
-                            
-                            {!selectedPlayer.detailed_stats || selectedPlayer.detailed_stats.length === 0 ? (
-                                <div className="text-center p-8 bg-white dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold tracking-widest text-sm uppercase">
-                                    DATE COMPETIȚIONALE INDISPONIBILE 🚫
-                                </div>
-                            ) : (
-                                <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 tracking-widest bg-slate-100 dark:bg-slate-800/80 border-b-2 border-slate-200 dark:border-slate-700 uppercase">
-                                                <tr>
-                                                    <th className="px-4 py-4 font-black">Competiție</th>
-                                                    <th className="px-4 py-4 font-black text-center">Meciuri</th>
-                                                    <th className="px-4 py-4 font-black text-center">Goluri</th>
-                                                    <th className="px-4 py-4 font-black text-center">Pase</th>
-                                                    <th className="px-4 py-4 font-black text-center hidden sm:table-cell">Minute</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y-2 divide-slate-100 dark:divide-slate-800">
-                                                {selectedPlayer.detailed_stats.map((stat, idx) => (
-                                                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                                        <td className="px-4 py-4 font-bold text-slate-900 dark:text-white flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                                                            {stat.competition}
-                                                            <span className="text-[9px] font-black px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded tracking-widest w-fit uppercase">
-                                                                {stat.type}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-4 text-center font-black text-slate-800 dark:text-slate-200">{stat.appearances}</td>
-                                                        <td className="px-4 py-4 text-center font-black text-emerald-600 dark:text-emerald-400">{stat.goals}</td>
-                                                        <td className="px-4 py-4 text-center font-black text-blue-600 dark:text-blue-400">{stat.assists}</td>
-                                                        <td className="px-4 py-4 text-center font-bold text-slate-500 hidden sm:table-cell">{stat.minutes}'</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
