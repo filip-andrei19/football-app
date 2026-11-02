@@ -863,9 +863,12 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
+        // ==========================================
+        // MODIFICARE NOUĂ: Căutare EXACTĂ pentru loturi (Rezolvă problema OFI vs Sofia)
+        // ==========================================
         app.get('/api/sport/teams/:teamName/roster', async (req, res) => {
             try {
-                const teamNameRegex = new RegExp(req.params.teamName.trim(), 'i');
+                const teamNameRegex = new RegExp(`^${req.params.teamName.trim()}$`, 'i');
                 const players = await Player.find({
                     $or: [
                         { team_name: teamNameRegex },
