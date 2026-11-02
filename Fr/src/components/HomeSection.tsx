@@ -504,7 +504,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
       </div>
 
       {selectedTeam && (
-        <div className="fixed inset-0 z-[990] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm transition-opacity">
+        <div className="fixed inset-0 z-[99996] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm transition-opacity">
           <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300">
             
             <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-4 sm:p-6 flex items-center justify-between shrink-0 border-b-4 border-emerald-500">
@@ -912,7 +912,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
       </div>
 
       {compareList.length > 0 && (
-      <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[55] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
+      <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[99998] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
           <div className="flex items-center gap-3 overflow-hidden">
             <Scale className="w-6 h-6 text-emerald-400 shrink-0 animate-pulse" />
             <div className="flex items-center gap-2 overflow-hidden">
@@ -954,7 +954,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
       {selectedPlayer && (
         <div
-          className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[99997] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setSelectedPlayer(null)}
         >
           <div
@@ -1151,7 +1151,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
       {showCompareModal && compareList.length === 2 && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setShowCompareModal(false)}
         >
           <div

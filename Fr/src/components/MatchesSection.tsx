@@ -221,6 +221,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const [lineupViewMode, setLineupViewMode] = useState<'both' | 'home' | 'away'>('both');
 
+    // === SOLICITĂ PERMISIUNEA PENTRU NOTIFICĂRI ===
     useEffect(() => {
         if ("Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
@@ -605,14 +606,14 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             </div>
             
             {loadingRoster && (
-                <div className="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
+                <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
                     <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
                     <h3 className="text-xl font-black tracking-widest text-emerald-400 mt-4 animate-pulse uppercase">Scanăm Lotul...</h3>
                 </div>
             )}
 
             {selectedMatchDetails && (
-                <div className="fixed inset-0 z-[990] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
+                <div className="fixed inset-0 z-[99995] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
                     <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
                         {/* SCOREBOARD HEADER */}
                         <div className="bg-slate-950 border-b-4 border-emerald-600 text-white p-4 sm:p-6 shrink-0 relative overflow-hidden">
@@ -932,7 +933,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODAL LOT (Echipa Extinsă) - ACTUALIZAT CU DESIGN COMPLET SI BUTON COMPARARE */}
             {selectedTeam && (
-                <div className="fixed inset-0 z-[995] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md transition-opacity" onClick={() => setSelectedTeam(null)}>
+                <div className="fixed inset-0 z-[99996] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md transition-opacity" onClick={() => setSelectedTeam(null)}>
                     <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-slate-700 animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
                         <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-center justify-between shrink-0 border-b-4 border-slate-700">
                             <div className="flex items-center gap-4 sm:gap-6 min-w-0">
@@ -1014,7 +1015,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODAL DETALII JUCĂTOR (Scouting Card) - ACTUALIZAT PENTRU COMPARARE SI WATCHLIST */}
             {selectedPlayer && (
-                <div className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPlayer(null)}>
+                <div className="fixed inset-0 z-[99997] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPlayer(null)}>
                     <div className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[95vh] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
                         <div className="relative bg-slate-900 shrink-0 px-5 sm:px-8 py-6 sm:py-8 border-b-4 border-emerald-500 overflow-hidden">
                             <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#10b981_20px,#10b981_22px),repeating-linear-gradient(90deg,transparent,transparent_20px,#10b981_20px,#10b981_22px)] pointer-events-none"></div>
@@ -1188,7 +1189,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* BARA DE COMPARARE JUCĂTORI (Plutitoare) */}
             {compareList.length > 0 && (
-                <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[995] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
+                <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[99998] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
                     <div className="flex items-center gap-3 overflow-hidden">
                         <Scale className="w-6 h-6 text-emerald-400 shrink-0 animate-pulse" />
                         <div className="flex items-center gap-2 overflow-hidden">
@@ -1227,7 +1228,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODALUL PRINCIPAL DE COMPARARE "MECI DIRECT" */}
             {showCompareModal && compareList.length === 2 && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowCompareModal(false)}>
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowCompareModal(false)}>
                     <div className="bg-slate-900 w-full max-w-4xl max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border-4 border-emerald-600/50" onClick={(e) => e.stopPropagation()}>
                         <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-center justify-between border-b-2 border-emerald-600/30">
                             <div className="flex items-center gap-3">
@@ -1318,183 +1319,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             );
                         })()}
                     </div>
-                </div>
-            )}
-
-            {/* HEADER SECȚIUNE (Tabelă Principală) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 relative z-10">
-                <div className="flex items-center gap-4">
-                    <div className="bg-slate-900 border-2 border-emerald-500 p-3 sm:p-4 rounded-2xl shadow-[0_10px_20px_rgba(16,185,129,0.3)]">
-                        <Activity className="w-8 h-8 text-emerald-400" />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none mb-1 drop-shadow-sm uppercase">Scoruri <span className="text-emerald-500">Live</span></h1>
-                        <span className="text-[10px] sm:text-xs font-black tracking-widest text-slate-500 uppercase">Tabelă Oficială Meciuri</span>
-                    </div>
-                </div>
-
-                <div className="flex bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border-2 border-slate-300/50 dark:border-slate-700/50 p-1.5 overflow-x-auto scrollbar-hide shadow-sm">
-                    <button onClick={() => setSubFilter('all')} className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all whitespace-nowrap border-b-2 uppercase ${subFilter === 'all' ? 'bg-slate-900 text-white border-slate-950 shadow-md translate-y-[-2px]' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-300/50 dark:hover:bg-slate-700/50'}`}>Toate</button>
-                    <button onClick={() => setSubFilter('live')} className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all flex items-center justify-center gap-2 border-b-2 whitespace-nowrap uppercase ${subFilter === 'live' ? 'bg-rose-600 text-white border-rose-800 shadow-[0_4px_15px_rgba(225,29,72,0.3)] translate-y-[-2px]' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'}`}>
-                        <span className={`w-2.5 h-2.5 rounded-full ${liveCount > 0 ? (subFilter === 'live' ? 'bg-white animate-ping' : 'bg-rose-500 animate-ping') : 'bg-slate-400'}`}></span>
-                        LIVE ({liveCount})
-                    </button>
-                    <button onClick={() => setSubFilter('finished')} className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all whitespace-nowrap border-b-2 uppercase ${subFilter === 'finished' ? 'bg-slate-900 text-white border-slate-950 shadow-md translate-y-[-2px]' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-300/50 dark:hover:bg-slate-700/50'}`}>Finalizate</button>
-                    <button onClick={() => setSubFilter('favorites')} className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all flex items-center justify-center gap-2 border-b-2 whitespace-nowrap uppercase ${subFilter === 'favorites' ? 'bg-amber-500 text-slate-950 border-amber-700 shadow-[0_4px_15px_rgba(245,158,11,0.3)] translate-y-[-2px]' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'}`}>
-                        <Star className="w-4 h-4 fill-current" /> Listă (Fav)
-                    </button>
-                </div>
-            </div>
-
-            {/* NAVIGARE ZILE */}
-            <div className="bg-slate-900 rounded-2xl shadow-xl border-4 border-slate-800 p-2 mb-8 overflow-x-auto relative z-10">
-                <div className="flex justify-between gap-2 min-w-[500px]">
-                    {dates.map((dObj, idx) => {
-                        const isSelected = selectedDate.getTime() === dObj.date.getTime();
-                        return (
-                            <button key={idx} onClick={() => setSelectedDate(dObj.date)} className={`flex-1 py-3 px-2 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all border-b-4 uppercase ${isSelected ? 'bg-emerald-600 text-white border-emerald-800 shadow-md translate-y-[-2px]' : 'border-transparent text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
-                                <span className="block">{dObj.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* LISTA MECIURI */}
-            {loading ? (
-                <div className="space-y-6 relative z-10">
-                    {[1, 2, 3].map((leagueSkeleton) => (
-                        <div key={leagueSkeleton} className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border-2 border-slate-100 dark:border-slate-800 overflow-hidden">
-                            <div className="bg-slate-50 dark:bg-slate-950/50 px-5 py-4 border-b-2 border-slate-100 dark:border-slate-800 flex items-center gap-3">
-                                <div className="w-7 h-7 rounded bg-slate-200 dark:bg-slate-800 animate-pulse"></div>
-                                <div className="w-48 h-5 rounded bg-slate-200 dark:bg-slate-800 animate-pulse"></div>
-                            </div>
-                            <div className="divide-y-2 divide-slate-50 dark:divide-slate-800/50">
-                                {[1, 2].map((matchSkeleton) => (
-                                    <div key={matchSkeleton} className="flex items-center justify-between p-4 animate-pulse">
-                                        <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-800 mr-6"></div>
-                                        <div className="flex-1 flex items-center justify-between ml-6">
-                                            <div className="flex items-center gap-4 flex-1 justify-end">
-                                                <div className="w-24 sm:w-32 h-4 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                                                <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
-                                            </div>
-                                            <div className="px-6 py-2 mx-6 w-24 h-10 rounded-2xl bg-slate-200 dark:bg-slate-800"></div>
-                                            <div className="flex items-center gap-4 flex-1 justify-start">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
-                                                <div className="w-24 sm:w-32 h-4 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : sortedLeagueNames.length === 0 ? (
-                <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl shadow-sm border-2 border-dashed border-slate-300 dark:border-slate-800 relative z-10 overflow-hidden">
-                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-emerald-500/10 [mask-image:linear-gradient(to_top,white,transparent)]"></div>
-                    <div className="relative z-10 flex flex-col items-center justify-center mb-6">
-                        <div className="relative">
-                            <Calendar className="w-20 h-20 text-slate-300 dark:text-slate-700" />
-                            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-slate-50 dark:bg-slate-800 border-4 border-white dark:border-slate-900 rounded-full flex items-center justify-center">
-                                <X className="w-4 h-4 text-slate-400" />
-                            </div>
-                        </div>
-                    </div>
-                    <h3 className="text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2 relative z-10">Stadion Închis</h3>
-                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs relative z-10 max-w-sm mx-auto">
-                        Foaia de arbitraj este goală. Nu avem niciun meci programat pentru data sau filtrele selectate.
-                    </p>
-                </div>
-            ) : (
-                <div className="space-y-6 relative z-10">
-                    {sortedLeagueNames.map(leagueName => (
-                        <div key={leagueName} className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden">
-                            <div className="bg-slate-100 dark:bg-slate-950 border-b-2 border-slate-200 dark:border-slate-800 px-5 py-4 flex items-center gap-3">
-                                {groupedMatches[leagueName].logo ? (
-                                    <img src={groupedMatches[leagueName].logo} alt={leagueName} className="w-7 h-7 object-contain drop-shadow-sm" />
-                                ) : (
-                                    <Trophy className="w-6 h-6 text-slate-400" />
-                                )}
-                                <h3 className="font-black text-slate-900 dark:text-white tracking-widest text-sm sm:text-base drop-shadow-sm uppercase">{leagueName}</h3>
-                            </div>
-
-                            <div className="divide-y-2 divide-slate-100 dark:divide-slate-800/50">
-                                {groupedMatches[leagueName].items.map((match: Match) => {
-                                    const isLive = ["1H", "2H", "HT", "ET", "P", "BT", "LIVE"].includes(match.status_short);
-                                    const isFav = favoriteMatches.includes(match.fixture_id);
-
-                                    return (
-                                        <div key={match.fixture_id} onClick={() => handleMatchClick(match)} className="flex flex-col sm:flex-row items-stretch sm:items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group">
-                                            <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto mb-4 sm:mb-0">
-                                                <button onClick={e => toggleFavoriteMatch(e, match.fixture_id)} className={`p-2 rounded-xl border-2 transition-all mr-4 sm:mr-6 shrink-0 ${isFav ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-500' : 'bg-transparent border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 hover:text-amber-500 hover:border-amber-300'}`}>
-                                                    <Star className={`w-5 h-5 ${isFav ? 'fill-amber-500' : ''}`} />
-                                                </button>
-                                                <div className="w-20 sm:w-24 flex flex-col items-center justify-center shrink-0 sm:border-r-2 sm:border-slate-100 dark:sm:border-slate-800 pr-0 sm:pr-6 bg-slate-50 dark:bg-slate-900 sm:bg-transparent rounded-lg sm:rounded-none py-2 sm:py-0">
-                                                    {renderStatus(match)}
-                                                </div>
-                                            </div>
-
-                                            {/* Afișare Meci Mobil */}
-                                            <div className="flex-1 flex flex-col justify-center gap-3 sm:hidden w-full bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                                <div className="flex items-center justify-between w-full">
-                                                    <div onClick={e => handleTeamClick(e, match.home_team_name)} className="flex items-center gap-3 overflow-hidden w-[80%]">
-                                                        <img src={match.home_team_logo} className="w-6 h-6 object-contain bg-white rounded-md p-0.5 shrink-0" />
-                                                        <span className={`font-black tracking-tight text-sm truncate w-full ${match.home_goals !== null && match.away_goals !== null && match.home_goals > match.away_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                                                            {match.home_team_name}
-                                                        </span>
-                                                    </div>
-                                                    <div className={`font-black text-lg text-center shrink-0 w-[20%] ${isLive ? 'text-rose-600' : (match.home_goals !== null && match.away_goals !== null && match.home_goals > match.away_goals ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500')}`}>
-                                                        {match.status_short === "NS" ? "-" : match.home_goals}
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center justify-between w-full">
-                                                    <div onClick={e => handleTeamClick(e, match.away_team_name)} className="flex items-center gap-3 overflow-hidden w-[80%]">
-                                                        <img src={match.away_team_logo} className="w-6 h-6 object-contain bg-white rounded-md p-0.5 shrink-0" />
-                                                        <span className={`font-black tracking-tight text-sm truncate w-full ${match.home_goals !== null && match.away_goals !== null && match.away_goals > match.home_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                                                            {match.away_team_name}
-                                                        </span>
-                                                    </div>
-                                                    <div className={`font-black text-lg text-center shrink-0 w-[20%] ${isLive ? 'text-rose-600' : (match.home_goals !== null && match.away_goals !== null && match.away_goals > match.home_goals ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500')}`}>
-                                                        {match.status_short === "NS" ? "-" : match.away_goals}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Afișare Meci Desktop */}
-                                            <div className="hidden sm:flex flex-1 items-center justify-between ml-6">
-                                                <div onClick={e => handleTeamClick(e, match.home_team_name)} className="flex-1 flex items-center justify-end gap-4 text-right hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                                                    <span className={`font-black tracking-tight text-lg truncate ${match.home_goals !== null && match.away_goals !== null && match.home_goals > match.away_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 group-hover:text-emerald-600'}`}>
-                                                        {match.home_team_name}
-                                                    </span>
-                                                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center p-1.5 shrink-0">
-                                                        <img src={match.home_team_logo} className="w-full h-full object-contain" />
-                                                    </div>
-                                                </div>
-                                                <div className="px-6 py-2 mx-6 rounded-2xl bg-slate-900 border-2 border-slate-800 shadow-inner flex items-center justify-center min-w-[120px] shrink-0">
-                                                    {match.status_short === "NS" ? (
-                                                        <span className="text-slate-500 font-black text-xl">- : -</span>
-                                                    ) : (
-                                                        <span className={`font-black text-2xl tracking-widest ${isLive ? 'text-rose-500 drop-shadow-[0_0_8px_rgba(225,29,72,0.8)]' : 'text-white'}`}>
-                                                            {match.home_goals} - {match.away_goals}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div onClick={e => handleTeamClick(e, match.away_team_name)} className="flex-1 flex items-center justify-start gap-4 text-left hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                                                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center p-1.5 shrink-0">
-                                                        <img src={match.away_team_logo} className="w-full h-full object-contain" />
-                                                    </div>
-                                                    <span className={`font-black tracking-tight text-lg truncate ${match.home_goals !== null && match.away_goals !== null && match.away_goals > match.home_goals ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 group-hover:text-emerald-600'}`}>
-                                                        {match.away_team_name}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ))}
                 </div>
             )}
         </div>
