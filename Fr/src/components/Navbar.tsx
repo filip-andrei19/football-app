@@ -1,7 +1,7 @@
-import { useState } from "react"; // 1. IMPORT NECESAR PENTRU STARE
+import { useState } from "react"; 
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Search, Menu, User, X } from "lucide-react"; // 2. AM ADĂUGAT ICONIȚA 'X'
+import { Search, Menu, User, X } from "lucide-react"; 
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,17 +16,18 @@ interface NavbarProps {
 }
 
 export default function Navbar({ onNavigate }: NavbarProps) {
-  // 3. STAREA PENTRU MENIUL DE MOBIL
+  
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Funcție ajutătoare ca să navigheze și să închidă meniul
+  
   const handleMobileNavigate = (section: string) => {
     onNavigate(section);
     setIsMobileMenuOpen(false);
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    // Am modificat 'z-50' în 'z-30' pentru a permite modalelor să se suprapună peste navbar
+    <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
         
         {/* === LOGO & DESKTOP MENU === */}
@@ -67,9 +68,8 @@ export default function Navbar({ onNavigate }: NavbarProps) {
           variant="ghost" 
           className="inline-flex md:hidden mr-2" 
           size="icon"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} // Deschide/Închide
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
         >
-           {/* Schimbă iconița: X dacă e deschis, Menu dacă e închis */}
            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
 

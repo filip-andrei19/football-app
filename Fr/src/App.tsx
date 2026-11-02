@@ -185,8 +185,8 @@ export default function App() {
       
       <Toaster position="bottom-right" toastOptions={{ style: { background: '#020617', color: '#fff', border: '2px solid #10b981', borderRadius: '16px', fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '1px' } }} />
 
-      {/* HEADER TACTIC (Tabelă) */}
-      <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md transition-colors duration-300 shadow-lg border-b-4 border-slate-200 dark:border-slate-800">
+      {/* HEADER TACTIC (Tabelă) - Prioritate Z redusă la 30 pentru a nu mai suprapune modalele! */}
+      <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md transition-colors duration-300 shadow-lg border-b-4 border-slate-200 dark:border-slate-800">
         
         {/* Tri-colorul românesc subtil ca o bandă */}
         <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-yellow-400 to-red-600 flex">
@@ -307,7 +307,7 @@ export default function App() {
         )}
       </header>
 
-      {/* Secțiunea centrală (Terenul de Joc) */}
+      {/* Secțiunea centrală (Terenul de Joc) - Aici se randează Home, Matches etc, iar modalele lor vor veni acum automat DEDESUBT-ul Z-ului navbar-ului */}
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 relative z-10">
         {renderSection()}
       </main>
