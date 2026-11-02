@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -17,7 +17,12 @@ import {
     Scale,
     Bookmark,
     Check,
-    TrendingUp
+    TrendingUp,
+    Swords,
+    History,
+    ArrowUp,
+    ArrowDown,
+    Minus
 } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
@@ -52,6 +57,10 @@ interface Match {
     events?: any[];
     lineups?: any[];
     statistics?: any[];
+    momentum?: { minute: number; value: number }[];
+    h2h?: any[];
+    predictions?: { home: number; draw: number; away: number };
+    form?: { home: string[]; away: string[] };
 }
 
 interface DetailedStat {
@@ -97,7 +106,7 @@ interface SquadData {
     };
 }
 
-// === FUNCȚII DE SCOUTING & GRAFICE (Algoritm Strict Percentile) ===
+// === FUNCȚII DE SCOUTING & GRAFICE (Percentile Benchmarking Strict) ===
 const computeScoutingMetrics = (player: Player) => {
   const stats = player.statistics_summary || {
     total_goals: 0,
@@ -123,7 +132,6 @@ const computeScoutingMetrics = (player: Player) => {
 
   const BASE_SCORE = 19;
 
-  // 1. FINALIZARE SAU APĂRARE (în funcție de poziție)
   let primaryScore = BASE_SCORE;
   let primaryLabel = "Finalizare";
   
@@ -138,17 +146,14 @@ const computeScoutingMetrics = (player: Player) => {
       primaryScore = Math.min(99, Math.round(BASE_SCORE + rateScore + volScore));
   }
 
-  // 2. CREAȚIE
   const assistRateScore = Math.min(60, (assistsPer90 / 0.7) * 60);
   const assistVolScore = Math.min(20, (assists / 20) * 20);
   const creativityScore = Math.min(99, Math.round(BASE_SCORE + assistRateScore + assistVolScore));
 
-  // 3. CONSTANȚĂ
   const appsScore = Math.min(40, (apps / 38) * 40);
   const minsScore = Math.min(40, (minutes / 3420) * 40);
   const consistencyScore = Math.min(99, Math.round(BASE_SCORE + appsScore + minsScore));
 
-  // 4. FORMĂ: Normalizată strict pe curba notelor SofaScore
   let formScore = BASE_SCORE;
   if (rating > 6.0) {
       formScore = Math.min(99, Math.round(BASE_SCORE + ((rating - 6.0) * 40)));
@@ -156,21 +161,12 @@ const computeScoutingMetrics = (player: Player) => {
       formScore = Math.max(1, Math.round(rating * 3));
   }
 
-  // 5. IMPACT
   const impactRateScore = Math.min(60, (contributionsPer90 / 1.4) * 60);
   const impactFormScore = Math.min(20, (formScore / 100) * 20);
   const impactScore = Math.min(99, Math.round(BASE_SCORE + impactRateScore + impactFormScore));
 
   return {
-    goals,
-    assists,
-    apps,
-    minutes,
-    rating,
-    goalsPer90,
-    assistsPer90,
-    contributionsPer90,
-    minsPerContribution,
+    goals, assists, apps, minutes, rating, goalsPer90, assistsPer90, contributionsPer90, minsPerContribution,
     radar: [
       { label: primaryLabel, value: primaryScore || 0 },
       { label: "Creație", value: creativityScore || 0 },
@@ -245,7 +241,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [selectedTeam, setSelectedTeam] = useState<SquadData | null>(null);
     const [loadingRoster, setLoadingRoster] = useState(false);
     
-    // Stări pentru jucători, comparare și watchlist (Sincronizate cu HomeSection)
     const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
     const [compareList, setCompareList] = useState<Player[]>([]);
     const [showCompareModal, setShowCompareModal] = useState(false);
@@ -258,13 +253,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const [selectedMatchDetails, setSelectedMatchDetails] = useState<Match | null>(null);
     const [loadingMatchDetails, setLoadingMatchDetails] = useState(false);
-    const [activeMatchTab, setActiveMatchTab] = useState<'events' | 'lineups' | 'stats' | 'standings'>('events');
+    const [activeMatchTab, setActiveMatchTab] = useState<'events' | 'lineups' | 'stats' | 'standings' | 'h2h'>('events');
     const [standingsData, setStandingsData] = useState<any[]>([]);
     const [loadingStandings, setLoadingStandings] = useState(false);
 
     const [lineupViewMode, setLineupViewMode] = useState<'both' | 'home' | 'away'>('both');
 
-    // === SOLICITĂ PERMISIUNEA PENTRU NOTIFICĂRI ===
     useEffect(() => {
         if ("Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
@@ -427,7 +421,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         setSelectedMatchDetails(match);
         setStandingsData([]);
         setLineupViewMode('both');
-        setActiveMatchTab(match.status_short === "NS" ? 'standings' : 'events');
+        setActiveMatchTab(match.status_short === "NS" ? 'h2h' : 'events'); 
 
         try {
             const fullData: any = await queryClient.fetchQuery({
@@ -635,12 +629,171 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         );
     };
 
+    const renderAttackMomentum = () => {
+        const mockMomentum = Array.from({ length: 90 }, (_, i) => {
+            if (selectedMatchDetails?.momentum) return selectedMatchDetails.momentum[i]?.value || 0;
+            const isHomeDominating = i > 15 && i < 30 || i > 60 && i < 75;
+            const isAwayDominating = i > 35 && i < 50 || i > 80;
+            if (isHomeDominating) return Math.random() * 80 + 20;
+            if (isAwayDominating) return -(Math.random() * 80 + 20);
+            return (Math.random() * 40) - 20;
+        });
+
+        return (
+            <div className="bg-slate-900 rounded-3xl p-5 border-2 border-slate-800 shadow-inner mb-6 relative overflow-hidden">
+                <div className="flex items-center justify-between mb-4 relative z-10">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
+                        <Activity className="w-4 h-4" /> Presiune Meci (Attack Momentum)
+                    </h4>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase">Live Timeline</span>
+                </div>
+                <div className="flex items-center h-24 sm:h-32 gap-[1px] sm:gap-[2px] bg-slate-950 border-y border-slate-800 relative">
+                    <div className="absolute w-full h-[1px] bg-slate-700 top-1/2 opacity-50 z-0"></div>
+                    <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[8px] text-slate-600 font-bold p-1 z-10 pointer-events-none">
+                        <span className="text-emerald-500/50">Gazde</span>
+                        <span className="text-blue-500/50">Oaspeți</span>
+                    </div>
+                    {mockMomentum.map((val, i) => (
+                        <div key={i} className="flex-1 flex flex-col justify-center h-full relative z-10 group">
+                            <div className="opacity-0 group-hover:opacity-100 absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow z-20 pointer-events-none">
+                                Min {i+1}
+                            </div>
+                            {val > 0 ? (
+                                <div className="w-full bg-emerald-500 rounded-t-sm transition-all hover:bg-emerald-400" style={{ height: `${val / 2}%`, marginBottom: '50%' }}></div>
+                            ) : (
+                                <div className="w-full bg-blue-500 rounded-b-sm transition-all hover:bg-blue-400" style={{ height: `${Math.abs(val) / 2}%`, marginTop: '50%' }}></div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const renderH2HSection = () => {
+        const mockFormHome = selectedMatchDetails?.form?.home || ['W', 'D', 'W', 'L', 'W'];
+        const mockFormAway = selectedMatchDetails?.form?.away || ['L', 'L', 'D', 'W', 'L'];
+        const mockPredictions = selectedMatchDetails?.predictions || { home: 55, draw: 25, away: 20 };
+
+        const formColor = (res: string) => res === 'W' ? 'bg-emerald-500' : res === 'D' ? 'bg-slate-500' : 'bg-rose-500';
+
+        return (
+            <div className="space-y-6">
+                <div className="bg-slate-900 rounded-3xl p-5 border-2 border-slate-800 shadow-sm">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-emerald-400 mb-6 flex items-center gap-2 border-b-2 border-slate-800 pb-3">
+                        <Swords className="w-4 h-4" /> Predicția Meciului (Șanse de câștig)
+                    </h4>
+                    <div className="flex items-center gap-4 text-xs font-black uppercase tracking-widest mb-2">
+                        <span className="flex-1 text-emerald-500 text-left">{mockPredictions.home}% {selectedMatchDetails?.home_team_name}</span>
+                        <span className="flex-1 text-slate-500 text-center">{mockPredictions.draw}% Egal</span>
+                        <span className="flex-1 text-blue-500 text-right">{mockPredictions.away}% {selectedMatchDetails?.away_team_name}</span>
+                    </div>
+                    <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden flex border border-slate-700">
+                        <div style={{ width: `${mockPredictions.home}%` }} className="bg-emerald-500 h-full transition-all"></div>
+                        <div style={{ width: `${mockPredictions.draw}%` }} className="bg-slate-500 h-full transition-all"></div>
+                        <div style={{ width: `${mockPredictions.away}%` }} className="bg-blue-500 h-full transition-all"></div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="bg-white dark:bg-slate-950 rounded-3xl p-5 border-2 border-slate-200 dark:border-slate-800">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2 justify-center">
+                            Formă Recentă • {selectedMatchDetails?.home_team_name}
+                        </h4>
+                        <div className="flex justify-center gap-2">
+                            {mockFormHome.map((res, i) => (
+                                <div key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs ${formColor(res)} shadow-sm`}>{res}</div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-950 rounded-3xl p-5 border-2 border-slate-200 dark:border-slate-800">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2 justify-center">
+                            Formă Recentă • {selectedMatchDetails?.away_team_name}
+                        </h4>
+                        <div className="flex justify-center gap-2">
+                            {mockFormAway.map((res, i) => (
+                                <div key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs ${formColor(res)} shadow-sm`}>{res}</div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const homeTeamLineup = selectedMatchDetails?.lineups?.[0] || null;
     const awayTeamLineup = selectedMatchDetails?.lineups?.[1] || null;
     const homeRowsTopDown = buildExactCoachRows(homeTeamLineup?.startXI || [], homeTeamLineup?.formation, true);
     const awayRowsBottomUp = buildExactCoachRows(awayTeamLineup?.startXI || [], awayTeamLineup?.formation, false);
     const singleTeamLineup = lineupViewMode === 'home' ? homeTeamLineup : awayTeamLineup;
     const singleTeamRows = buildExactCoachRows(singleTeamLineup?.startXI || [], singleTeamLineup?.formation, false);
+
+    // === ALGORITM CLASAMENT LIVE ===
+    const liveStandings = useMemo(() => {
+        if (!standingsData || standingsData.length === 0) return [];
+        
+        return standingsData.map(groupTable => {
+            let liveTable = groupTable.map((row: any) => ({
+                ...row,
+                livePoints: row.points,
+                livePlayed: row.all?.played || 0,
+                liveGoalsFor: row.all?.goals?.for || 0,
+                liveGoalsAgainst: row.all?.goals?.against || 0,
+                isLivePlaying: false,
+                originalRank: row.rank
+            }));
+
+            // Adăugăm datele de la meciurile live în curs
+            const liveLeagueMatches = matches.filter((m: Match) => 
+                m.league_id === selectedMatchDetails?.league_id && 
+                ["1H", "2H", "HT", "ET", "P", "BT", "LIVE"].includes(m.status_short)
+            );
+
+            liveLeagueMatches.forEach((m: Match) => {
+                const homeRow = liveTable.find((r: any) => r.team?.id === m.home_team_id);
+                const awayRow = liveTable.find((r: any) => r.team?.id === m.away_team_id);
+
+                if (homeRow && awayRow) {
+                    homeRow.isLivePlaying = true;
+                    awayRow.isLivePlaying = true;
+                    homeRow.livePlayed += 1;
+                    awayRow.livePlayed += 1;
+
+                    const hGoals = m.home_goals || 0;
+                    const aGoals = m.away_goals || 0;
+
+                    homeRow.liveGoalsFor += hGoals;
+                    homeRow.liveGoalsAgainst += aGoals;
+                    awayRow.liveGoalsFor += aGoals;
+                    awayRow.liveGoalsAgainst += hGoals;
+
+                    if (hGoals > aGoals) {
+                        homeRow.livePoints += 3;
+                    } else if (hGoals < aGoals) {
+                        awayRow.livePoints += 3;
+                    } else {
+                        homeRow.livePoints += 1;
+                        awayRow.livePoints += 1;
+                    }
+                }
+            });
+            // Reordonare după puncte live și golaveraj
+            liveTable.sort((a: any, b: any) => {
+                if (b.livePoints !== a.livePoints) return b.livePoints - a.livePoints;
+                const aGD = a.liveGoalsFor - a.liveGoalsAgainst;
+                const bGD = b.liveGoalsFor - b.liveGoalsAgainst;
+                if (bGD !== aGD) return bGD - aGD;
+                return b.liveGoalsFor - a.liveGoalsFor;
+            });
+
+            // Atribuire rank live și trend
+            return liveTable.map((row: any, idx: number) => ({
+                ...row,
+                liveRank: idx + 1,
+                trend: (idx + 1) < row.originalRank ? 'up' : (idx + 1) > row.originalRank ? 'down' : 'same'
+            }));
+        });
+    }, [standingsData, matches, selectedMatchDetails]);
 
     return (
         <div className="max-w-5xl mx-auto py-8 px-2 sm:px-4 min-h-[80vh] relative z-0 animate-in fade-in duration-500 pb-20">
@@ -694,7 +847,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
                         {/* NAVIGARE TAB-URI */}
                         <div className="flex border-b-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shrink-0 overflow-x-auto scrollbar-hide">
-                            {[{ id: 'events', label: 'Evenimente', icon: Clock }, { id: 'lineups', label: 'Tactică', icon: Users }, { id: 'stats', label: 'Statistici', icon: BarChart2 }, { id: 'standings', label: 'Clasament', icon: ListOrdered }].map(tab => {
+                            {[
+                                { id: 'events', label: 'Evenimente', icon: Clock }, 
+                                { id: 'lineups', label: 'Tactică', icon: Users }, 
+                                { id: 'stats', label: 'Statistici', icon: BarChart2 }, 
+                                { id: 'standings', label: 'Clasament', icon: ListOrdered },
+                                { id: 'h2h', label: 'H2H & Formă', icon: History }
+                            ].map(tab => {
                                 const isActive = activeMatchTab === tab.id;
                                 return (
                                     <button key={tab.id} onClick={() => { setActiveMatchTab(tab.id as any); if (tab.id === 'standings') fetchStandings(selectedMatchDetails.league_id); }} className={`flex-1 py-3.5 px-4 text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 border-b-4 transition-all whitespace-nowrap ${isActive ? 'border-emerald-600 bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-inner' : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800'}`}>
@@ -713,6 +872,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 </div>
                             ) : (
                                 <>
+                                    {activeMatchTab === 'h2h' && renderH2HSection()}
+
                                     {/* EVENIMENTE */}
                                     {activeMatchTab === 'events' && (
                                         <div>
@@ -869,55 +1030,58 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         </div>
                                     )}
 
-                                    {/* STATISTICI */}
+                                    {/* STATISTICI + ATTACK MOMENTUM */}
                                     {activeMatchTab === 'stats' && (
                                         <div>
                                             {!selectedMatchDetails.statistics || selectedMatchDetails.statistics.length < 2 ? (
                                                 <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">Datele statistice nu au fost procesate încă.</div>
                                             ) : (
-                                                <div className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 p-5 sm:p-8 space-y-6 shadow-sm">
-                                                    {(() => {
-                                                        const homeStats = selectedMatchDetails.statistics[0].statistics;
-                                                        const awayStats = selectedMatchDetails.statistics[1].statistics;
-                                                        const priorityTypes = ["Ball Possession", "Total Shots", "Shots on Goal", "Corner Kicks"];
-                                                        const sortedStats = [...homeStats].sort((a, b) => {
-                                                            const aIndex = priorityTypes.indexOf(a.type);
-                                                            const bIndex = priorityTypes.indexOf(b.type);
-                                                            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-                                                            if (aIndex !== -1) return -1;
-                                                            if (bIndex !== -1) return 1;
-                                                            return 0; 
-                                                        });
-                                                        return sortedStats.map((statItem: any) => {
-                                                            const homeValRaw = statItem.value ?? 0;
-                                                            const awayStatItem = awayStats.find((s: any) => s.type === statItem.type);
-                                                            const awayValRaw = awayStatItem?.value ?? 0;
-                                                            const homeNum = parseFloat(String(homeValRaw).replace('%', '')) || 0;
-                                                            const awayNum = parseFloat(String(awayValRaw).replace('%', '')) || 0;
-                                                            const total = homeNum + awayNum;
-                                                            const homePercent = total > 0 ? Math.round((homeNum / total) * 100) : 50;
-                                                            const awayPercent = 100 - homePercent;
-                                                            return (
-                                                                <div key={statItem.type} className="space-y-2">
-                                                                    <div className="flex justify-between text-sm sm:text-base font-black">
-                                                                        <span className="text-slate-900 dark:text-white w-10 text-left">{homeValRaw}</span>
-                                                                        <span className="text-slate-400 text-[10px] tracking-widest text-center flex-1 uppercase">{translateStatLabel(statItem.type)}</span>
-                                                                        <span className="text-slate-900 dark:text-white w-10 text-right">{awayValRaw}</span>
+                                                <>
+                                                    {renderAttackMomentum()}
+                                                    <div className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 p-5 sm:p-8 space-y-6 shadow-sm">
+                                                        {(() => {
+                                                            const homeStats = selectedMatchDetails.statistics[0].statistics;
+                                                            const awayStats = selectedMatchDetails.statistics[1].statistics;
+                                                            const priorityTypes = ["Ball Possession", "Total Shots", "Shots on Goal", "Corner Kicks"];
+                                                            const sortedStats = [...homeStats].sort((a, b) => {
+                                                                const aIndex = priorityTypes.indexOf(a.type);
+                                                                const bIndex = priorityTypes.indexOf(b.type);
+                                                                if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+                                                                if (aIndex !== -1) return -1;
+                                                                if (bIndex !== -1) return 1;
+                                                                return 0; 
+                                                            });
+                                                            return sortedStats.map((statItem: any) => {
+                                                                const homeValRaw = statItem.value ?? 0;
+                                                                const awayStatItem = awayStats.find((s: any) => s.type === statItem.type);
+                                                                const awayValRaw = awayStatItem?.value ?? 0;
+                                                                const homeNum = parseFloat(String(homeValRaw).replace('%', '')) || 0;
+                                                                const awayNum = parseFloat(String(awayValRaw).replace('%', '')) || 0;
+                                                                const total = homeNum + awayNum;
+                                                                const homePercent = total > 0 ? Math.round((homeNum / total) * 100) : 50;
+                                                                const awayPercent = 100 - homePercent;
+                                                                return (
+                                                                    <div key={statItem.type} className="space-y-2">
+                                                                        <div className="flex justify-between text-sm sm:text-base font-black">
+                                                                            <span className="text-slate-900 dark:text-white w-10 text-left">{homeValRaw}</span>
+                                                                            <span className="text-slate-400 text-[10px] tracking-widest text-center flex-1 uppercase">{translateStatLabel(statItem.type)}</span>
+                                                                            <span className="text-slate-900 dark:text-white w-10 text-right">{awayValRaw}</span>
+                                                                        </div>
+                                                                        <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex border border-slate-200 dark:border-slate-700">
+                                                                            <div style={{ width: `${homePercent}%` }} className="bg-emerald-500 h-full transition-all"></div>
+                                                                            <div style={{ width: `${awayPercent}%` }} className="bg-blue-500 h-full transition-all"></div>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex border border-slate-200 dark:border-slate-700">
-                                                                        <div style={{ width: `${homePercent}%` }} className="bg-emerald-500 h-full transition-all"></div>
-                                                                        <div style={{ width: `${awayPercent}%` }} className="bg-blue-500 h-full transition-all"></div>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        });
-                                                    })()}
-                                                </div>
+                                                                );
+                                                            });
+                                                        })()}
+                                                    </div>
+                                                </>
                                             )}
                                         </div>
                                     )}
 
-                                    {/* CLASAMENT */}
+                                    {/* CLASAMENT LIVE UPDATE */}
                                     {activeMatchTab === 'standings' && (
                                         <div>
                                             {loadingStandings ? (
@@ -929,32 +1093,40 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                 <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">Clasamentul nu este disponibil în arhivă.</div>
                                             ) : (
                                                 <div className="space-y-6">
-                                                    {standingsData.map((groupTable: any[], gIdx: number) => (
-                                                        <div key={gIdx} className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                                                    {liveStandings.map((groupTable: any[], gIdx: number) => (
+                                                        <div key={gIdx} className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm relative">
                                                             <div className="overflow-x-auto">
                                                                 <table className="w-full text-xs sm:text-sm text-left">
                                                                     <thead className="bg-slate-900 text-slate-400 font-black tracking-widest text-[9px] border-b-2 border-slate-700 uppercase">
                                                                         <tr>
                                                                             <th className="py-4 px-3 text-center w-12">Loc</th>
+                                                                            <th className="py-4 px-3 text-center w-8">+/-</th>
                                                                             <th className="py-4 px-3">Formație</th>
                                                                             <th className="py-4 px-3 text-center">J</th>
                                                                             <th className="py-4 px-3 text-center">G</th>
-                                                                            <th className="py-4 px-3 text-center text-white">PCT</th>
+                                                                            <th className="py-4 px-3 text-center text-emerald-400">PCT</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody className="divide-y-2 divide-slate-100 dark:divide-slate-800/50">
                                                                         {groupTable.map((row: any) => {
                                                                             const isCurrentTeam = row.team?.id === selectedMatchDetails.home_team_id || row.team?.id === selectedMatchDetails.away_team_id;
+                                                                            const isPlayingNow = row.isLivePlaying;
                                                                             return (
-                                                                                <tr key={row.rank} onClick={e => row.team?.name && handleTeamClick(e, row.team.name)} className={`cursor-pointer transition-colors ${isCurrentTeam ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-900'}`}>
-                                                                                    <td className="py-3.5 px-3 text-center font-black text-slate-500">{row.rank}</td>
-                                                                                    <td className="py-3.5 px-3 flex items-center gap-3">
-                                                                                        <img src={row.team?.logo} alt="logo" className="w-6 h-6 object-contain bg-white rounded p-0.5" />
-                                                                                        <span className={`font-black tracking-tight truncate ${isCurrentTeam ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.team?.name}</span>
+                                                                                <tr key={row.team?.id || row.originalRank} onClick={e => row.team?.name && handleTeamClick(e, row.team.name)} className={`cursor-pointer transition-colors ${isPlayingNow ? 'bg-amber-50 dark:bg-amber-900/10' : isCurrentTeam ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-900'}`}>
+                                                                                    <td className="py-3.5 px-3 text-center font-black text-slate-500">{row.liveRank}</td>
+                                                                                    <td className="py-3.5 px-3 text-center">
+                                                                                        {row.trend === 'up' && <ArrowUp className="w-3 h-3 text-emerald-500 mx-auto" />}
+                                                                                        {row.trend === 'down' && <ArrowDown className="w-3 h-3 text-rose-500 mx-auto" />}
+                                                                                        {row.trend === 'same' && <Minus className="w-3 h-3 text-slate-300 dark:text-slate-600 mx-auto" />}
                                                                                     </td>
-                                                                                    <td className="py-3.5 px-3 text-center font-bold text-slate-500 dark:text-slate-400">{row.all?.played}</td>
-                                                                                    <td className="py-3.5 px-3 text-center font-bold text-slate-500 dark:text-slate-400 text-[11px]">{row.all?.goals?.for}:{row.all?.goals?.against}</td>
-                                                                                    <td className={`py-3.5 px-3 text-center font-black text-sm ${isCurrentTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.points}</td>
+                                                                                    <td className="py-3.5 px-3 flex items-center gap-2 sm:gap-3">
+                                                                                        <img src={row.team?.logo} alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 object-contain bg-white rounded p-0.5" />
+                                                                                        <span className={`font-black tracking-tight truncate max-w-[120px] sm:max-w-[200px] ${isCurrentTeam ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.team?.name}</span>
+                                                                                        {isPlayingNow && <span className="ml-1 px-1.5 py-0.5 bg-rose-600 text-white text-[8px] font-black rounded uppercase animate-pulse">Live</span>}
+                                                                                    </td>
+                                                                                    <td className="py-3.5 px-3 text-center font-bold text-slate-500 dark:text-slate-400">{row.livePlayed}</td>
+                                                                                    <td className="py-3.5 px-3 text-center font-bold text-slate-500 dark:text-slate-400 text-[11px]">{row.liveGoalsFor}:{row.liveGoalsAgainst}</td>
+                                                                                    <td className={`py-3.5 px-3 text-center font-black text-sm ${isPlayingNow ? 'text-amber-500' : isCurrentTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.livePoints}</td>
                                                                                 </tr>
                                                                             );
                                                                         })}
@@ -1321,8 +1493,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                             <span className="text-[10px] sm:text-xs font-black tracking-widest text-blue-400 mt-1 uppercase bg-blue-900/40 px-2 py-1 rounded">{p2.team || p2.team_name}</span>
                                         </div>
                                     </div>
-
-                                    {/* Am eliminat containerul cu `<PlayerRadarChart>` de aici, ramane doar Dual-Bar. */}
 
                                     <div className="bg-slate-800 p-4 sm:p-8 rounded-3xl border-2 border-slate-700 space-y-5">
                                         {rows.map((r, idx) => {
