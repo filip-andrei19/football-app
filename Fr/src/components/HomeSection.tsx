@@ -86,7 +86,7 @@ const parseHeightCm = (heightStr?: string): number => {
   return isNaN(num) ? 0 : num;
 };
 
-// Calcul metrici avansate de Scouting (Per 90' & Radar)
+// Calcul metrici avansate de Scouting (Per 90' & Radar - Percentile Style)
 const computeScoutingMetrics = (player: Player) => {
   const stats = player.statistics_summary || {
     total_goals: 0,
@@ -96,6 +96,9 @@ const computeScoutingMetrics = (player: Player) => {
     rating: "0"
   };
 
+  const posLower = (player.position || "").toLowerCase();
+  const isDefensive = posLower.includes('defender') || posLower.includes('back') || posLower.includes('goalkeeper') || posLower.includes('portar');
+
   const goals = stats.total_goals || 0;
   const assists = stats.total_assists || 0;
   const apps = stats.total_appearances || 0;
@@ -104,14 +107,35 @@ const computeScoutingMetrics = (player: Player) => {
 
   const goalsPer90 = minutes >= 90 ? Number(((goals / minutes) * 90).toFixed(2)) : 0;
   const assistsPer90 = minutes >= 90 ? Number(((assists / minutes) * 90).toFixed(2)) : 0;
-  const contributionsPer90 = minutes >= 90 ? Number((((goals + assists) / minutes) * 90).toFixed(2)) : 0;
+  const contributionsPer90 = goalsPer90 + assistsPer90;
   const minsPerContribution = (goals + assists) > 0 ? Math.round(minutes / (goals + assists)) : 0;
 
-  const finishingScore = Math.min(99, Math.max(25, Math.round(goals * 8 + goalsPer90 * 65 + 20)));
-  const creativityScore = Math.min(99, Math.max(25, Math.round(assists * 10 + assistsPer90 * 75 + 20)));
-  const consistencyScore = Math.min(99, Math.max(25, Math.round(Math.min(minutes / 18, 60) + Math.min(apps * 1.5, 39))));
-  const formScore = rating > 0 ? Math.min(99, Math.max(30, Math.round((rating - 5.5) * 32))) : 55;
-  const impactScore = Math.min(99, Math.max(25, Math.round((goals + assists) * 6 + contributionsPer90 * 50 + (rating >= 7 ? 20 : 10))));
+  // 1. FINALIZARE SAU APĂRARE (în funcție de poziție)
+  let primaryScore = 20;
+  let primaryLabel = "Finalizare";
+  if (isDefensive) {
+      primaryLabel = "Defensivă";
+      // Fundașii capătă punctaj mare din nota de bază dacă au jucat meciuri fără gol primit (dedus din rating și minute)
+      primaryScore = Math.min(99, Math.max(20, Math.round(35 + (rating > 6.8 ? (rating - 6.8) * 40 : 0) + (Math.min(apps, 30) * 0.8))));
+  } else {
+      // 0.8+ Goluri/90' = elită (scor 90+)
+      primaryScore = Math.min(99, Math.max(20, Math.round(25 + (goalsPer90 * 75) + (Math.min(goals, 20) * 1.5))));
+  }
+
+  // 2. CREAȚIE: Un prag de 0.5+ Assisturi/90' reprezintă elita.
+  const creativityScore = Math.min(99, Math.max(20, Math.round(25 + (assistsPer90 * 100) + (Math.min(assists, 15) * 1.5))));
+
+  // 3. CONSTANȚĂ: Combinație între procentajul de meciuri jucate (din 38) și minute. (3000 de minute = constanță max)
+  const consistencyScore = Math.min(99, Math.max(25, Math.round(20 + (Math.min(apps, 38) * 1.2) + (Math.min(minutes, 3000) / 75))));
+
+  // 4. FORMĂ: Normalizată strict pe curba notelor SofaScore (6.0 este mediocru, 8.0+ este istoric)
+  let formScore = 30;
+  if (rating > 5.5) {
+      formScore = Math.min(99, Math.max(30, Math.round(30 + ((rating - 6.0) * 35))));
+  }
+
+  // 5. IMPACT: O medie hibridă între formă (evaluarea AI/algoritmică) și contribuțiile generale.
+  const impactScore = Math.min(99, Math.max(25, Math.round((formScore * 0.4) + (contributionsPer90 * 55) + 15)));
 
   return {
     goals,
@@ -124,7 +148,7 @@ const computeScoutingMetrics = (player: Player) => {
     contributionsPer90,
     minsPerContribution,
     radar: [
-      { label: "Finalizare", value: finishingScore },
+      { label: primaryLabel, value: primaryScore },
       { label: "Creație", value: creativityScore },
       { label: "Constanță", value: consistencyScore },
       { label: "Formă", value: formScore },
@@ -147,6 +171,8 @@ const PlayerRadarChart = ({
   const size = 230;
   const center = size / 2;
   const radius = 78;
+  
+  // Asigură simetria axelor, luând mereu etichetele primului jucător
   const axes = m1.radar.map(r => r.label);
 
   const getCoordinates = (index: number, value: number) => {
