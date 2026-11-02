@@ -97,70 +97,92 @@ interface SquadData {
     };
 }
 
-// === FUNCȚII DE SCOUTING & GRAFICE (Preluate din HomeSection) ===
+// === FUNCȚII DE SCOUTING & GRAFICE (Algoritm Strict Percentile) ===
 const computeScoutingMetrics = (player: Player) => {
-    const stats = player.statistics_summary || {
-        total_goals: 0,
-        total_assists: 0,
-        total_appearances: 0,
-        minutes_played: 0,
-        rating: "0"
-    };
+  const stats = player.statistics_summary || {
+    total_goals: 0,
+    total_assists: 0,
+    total_appearances: 0,
+    minutes_played: 0,
+    rating: "0"
+  };
 
-    const posLower = (player.position || "").toLowerCase();
-    const isDefensive = posLower.includes('defender') || posLower.includes('back') || posLower.includes('goalkeeper') || posLower.includes('portar');
+  const posLower = (player.position || "").toLowerCase();
+  const isDefensive = posLower.includes('defender') || posLower.includes('back') || posLower.includes('goalkeeper') || posLower.includes('portar');
 
-    const goals = stats.total_goals || 0;
-    const assists = stats.total_assists || 0;
-    const apps = stats.total_appearances || 0;
-    const minutes = stats.minutes_played || 0;
-    const rating = parseFloat(stats.rating || "0") || 0;
+  const goals = stats.total_goals || 0;
+  const assists = stats.total_assists || 0;
+  const apps = stats.total_appearances || 0;
+  const minutes = stats.minutes_played || 0;
+  const rating = parseFloat(stats.rating || "0") || 0;
 
-    const goalsPer90 = minutes >= 90 ? Number(((goals / minutes) * 90).toFixed(2)) : 0;
-    const assistsPer90 = minutes >= 90 ? Number(((assists / minutes) * 90).toFixed(2)) : 0;
-    const contributionsPer90 = goalsPer90 + assistsPer90;
-    const minsPerContribution = (goals + assists) > 0 ? Math.round(minutes / (goals + assists)) : 0;
+  const goalsPer90 = minutes >= 90 ? Number(((goals / minutes) * 90).toFixed(2)) : 0;
+  const assistsPer90 = minutes >= 90 ? Number(((assists / minutes) * 90).toFixed(2)) : 0;
+  const contributionsPer90 = goalsPer90 + assistsPer90;
+  const minsPerContribution = (goals + assists) > 0 ? Math.round(minutes / (goals + assists)) : 0;
 
-    // 1. FINALIZARE SAU APĂRARE
-    let primaryScore = 20;
-    let primaryLabel = "Finalizare";
-    if (isDefensive) {
-        primaryLabel = "Defensivă";
-        primaryScore = Math.min(99, Math.max(20, Math.round(35 + (rating > 6.8 ? (rating - 6.8) * 40 : 0) + (Math.min(apps, 30) * 0.8))));
-    } else {
-        primaryScore = Math.min(99, Math.max(20, Math.round(25 + (goalsPer90 * 75) + (Math.min(goals, 20) * 1.5))));
-    }
+  const BASE_SCORE = 19;
 
-    // 2. CREAȚIE
-    const creativityScore = Math.min(99, Math.max(20, Math.round(25 + (assistsPer90 * 100) + (Math.min(assists, 15) * 1.5))));
+  // 1. FINALIZARE SAU APĂRARE (în funcție de poziție)
+  let primaryScore = BASE_SCORE;
+  let primaryLabel = "Finalizare";
+  
+  if (isDefensive) {
+      primaryLabel = "Defensivă";
+      const defRatingScore = rating > 6.4 ? Math.min(50, (rating - 6.4) * (50 / 1.4)) : 0; 
+      const defAppsScore = Math.min(30, (apps / 38) * 30);
+      primaryScore = Math.min(99, Math.round(BASE_SCORE + defRatingScore + defAppsScore));
+  } else {
+      const rateScore = Math.min(60, (goalsPer90 / 1.2) * 60);
+      const volScore = Math.min(20, (goals / 35) * 20);
+      primaryScore = Math.min(99, Math.round(BASE_SCORE + rateScore + volScore));
+  }
 
-    // 3. CONSTANȚĂ
-    const consistencyScore = Math.min(99, Math.max(25, Math.round(20 + (Math.min(apps, 38) * 1.2) + (Math.min(minutes, 3000) / 75))));
+  // 2. CREAȚIE
+  const assistRateScore = Math.min(60, (assistsPer90 / 0.7) * 60);
+  const assistVolScore = Math.min(20, (assists / 20) * 20);
+  const creativityScore = Math.min(99, Math.round(BASE_SCORE + assistRateScore + assistVolScore));
 
-    // 4. FORMĂ
-    let formScore = 30;
-    if (rating > 5.5) {
-        formScore = Math.min(99, Math.max(30, Math.round(30 + ((rating - 6.0) * 35))));
-    }
+  // 3. CONSTANȚĂ
+  const appsScore = Math.min(40, (apps / 38) * 40);
+  const minsScore = Math.min(40, (minutes / 3420) * 40);
+  const consistencyScore = Math.min(99, Math.round(BASE_SCORE + appsScore + minsScore));
 
-    // 5. IMPACT
-    const impactScore = Math.min(99, Math.max(25, Math.round((formScore * 0.4) + (contributionsPer90 * 55) + 15)));
+  // 4. FORMĂ: Normalizată strict pe curba notelor SofaScore
+  let formScore = BASE_SCORE;
+  if (rating > 6.0) {
+      formScore = Math.min(99, Math.round(BASE_SCORE + ((rating - 6.0) * 40)));
+  } else if (rating > 0 && rating <= 6.0) {
+      formScore = Math.max(1, Math.round(rating * 3));
+  }
 
-    return {
-        goals, assists, apps, minutes, rating, goalsPer90, assistsPer90, contributionsPer90, minsPerContribution,
-        radar: [
-            { label: primaryLabel, value: primaryScore },
-            { label: "Creație", value: creativityScore },
-            { label: "Constanță", value: consistencyScore },
-            { label: "Formă", value: formScore },
-            { label: "Impact", value: impactScore }
-        ]
-    };
+  // 5. IMPACT
+  const impactRateScore = Math.min(60, (contributionsPer90 / 1.4) * 60);
+  const impactFormScore = Math.min(20, (formScore / 100) * 20);
+  const impactScore = Math.min(99, Math.round(BASE_SCORE + impactRateScore + impactFormScore));
+
+  return {
+    goals,
+    assists,
+    apps,
+    minutes,
+    rating,
+    goalsPer90,
+    assistsPer90,
+    contributionsPer90,
+    minsPerContribution,
+    radar: [
+      { label: primaryLabel, value: primaryScore || 0 },
+      { label: "Creație", value: creativityScore || 0 },
+      { label: "Constanță", value: consistencyScore || 0 },
+      { label: "Formă", value: formScore || 0 },
+      { label: "Impact", value: impactScore || 0 }
+    ]
+  };
 };
 
-const PlayerRadarChart = ({ primaryPlayer, secondaryPlayer }: { primaryPlayer: Player; secondaryPlayer?: Player | null; }) => {
+const PlayerRadarChart = ({ primaryPlayer }: { primaryPlayer: Player }) => {
     const m1 = computeScoutingMetrics(primaryPlayer);
-    const m2 = secondaryPlayer ? computeScoutingMetrics(secondaryPlayer) : null;
     const size = 230;
     const center = size / 2;
     const radius = 78;
@@ -194,7 +216,6 @@ const PlayerRadarChart = ({ primaryPlayer, secondaryPlayer }: { primaryPlayer: P
                     const end = getCoordinates(idx, 100);
                     return <line key={idx} x1={center} y1={center} x2={end.x} y2={end.y} stroke="rgba(16, 185, 129, 0.4)" strokeWidth="1" />;
                 })}
-                {m2 && <polygon points={buildPolygonPoints(m2.radar)} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth="3" />}
                 <polygon points={buildPolygonPoints(m1.radar)} fill="rgba(250, 204, 21, 0.4)" stroke="#facc15" strokeWidth="3" />
                 {m1.radar.map((item, idx) => {
                     const pt1 = getCoordinates(idx, item.value);
@@ -1301,13 +1322,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         </div>
                                     </div>
 
-                                    <div className="bg-slate-800 p-4 sm:p-6 rounded-3xl border-2 border-slate-700 flex flex-col items-center">
-                                        <div className="flex items-center gap-6 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
-                                            <span className="flex items-center gap-2 text-yellow-400"><span className="w-3 h-3 rounded-sm bg-yellow-400 inline-block shadow-[0_0_10px_#facc15]"></span> {p1.name}</span>
-                                            <span className="flex items-center gap-2 text-blue-400"><span className="w-3 h-3 rounded-sm bg-blue-500 inline-block shadow-[0_0_10px_#3b82f6]"></span> {p2.name}</span>
-                                        </div>
-                                        <PlayerRadarChart primaryPlayer={p1} secondaryPlayer={p2} />
-                                    </div>
+                                    {/* Am eliminat containerul cu `<PlayerRadarChart>` de aici, ramane doar Dual-Bar. */}
 
                                     <div className="bg-slate-800 p-4 sm:p-8 rounded-3xl border-2 border-slate-700 space-y-5">
                                         {rows.map((r, idx) => {
