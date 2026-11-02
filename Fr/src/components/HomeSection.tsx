@@ -504,7 +504,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
       </div>
 
       {selectedTeam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm transition-opacity">
+        <div className="fixed inset-0 z-[990] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm transition-opacity">
           <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300">
             
             <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-4 sm:p-6 flex items-center justify-between shrink-0 border-b-4 border-emerald-500">
@@ -954,7 +954,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
       {selectedPlayer && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setSelectedPlayer(null)}
         >
           <div
@@ -980,7 +980,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 />
                 
                 <div className="text-white text-center sm:text-left flex-1 min-w-0">
-                  <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter truncate drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">{selectedPlayer.name}</h2>
+                  <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter break-words whitespace-normal leading-tight drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">{selectedPlayer.name}</h2>
                   <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
                     {selectedPlayer.team_logo && (
                       <img src={selectedPlayer.team_logo} alt="logo" className="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-md p-1 object-contain" />
