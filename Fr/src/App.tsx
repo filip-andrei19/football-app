@@ -307,8 +307,8 @@ export default function App() {
         )}
       </header>
 
-      {/* Secțiunea centrală (Terenul de Joc) - Aici se randează Home, Matches etc, iar modalele lor vor veni acum automat DEDESUBT-ul Z-ului navbar-ului */}
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 relative z-10">
+      {/* Secțiunea centrală (Terenul de Joc) - Z-index eliminat aici pentru a permite modalelor să depășească navbar-ul */}
+      <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 relative">
         {renderSection()}
       </main>
 
