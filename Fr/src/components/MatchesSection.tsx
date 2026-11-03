@@ -1084,7 +1084,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODAL SETĂRI NOTIFICĂRI (FLASHSCORE STYLE) */}
             {showNotifSettings && (
-                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={() => setShowNotifSettings(false)}>
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={() => setShowNotifSettings(false)}>
                     <div className="bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl border-4 border-slate-700" onClick={e => e.stopPropagation()}>
                         <div className="bg-slate-950 text-white p-5 border-b-2 border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -1125,7 +1125,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODAL DETALII MECI */}
             {selectedMatchDetails && (
-                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
                     <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
                         <div className="bg-slate-950 border-b-4 border-emerald-600 text-white p-4 sm:p-6 shrink-0 relative overflow-hidden">
                             <button onClick={() => setSelectedMatchDetails(null)} className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 bg-slate-800 hover:bg-rose-600 border border-slate-700 rounded-full transition-colors z-20">
@@ -1383,7 +1383,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODAL LOT (Echipa Extinsă) */}
             {selectedTeam && (
-                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md transition-opacity" onClick={() => setSelectedTeam(null)}>
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md transition-opacity" onClick={() => setSelectedTeam(null)}>
                     <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-slate-700 animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
                         <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-4 border-slate-700 relative">
                             <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-16 sm:pr-0">
@@ -1464,7 +1464,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODAL DETALII JUCĂTOR (Scouting Card) */}
             {selectedPlayer && (
-                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPlayer(null)}>
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPlayer(null)}>
                     <div className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[95vh] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
                         <div className="relative bg-slate-900 shrink-0 px-5 sm:px-8 py-6 sm:py-8 border-b-4 border-emerald-500 overflow-hidden">
                             <button onClick={() => setSelectedPlayer(null)} className="absolute top-4 right-4 bg-slate-950/50 border border-white/20 hover:bg-rose-500 hover:border-rose-500 rounded-full p-2 text-white transition-colors z-20">
@@ -1590,7 +1590,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* BARA DE COMPARARE JUCĂTORI (Plutitoare) */}
             {compareList.length > 0 && (
-                <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[99998] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
+                <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[100001] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
                     <div className="flex items-center gap-3 overflow-hidden">
                         <Scale className="w-6 h-6 text-emerald-400 shrink-0 animate-pulse" />
                         <div className="flex items-center gap-2 overflow-hidden">

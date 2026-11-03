@@ -101,7 +101,7 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
     };
 
     return (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] border-4 border-blue-600/30 animate-in zoom-in-95">
                 <div className="bg-slate-900 p-4 border-b-2 border-blue-600 flex justify-between items-center relative overflow-hidden">
                     <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)]"></div>
@@ -264,7 +264,7 @@ const ProductViewModal = ({ product, user, onClose, onShare, onToggleFavorite, i
     };
 
     return (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-300">
             <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[92vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 border-4 border-slate-700 relative">
                 
                 {/* Header Butoane Modal - Acțiuni rapide suprapuse */}
@@ -304,30 +304,40 @@ const ProductViewModal = ({ product, user, onClose, onShare, onToggleFavorite, i
                     )}
                 </div>
 
-                {/* MODAL FULLSCREEN POZĂ (Adaptiv pentru mobil și desktop) */}
+                {/* MODAL FULLSCREEN POZĂ (Cu suport pinch-to-zoom și z-index extrem) */}
                 {isFullscreen && images.length > 0 && (
-                    <div className="fixed inset-0 z-[100000] bg-black flex flex-col items-center justify-center animate-in fade-in">
-                        <button onClick={() => setIsFullscreen(false)} className="absolute top-4 right-4 z-50 bg-slate-800/80 hover:bg-rose-500 text-white p-3 rounded-full transition-colors border border-slate-600">
+                    <div className="fixed inset-0 z-[100001] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200">
+                        <button onClick={() => setIsFullscreen(false)} className="absolute top-4 right-4 z-[60] bg-slate-900 border-2 border-slate-700 hover:bg-rose-600 hover:border-rose-500 text-white p-2.5 rounded-xl transition-all shadow-lg">
                             <X className="w-6 h-6 font-bold" />
                         </button>
                         
                         {images.length > 1 && (
-                            <button onClick={(e) => { e.stopPropagation(); setActiveIdx((prev) => (prev - 1 + images.length) % images.length); }} className="absolute left-4 top-1/2 -translate-y-1/2 z-50 bg-slate-800/80 hover:bg-slate-700 text-white p-4 rounded-full transition-colors border border-slate-600">
+                            <button onClick={(e) => { e.stopPropagation(); setActiveIdx((prev) => (prev - 1 + images.length) % images.length); }} className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] bg-slate-900/80 hover:bg-slate-800 text-white p-4 rounded-full transition-colors border border-slate-700">
                                 <ChevronLeft className="w-8 h-8" />
                             </button>
                         )}
                         
-                        <img src={images[activeIdx]} className="w-full h-full object-contain cursor-zoom-out" onClick={() => setIsFullscreen(false)} />
+                        <div className="absolute top-4 left-4 bg-rose-600 text-white text-[10px] font-black px-3 py-1.5 uppercase tracking-widest z-[60] border-2 border-slate-900 rounded-lg shadow-lg">
+                            Analiză Foto (VAR)
+                        </div>
+
+                        <div className="w-full h-full overflow-auto flex items-center justify-center touch-pan-x touch-pan-y" onClick={() => setIsFullscreen(false)}>
+                            <img 
+                                src={images[activeIdx]} 
+                                alt="Fullscreen" 
+                                className="max-w-[200vw] sm:max-w-full max-h-[200vh] sm:max-h-full object-contain m-auto" 
+                                onClick={(e) => e.stopPropagation()} 
+                            />
+                        </div>
                         
                         {images.length > 1 && (
-                            <button onClick={(e) => { e.stopPropagation(); setActiveIdx((prev) => (prev + 1) % images.length); }} className="absolute right-4 top-1/2 -translate-y-1/2 z-50 bg-slate-800/80 hover:bg-slate-700 text-white p-4 rounded-full transition-colors border border-slate-600">
+                            <button onClick={(e) => { e.stopPropagation(); setActiveIdx((prev) => (prev + 1) % images.length); }} className="absolute right-4 top-1/2 -translate-y-1/2 z-[60] bg-slate-900/80 hover:bg-slate-800 text-white p-4 rounded-full transition-colors border border-slate-700">
                                 <ChevronRight className="w-8 h-8" />
                             </button>
                         )}
                         
-                        {/* Buline indicatoare in modul fullscreen */}
                         {images.length > 1 && (
-                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-50 bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700">
+                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-[60] bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700">
                                 {images.map((_, i) => (
                                     <div key={i} className={`w-2.5 h-2.5 rounded-full transition-all ${i === activeIdx ? 'bg-blue-500 scale-125' : 'bg-slate-400/50 hover:bg-slate-400 cursor-pointer'}`} onClick={(e) => { e.stopPropagation(); setActiveIdx(i); }}></div>
                                 ))}
@@ -624,7 +634,7 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
 
       {/* MODAL ADĂUGARE PRODUS (STILIZAT OFICIAL) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col max-h-[92vh] border-4 border-blue-600/30 overflow-hidden">
             <div className="p-5 sm:p-6 border-b-4 border-blue-600 flex justify-between items-center shrink-0 bg-slate-900 text-white relative">
                 <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)]"></div>
