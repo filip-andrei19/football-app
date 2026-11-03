@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogOut, User, Settings, ShieldAlert, Moon, Sun, Calendar, AlertTriangle } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 import { HomeSection } from './components/HomeSection';
 import { DiasporaSection } from './components/DiasporaSection';
@@ -39,9 +40,18 @@ export default function App() {
   const [activeChatPartner, setActiveChatPartner] = useState<{ name: string, avatar?: string } | null>(null);
 
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
-  
-  // State pentru a stoca înregistrarea Service Worker-ului și a forța ecranul de update
-  const [updateRegistration, setUpdateRegistration] = useState<any>(null);
+
+  // ==========================================
+  // Vite PWA: Hook oficial pentru actualizare
+  // ==========================================
+  const {
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegisterError(error) {
+      console.error('Eroare înregistrare Service Worker', error);
+    },
+  });
 
   const checkAdminWarnings = (userData: any) => {
       return userData;
@@ -83,27 +93,6 @@ export default function App() {
           }
       }
   }, [user]);
-
-  // LOGICĂ UPDATE OBLIGATORIU
-  useEffect(() => {
-    const handleUpdate = (e: any) => {
-      // Afișează ecranul de blocare obligând utilizatorul să facă update
-      setUpdateRegistration(e.detail);
-    };
-
-    window.addEventListener('pwa-update-available', handleUpdate);
-    
-    // Când noul Service Worker preia controlul, reîncărcăm pagina automat
-    let refreshing = false;
-    navigator.serviceWorker?.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        window.location.reload();
-      }
-    });
-
-    return () => window.removeEventListener('pwa-update-available', handleUpdate);
-  }, []);
 
   const handleDismissWarning = () => {
       setShowWarning(false);
@@ -348,7 +337,7 @@ export default function App() {
       )}
 
       {/* ECRAN DE BLOCARE PENTRU UPDATE OBLIGATORIU */}
-      {updateRegistration && (
+      {needRefresh && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in duration-500">
           <div className="bg-slate-900 border-4 border-emerald-600 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(16,185,129,0.3)] w-full max-w-sm text-center flex flex-col items-center">
             
@@ -363,11 +352,7 @@ export default function App() {
             </p>
             
             <button 
-              onClick={() => {
-                if (updateRegistration.waiting) {
-                  updateRegistration.waiting.postMessage('SKIP_WAITING');
-                }
-              }} 
+              onClick={() => updateServiceWorker(true)}
               className="w-full py-4 text-sm font-black uppercase tracking-widest text-white bg-emerald-600 rounded-xl border-b-4 border-emerald-800 hover:translate-y-[2px] hover:border-b-2 transition-all shadow-md cursor-pointer"
             >
               Instalează Acum
