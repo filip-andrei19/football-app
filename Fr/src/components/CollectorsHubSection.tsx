@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, AlertTriangle, Loader2, MessageCircle, Share2, Copy, Send, Heart, Flag, Shield, FileText } from 'lucide-react';import toast from 'react-hot-toast'; 
+import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, AlertTriangle, Loader2, MessageCircle, Share2, Copy, Send, Heart, Flag, Shield, FileText } from 'lucide-react';
+import toast from 'react-hot-toast'; 
 import { SkeletonCard } from './SkeletonCard'; 
 
 // --- INTERFEȚE ---
@@ -100,7 +101,7 @@ const ShareModal = ({ product, user, onClose }: { product: Product, user: any, o
     };
 
     return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] border-4 border-blue-600/30 animate-in zoom-in-95">
                 <div className="bg-slate-900 p-4 border-b-2 border-blue-600 flex justify-between items-center relative overflow-hidden">
                     <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)]"></div>
@@ -239,19 +240,12 @@ const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare, o
 // --- MODAL VIZUALIZARE PRODUS (STILIZAT CA UN PANOU DE PREZENTARE) ---
 const ProductViewModal = ({ product, user, onClose, onShare, onToggleFavorite, isFavorite }: { product: Product, user: any, onClose: () => void, onShare: (p: Product) => void, onToggleFavorite: (id: string) => void, isFavorite: boolean }) => {
     const [activeIdx, setActiveIdx] = useState(0);
-    const [isZoomed, setIsZoomed] = useState(false);
-    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const images = product.images || [];
     const [avatarError, setAvatarError] = useState(false); 
 
     const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
     const isOwner = product.sellerEmail === user.email;
-
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!isZoomed) return;
-        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-        setMousePos({ x: ((e.clientX - left) / width) * 100, y: ((e.clientY - top) / height) * 100 });
-    };
 
     const handleReportListing = async () => {
         if (!window.confirm("Apeși butonul de VAR? Ești sigur că acest anunț încalcă regulamentul?")) return;
@@ -270,8 +264,8 @@ const ProductViewModal = ({ product, user, onClose, onShare, onToggleFavorite, i
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[95vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 border-4 border-slate-700 relative">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[92vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 border-4 border-slate-700 relative">
                 
                 {/* Header Butoane Modal - Acțiuni rapide suprapuse */}
                 <div className="absolute top-4 right-4 z-50 flex gap-2">
@@ -284,12 +278,17 @@ const ProductViewModal = ({ product, user, onClose, onShare, onToggleFavorite, i
 
                 {/* Zona Imagini (Partea stângă pe desktop) */}
                 <div className="w-full md:w-3/5 bg-slate-100 dark:bg-slate-950 flex flex-col relative h-[40vh] md:h-auto border-b-4 md:border-b-0 md:border-r-4 border-slate-200 dark:border-slate-800">
-                    <div className={`flex-1 relative overflow-hidden flex items-center justify-center ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`} onMouseMove={handleMouseMove} onClick={() => setIsZoomed(!isZoomed)} onMouseLeave={() => setIsZoomed(false)}>
+                    <div className="flex-1 relative overflow-hidden flex items-center justify-center cursor-zoom-in" onClick={() => setIsFullscreen(true)}>
                         {/* Teren Fotbal fundal pentru imagini */}
                         <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#000_20px,#000_22px)] pointer-events-none"></div>
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-slate-950/20 transition-opacity z-20 pointer-events-none">
+                            <div className="bg-slate-900 text-white p-3 rounded-full shadow-lg border border-slate-700 backdrop-blur-md">
+                                <Maximize2 className="w-6 h-6" />
+                            </div>
+                        </div>
                         
                         {images.length > 0 ? (
-                            <img src={images[activeIdx]} className="max-w-full max-h-full object-contain relative z-10 transition-transform duration-200 drop-shadow-xl p-4" style={{ transformOrigin: `${mousePos.x}% ${mousePos.y}%`, transform: isZoomed ? 'scale(2.5)' : 'scale(1)' }} />
+                            <img src={images[activeIdx]} className="max-w-full max-h-full object-contain relative z-10 transition-transform duration-200 drop-shadow-xl p-4" />
                         ) : (
                             <div className="text-slate-400 flex flex-col items-center font-black uppercase tracking-widest"><AlertTriangle className="mb-2 w-10 h-10"/> Fără fotografie</div>
                         )}
@@ -297,13 +296,45 @@ const ProductViewModal = ({ product, user, onClose, onShare, onToggleFavorite, i
                     {images.length > 1 && (
                         <div className="p-4 bg-slate-200 dark:bg-slate-900 border-t-2 border-slate-300 dark:border-slate-800 flex gap-3 overflow-x-auto justify-center z-40 relative">
                             {images.map((img, idx) => (
-                                <button key={idx} onClick={() => { setActiveIdx(idx); setIsZoomed(false); }} className={`relative w-16 h-16 rounded-xl overflow-hidden border-4 shrink-0 transition-all ${activeIdx === idx ? 'border-blue-600 scale-110 shadow-lg' : 'border-transparent opacity-50 hover:opacity-100'}`}>
+                                <button key={idx} onClick={() => setActiveIdx(idx)} className={`relative w-16 h-16 rounded-xl overflow-hidden border-4 shrink-0 transition-all ${activeIdx === idx ? 'border-blue-600 scale-110 shadow-lg' : 'border-transparent opacity-50 hover:opacity-100'}`}>
                                     <img src={img} className="w-full h-full object-cover" />
                                 </button>
                             ))}
                         </div>
                     )}
                 </div>
+
+                {/* MODAL FULLSCREEN POZĂ (Adaptiv pentru mobil și desktop) */}
+                {isFullscreen && images.length > 0 && (
+                    <div className="fixed inset-0 z-[100000] bg-black flex flex-col items-center justify-center animate-in fade-in">
+                        <button onClick={() => setIsFullscreen(false)} className="absolute top-4 right-4 z-50 bg-slate-800/80 hover:bg-rose-500 text-white p-3 rounded-full transition-colors border border-slate-600">
+                            <X className="w-6 h-6 font-bold" />
+                        </button>
+                        
+                        {images.length > 1 && (
+                            <button onClick={(e) => { e.stopPropagation(); setActiveIdx((prev) => (prev - 1 + images.length) % images.length); }} className="absolute left-4 top-1/2 -translate-y-1/2 z-50 bg-slate-800/80 hover:bg-slate-700 text-white p-4 rounded-full transition-colors border border-slate-600">
+                                <ChevronLeft className="w-8 h-8" />
+                            </button>
+                        )}
+                        
+                        <img src={images[activeIdx]} className="w-full h-full object-contain cursor-zoom-out" onClick={() => setIsFullscreen(false)} />
+                        
+                        {images.length > 1 && (
+                            <button onClick={(e) => { e.stopPropagation(); setActiveIdx((prev) => (prev + 1) % images.length); }} className="absolute right-4 top-1/2 -translate-y-1/2 z-50 bg-slate-800/80 hover:bg-slate-700 text-white p-4 rounded-full transition-colors border border-slate-600">
+                                <ChevronRight className="w-8 h-8" />
+                            </button>
+                        )}
+                        
+                        {/* Buline indicatoare in modul fullscreen */}
+                        {images.length > 1 && (
+                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-50 bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700">
+                                {images.map((_, i) => (
+                                    <div key={i} className={`w-2.5 h-2.5 rounded-full transition-all ${i === activeIdx ? 'bg-blue-500 scale-125' : 'bg-slate-400/50 hover:bg-slate-400 cursor-pointer'}`} onClick={(e) => { e.stopPropagation(); setActiveIdx(i); }}></div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Zona Detalii (Partea dreaptă pe desktop) */}
                 <div className="w-full md:w-2/5 p-6 sm:p-8 flex flex-col overflow-y-auto bg-slate-50 dark:bg-slate-900">
@@ -593,7 +624,7 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
 
       {/* MODAL ADĂUGARE PRODUS (STILIZAT OFICIAL) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col max-h-[92vh] border-4 border-blue-600/30 overflow-hidden">
             <div className="p-5 sm:p-6 border-b-4 border-blue-600 flex justify-between items-center shrink-0 bg-slate-900 text-white relative">
                 <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)]"></div>

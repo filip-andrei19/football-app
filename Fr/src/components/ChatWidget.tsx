@@ -319,20 +319,26 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
 
   return (
     <>
-        {/* Lightbox Imagini (VAR Review Style) */}
+        {/* Lightbox Imagini (VAR Review Style) - FIXED Z-INDEX & MOBILE ZOOM */}
         {lightboxImage && (
-            <div className="fixed inset-0 z-[200] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setLightboxImage(null)}>
-                <button className="absolute top-6 right-6 text-white bg-slate-900 border-2 border-slate-700 hover:bg-rose-600 hover:border-rose-500 rounded-xl p-3 transition-all">
+            <div className="fixed inset-0 z-[999999] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-2 animate-in fade-in duration-200" onClick={() => setLightboxImage(null)}>
+                <button className="absolute top-4 right-4 text-white bg-slate-900 border-2 border-slate-700 hover:bg-rose-600 hover:border-rose-500 rounded-xl p-2.5 transition-all z-50">
                     <X className="w-6 h-6 font-bold"/>
                 </button>
-                <div className="relative border-4 border-slate-800 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
-                    <div className="absolute top-0 right-0 bg-rose-600 text-white text-[10px] font-black px-3 py-1 uppercase tracking-widest z-10 border-b-2 border-l-2 border-slate-900 rounded-bl-lg">Analiză Foto</div>
-                    <img src={lightboxImage} alt="Fullscreen" className="max-w-full max-h-[85vh] object-contain" onClick={(e) => e.stopPropagation()} />
+                <div className="w-full h-full flex items-center justify-center relative">
+                    <div className="absolute top-4 left-4 bg-rose-600 text-white text-[10px] font-black px-3 py-1.5 uppercase tracking-widest z-10 border-2 border-slate-900 rounded-lg shadow-lg">Analiză Foto (VAR)</div>
+                    {/* Folosind w-full h-full și object-contain permitem mobile touch panning natural de la browser dacă imaginea devine mai mare */}
+                    <img 
+                        src={lightboxImage} 
+                        alt="Fullscreen" 
+                        className="w-full h-full object-contain max-w-[100vw] max-h-[100vh]" 
+                        onClick={(e) => e.stopPropagation()} 
+                    />
                 </div>
             </div>
         )}
 
-        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[100] flex flex-col items-end font-sans">
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[100000] flex flex-col items-end font-sans">
           {/* BUTON DESCHIDERE (Stil Minge / Radar) */}
           {!isOpen && (
               <button onClick={() => setIsOpen(true)} className="group bg-slate-900 border-4 border-emerald-500 hover:bg-slate-800 text-emerald-400 p-4 rounded-full shadow-[0_10px_25px_rgba(16,185,129,0.3)] hover:shadow-[0_10px_25px_rgba(16,185,129,0.5)] transition-all hover:scale-110 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
@@ -343,7 +349,7 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
           )}
 
           {isOpen && (
-              <div className="bg-white dark:bg-slate-900 w-[350px] md:w-[420px] h-[65vh] min-h-[500px] max-h-[750px] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-4 border-emerald-600/30 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10">
+              <div className="bg-white dark:bg-slate-900 w-full sm:w-[350px] md:w-[420px] fixed sm:static inset-0 sm:inset-auto h-full sm:h-[65vh] sm:min-h-[500px] sm:max-h-[750px] sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] sm:border-4 border-emerald-600/30 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 z-[100001]">
                   
                   {/* HEADER WIDGET (Scor / Status) */}
                   <div className="bg-slate-950 p-4 border-b-4 border-emerald-600 flex justify-between items-center z-20 shrink-0 relative overflow-hidden">
@@ -581,8 +587,8 @@ export const ChatWidget = ({ user, roomID: initialRoomID, onClose }: ChatWidgetP
                                   
                                   {replyingTo && (
                                       <div className="px-4 py-2.5 bg-slate-100 dark:bg-slate-950 border-b-2 border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                                          <div className="flex flex-col min-w-0 flex-1 border-l-4 border-blue-500 pl-3">
-                                              <span className="text-[9px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest">Replică pentru {replyingTo.author}</span>
+                                          <div className="flex flex-col min-w-0 flex-1 border-l-4 border-emerald-500 pl-3">
+                                              <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-widest">Replică pentru {replyingTo.author}</span>
                                               <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate mt-0.5">{replyingTo.message || "Imagine (Analiză VAR)"}</span>
                                           </div>
                                           <button onClick={() => setReplyingTo(null)} className="p-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-rose-500 hover:text-white rounded-lg transition-colors ml-2"><X className="w-4 h-4 font-bold"/></button>

@@ -633,11 +633,14 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const renderStatus = (match: Match) => {
         const status = match.status_short;
         const liveStatuses = ["1H", "2H", "HT", "ET", "P", "BT", "LIVE"];
+        
+        // Dacă e neînceput afișăm doar ora (am mutat din central pentru a nu se dubla, dar o păstrăm curată)
         if (status === "NS") {
-            return <span className="text-slate-500 font-black text-xs sm:text-sm">{new Date(match.timestamp * 1000).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}</span>;
+            return null; // Eliminăm randarea orei din dreapta pentru că e deja în centru
         }
+        
         if (liveStatuses.includes(status)) {
-            return <span className="text-rose-600 font-black animate-pulse text-xs sm:text-sm">{match.elapsed ? `${match.elapsed}'` : status}</span>;
+            return <span className="text-rose-600 font-black animate-pulse text-[10px] sm:text-xs tracking-widest uppercase">{match.elapsed ? `${match.elapsed}'` : status}</span>;
         }
         if (status === "FT" || status === "AET" || status === "PEN") {
             return <span className="text-slate-400 font-black text-[10px] sm:text-xs uppercase tracking-widest">Final</span>;
@@ -1040,15 +1043,18 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         <img src={match.home_team_logo} alt="home" className="w-6 h-6 sm:w-7 sm:h-7 object-contain bg-white rounded-lg p-0.5 shrink-0" />
                                                     </div>
 
-                                                    <div className="px-3 py-1.5 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-center shrink-0 min-w-[75px] sm:min-w-[90px]">
+                                                    <div className="flex flex-col items-center justify-center px-2 shrink-0 min-w-[75px] sm:min-w-[90px]">
                                                         {match.status_short === "NS" ? (
-                                                            <span className="text-slate-500 font-black text-xs">
+                                                            <span className="text-slate-500 font-black text-sm sm:text-base bg-slate-100 dark:bg-slate-800/50 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
                                                                 {new Date(match.timestamp * 1000).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}
                                                             </span>
                                                         ) : (
-                                                            <span className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                                                                {match.home_goals ?? 0} - {match.away_goals ?? 0}
-                                                            </span>
+                                                            <div className="flex flex-col items-center">
+                                                                <span className="font-black text-lg sm:text-xl text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800/50 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                                                    {match.home_goals ?? 0} - {match.away_goals ?? 0}
+                                                                </span>
+                                                                <span className="mt-1">{renderStatus(match)}</span>
+                                                            </div>
                                                         )}
                                                     </div>
 
@@ -1058,10 +1064,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                             {match.away_team_name}
                                                         </span>
                                                     </div>
-                                                </div>
-
-                                                <div className="w-[70px] sm:w-[90px] text-right shrink-0">
-                                                    {renderStatus(match)}
                                                 </div>
                                             </div>
                                         );
@@ -1074,7 +1076,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             )}
             
             {loadingRoster && (
-                <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
+                <div className="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
                     <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
                     <h3 className="text-xl font-black tracking-widest text-emerald-400 mt-4 animate-pulse uppercase">Scanăm Lotul...</h3>
                 </div>
@@ -1123,8 +1125,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODAL DETALII MECI */}
             {selectedMatchDetails && (
-                <div className="fixed inset-0 z-[99995] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
                         <div className="bg-slate-950 border-b-4 border-emerald-600 text-white p-4 sm:p-6 shrink-0 relative overflow-hidden">
                             <button onClick={() => setSelectedMatchDetails(null)} className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 bg-slate-800 hover:bg-rose-600 border border-slate-700 rounded-full transition-colors z-20">
                                 <X className="w-5 h-5 font-bold" />
@@ -1381,38 +1383,32 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODAL LOT (Echipa Extinsă) */}
             {selectedTeam && (
-                <div className="fixed inset-0 z-[99996] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md transition-opacity" onClick={() => setSelectedTeam(null)}>
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md transition-opacity" onClick={() => setSelectedTeam(null)}>
                     <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-slate-700 animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
-                        <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-center justify-between shrink-0 border-b-4 border-slate-700">
-                            <div className="flex items-center gap-4 sm:gap-6 min-w-0">
-                                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white p-2 rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                        <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-4 border-slate-700 relative">
+                            <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-16 sm:pr-0">
+                                <div className="w-14 h-14 sm:w-20 sm:h-20 bg-white p-1.5 sm:p-2 rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
                                     <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" />
                                 </div>
-                                <div className="min-w-0 flex items-center gap-4">
-                                    <div>
-                                        <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{selectedTeam.teamInfo.name}</h2>
-                                        <p className="text-sm sm:text-base text-emerald-400 font-bold uppercase tracking-widest mt-1 truncate">
+                                <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                    <div className="min-w-0">
+                                        <h2 className="text-xl sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{selectedTeam.teamInfo.name}</h2>
+                                        <p className="text-[10px] sm:text-base text-emerald-400 font-bold uppercase tracking-widest mt-0.5 truncate">
                                             ⚽ LOTUL OFICIAL • {selectedTeam.teamInfo.totalPlayers} Jucători
                                         </p>
                                     </div>
-                                    <button
-                                        onClick={(e) => toggleFavoriteTeam(e, selectedTeam.teamInfo.name)}
-                                        className={`ml-2 p-2.5 rounded-xl border-2 transition hidden sm:block ${favoriteTeams.includes(selectedTeam.teamInfo.name) ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-amber-500'}`}
-                                        title="Adaugă Echipa la Favorite (Notificări Live)"
-                                    >
-                                        <Heart className={`w-5 h-5 ${favoriteTeams.includes(selectedTeam.teamInfo.name) ? 'fill-current' : ''}`} />
-                                    </button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="absolute top-4 right-4 sm:static flex items-center gap-2">
                                 <button
                                     onClick={(e) => toggleFavoriteTeam(e, selectedTeam.teamInfo.name)}
-                                    className={`p-2.5 rounded-xl border-2 transition sm:hidden ${favoriteTeams.includes(selectedTeam.teamInfo.name) ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-amber-500'}`}
+                                    className={`p-2 sm:p-2.5 rounded-xl border-2 transition ${favoriteTeams.includes(selectedTeam.teamInfo.name) ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-amber-500'}`}
+                                    title="Adaugă Echipa la Favorite (Notificări Live)"
                                 >
-                                    <Heart className={`w-5 h-5 ${favoriteTeams.includes(selectedTeam.teamInfo.name) ? 'fill-current' : ''}`} />
+                                    <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${favoriteTeams.includes(selectedTeam.teamInfo.name) ? 'fill-current' : ''}`} />
                                 </button>
-                                <button onClick={() => setSelectedTeam(null)} className="p-3 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 transition text-white shrink-0">
-                                    <X className="w-6 h-6" />
+                                <button onClick={() => setSelectedTeam(null)} className="p-2 sm:p-3 bg-white/10 hover:bg-rose-500 rounded-xl sm:rounded-full border border-white/20 hover:border-rose-600 transition-colors text-white shrink-0">
+                                    <X className="w-4 h-4 sm:w-6 sm:h-6" />
                                 </button>
                             </div>
                         </div>
@@ -1431,40 +1427,28 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         {section.data.map(p => {
                                             const isSelectedForCompare = compareList.some(item => item._id === p._id);
                                             return (
-                                                <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between p-3 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition gap-2 cursor-pointer">
-                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                        <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
+                                                <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between p-3 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition gap-3 cursor-pointer">
+                                                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                                                        <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-10 h-10 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
                                                         <div className="min-w-0 flex-1">
                                                             <p className="font-bold text-slate-900 dark:text-white text-sm sm:text-base truncate uppercase tracking-tight" title={p.name}>{p.name}</p>
-                                                            <div className="flex gap-2 text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase">
+                                                            <div className="flex gap-2 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase tracking-wider">
                                                                 {p.age && <span className="shrink-0">{p.age} ani</span>}
-                                                                {p.nationality && <span className="truncate">{p.nationality}</span>}
+                                                                {p.nationality && <span className="truncate">• {p.nationality}</span>}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 sm:gap-5 text-center shrink-0">
-                                                        <div className="w-[45px] sm:w-[50px] bg-slate-50 dark:bg-slate-800 p-1.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                                                            <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase">Meciuri</p>
-                                                            <p className="font-black text-slate-800 dark:text-white text-sm sm:text-base">{p.statistics_summary?.total_appearances || 0}</p>
-                                                        </div>
-                                                        <div className="w-[45px] sm:w-[50px] bg-slate-50 dark:bg-slate-800 p-1.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                                                            <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase">Goluri</p>
-                                                            <p className="font-black text-emerald-600 dark:text-emerald-400 text-sm sm:text-base">{p.statistics_summary?.total_goals || 0}</p>
-                                                        </div>
-                                                        <div className="w-[45px] sm:w-[50px] bg-amber-50 dark:bg-amber-900/10 p-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
-                                                            <p className="text-[9px] sm:text-[10px] text-amber-600 font-black uppercase">Rating</p>
-                                                            <p className="font-black text-amber-600 text-sm sm:text-base">{p.statistics_summary?.rating ? parseFloat(p.statistics_summary.rating).toFixed(2) : "-"}</p>
-                                                        </div>
+                                                    <div className="flex items-center gap-3 shrink-0">
                                                         <button
                                                             onClick={(e) => toggleComparePlayer(e, p)}
                                                             title="Compară jucătorul"
-                                                            className={`p-2.5 rounded-xl border-2 transition ${
+                                                            className={`p-2.5 sm:p-3 rounded-xl border-2 transition ${
                                                                 isSelectedForCompare
                                                                     ? 'bg-emerald-600 text-white border-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
-                                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600'
+                                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600'
                                                             }`}
                                                         >
-                                                            {isSelectedForCompare ? <Check className="w-5 h-5" /> : <Scale className="w-5 h-5" />}
+                                                            {isSelectedForCompare ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : <Scale className="w-4 h-4 sm:w-5 sm:h-5" />}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1480,7 +1464,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODAL DETALII JUCĂTOR (Scouting Card) */}
             {selectedPlayer && (
-                <div className="fixed inset-0 z-[99997] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPlayer(null)}>
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPlayer(null)}>
                     <div className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[95vh] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
                         <div className="relative bg-slate-900 shrink-0 px-5 sm:px-8 py-6 sm:py-8 border-b-4 border-emerald-500 overflow-hidden">
                             <button onClick={() => setSelectedPlayer(null)} className="absolute top-4 right-4 bg-slate-950/50 border border-white/20 hover:bg-rose-500 hover:border-rose-500 rounded-full p-2 text-white transition-colors z-20">
@@ -1645,7 +1629,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODALUL PRINCIPAL DE COMPARARE "MECI DIRECT" */}
             {showCompareModal && compareList.length === 2 && (
-                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowCompareModal(false)}>
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowCompareModal(false)}>
                     <div className="bg-slate-900 w-full max-w-4xl max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border-4 border-emerald-600/50" onClick={(e) => e.stopPropagation()}>
                         <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-center justify-between border-b-2 border-emerald-600/30">
                             <div className="flex items-center gap-3">
