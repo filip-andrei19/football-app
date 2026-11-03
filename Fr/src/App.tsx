@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogOut, User, Settings, ShieldAlert, Moon, Sun, Calendar, AlertTriangle } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
-import { useRegisterSW } from 'virtual:pwa-register/react';
 
 import { HomeSection } from './components/HomeSection';
 import { DiasporaSection } from './components/DiasporaSection';
@@ -40,18 +39,9 @@ export default function App() {
   const [activeChatPartner, setActiveChatPartner] = useState<{ name: string, avatar?: string } | null>(null);
 
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
-
-  // ==========================================
-  // Vite PWA: Hook oficial pentru actualizare
-  // ==========================================
-  const {
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
-    onRegisterError(error) {
-      console.error('Eroare înregistrare Service Worker', error);
-    },
-  });
+  
+  // State pentru a stoca înregistrarea Service Worker-ului și a forța ecranul de update
+  const [updateRegistration, setUpdateRegistration] = useState<any>(null);
 
   const checkAdminWarnings = (userData: any) => {
       return userData;
@@ -93,6 +83,25 @@ export default function App() {
           }
       }
   }, [user]);
+
+  // LOGICĂ UPDATE OBLIGATORIU NATIVĂ (Fără virtual module)
+  useEffect(() => {
+    const handleUpdate = (e: any) => {
+      setUpdateRegistration(e.detail);
+    };
+
+    window.addEventListener('pwa-update-available', handleUpdate);
+    
+    let refreshing = false;
+    navigator.serviceWorker?.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
+
+    return () => window.removeEventListener('pwa-update-available', handleUpdate);
+  }, []);
 
   const handleDismissWarning = () => {
       setShowWarning(false);
@@ -174,7 +183,7 @@ export default function App() {
       
       <Toaster position="bottom-right" toastOptions={{ style: { background: '#020617', color: '#fff', border: '2px solid #10b981', borderRadius: '16px', fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '1px' } }} />
 
-      {/* HEADER TACTIC (Tabelă) - Prioritate Z redusă la 30 pentru a nu mai suprapune modalele! */}
+      {/* HEADER TACTIC (Tabelă) */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md transition-colors duration-300 shadow-lg border-b-4 border-slate-200 dark:border-slate-800">
         
         {/* Tri-colorul românesc subtil ca o bandă */}
@@ -296,7 +305,7 @@ export default function App() {
         )}
       </header>
 
-      {/* Secțiunea centrală (Terenul de Joc) - Z-index eliminat aici pentru a permite modalelor să depășească navbar-ul */}
+      {/* Secțiunea centrală (Terenul de Joc) */}
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 relative">
         {renderSection()}
       </main>
@@ -337,7 +346,7 @@ export default function App() {
       )}
 
       {/* ECRAN DE BLOCARE PENTRU UPDATE OBLIGATORIU */}
-      {needRefresh && (
+      {updateRegistration && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in duration-500">
           <div className="bg-slate-900 border-4 border-emerald-600 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(16,185,129,0.3)] w-full max-w-sm text-center flex flex-col items-center">
             
@@ -351,8 +360,13 @@ export default function App() {
               Echipa a adus modificări tactice importante. Pentru a continua vizualizarea platformei, este obligatoriu să instalezi noua versiune.
             </p>
             
+            {/* AICI ESTE FIX-UL SINTACTIC: OBIECT { type: 'SKIP_WAITING' } */}
             <button 
-              onClick={() => updateServiceWorker(true)}
+              onClick={() => {
+                if (updateRegistration?.waiting) {
+                  updateRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+              }} 
               className="w-full py-4 text-sm font-black uppercase tracking-widest text-white bg-emerald-600 rounded-xl border-b-4 border-emerald-800 hover:translate-y-[2px] hover:border-b-2 transition-all shadow-md cursor-pointer"
             >
               Instalează Acum
