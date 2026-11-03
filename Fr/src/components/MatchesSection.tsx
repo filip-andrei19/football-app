@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,7 +23,9 @@ import {
     ArrowUp,
     ArrowDown,
     Minus,
-    Heart
+    Heart,
+    Bell,
+    Settings
 } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
@@ -105,6 +107,14 @@ interface SquadData {
         Attackers: Player[];
         Unknown: Player[];
     };
+}
+
+interface NotificationPrefs {
+    goals: boolean;
+    matchStart: boolean;
+    halfTime: boolean;
+    fullTime: boolean;
+    redCards: boolean;
 }
 
 // === FUNCȚII DE SCOUTING & GRAFICE ===
@@ -240,7 +250,23 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     
     // States pentru Sistemul de Notificari & Favorite
     const [favoriteMatches, setFavoriteMatches] = useState<number[]>([]);
-    const [favoriteTeams, setFavoriteTeams] = useState<string[]>([]); // Salvam numele echipelor favorite
+    const [favoriteTeams, setFavoriteTeams] = useState<string[]>([]); 
+    
+    // Setări personalizate pentru tipul de notificări
+    const [showNotifSettings, setShowNotifSettings] = useState(false);
+    const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(() => {
+        try {
+            const saved = localStorage.getItem('scout_notif_prefs');
+            return saved ? JSON.parse(saved) : { goals: true, matchStart: true, halfTime: false, fullTime: true, redCards: true };
+        } catch { return { goals: true, matchStart: true, halfTime: false, fullTime: true, redCards: true }; }
+    });
+    
+    // Folosim un ref pentru preferințele de notificare ca să nu resetăm Socket-ul la fiecare schimbare
+    const notifPrefsRef = useRef(notifPrefs);
+    useEffect(() => {
+        notifPrefsRef.current = notifPrefs;
+        localStorage.setItem('scout_notif_prefs', JSON.stringify(notifPrefs));
+    }, [notifPrefs]);
 
     const [selectedTeam, setSelectedTeam] = useState<SquadData | null>(null);
     const [loadingRoster, setLoadingRoster] = useState(false);
@@ -325,7 +351,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         refetchInterval: 60 * 1000, 
     });
 
-    // === SOCKET & TRIGGER NOTIFICĂRI ===
+    // === SOCKET & TRIGGER NOTIFICĂRI AVANSATE ===
     useEffect(() => {
         socket.on("live_match_update", (updatedMatch: Match) => {
             queryClient.setQueriesData<Match[]>({ queryKey: ['matches'] }, (oldMatches) => {
@@ -335,14 +361,23 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 if (index !== -1) {
                     const oldMatch = oldMatches[index];
                     
-                    // Condiție de Trigger Notificare: Meci Favorit SAU Echipă Favorită implicată
                     const isFavMatch = favoriteMatches.includes(updatedMatch.fixture_id);
                     const isFavTeam = favoriteTeams.includes(updatedMatch.home_team_name) || favoriteTeams.includes(updatedMatch.away_team_name);
 
                     if (isFavMatch || isFavTeam) {
+                        const prefs = notifPrefsRef.current;
+                        
+                        // Evaluarea evenimentelor pentru trimitere
                         const homeGoal = updatedMatch.home_goals !== oldMatch.home_goals && updatedMatch.home_goals !== null;
                         const awayGoal = updatedMatch.away_goals !== oldMatch.away_goals && updatedMatch.away_goals !== null;
+                        const justStarted = updatedMatch.status_short === "1H" && oldMatch.status_short === "NS";
+                        const justHalfTime = updatedMatch.status_short === "HT" && oldMatch.status_short !== "HT";
                         const justFinished = ["FT", "AET", "PEN"].includes(updatedMatch.status_short) && !["FT", "AET", "PEN"].includes(oldMatch.status_short);
+                        
+                        const getRedCardsCount = (events?: any[]) => events?.filter(e => e.type === 'Card' && e.detail?.includes('Red')).length || 0;
+                        const newRedCard = getRedCardsCount(updatedMatch.events) > getRedCardsCount(oldMatch.events);
+
+                        const matchTitleStr = `${updatedMatch.home_team_name} ${updatedMatch.home_goals ?? 0} - ${updatedMatch.away_goals ?? 0} ${updatedMatch.away_team_name}`;
 
                         const triggerNotification = (title: string, body: string) => {
                             if (!("Notification" in window) || Notification.permission !== "granted") return;
@@ -351,25 +386,31 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 icon: updatedMatch.league_logo || '/icon-192.png',
                                 badge: '/icon-192.png',
                                 vibrate: [200, 100, 200, 100, 200],
-                                data: { fixtureId: updatedMatch.fixture_id } // Trimitem ID-ul in event.data
+                                data: { fixtureId: updatedMatch.fixture_id }
                             };
                             
-                            // Integrare PWA Service Worker (compatibilitate maximă pe mobil)
                             if (navigator.serviceWorker) {
                                 navigator.serviceWorker.ready.then(registration => {
                                     registration.showNotification(title, options);
                                 }).catch(() => {
-                                    new Notification(title, options as any); // Fallback standard
+                                    new Notification(title, options as any);
                                 });
                             } else {
                                 new Notification(title, options as any);
                             }
                         };
 
-                        if (homeGoal || awayGoal) {
-                            triggerNotification("⚽ GOL!", `${updatedMatch.home_team_name} ${updatedMatch.home_goals} - ${updatedMatch.away_goals} ${updatedMatch.away_team_name}`);
-                        } else if (justFinished) {
-                            triggerNotification("🏁 Final de meci", `${updatedMatch.home_team_name} ${updatedMatch.home_goals} - ${updatedMatch.away_goals} ${updatedMatch.away_team_name}`);
+                        // Declanșatoarele bazate pe Setările Utilizatorului
+                        if ((homeGoal || awayGoal) && prefs.goals) {
+                            triggerNotification("⚽ GOL!", matchTitleStr);
+                        } else if (justStarted && prefs.matchStart) {
+                            triggerNotification("▶️ A început meciul", matchTitleStr);
+                        } else if (justHalfTime && prefs.halfTime) {
+                            triggerNotification("⏸️ Pauză", matchTitleStr);
+                        } else if (justFinished && prefs.fullTime) {
+                            triggerNotification("🏁 Final de meci", matchTitleStr);
+                        } else if (newRedCard && prefs.redCards) {
+                            triggerNotification("🟥 Cartonaș Roșu!", matchTitleStr);
                         }
                     }
 
@@ -409,12 +450,15 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         };
     }, [matches]);
 
-    // === TOGGLE ECHIPĂ FAVORITĂ ===
+    // === TOGGLE FUNCȚII FAVORITE ===
+    const toggleNotifPref = (key: keyof NotificationPrefs) => {
+        setNotifPrefs(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
     const toggleFavoriteTeam = async (e: React.MouseEvent, teamName: string) => {
         e.stopPropagation();
         if (!userEmail) { alert("Trebuie să ai legitimație (cont) pentru a salva echipe la favorite!"); return; }
         
-        // Optimistic UI Update
         const isFav = favoriteTeams.includes(teamName);
         const newFavTeams = isFav ? favoriteTeams.filter(t => t !== teamName) : [...favoriteTeams, teamName];
         setFavoriteTeams(newFavTeams);
@@ -427,7 +471,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             });
         } catch (err) {
             console.error("Eroare la salvarea echipei:", err);
-            // Rollback in case of error
             setFavoriteTeams(favoriteTeams);
         }
     };
@@ -560,7 +603,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const filteredMatches = matches.filter((match: Match) => {
         const isLive = ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"].includes(match.status_short);
         const isFinished = ["FT", "AET", "PEN"].includes(match.status_short);
-        // Filtrăm fie după ID meci, fie după numele echipelor
         const isFav = favoriteMatches.includes(match.fixture_id) || favoriteTeams.includes(match.home_team_name) || favoriteTeams.includes(match.away_team_name);
         
         if (subFilter === 'live') return isLive;
@@ -893,7 +935,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+                    <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 flex-wrap">
                         {[
                             { id: 'all', label: 'Toate' },
                             { id: 'live', label: `Live (${liveCount})` },
@@ -912,6 +954,14 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 {fil.label}
                             </button>
                         ))}
+                        <button
+                            onClick={() => setShowNotifSettings(true)}
+                            className="px-3 py-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-slate-900 transition-colors ml-auto flex items-center gap-1.5 border border-transparent hover:border-amber-500/30"
+                            title="Setări Notificări"
+                        >
+                            <Settings className="w-4 h-4" />
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider hidden sm:inline">Alerte</span>
+                        </button>
                     </div>
                 </div>
 
@@ -1027,6 +1077,47 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
                     <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
                     <h3 className="text-xl font-black tracking-widest text-emerald-400 mt-4 animate-pulse uppercase">Scanăm Lotul...</h3>
+                </div>
+            )}
+
+            {/* MODAL SETĂRI NOTIFICĂRI (FLASHSCORE STYLE) */}
+            {showNotifSettings && (
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={() => setShowNotifSettings(false)}>
+                    <div className="bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl border-4 border-slate-700" onClick={e => e.stopPropagation()}>
+                        <div className="bg-slate-950 text-white p-5 border-b-2 border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Bell className="w-5 h-5 text-amber-500" />
+                                <h2 className="text-lg font-black uppercase tracking-widest">Alerte Live</h2>
+                            </div>
+                            <button onClick={() => setShowNotifSettings(false)} className="p-2 bg-slate-800 hover:bg-rose-600 rounded-full transition-colors text-white">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest text-center mb-6">Alege ce primești pentru meciurile/echipele favorite</p>
+                            
+                            {[
+                                { id: 'goals', label: 'Goluri Marcate', icon: '⚽' },
+                                { id: 'matchStart', label: 'Fluier de Start', icon: '▶️' },
+                                { id: 'halfTime', label: 'Pauză (Meci)', icon: '⏸️' },
+                                { id: 'fullTime', label: 'Final de Meci', icon: '🏁' },
+                                { id: 'redCards', label: 'Cartonașe Roșii', icon: '🟥' },
+                            ].map((setting) => (
+                                <div key={setting.id} className="flex items-center justify-between bg-slate-800 p-4 rounded-2xl border border-slate-700">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xl">{setting.icon}</span>
+                                        <span className="text-sm font-black text-white uppercase tracking-wider">{setting.label}</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => toggleNotifPref(setting.id as keyof NotificationPrefs)}
+                                        className={`w-12 h-6 rounded-full transition-colors relative ${notifPrefs[setting.id as keyof NotificationPrefs] ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                                    >
+                                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${notifPrefs[setting.id as keyof NotificationPrefs] ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
 
