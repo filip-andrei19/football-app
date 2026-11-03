@@ -1,6 +1,6 @@
-// Versiunea 2.20 - Update PWA cu notificare personalizată (Modern Arena)
+// Versiunea 2.21 - Update PWA cu notificare personalizată (Modern Arena)
 
-const CACHE_NAME = 'scoutpro-cache-v2.20'; // Nume nou pentru noul cache
+const CACHE_NAME = 'scoutpro-cache-v2.21'; // Nume nou pentru noul cache
 const urlsToCache = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
@@ -11,9 +11,9 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// NOU: Ascultăm comanda trimisă de la butonul tău personalizat (din App.tsx)
+// Ascultăm comanda trimisă de la butonul de update (suportă și obiect și string)
 self.addEventListener('message', (event) => {
-    if (event.data === 'SKIP_WAITING') {
+    if (event.data === 'SKIP_WAITING' || (event.data && event.data.type === 'SKIP_WAITING')) {
         self.skipWaiting();
     }
 });
