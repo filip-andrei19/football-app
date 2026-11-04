@@ -117,6 +117,18 @@ interface NotificationPrefs {
     redCards: boolean;
 }
 
+// === FUNCȚII UTILITARE PENTRU WEB PUSH ===
+const urlB64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+};
+
 // === FUNCȚII DE SCOUTING & GRAFICE ===
 const computeScoutingMetrics = (player: Player) => {
   const stats = player.statistics_summary || {
@@ -289,12 +301,51 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const [lineupViewMode, setLineupViewMode] = useState<'both' | 'home' | 'away'>('both');
 
-    // === PERMISIUNI NOTIFICĂRI ===
-    useEffect(() => {
-        if ("Notification" in window && Notification.permission === "default") {
-            Notification.requestPermission();
+    // === PERMISIUNI ȘI ABONARE WEB PUSH ===
+    const subscribeToPushNotifications = async (email: string) => {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+            
+            if (!subscription) {
+                // Cheia din .env (VITE_VAPID_PUBLIC_KEY)
+                const publicVapidKey = (import.meta as any).env.VITE_VAPID_PUBLIC_KEY; 
+                if (!publicVapidKey) {
+                    console.error("Lipsește VITE_VAPID_PUBLIC_KEY din frontend!");
+                    return;
+                }
+                const applicationServerKey = urlB64ToUint8Array(publicVapidKey);
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: applicationServerKey
+                });
+            }
+
+            // Trimitem abonamentul la server
+            await fetch('https://football-backend-m2a4.onrender.com/api/notifications/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, subscription: subscription })
+            });
+        } catch (error) {
+            console.error('Eroare la abonarea Push:', error);
         }
-    }, []);
+    };
+
+    useEffect(() => {
+        if ("Notification" in window) {
+            if (Notification.permission === "default") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted" && userEmail) {
+                        subscribeToPushNotifications(userEmail);
+                    }
+                });
+            } else if (Notification.permission === "granted" && userEmail) {
+                subscribeToPushNotifications(userEmail);
+            }
+        }
+    }, [userEmail]);
 
     useEffect(() => {
         const today = new Date();
@@ -351,7 +402,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         refetchInterval: 60 * 1000, 
     });
 
-    // === SOCKET & TRIGGER NOTIFICĂRI AVANSATE ===
+    // === SOCKET & TRIGGER NOTIFICĂRI (Fallback in-app pentru cei fără Web Push complet funcțional) ===
     useEffect(() => {
         socket.on("live_match_update", (updatedMatch: Match) => {
             queryClient.setQueriesData<Match[]>({ queryKey: ['matches'] }, (oldMatches) => {
@@ -367,7 +418,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     if (isFavMatch || isFavTeam) {
                         const prefs = notifPrefsRef.current;
                         
-                        // Evaluarea evenimentelor pentru trimitere
+                        // Evaluarea evenimentelor pentru trimitere locală
                         const homeGoal = updatedMatch.home_goals !== oldMatch.home_goals && updatedMatch.home_goals !== null;
                         const awayGoal = updatedMatch.away_goals !== oldMatch.away_goals && updatedMatch.away_goals !== null;
                         const justStarted = updatedMatch.status_short === "1H" && oldMatch.status_short === "NS";
@@ -389,6 +440,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 data: { fixtureId: updatedMatch.fixture_id }
                             };
                             
+                            // Nu declanșăm local dacă ne bazăm doar pe Web Push din server
+                            // dar o păstrăm ca fallback dacă aplicația e deschisă
                             if (navigator.serviceWorker) {
                                 navigator.serviceWorker.ready.then(registration => {
                                     registration.showNotification(title, options);
@@ -400,18 +453,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             }
                         };
 
-                        // Declanșatoarele bazate pe Setările Utilizatorului
-                        if ((homeGoal || awayGoal) && prefs.goals) {
-                            triggerNotification("⚽ GOL!", matchTitleStr);
-                        } else if (justStarted && prefs.matchStart) {
-                            triggerNotification("▶️ A început meciul", matchTitleStr);
-                        } else if (justHalfTime && prefs.halfTime) {
-                            triggerNotification("⏸️ Pauză", matchTitleStr);
-                        } else if (justFinished && prefs.fullTime) {
-                            triggerNotification("🏁 Final de meci", matchTitleStr);
-                        } else if (newRedCard && prefs.redCards) {
-                            triggerNotification("🟥 Cartonaș Roșu!", matchTitleStr);
-                        }
+                        // Fallback local: Declanșatoarele bazate pe Setările Utilizatorului
+                        if ((homeGoal || awayGoal) && prefs.goals) triggerNotification("⚽ GOL!", matchTitleStr);
+                        else if (justStarted && prefs.matchStart) triggerNotification("▶️ A început meciul", matchTitleStr);
+                        else if (justHalfTime && prefs.halfTime) triggerNotification("⏸️ Pauză", matchTitleStr);
+                        else if (justFinished && prefs.fullTime) triggerNotification("🏁 Final de meci", matchTitleStr);
+                        else if (newRedCard && prefs.redCards) triggerNotification("🟥 Cartonaș Roșu!", matchTitleStr);
                     }
 
                     const newMatches = [...oldMatches];

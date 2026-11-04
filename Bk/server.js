@@ -11,6 +11,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const cloudinary = require('cloudinary').v2;
 const Joi = require('joi');
+const webpush = require('web-push');
 
 // --- IMPORTURI SECURITATE & PERFORMANȚĂ ---
 const helmet = require('helmet');
@@ -51,6 +52,13 @@ cloudinary.config({
     api_key: process.env.CLOUDINARY_KEY,
     api_secret: process.env.CLOUDINARY_SECRET
 });
+
+// CONFIGURARE WEB PUSH
+webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+);
 
 // CONFIGURARE SOCKET.IO
 const io = new Server(server, {
@@ -132,6 +140,7 @@ const userSchema = new mongoose.Schema({
     isBanned: { type: Boolean, default: false },
     hasAdminDeletedMessages: { type: Boolean, default: false }, 
     strikes: { type: Number, default: 0 }, 
+    pushSubscriptions: { type: Array, default: [] },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
     createdAt: { type: Date, default: Date.now }
@@ -284,6 +293,21 @@ const startServer = async () => {
         // RUTA DE TEST SENTRY (OPȚIONALĂ, PENTRU VERIFICARE)
         app.get("/debug-sentry", function mainHandler(req, res) {
             throw new Error("My first Sentry error!");
+        });
+
+        // 2. Endpoint nou: Salvarea abonamentului (PushSubscription) în baza de date
+        app.post('/api/notifications/subscribe', async (req, res) => {
+            const { email, subscription } = req.body;
+            
+            try {
+                await User.findOneAndUpdate(
+                    { email: email },
+                    { $addToSet: { pushSubscriptions: subscription } } // Evită duplicatele
+                );
+                res.status(201).json({ success: true, message: 'Abonament Push salvat.' });
+            } catch (err) {
+                res.status(500).json({ success: false, error: 'Eroare la salvarea abonamentului.' });
+            }
         });
 
         app.post('/api/users/register', async (req, res) => {
@@ -937,6 +961,35 @@ const startServer = async () => {
                 const matchDetails = await getFixtureDetailsOnDemand(req.params.fixtureId);
                 if (!matchDetails) return res.status(404).json({ error: "Meciul nu a fost găsit." });
                 io.emit("live_match_update", matchDetails);
+
+                // Funcția care trimite efectiv notificarea push (3. Funcția care trimite efectiv notificarea)
+                async function sendPushToUser(email, payload) {
+                    try {
+                        const user = await User.findOne({ email });
+                        if (!user || !user.pushSubscriptions || user.pushSubscriptions.length === 0) return;
+                
+                        const pushPayload = JSON.stringify({
+                            title: payload.title,
+                            body: payload.body,
+                            icon: payload.icon || '/icon-192.png',
+                            data: payload.data
+                        });
+                
+                        // Trimite notificarea către toate dispozitivele salvate ale utilizatorului
+                        const promises = user.pushSubscriptions.map(sub => 
+                            webpush.sendNotification(sub, pushPayload).catch(err => {
+                                if (err.statusCode === 404 || err.statusCode === 410) {
+                                    // Abonamentul a expirat sau utilizatorul a blocat notificările -> îl ștergem
+                                    return User.updateOne({ email }, { $pull: { pushSubscriptions: sub } });
+                                }
+                            })
+                        );
+                        
+                        await Promise.all(promises);
+                    } catch (err) {
+                        console.error('Eroare trimitere Push:', err);
+                    }
+                }
                 res.json(matchDetails);
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea detaliilor meciului." }); }
         });
