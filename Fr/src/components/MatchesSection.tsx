@@ -261,11 +261,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [subFilter, setSubFilter] = useState<'all' | 'live' | 'finished' | 'favorites'>('all');
     
-    // States pentru Sistemul de Notificari & Favorite
     const [favoriteMatches, setFavoriteMatches] = useState<number[]>([]);
     const [favoriteTeams, setFavoriteTeams] = useState<string[]>([]); 
     
-    // Setări personalizate pentru tipul de notificări
     const [showNotifSettings, setShowNotifSettings] = useState(false);
     const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(() => {
         try {
@@ -274,7 +272,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         } catch { return { goals: true, matchStart: true, halfTime: false, fullTime: true, redCards: true }; }
     });
     
-    // Folosim un ref pentru preferințele de notificare ca să nu resetăm Socket-ul la fiecare schimbare
     const notifPrefsRef = useRef(notifPrefs);
     useEffect(() => {
         notifPrefsRef.current = notifPrefs;
@@ -302,7 +299,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const [lineupViewMode, setLineupViewMode] = useState<'both' | 'home' | 'away'>('both');
 
-    // === PERMISIUNI ȘI ABONARE WEB PUSH ===
     const subscribeToPushNotifications = async (email: string) => {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
         try {
@@ -310,12 +306,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             let subscription = await registration.pushManager.getSubscription();
             
             if (!subscription) {
-                // Cheia din .env (VITE_VAPID_PUBLIC_KEY)
                 const publicVapidKey = (import.meta as any).env.VITE_VAPID_PUBLIC_KEY; 
-                if (!publicVapidKey) {
-                    console.error("Lipsește VITE_VAPID_PUBLIC_KEY din frontend!");
-                    return;
-                }
+                if (!publicVapidKey) return;
                 const applicationServerKey = urlB64ToUint8Array(publicVapidKey);
                 subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
@@ -323,7 +315,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 });
             }
 
-            // Trimitem abonamentul la server
             await fetch('https://football-backend-m2a4.onrender.com/api/notifications/subscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -356,12 +347,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         for (let i = -3; i <= 3; i++) {
             const d = new Date(today);
             d.setDate(today.getDate() + i);
-
             let label = d.toLocaleDateString('ro-RO', { weekday: 'short', day: '2-digit', month: '2-digit' });
             if (i === 0) label = "AZI";
             if (i === -1) label = "IERI";
             if (i === 1) label = "MÂINE";
-
             generatedDates.push({ date: d, label: label, isToday: i === 0 });
         }
         setDates(generatedDates);
@@ -403,7 +392,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         refetchInterval: 60 * 1000, 
     });
 
-    // === SOCKET & TRIGGER NOTIFICĂRI (Fallback in-app pentru cei fără Web Push complet funcțional) ===
     useEffect(() => {
         socket.on("live_match_update", (updatedMatch: Match) => {
             queryClient.setQueriesData<Match[]>({ queryKey: ['matches'] }, (oldMatches) => {
@@ -412,20 +400,16 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 
                 if (index !== -1) {
                     const oldMatch = oldMatches[index];
-                    
                     const isFavMatch = favoriteMatches.includes(updatedMatch.fixture_id);
                     const isFavTeam = favoriteTeams.includes(updatedMatch.home_team_name) || favoriteTeams.includes(updatedMatch.away_team_name);
 
                     if (isFavMatch || isFavTeam) {
                         const prefs = notifPrefsRef.current;
-                        
-                        // Evaluarea evenimentelor pentru trimitere locală
                         const homeGoal = updatedMatch.home_goals !== oldMatch.home_goals && updatedMatch.home_goals !== null;
                         const awayGoal = updatedMatch.away_goals !== oldMatch.away_goals && updatedMatch.away_goals !== null;
                         const justStarted = updatedMatch.status_short === "1H" && oldMatch.status_short === "NS";
                         const justHalfTime = updatedMatch.status_short === "HT" && oldMatch.status_short !== "HT";
                         const justFinished = ["FT", "AET", "PEN"].includes(updatedMatch.status_short) && !["FT", "AET", "PEN"].includes(oldMatch.status_short);
-                        
                         const getRedCardsCount = (events?: any[]) => events?.filter(e => e.type === 'Card' && e.detail?.includes('Red')).length || 0;
                         const newRedCard = getRedCardsCount(updatedMatch.events) > getRedCardsCount(oldMatch.events);
 
@@ -441,8 +425,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 data: { fixtureId: updatedMatch.fixture_id }
                             };
                             
-                            // Nu declanșăm local dacă ne bazăm doar pe Web Push din server
-                            // dar o păstrăm ca fallback dacă aplicația e deschisă
                             if (navigator.serviceWorker) {
                                 navigator.serviceWorker.ready.then(registration => {
                                     registration.showNotification(title, options);
@@ -454,7 +436,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             }
                         };
 
-                        // Fallback local: Declanșatoarele bazate pe Setările Utilizatorului
                         if ((homeGoal || awayGoal) && prefs.goals) triggerNotification("⚽ GOL!", matchTitleStr);
                         else if (justStarted && prefs.matchStart) triggerNotification("▶️ A început meciul", matchTitleStr);
                         else if (justHalfTime && prefs.halfTime) triggerNotification("⏸️ Pauză", matchTitleStr);
@@ -476,7 +457,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         return () => { socket.off("live_match_update"); };
     }, [favoriteMatches, favoriteTeams, queryClient]);
 
-    // === ASCULTĂTOR PENTRU CLICK PE NOTIFICĂRI DIN SERVICE WORKER ===
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.data && event.data.type === 'NAVIGATE_TO_MATCH') {
@@ -498,7 +478,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         };
     }, [matches]);
 
-    // === TOGGLE FUNCȚII FAVORITE ===
     const toggleNotifPref = (key: keyof NotificationPrefs) => {
         setNotifPrefs(prev => ({ ...prev, [key]: !prev[key] }));
     };
@@ -803,8 +782,16 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     };
 
     const renderH2HSection = () => {
-        const mockFormHome = selectedMatchDetails?.form?.home || ['D', 'D', 'D', 'D', 'D'];
-        const mockFormAway = selectedMatchDetails?.form?.away || ['D', 'D', 'D', 'D', 'D'];
+        // Parsăm forma reală din baza de date
+        const parseForm = (formObj: any): string[] => {
+            if (!formObj) return ['?', '?', '?', '?', '?']; // Fără fake data
+            if (Array.isArray(formObj)) return formObj.slice(0, 5);
+            if (typeof formObj === 'string') return formObj.split('').slice(0, 5);
+            return ['?', '?', '?', '?', '?'];
+        };
+
+        const realFormHome = parseForm(selectedMatchDetails?.form?.home);
+        const realFormAway = parseForm(selectedMatchDetails?.form?.away);
         
         let matchPredictions = selectedMatchDetails?.predictions;
 
@@ -824,15 +811,15 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 return formArray.reduce((total, result) => {
                     if (result === 'W') return total + 3;
                     if (result === 'D') return total + 1;
-                    return total;
+                    return total; // 'L' sau '?' = 0 puncte
                 }, 0);
             };
 
             const homePrestige = getTeamPrestige(selectedMatchDetails?.home_team_name || "");
             const awayPrestige = getTeamPrestige(selectedMatchDetails?.away_team_name || "");
             
-            const homeFormPts = calculateFormPoints(mockFormHome);
-            const awayFormPts = calculateFormPoints(mockFormAway);
+            const homeFormPts = calculateFormPoints(realFormHome);
+            const awayFormPts = calculateFormPoints(realFormAway);
 
             const homeAdvantage = 5; 
 
@@ -851,7 +838,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             matchPredictions = { home: homeChance, draw: drawChance, away: awayChance };
         }
 
-        const formColor = (res: string) => res === 'W' ? 'bg-emerald-500' : res === 'D' ? 'bg-slate-500' : 'bg-rose-500';
+        const formColor = (res: string) => {
+            if (res === 'W') return 'bg-emerald-500';
+            if (res === 'D') return 'bg-slate-500';
+            if (res === 'L') return 'bg-rose-500';
+            return 'bg-slate-700'; // Gri pentru lipsă date (?)
+        };
 
         return (
             <div className="space-y-6">
@@ -877,7 +869,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             Formă Recentă • {selectedMatchDetails?.home_team_name}
                         </h4>
                         <div className="flex justify-center gap-2">
-                            {mockFormHome.map((res, i) => (
+                            {realFormHome.map((res, i) => (
                                 <div key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs ${formColor(res)} shadow-sm`}>{res}</div>
                             ))}
                         </div>
@@ -887,7 +879,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             Formă Recentă • {selectedMatchDetails?.away_team_name}
                         </h4>
                         <div className="flex justify-center gap-2">
-                            {mockFormAway.map((res, i) => (
+                            {realFormAway.map((res, i) => (
                                 <div key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs ${formColor(res)} shadow-sm`}>{res}</div>
                             ))}
                         </div>

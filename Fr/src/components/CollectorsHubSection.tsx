@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, AlertTriangle, Loader2, MessageCircle, Share2, Copy, Send, Heart, Flag, Shield, FileText } from 'lucide-react';
 import toast from 'react-hot-toast'; 
 import { SkeletonCard } from './SkeletonCard'; 
@@ -41,369 +42,8 @@ interface CollectorsHubProps {
 const CATEGORIES = ["Toate", "Tricouri", "Fulare", "Bilete & Programe", "Suveniruri", "Echipament"];
 const API_URL = (import.meta as any).env.VITE_API_URL ? `${(import.meta as any).env.VITE_API_URL}/api/listings` : 'https://football-backend-m2a4.onrender.com/api/listings'; 
 
-// --- MODAL PARTAJARE (STILIZAT SPORTIV) ---
-const ShareModal = ({ product, user, onClose }: { product: Product, user: any, onClose: () => void }) => {
-    const [conversations, setConversations] = useState<Conversation[]>([]);
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => { fetchConversations(); }, []);
-
-    const fetchConversations = async () => {
-        try {
-            const res = await fetch('https://football-backend-m2a4.onrender.com/api/messages/conversations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: user.email, name: user.name })
-            });
-            if (res.ok) setConversations(await res.json());
-        } catch (e) { console.error(e); } finally { setLoading(false); }
-    };
-
-    const handleExternalShare = async () => {
-        const link = `${window.location.origin}/?postId=${product._id}`;
-        const shareData = {
-            title: `Romania Scout: ${product.title}`,
-            text: `Salut! Uite ce am găsit pe piața de transferuri: ${product.title} - ${product.price}`,
-            url: link
-        };
-        try {
-            if (navigator.share) await navigator.share(shareData);
-            else {
-                await navigator.clipboard.writeText(`${shareData.text}\n${link}`);
-                toast.success("Link copiat spre vestiar!");
-            }
-        } catch (e) {}
-    };
-
-    const handleSendToChat = async (roomId: string, chatTitle: string) => {
-        const siteLink = `${window.location.origin}/?postId=${product._id}`;
-        const messageText = `👀 Propunere de transfer:\n**${product.title}**\nCotă: ${product.price}\nVezi detalii aici: ${siteLink}`;
-        const time = new Date().getHours() + ":" + (new Date().getMinutes() < 10 ? '0' : '') + new Date().getMinutes();
-
-        try {
-            const res = await fetch('https://football-backend-m2a4.onrender.com/api/messages/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    room: roomId,
-                    author: user.name,
-                    authorRole: user.role === 'admin' ? 'admin' : 'user',
-                    message: messageText,
-                    time: time
-                })
-            });
-
-            if (res.ok) {
-                toast.success(`Trimis către ${chatTitle}!`);
-                onClose();
-            }
-        } catch (e) { toast.error("Eroare la pasă."); }
-    };
-
-    return (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] border-4 border-blue-600/30 animate-in zoom-in-95">
-                <div className="bg-slate-900 p-4 border-b-2 border-blue-600 flex justify-between items-center relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)]"></div>
-                    <h3 className="font-black text-lg text-white uppercase tracking-widest relative z-10 flex items-center gap-2"><Share2 className="w-5 h-5 text-blue-400"/> Trimite mai departe</h3>
-                    <button onClick={onClose} className="relative z-10 bg-slate-800 hover:bg-rose-500 rounded-full p-1.5 transition-colors border border-slate-700 text-white"><X className="w-4 h-4 font-bold"/></button>
-                </div>
-                <div className="p-5 space-y-4 bg-slate-50 dark:bg-slate-950">
-                    <div className="flex gap-4 bg-white dark:bg-slate-900 p-3 rounded-2xl border-2 border-slate-200 dark:border-slate-800 shadow-sm">
-                        {product.images[0] ? <img src={product.images[0]} className="w-14 h-14 rounded-xl object-cover border border-slate-200 dark:border-slate-700"/> : <div className="w-14 h-14 bg-slate-200 rounded-xl flex items-center justify-center"><ShoppingBag className="w-6 h-6 text-slate-400"/></div>}
-                        <div className="flex flex-col justify-center flex-1 min-w-0">
-                            <div className="font-black text-sm text-slate-900 dark:text-white truncate uppercase tracking-tight">{product.title}</div>
-                            <div className="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase tracking-widest mt-1">{product.price}</div>
-                        </div>
-                    </div>
-                    <button onClick={handleExternalShare} className="w-full flex items-center justify-center gap-3 p-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all border-b-4 border-blue-800 hover:translate-y-[2px] hover:border-b-2 font-black uppercase tracking-widest text-xs">
-                        <Copy className="w-4 h-4"/> Copiază Link / Alte Aplicații
-                    </button>
-                    <div className="border-t-2 border-slate-200 dark:border-slate-800 my-4"></div>
-                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Send className="w-3.5 h-3.5"/> Trimite unui coechipier (Chat)</div>
-                    <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
-                        {loading ? <div className="text-center text-xs text-blue-500 py-4 font-bold uppercase"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2"/> Preluare Contacte...</div> :
-                         conversations.length === 0 ? <div className="text-center text-xs text-slate-500 py-4 font-bold uppercase border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl">Nu ai conversații active pe teren.</div> :
-                         conversations.map(conv => (
-                             <button key={conv.roomId} onClick={() => handleSendToChat(conv.roomId, conv.title)} className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-900 hover:border-blue-500 border-2 border-slate-200 dark:border-slate-800 rounded-2xl transition-colors text-left group">
-                                 {conv.image ? <img src={conv.image} className="w-10 h-10 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700"/> : <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 border-2 border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xs font-black uppercase">CH</div>}
-                                 <div className="flex-1 truncate">
-                                     <div className="text-sm font-black text-slate-900 dark:text-white truncate uppercase tracking-tight">{conv.title}</div>
-                                 </div>
-                                 <Send className="w-4 h-4 text-slate-400 group-hover:text-blue-500 shrink-0"/>
-                             </button>
-                         ))
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- CARD PRODUS (COMPLET - STIL MATCHDAY) ---
-const ProductCard = ({ product, user, onDelete, onClick, onStartChat, onShare, onToggleFavorite, isFavorite }: { product: Product, user: any, onDelete: (id: string) => void, onClick: (p: Product) => void, onStartChat: (p: Product) => void, onShare: (p: Product) => void, onToggleFavorite: (id: string) => void, isFavorite: boolean }) => {
-  const [currentImgIndex, setCurrentImgIndex] = useState(0);
-  const images = product.images || [];
-  const sellerName = product.seller || "Necunoscut";
-  const [avatarError, setAvatarError] = useState(false);
-  const isOwner = product.sellerEmail === user.email;
-
-  return (
-    <div onClick={() => onClick(product)} className="group bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-[0_15px_30px_rgba(37,99,235,0.15)] hover:border-blue-500 transition-all duration-300 flex flex-col h-full cursor-pointer relative hover:-translate-y-1">
-      
-      <div className="absolute top-3 left-3 z-20 bg-slate-900/80 backdrop-blur-md text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-slate-700"><Maximize2 className="w-4 h-4" /></div>
-      
-      <button 
-        onClick={(e) => { e.stopPropagation(); onToggleFavorite(product._id); }} 
-        className={`absolute top-3 right-3 z-20 p-2.5 rounded-xl shadow-md transition-all border-2 ${isFavorite ? 'bg-rose-50 border-rose-200 text-rose-500 dark:bg-rose-900/30 dark:border-rose-800' : 'bg-white/90 backdrop-blur border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-300 dark:bg-slate-900/80 dark:border-slate-700'}`}
-        title="Adaugă în Lista de Scout"
-      >
-        <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
-      </button>
-
-      {/* Zona Imagine */}
-      <div className="relative h-60 bg-slate-100 dark:bg-slate-800 border-b-4 border-slate-200 dark:border-slate-800 overflow-hidden shrink-0">
-        {images.length > 0 ? (
-          <img src={images[currentImgIndex]} alt={product.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400?text=Eroare+Imagine' }} />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-200 dark:bg-slate-800 p-4 text-center"><AlertTriangle className="w-8 h-8 mb-2 opacity-50" /><span className="text-xs font-bold uppercase tracking-widest">Fără imagine</span></div>
-        )}
-        
-        {/* Categorie */}
-        <div className="absolute bottom-3 right-3 bg-slate-900 text-blue-400 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md z-10 border border-slate-700 flex items-center gap-1.5">
-            <Tag className="w-3 h-3" /> {product.category || "General"}
-        </div>
-
-        {/* Butoane Navigare Imagini */}
-        {images.length > 1 && (
-          <>
-            <button onClick={(e) => { e.stopPropagation(); if(images.length>0) setCurrentImgIndex((prev) => (prev - 1 + images.length) % images.length); }} className="absolute left-3 top-1/2 -translate-y-1/2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20 border border-slate-700"><ChevronLeft className="w-5 h-5" /></button>
-            <button onClick={(e) => { e.stopPropagation(); if(images.length>0) setCurrentImgIndex((prev) => (prev + 1) % images.length); }} className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20 border border-slate-700"><ChevronRight className="w-5 h-5" /></button>
-            
-            {/* Indicatori poze */}
-            <div className="absolute bottom-3 left-3 flex gap-1 z-10 bg-slate-900/50 backdrop-blur px-2 py-1 rounded-full">
-                {images.map((_, i) => (
-                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === currentImgIndex ? 'bg-white' : 'bg-white/40'}`}></div>
-                ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Detalii */}
-      <div className="p-5 flex-1 flex flex-col bg-slate-50 dark:bg-slate-950">
-        <div className="flex justify-between items-start mb-2 gap-3">
-            <h3 className="font-black text-lg text-slate-900 dark:text-white uppercase tracking-tight leading-none group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-1" title={product.title}>{product.title || "Fără Titlu"}</h3>
-        </div>
-        <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mb-3">{product.price || "N/A"}</div>
-        
-        <p className="text-slate-500 dark:text-slate-400 text-xs font-medium mb-4 line-clamp-2 flex-1">{product.description || "Fără descriere."}</p>
-        
-        {/* Footer Card */}
-        <div className="pt-4 border-t-2 border-slate-200 dark:border-slate-800 mt-auto flex items-center justify-between">
-            <div className="flex items-center gap-3 text-sm text-slate-500">
-              {product.sellerAvatar && !avatarError ? (
-                  <img src={product.sellerAvatar} alt={sellerName} className="w-10 h-10 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700 shadow-sm bg-white" onError={() => setAvatarError(true)} />
-              ) : (
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-sm uppercase shadow-sm border-2 border-blue-200 dark:border-blue-800">{sellerName.charAt(0)}</div>
-              )}
-              <div className="flex flex-col leading-none">
-                 <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1 flex items-center gap-1"><Shield className="w-3 h-3"/> Impresar</span>
-                 <span className="font-bold text-xs uppercase tracking-wider truncate max-w-[100px] text-slate-800 dark:text-slate-200">{sellerName}</span>
-              </div>
-            </div>
-
-            <div className="flex gap-2 shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); onShare(product); }} className="text-slate-400 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 hover:text-blue-600 hover:border-blue-500 p-2 rounded-xl transition-colors z-20" title="Dă mai departe">
-                    <Share2 className="w-4 h-4" />
-                </button>
-
-                {!isOwner && (
-                    <button onClick={(e) => { e.stopPropagation(); onStartChat(product); }} className="text-blue-600 bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-800/50 hover:bg-blue-600 hover:text-white p-2 rounded-xl transition-colors z-20" title="Negociază">
-                        <MessageCircle className="w-4 h-4" />
-                    </button>
-                )}
-                
-                {isOwner && (
-                  <button onClick={(e) => { e.stopPropagation(); onDelete(product._id); }} className="text-rose-500 bg-rose-50 dark:bg-rose-900/30 border-2 border-rose-200 dark:border-rose-800/50 hover:bg-rose-600 hover:text-white p-2 rounded-xl transition-colors z-20" title="Retrage Anunț">
-                      <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-            </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- MODAL VIZUALIZARE PRODUS (STILIZAT CA UN PANOU DE PREZENTARE) ---
-const ProductViewModal = ({ product, user, onClose, onShare, onToggleFavorite, isFavorite }: { product: Product, user: any, onClose: () => void, onShare: (p: Product) => void, onToggleFavorite: (id: string) => void, isFavorite: boolean }) => {
-    const [activeIdx, setActiveIdx] = useState(0);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const images = product.images || [];
-    const [avatarError, setAvatarError] = useState(false); 
-
-    const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
-    const isOwner = product.sellerEmail === user.email;
-
-    const handleReportListing = async () => {
-        if (!window.confirm("Apeși butonul de VAR? Ești sigur că acest anunț încalcă regulamentul?")) return;
-        try {
-            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/listings/${product._id}/report`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user: user.name })
-            });
-            if (res.ok) {
-                toast.success("Incidentul a fost raportat la Comisie (VAR).");
-            }
-        } catch (err) {
-            toast.error("Eroare la raportare.");
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[92vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 border-4 border-slate-700 relative">
-                
-                {/* Header Butoane Modal - Acțiuni rapide suprapuse */}
-                <div className="absolute top-4 right-4 z-50 flex gap-2">
-                    <button onClick={() => onToggleFavorite(product._id)} className="bg-slate-900/80 backdrop-blur hover:bg-slate-900 text-white p-2.5 rounded-xl shadow-lg border border-slate-700 transition">
-                        <Heart className={`w-5 h-5 transition-colors ${isFavorite ? 'fill-rose-500 text-rose-500' : ''}`} />
-                    </button>
-                    <button onClick={() => onShare(product)} className="bg-slate-900/80 backdrop-blur hover:bg-slate-900 text-white p-2.5 rounded-xl shadow-lg border border-slate-700 transition"><Share2 className="w-5 h-5" /></button>
-                    <button onClick={onClose} className="bg-slate-900/80 backdrop-blur hover:bg-rose-500 text-white p-2.5 rounded-xl shadow-lg border border-slate-700 hover:border-rose-500 transition"><X className="w-5 h-5 font-bold" /></button>
-                </div>
-
-                {/* Zona Imagini (Partea stângă pe desktop) */}
-                <div className="w-full md:w-3/5 bg-slate-100 dark:bg-slate-950 flex flex-col relative h-[40vh] md:h-auto border-b-4 md:border-b-0 md:border-r-4 border-slate-200 dark:border-slate-800">
-                    <div className="flex-1 relative overflow-hidden flex items-center justify-center cursor-zoom-in" onClick={() => setIsFullscreen(true)}>
-                        {/* Teren Fotbal fundal pentru imagini */}
-                        <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#000_20px,#000_22px)] pointer-events-none"></div>
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-slate-950/20 transition-opacity z-20 pointer-events-none">
-                            <div className="bg-slate-900 text-white p-3 rounded-full shadow-lg border border-slate-700 backdrop-blur-md">
-                                <Maximize2 className="w-6 h-6" />
-                            </div>
-                        </div>
-                        
-                        {images.length > 0 ? (
-                            <img src={images[activeIdx]} className="max-w-full max-h-full object-contain relative z-10 transition-transform duration-200 drop-shadow-xl p-4" />
-                        ) : (
-                            <div className="text-slate-400 flex flex-col items-center font-black uppercase tracking-widest"><AlertTriangle className="mb-2 w-10 h-10"/> Fără fotografie</div>
-                        )}
-                    </div>
-                    {images.length > 1 && (
-                        <div className="p-4 bg-slate-200 dark:bg-slate-900 border-t-2 border-slate-300 dark:border-slate-800 flex gap-3 overflow-x-auto justify-center z-40 relative">
-                            {images.map((img, idx) => (
-                                <button key={idx} onClick={() => setActiveIdx(idx)} className={`relative w-16 h-16 rounded-xl overflow-hidden border-4 shrink-0 transition-all ${activeIdx === idx ? 'border-blue-600 scale-110 shadow-lg' : 'border-transparent opacity-50 hover:opacity-100'}`}>
-                                    <img src={img} className="w-full h-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* MODAL FULLSCREEN POZĂ (Cu suport pinch-to-zoom și z-index extrem) */}
-                {isFullscreen && images.length > 0 && (
-                    <div className="fixed inset-0 z-[100001] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200">
-                        <button onClick={() => setIsFullscreen(false)} className="absolute top-4 right-4 z-[60] bg-slate-900 border-2 border-slate-700 hover:bg-rose-600 hover:border-rose-500 text-white p-2.5 rounded-xl transition-all shadow-lg">
-                            <X className="w-6 h-6 font-bold" />
-                        </button>
-                        
-                        {images.length > 1 && (
-                            <button onClick={(e) => { e.stopPropagation(); setActiveIdx((prev) => (prev - 1 + images.length) % images.length); }} className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] bg-slate-900/80 hover:bg-slate-800 text-white p-4 rounded-full transition-colors border border-slate-700">
-                                <ChevronLeft className="w-8 h-8" />
-                            </button>
-                        )}
-                        
-                        <div className="absolute top-4 left-4 bg-rose-600 text-white text-[10px] font-black px-3 py-1.5 uppercase tracking-widest z-[60] border-2 border-slate-900 rounded-lg shadow-lg">
-                            Analiză Foto (VAR)
-                        </div>
-
-                        <div className="w-full h-full overflow-auto flex items-center justify-center touch-pan-x touch-pan-y" onClick={() => setIsFullscreen(false)}>
-                            <img 
-                                src={images[activeIdx]} 
-                                alt="Fullscreen" 
-                                className="max-w-[200vw] sm:max-w-full max-h-[200vh] sm:max-h-full object-contain m-auto" 
-                                onClick={(e) => e.stopPropagation()} 
-                            />
-                        </div>
-                        
-                        {images.length > 1 && (
-                            <button onClick={(e) => { e.stopPropagation(); setActiveIdx((prev) => (prev + 1) % images.length); }} className="absolute right-4 top-1/2 -translate-y-1/2 z-[60] bg-slate-900/80 hover:bg-slate-800 text-white p-4 rounded-full transition-colors border border-slate-700">
-                                <ChevronRight className="w-8 h-8" />
-                            </button>
-                        )}
-                        
-                        {images.length > 1 && (
-                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-[60] bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700">
-                                {images.map((_, i) => (
-                                    <div key={i} className={`w-2.5 h-2.5 rounded-full transition-all ${i === activeIdx ? 'bg-blue-500 scale-125' : 'bg-slate-400/50 hover:bg-slate-400 cursor-pointer'}`} onClick={(e) => { e.stopPropagation(); setActiveIdx(i); }}></div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Zona Detalii (Partea dreaptă pe desktop) */}
-                <div className="w-full md:w-2/5 p-6 sm:p-8 flex flex-col overflow-y-auto bg-slate-50 dark:bg-slate-900">
-                    <div className="mb-6">
-                        <span className="inline-flex items-center gap-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-[10px] font-black px-3 py-1.5 rounded-lg mb-3 uppercase tracking-widest border border-blue-200 dark:border-blue-800">
-                            <Tag className="w-3 h-3"/> {product.category || "General"}
-                        </span>
-                        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none mb-3">{product.title}</h2>
-                        <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 inline-block px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/50">{product.price}</div>
-                    </div>
-                    
-                    <div className="mb-8 border-t-2 border-b-2 border-slate-200 dark:border-slate-800 py-6">
-                        <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-3 flex items-center gap-2"><FileText className="w-4 h-4"/> Fișa Produsului</h4>
-                        <p className="whitespace-pre-wrap text-sm sm:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{product.description}</p>
-                    </div>
-                    
-                    {/* ZONA CONTACT VÂNZĂTOR (Stil Legitimație Impresar) */}
-                    <div className="mt-auto bg-white dark:bg-slate-950 rounded-2xl p-5 border-2 border-slate-200 dark:border-slate-800 relative shadow-sm">
-                        {/* BUTON VAR (Raport) */}
-                        {!isOwner && !isAdmin && (
-                            <button 
-                                onClick={handleReportListing}
-                                className="absolute top-4 right-4 flex items-center gap-1 text-[9px] uppercase font-black tracking-widest text-slate-400 hover:text-amber-500 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 transition-colors"
-                                title="Cheamă VAR-ul dacă anunțul e fals"
-                            >
-                                <Flag className="w-3 h-3"/> VAR
-                            </button>
-                        )}
-
-                        <h3 className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2"><User className="w-4 h-4 text-blue-500" /> Contact Impresar</h3>
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-4">
-                                {product.sellerAvatar && !avatarError ? (
-                                    <img src={product.sellerAvatar} className="w-14 h-14 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700 shadow-sm" onError={() => setAvatarError(true)} />
-                                ) : (
-                                    <div className="w-14 h-14 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-xl uppercase border-2 border-blue-200 dark:border-blue-800 shadow-sm">{product.seller.charAt(0)}</div>
-                                )}
-                                <div>
-                                    <div className="font-black text-lg text-slate-900 dark:text-white uppercase tracking-tight">{product.seller}</div>
-                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Membru Market</div>
-                                </div>
-                            </div>
-                            
-                            {/* Numărul de telefon vizibil ca un buton */}
-                            {product.sellerPhone && (
-                                <a href={`tel:${product.sellerPhone}`} className="flex items-center justify-center gap-3 bg-slate-900 hover:bg-slate-800 text-white p-3 rounded-xl border-b-4 border-slate-950 hover:translate-y-[2px] hover:border-b-2 transition-all w-full">
-                                    <Phone className="w-5 h-5 text-emerald-400" />
-                                    <span className="font-black uppercase tracking-widest">{product.sellerPhone}</span>
-                                </a>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- LOGICA PRINCIPALĂ (COLLECTORS HUB) ---
+// --- COMPONENTA PRINCIPALĂ ---
 export function CollectorsHubSection({ user, onOpenChat, initialPostId }: CollectorsHubProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -417,6 +57,10 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
   
   const [productToShare, setProductToShare] = useState<Product | null>(null);
   const [userFavorites, setUserFavorites] = useState<string[]>(user?.favorites || []);
+
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   useEffect(() => { fetchProducts(); }, []);
 
@@ -525,10 +169,202 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
     return titleMatch && matchesTab && matchesCategory;
   });
 
+  // --- COMPONENTE INTERNE (Pentru a accesa funcțiile globale fără erori TypeScript) ---
+
+  const ProductCard = ({ product, isFavorite }: { product: Product, isFavorite: boolean }) => {
+    const [currentImgIndex, setCurrentImgIndex] = useState(0);
+    const images = product.images || [];
+    const sellerName = product.seller || "Necunoscut";
+    const [localAvatarError, setLocalAvatarError] = useState(false);
+    const isOwner = product.sellerEmail === user.email;
+  
+    return (
+      <div onClick={() => setSelectedProduct(product)} className="group bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-[0_15px_30px_rgba(37,99,235,0.15)] hover:border-blue-500 transition-all duration-300 flex flex-col h-full cursor-pointer relative hover:-translate-y-1">
+        
+        <div className="absolute top-3 left-3 z-20 bg-slate-900/80 backdrop-blur-md text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-slate-700"><Maximize2 className="w-4 h-4" /></div>
+        
+        <button 
+          onClick={(e) => { e.stopPropagation(); handleToggleFavorite(product._id); }} 
+          className={`absolute top-3 right-3 z-20 p-2.5 rounded-xl shadow-md transition-all border-2 ${isFavorite ? 'bg-rose-50 border-rose-200 text-rose-500 dark:bg-rose-900/30 dark:border-rose-800' : 'bg-white/90 backdrop-blur border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-300 dark:bg-slate-900/80 dark:border-slate-700'}`}
+          title="Adaugă în Lista de Scout"
+        >
+          <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
+        </button>
+  
+        <div className="relative h-60 bg-slate-100 dark:bg-slate-800 border-b-4 border-slate-200 dark:border-slate-800 overflow-hidden shrink-0">
+          {images.length > 0 ? (
+            <img src={images[currentImgIndex]} alt={product.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400?text=Eroare+Imagine' }} />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-200 dark:bg-slate-800 p-4 text-center"><AlertTriangle className="w-8 h-8 mb-2 opacity-50" /><span className="text-xs font-bold uppercase tracking-widest">Fără imagine</span></div>
+          )}
+          
+          <div className="absolute bottom-3 right-3 bg-slate-900 text-blue-400 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md z-10 border border-slate-700 flex items-center gap-1.5">
+              <Tag className="w-3 h-3" /> {product.category || "General"}
+          </div>
+  
+          {images.length > 1 && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); if(images.length>0) setCurrentImgIndex((prev) => (prev - 1 + images.length) % images.length); }} className="absolute left-3 top-1/2 -translate-y-1/2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20 border border-slate-700"><ChevronLeft className="w-5 h-5" /></button>
+              <button onClick={(e) => { e.stopPropagation(); if(images.length>0) setCurrentImgIndex((prev) => (prev + 1) % images.length); }} className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-900/80 hover:bg-slate-900 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20 border border-slate-700"><ChevronRight className="w-5 h-5" /></button>
+              
+              <div className="absolute bottom-3 left-3 flex gap-1 z-10 bg-slate-900/50 backdrop-blur px-2 py-1 rounded-full">
+                  {images.map((_, i) => (
+                      <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === currentImgIndex ? 'bg-white' : 'bg-white/40'}`}></div>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
+  
+        <div className="p-5 flex-1 flex flex-col bg-slate-50 dark:bg-slate-950">
+          <div className="flex justify-between items-start mb-2 gap-3">
+              <h3 className="font-black text-lg text-slate-900 dark:text-white uppercase tracking-tight leading-none group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-1" title={product.title}>{product.title || "Fără Titlu"}</h3>
+          </div>
+          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mb-3">{product.price || "N/A"}</div>
+          
+          <p className="text-slate-500 dark:text-slate-400 text-xs font-medium mb-4 line-clamp-2 flex-1">{product.description || "Fără descriere."}</p>
+          
+          <div className="pt-4 border-t-2 border-slate-200 dark:border-slate-800 mt-auto flex items-center justify-between">
+              <div className="flex items-center gap-3 text-sm text-slate-500">
+                {product.sellerAvatar && !localAvatarError ? (
+                    <img src={product.sellerAvatar} alt={sellerName} className="w-10 h-10 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700 shadow-sm bg-white" onError={() => setLocalAvatarError(true)} />
+                ) : (
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-sm uppercase shadow-sm border-2 border-blue-200 dark:border-blue-800">{sellerName.charAt(0)}</div>
+                )}
+                <div className="flex flex-col leading-none">
+                   <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1 flex items-center gap-1"><Shield className="w-3 h-3"/> Impresar</span>
+                   <span className="font-bold text-xs uppercase tracking-wider truncate max-w-[100px] text-slate-800 dark:text-slate-200">{sellerName}</span>
+                </div>
+              </div>
+  
+              <div className="flex gap-2 shrink-0">
+                  <button onClick={(e) => { e.stopPropagation(); setProductToShare(product); }} className="text-slate-400 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 hover:text-blue-600 hover:border-blue-500 p-2 rounded-xl transition-colors z-20" title="Dă mai departe">
+                      <Share2 className="w-4 h-4" />
+                  </button>
+  
+                  {!isOwner && (
+                      <button onClick={(e) => { e.stopPropagation(); handleStartChat(product); }} className="text-blue-600 bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-800/50 hover:bg-blue-600 hover:text-white p-2 rounded-xl transition-colors z-20" title="Negociază">
+                          <MessageCircle className="w-4 h-4" />
+                      </button>
+                  )}
+                  
+                  {isOwner && (
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(product._id); }} className="text-rose-500 bg-rose-50 dark:bg-rose-900/30 border-2 border-rose-200 dark:border-rose-800/50 hover:bg-rose-600 hover:text-white p-2 rounded-xl transition-colors z-20" title="Retrage Anunț">
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+              </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const ShareModalComponent = ({ product }: { product: Product }) => {
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [loadingConvs, setLoadingConvs] = useState(true);
+
+    useEffect(() => { 
+        const fetchConversations = async () => {
+            try {
+                const res = await fetch('https://football-backend-m2a4.onrender.com/api/messages/conversations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: user.email, name: user.name })
+                });
+                if (res.ok) setConversations(await res.json());
+            } catch (e) { console.error(e); } finally { setLoadingConvs(false); }
+        };
+        fetchConversations(); 
+    }, [user.email, user.name]);
+
+    const handleExternalShare = async () => {
+        const link = `${window.location.origin}/?postId=${product._id}`;
+        const shareData = {
+            title: `Romania Scout: ${product.title}`,
+            text: `Salut! Uite ce am găsit pe piața de transferuri: ${product.title} - ${product.price}`,
+            url: link
+        };
+        try {
+            if (navigator.share) await navigator.share(shareData);
+            else {
+                await navigator.clipboard.writeText(`${shareData.text}\n${link}`);
+                toast.success("Link copiat spre vestiar!");
+            }
+        } catch (e) {}
+    };
+
+    const handleSendToChat = async (roomId: string, chatTitle: string) => {
+        const siteLink = `${window.location.origin}/?postId=${product._id}`;
+        const messageText = `👀 Propunere de transfer:\n**${product.title}**\nCotă: ${product.price}\nVezi detalii aici: ${siteLink}`;
+        const time = new Date().getHours() + ":" + (new Date().getMinutes() < 10 ? '0' : '') + new Date().getMinutes();
+
+        try {
+            const res = await fetch('https://football-backend-m2a4.onrender.com/api/messages/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    room: roomId,
+                    author: user.name,
+                    authorRole: user.role === 'admin' ? 'admin' : 'user',
+                    message: messageText,
+                    time: time
+                })
+            });
+
+            if (res.ok) {
+                toast.success(`Trimis către ${chatTitle}!`);
+                setProductToShare(null);
+            }
+        } catch (e) { toast.error("Eroare la pasă."); }
+    };
+
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] border-4 border-blue-600/30 animate-in zoom-in-95">
+                <div className="bg-slate-900 p-4 border-b-2 border-blue-600 flex justify-between items-center relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)]"></div>
+                    <h3 className="font-black text-lg text-white uppercase tracking-widest relative z-10 flex items-center gap-2"><Share2 className="w-5 h-5 text-blue-400"/> Trimite mai departe</h3>
+                    <button onClick={() => setProductToShare(null)} className="relative z-10 bg-slate-800 hover:bg-rose-500 rounded-full p-1.5 transition-colors border border-slate-700 text-white"><X className="w-4 h-4 font-bold"/></button>
+                </div>
+                <div className="p-5 space-y-4 bg-slate-50 dark:bg-slate-950">
+                    <div className="flex gap-4 bg-white dark:bg-slate-900 p-3 rounded-2xl border-2 border-slate-200 dark:border-slate-800 shadow-sm">
+                        {product.images[0] ? <img src={product.images[0]} className="w-14 h-14 rounded-xl object-cover border border-slate-200 dark:border-slate-700"/> : <div className="w-14 h-14 bg-slate-200 rounded-xl flex items-center justify-center"><ShoppingBag className="w-6 h-6 text-slate-400"/></div>}
+                        <div className="flex flex-col justify-center flex-1 min-w-0">
+                            <div className="font-black text-sm text-slate-900 dark:text-white truncate uppercase tracking-tight">{product.title}</div>
+                            <div className="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase tracking-widest mt-1">{product.price}</div>
+                        </div>
+                    </div>
+                    <button onClick={handleExternalShare} className="w-full flex items-center justify-center gap-3 p-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all border-b-4 border-blue-800 hover:translate-y-[2px] hover:border-b-2 font-black uppercase tracking-widest text-xs">
+                        <Copy className="w-4 h-4"/> Copiază Link / Alte Aplicații
+                    </button>
+                    <div className="border-t-2 border-slate-200 dark:border-slate-800 my-4"></div>
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Send className="w-3.5 h-3.5"/> Trimite unui coechipier (Chat)</div>
+                    <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                        {loadingConvs ? <div className="text-center text-xs text-blue-500 py-4 font-bold uppercase"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2"/> Preluare Contacte...</div> :
+                         conversations.length === 0 ? <div className="text-center text-xs text-slate-500 py-4 font-bold uppercase border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl">Nu ai conversații active pe teren.</div> :
+                         conversations.map(conv => (
+                             <button key={conv.roomId} onClick={() => handleSendToChat(conv.roomId, conv.title)} className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-900 hover:border-blue-500 border-2 border-slate-200 dark:border-slate-800 rounded-2xl transition-colors text-left group">
+                                 {conv.image ? <img src={conv.image} className="w-10 h-10 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700"/> : <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 border-2 border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xs font-black uppercase">CH</div>}
+                                 <div className="flex-1 truncate">
+                                     <div className="text-sm font-black text-slate-900 dark:text-white truncate uppercase tracking-tight">{conv.title}</div>
+                                 </div>
+                                 <Send className="w-4 h-4 text-slate-400 group-hover:text-blue-500 shrink-0"/>
+                             </button>
+                         ))
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+  };
+
+
   return (
     <div className="relative min-h-[80vh] overflow-hidden bg-transparent z-0 animate-in fade-in duration-500 pb-20">
       
-      {/* FUNDAL SPORTIV (Piața de transferuri) */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none">
           <div className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 w-[50vw] h-[50vw] rounded-full bg-blue-600/5 dark:bg-blue-600/10 blur-[120px] animate-pulse"></div>
           <div className="absolute bottom-0 left-0 -translate-x-1/4 translate-y-1/4 w-[40vw] h-[40vw] rounded-full bg-emerald-500/5 dark:bg-emerald-600/10 blur-[120px] animate-pulse delay-1000"></div>
@@ -607,34 +443,163 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                 <ProductCard 
                     key={product._id} 
                     product={product} 
-                    user={user} 
-                    onDelete={handleDelete} 
-                    onClick={setSelectedProduct} 
-                    onStartChat={handleStartChat} 
-                    onShare={(p) => setProductToShare(p)} 
-                    onToggleFavorite={handleToggleFavorite}
                     isFavorite={userFavorites.includes(product._id)}
                 />
             ))}
         </div>
       )}
 
-      {selectedProduct && 
-        <ProductViewModal 
-            product={selectedProduct} 
-            user={user}
-            onClose={() => setSelectedProduct(null)} 
-            onShare={(p) => setProductToShare(p)} 
-            onToggleFavorite={handleToggleFavorite}
-            isFavorite={userFavorites.includes(selectedProduct._id)}
-        />
-      }
+      {/* PORTAL: MODAL VIZUALIZARE PRODUS */}
+      {selectedProduct && createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[92vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 border-4 border-slate-700 relative">
+                
+                <div className="absolute top-4 right-4 z-50 flex gap-2">
+                    <button onClick={() => handleToggleFavorite(selectedProduct._id)} className="bg-slate-900/80 backdrop-blur hover:bg-slate-900 text-white p-2.5 rounded-xl shadow-lg border border-slate-700 transition">
+                        <Heart className={`w-5 h-5 transition-colors ${userFavorites.includes(selectedProduct._id) ? 'fill-rose-500 text-rose-500' : ''}`} />
+                    </button>
+                    <button onClick={() => setProductToShare(selectedProduct)} className="bg-slate-900/80 backdrop-blur hover:bg-slate-900 text-white p-2.5 rounded-xl shadow-lg border border-slate-700 transition"><Share2 className="w-5 h-5" /></button>
+                    <button onClick={() => setSelectedProduct(null)} className="bg-slate-900/80 backdrop-blur hover:bg-rose-500 text-white p-2.5 rounded-xl shadow-lg border border-slate-700 hover:border-rose-500 transition"><X className="w-5 h-5 font-bold" /></button>
+                </div>
 
-      {productToShare && <ShareModal product={productToShare} user={user} onClose={() => setProductToShare(null)} />}
+                <div className="w-full md:w-3/5 bg-slate-100 dark:bg-slate-950 flex flex-col relative h-[40vh] md:h-auto border-b-4 md:border-b-0 md:border-r-4 border-slate-200 dark:border-slate-800">
+                    <div className="flex-1 relative overflow-hidden flex items-center justify-center cursor-zoom-in" onClick={() => setIsFullscreen(true)}>
+                        <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#000_20px,#000_22px)] pointer-events-none"></div>
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-slate-950/20 transition-opacity z-20 pointer-events-none">
+                            <div className="bg-slate-900 text-white p-3 rounded-full shadow-lg border border-slate-700 backdrop-blur-md">
+                                <Maximize2 className="w-6 h-6" />
+                            </div>
+                        </div>
+                        
+                        {selectedProduct.images.length > 0 ? (
+                            <img src={selectedProduct.images[activeIdx]} className="max-w-full max-h-full object-contain relative z-10 transition-transform duration-200 drop-shadow-xl p-4" />
+                        ) : (
+                            <div className="text-slate-400 flex flex-col items-center font-black uppercase tracking-widest"><AlertTriangle className="mb-2 w-10 h-10"/> Fără fotografie</div>
+                        )}
+                    </div>
+                    {selectedProduct.images.length > 1 && (
+                        <div className="p-4 bg-slate-200 dark:bg-slate-900 border-t-2 border-slate-300 dark:border-slate-800 flex gap-3 overflow-x-auto justify-center z-40 relative">
+                            {selectedProduct.images.map((img, idx) => (
+                                <button key={idx} onClick={() => setActiveIdx(idx)} className={`relative w-16 h-16 rounded-xl overflow-hidden border-4 shrink-0 transition-all ${activeIdx === idx ? 'border-blue-600 scale-110 shadow-lg' : 'border-transparent opacity-50 hover:opacity-100'}`}>
+                                    <img src={img} className="w-full h-full object-cover" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
-      {/* MODAL ADĂUGARE PRODUS (STILIZAT OFICIAL) */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
+                {/* FULLSCREEN ZOOM PORTAL (Într-un portal separat) */}
+                {isFullscreen && selectedProduct.images.length > 0 && createPortal(
+                    <div className="fixed inset-0 z-[1000000] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200">
+                        <button onClick={() => setIsFullscreen(false)} className="absolute top-4 right-4 z-[60] bg-slate-900 border-2 border-slate-700 hover:bg-rose-600 hover:border-rose-500 text-white p-2.5 rounded-xl transition-all shadow-lg">
+                            <X className="w-6 h-6 font-bold" />
+                        </button>
+                        
+                        {selectedProduct.images.length > 1 && (
+                            <button onClick={(e) => { e.stopPropagation(); setActiveIdx((prev) => (prev - 1 + selectedProduct.images.length) % selectedProduct.images.length); }} className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] bg-slate-900/80 hover:bg-slate-800 text-white p-4 rounded-full transition-colors border border-slate-700">
+                                <ChevronLeft className="w-8 h-8" />
+                            </button>
+                        )}
+                        
+                        <div className="absolute top-4 left-4 bg-rose-600 text-white text-[10px] font-black px-3 py-1.5 uppercase tracking-widest z-[60] border-2 border-slate-900 rounded-lg shadow-lg">
+                            Analiză Foto (VAR)
+                        </div>
+
+                        <div className="w-full h-full overflow-auto flex items-center justify-center touch-pan-x touch-pan-y" onClick={() => setIsFullscreen(false)}>
+                            <img 
+                                src={selectedProduct.images[activeIdx]} 
+                                alt="Fullscreen" 
+                                className="max-w-[200vw] sm:max-w-full max-h-[200vh] sm:max-h-full object-contain m-auto" 
+                                onClick={(e) => e.stopPropagation()} 
+                            />
+                        </div>
+                        
+                        {selectedProduct.images.length > 1 && (
+                            <button onClick={(e) => { e.stopPropagation(); setActiveIdx((prev) => (prev + 1) % selectedProduct.images.length); }} className="absolute right-4 top-1/2 -translate-y-1/2 z-[60] bg-slate-900/80 hover:bg-slate-800 text-white p-4 rounded-full transition-colors border border-slate-700">
+                                <ChevronRight className="w-8 h-8" />
+                            </button>
+                        )}
+                        
+                        {selectedProduct.images.length > 1 && (
+                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-[60] bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700">
+                                {selectedProduct.images.map((_, i) => (
+                                    <div key={i} className={`w-2.5 h-2.5 rounded-full transition-all ${i === activeIdx ? 'bg-blue-500 scale-125' : 'bg-slate-400/50 hover:bg-slate-400 cursor-pointer'}`} onClick={(e) => { e.stopPropagation(); setActiveIdx(i); }}></div>
+                                ))}
+                            </div>
+                        )}
+                    </div>,
+                    document.body
+                )}
+
+                <div className="w-full md:w-2/5 p-6 sm:p-8 flex flex-col overflow-y-auto bg-slate-50 dark:bg-slate-900">
+                    <div className="mb-6">
+                        <span className="inline-flex items-center gap-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-[10px] font-black px-3 py-1.5 rounded-lg mb-3 uppercase tracking-widest border border-blue-200 dark:border-blue-800">
+                            <Tag className="w-3 h-3"/> {selectedProduct.category || "General"}
+                        </span>
+                        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none mb-3">{selectedProduct.title}</h2>
+                        <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 inline-block px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/50">{selectedProduct.price}</div>
+                    </div>
+                    
+                    <div className="mb-8 border-t-2 border-b-2 border-slate-200 dark:border-slate-800 py-6">
+                        <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-3 flex items-center gap-2"><FileText className="w-4 h-4"/> Fișa Produsului</h4>
+                        <p className="whitespace-pre-wrap text-sm sm:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{selectedProduct.description}</p>
+                    </div>
+                    
+                    <div className="mt-auto bg-white dark:bg-slate-950 rounded-2xl p-5 border-2 border-slate-200 dark:border-slate-800 relative shadow-sm">
+                        {selectedProduct.sellerEmail !== user.email && user?.role !== 'admin' && user?.email !== 'admin.nou@scout.ro' && (
+                            <button 
+                                onClick={async () => {
+                                    if (!window.confirm("Apeși butonul de VAR? Ești sigur că acest anunț încalcă regulamentul?")) return;
+                                    try {
+                                        const res = await fetch(`https://football-backend-m2a4.onrender.com/api/listings/${selectedProduct._id}/report`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ user: user.name })
+                                        });
+                                        if (res.ok) toast.success("Incidentul a fost raportat la Comisie (VAR).");
+                                    } catch (err) { toast.error("Eroare la raportare."); }
+                                }}
+                                className="absolute top-4 right-4 flex items-center gap-1 text-[9px] uppercase font-black tracking-widest text-slate-400 hover:text-amber-500 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 transition-colors"
+                                title="Cheamă VAR-ul dacă anunțul e fals"
+                            >
+                                <Flag className="w-3 h-3"/> VAR
+                            </button>
+                        )}
+
+                        <h3 className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2"><User className="w-4 h-4 text-blue-500" /> Contact Impresar</h3>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4">
+                                {selectedProduct.sellerAvatar && !avatarError ? (
+                                    <img src={selectedProduct.sellerAvatar} className="w-14 h-14 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700 shadow-sm" onError={() => setAvatarError(true)} />
+                                ) : (
+                                    <div className="w-14 h-14 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-xl uppercase border-2 border-blue-200 dark:border-blue-800 shadow-sm">{selectedProduct.seller.charAt(0)}</div>
+                                )}
+                                <div>
+                                    <div className="font-black text-lg text-slate-900 dark:text-white uppercase tracking-tight">{selectedProduct.seller}</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Membru Market</div>
+                                </div>
+                            </div>
+                            
+                            {selectedProduct.sellerPhone && (
+                                <a href={`tel:${selectedProduct.sellerPhone}`} className="flex items-center justify-center gap-3 bg-slate-900 hover:bg-slate-800 text-white p-3 rounded-xl border-b-4 border-slate-950 hover:translate-y-[2px] hover:border-b-2 transition-all w-full">
+                                    <Phone className="w-5 h-5 text-emerald-400" />
+                                    <span className="font-black uppercase tracking-widest">{selectedProduct.sellerPhone}</span>
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>,
+        document.body
+      )}
+
+      {/* PORTAL: MODAL PARTAJARE PRODUS */}
+      {productToShare && <ShareModalComponent product={productToShare} />}
+
+      {/* PORTAL: MODAL ADĂUGARE PRODUS */}
+      {showAddModal && createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col max-h-[92vh] border-4 border-blue-600/30 overflow-hidden">
             <div className="p-5 sm:p-6 border-b-4 border-blue-600 flex justify-between items-center shrink-0 bg-slate-900 text-white relative">
                 <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)]"></div>
@@ -704,7 +669,8 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                 </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
