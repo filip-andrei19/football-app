@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { io } from 'socket.io-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -681,9 +682,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         const status = match.status_short;
         const liveStatuses = ["1H", "2H", "HT", "ET", "P", "BT", "LIVE"];
         
-        // Dacă e neînceput afișăm doar ora (am mutat din central pentru a nu se dubla, dar o păstrăm curată)
         if (status === "NS") {
-            return null; // Eliminăm randarea orei din dreapta pentru că e deja în centru
+            return null; 
         }
         
         if (liveStatuses.includes(status)) {
@@ -802,51 +802,54 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         );
     };
 
-    const renderAttackMomentum = () => {
-        const mockMomentum = Array.from({ length: 90 }, (_, i) => {
-            if (selectedMatchDetails?.momentum) return selectedMatchDetails.momentum[i]?.value || 0;
-            const isHomeDominating = i > 15 && i < 30 || i > 60 && i < 75;
-            const isAwayDominating = i > 35 && i < 50 || i > 80;
-            if (isHomeDominating) return Math.random() * 80 + 20;
-            if (isAwayDominating) return -(Math.random() * 80 + 20);
-            return (Math.random() * 40) - 20;
-        });
-
-        return (
-            <div className="bg-slate-900 rounded-3xl p-5 border-2 border-slate-800 shadow-inner mb-6 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-4 relative z-10">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
-                        <Activity className="w-4 h-4" /> Presiune Meci (Attack Momentum)
-                    </h4>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase">Live Timeline</span>
-                </div>
-                <div className="flex items-center h-24 sm:h-32 gap-[1px] sm:gap-[2px] bg-slate-950 border-y border-slate-800 relative">
-                    <div className="absolute w-full h-[1px] bg-slate-700 top-1/2 opacity-50 z-0"></div>
-                    <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[8px] text-slate-600 font-bold p-1 z-10 pointer-events-none">
-                        <span className="text-emerald-500/50">Gazde</span>
-                        <span className="text-blue-500/50">Oaspeți</span>
-                    </div>
-                    {mockMomentum.map((val, i) => (
-                        <div key={i} className="flex-1 flex flex-col justify-center h-full relative z-10 group">
-                            <div className="opacity-0 group-hover:opacity-100 absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow z-20 pointer-events-none">
-                                Min {i+1}
-                            </div>
-                            {val > 0 ? (
-                                <div className="w-full bg-emerald-500 rounded-t-sm transition-all hover:bg-emerald-400" style={{ height: `${val / 2}%`, marginBottom: '50%' }}></div>
-                            ) : (
-                                <div className="w-full bg-blue-500 rounded-b-sm transition-all hover:bg-blue-400" style={{ height: `${Math.abs(val) / 2}%`, marginTop: '50%' }}></div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
     const renderH2HSection = () => {
-        const mockFormHome = selectedMatchDetails?.form?.home || ['W', 'D', 'W', 'L', 'W'];
-        const mockFormAway = selectedMatchDetails?.form?.away || ['L', 'L', 'D', 'W', 'L'];
-        const mockPredictions = selectedMatchDetails?.predictions || { home: 55, draw: 25, away: 20 };
+        const mockFormHome = selectedMatchDetails?.form?.home || ['D', 'D', 'D', 'D', 'D'];
+        const mockFormAway = selectedMatchDetails?.form?.away || ['D', 'D', 'D', 'D', 'D'];
+        
+        let matchPredictions = selectedMatchDetails?.predictions;
+
+        if (!matchPredictions) {
+            const getTeamPrestige = (teamName: string) => {
+                if (!teamName) return 60;
+                const t = teamName.toLowerCase();
+                
+                if (t.match(/real madrid|manchester city|bayern|barcelona|liverpool|arsenal|psg|inter|bayer leverkusen/)) return 95;
+                if (t.match(/juventus|milan|atletico|dortmund|chelsea|tottenham|manchester utd|manchester united|napoli|aston villa/)) return 85;
+                if (t.match(/newcastle|leipzig|lazio|roma|atalanta|porto|benfica|sporting|fcsb|cfr cluj|craiova|rapid|dinamo|galatasaray|fenerbahce|besiktas|ajax|psv/)) return 75;
+                
+                return 60;
+            };
+
+            const calculateFormPoints = (formArray: string[]) => {
+                return formArray.reduce((total, result) => {
+                    if (result === 'W') return total + 3;
+                    if (result === 'D') return total + 1;
+                    return total;
+                }, 0);
+            };
+
+            const homePrestige = getTeamPrestige(selectedMatchDetails?.home_team_name || "");
+            const awayPrestige = getTeamPrestige(selectedMatchDetails?.away_team_name || "");
+            
+            const homeFormPts = calculateFormPoints(mockFormHome);
+            const awayFormPts = calculateFormPoints(mockFormAway);
+
+            const homeAdvantage = 5; 
+
+            const homeTotal = homePrestige + homeFormPts + homeAdvantage;
+            const awayTotal = awayPrestige + awayFormPts;
+            const matchTotal = homeTotal + awayTotal;
+
+            const diff = Math.abs(homeTotal - awayTotal);
+            let drawChance = Math.max(12, 30 - Math.floor(diff / 2));
+            
+            const remainingChance = 100 - drawChance;
+            
+            let homeChance = Math.round((homeTotal / matchTotal) * remainingChance);
+            let awayChance = remainingChance - homeChance;
+
+            matchPredictions = { home: homeChance, draw: drawChance, away: awayChance };
+        }
 
         const formColor = (res: string) => res === 'W' ? 'bg-emerald-500' : res === 'D' ? 'bg-slate-500' : 'bg-rose-500';
 
@@ -857,14 +860,14 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         <Swords className="w-4 h-4" /> Predicția Meciului (Șanse de câștig)
                     </h4>
                     <div className="flex items-center gap-4 text-xs font-black uppercase tracking-widest mb-2">
-                        <span className="flex-1 text-emerald-500 text-left">{mockPredictions.home}% {selectedMatchDetails?.home_team_name}</span>
-                        <span className="flex-1 text-slate-500 text-center">{mockPredictions.draw}% Egal</span>
-                        <span className="flex-1 text-blue-500 text-right">{mockPredictions.away}% {selectedMatchDetails?.away_team_name}</span>
+                        <span className="flex-1 text-emerald-500 text-left">{matchPredictions.home}% {selectedMatchDetails?.home_team_name}</span>
+                        <span className="flex-1 text-slate-500 text-center">{matchPredictions.draw}% Egal</span>
+                        <span className="flex-1 text-blue-500 text-right">{matchPredictions.away}% {selectedMatchDetails?.away_team_name}</span>
                     </div>
                     <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden flex border border-slate-700">
-                        <div style={{ width: `${mockPredictions.home}%` }} className="bg-emerald-500 h-full transition-all"></div>
-                        <div style={{ width: `${mockPredictions.draw}%` }} className="bg-slate-500 h-full transition-all"></div>
-                        <div style={{ width: `${mockPredictions.away}%` }} className="bg-blue-500 h-full transition-all"></div>
+                        <div style={{ width: `${matchPredictions.home}%` }} className="bg-emerald-500 h-full transition-all"></div>
+                        <div style={{ width: `${matchPredictions.draw}%` }} className="bg-slate-500 h-full transition-all"></div>
+                        <div style={{ width: `${matchPredictions.away}%` }} className="bg-blue-500 h-full transition-all"></div>
                     </div>
                 </div>
 
@@ -1122,16 +1125,17 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 </div>
             )}
             
-            {loadingRoster && (
-                <div className="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
+            {loadingRoster && createPortal(
+                <div className="fixed inset-0 z-[999999] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center">
                     <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
                     <h3 className="text-xl font-black tracking-widest text-emerald-400 mt-4 animate-pulse uppercase">Scanăm Lotul...</h3>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* MODAL SETĂRI NOTIFICĂRI (FLASHSCORE STYLE) */}
-            {showNotifSettings && (
-                <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={() => setShowNotifSettings(false)}>
+            {showNotifSettings && createPortal(
+                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in" onClick={() => setShowNotifSettings(false)}>
                     <div className="bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl border-4 border-slate-700" onClick={e => e.stopPropagation()}>
                         <div className="bg-slate-950 text-white p-5 border-b-2 border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -1167,12 +1171,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             ))}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* MODAL DETALII MECI */}
-            {selectedMatchDetails && (
-                <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
+            {selectedMatchDetails && createPortal(
+                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
                     <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
                         <div className="bg-slate-950 border-b-4 border-emerald-600 text-white p-4 sm:p-6 shrink-0 relative overflow-hidden">
                             <button onClick={() => setSelectedMatchDetails(null)} className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 bg-slate-800 hover:bg-rose-600 border border-slate-700 rounded-full transition-colors z-20">
@@ -1329,7 +1334,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                 <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">Datele statistice nu au fost procesate încă.</div>
                                             ) : (
                                                 <>
-                                                    {renderAttackMomentum()}
                                                     <div className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 p-5 sm:p-8 space-y-6 shadow-sm">
                                                         {(() => {
                                                             const homeStats = selectedMatchDetails.statistics[0].statistics;
@@ -1425,12 +1429,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* MODAL LOT (Echipa Extinsă) */}
-            {selectedTeam && (
-                <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md transition-opacity" onClick={() => setSelectedTeam(null)}>
+            {selectedTeam && createPortal(
+                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/95 backdrop-blur-md transition-opacity" onClick={() => setSelectedTeam(null)}>
                     <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-slate-700 animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
                         <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-4 border-slate-700 relative">
                             <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-16 sm:pr-0">
@@ -1506,12 +1511,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             ))}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* MODAL DETALII JUCĂTOR (Scouting Card) */}
-            {selectedPlayer && (
-                <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPlayer(null)}>
+            {selectedPlayer && createPortal(
+                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPlayer(null)}>
                     <div className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[95vh] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
                         <div className="relative bg-slate-900 shrink-0 px-5 sm:px-8 py-6 sm:py-8 border-b-4 border-emerald-500 overflow-hidden">
                             <button onClick={() => setSelectedPlayer(null)} className="absolute top-4 right-4 bg-slate-950/50 border border-white/20 hover:bg-rose-500 hover:border-rose-500 rounded-full p-2 text-white transition-colors z-20">
@@ -1632,12 +1638,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             })()}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* BARA DE COMPARARE JUCĂTORI (Plutitoare) */}
-            {compareList.length > 0 && (
-                <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[100001] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
+            {compareList.length > 0 && createPortal(
+                <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[999999] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
                     <div className="flex items-center gap-3 overflow-hidden">
                         <Scale className="w-6 h-6 text-emerald-400 shrink-0 animate-pulse" />
                         <div className="flex items-center gap-2 overflow-hidden">
@@ -1671,12 +1678,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             VS ({compareList.length}/2)
                         </button>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* MODALUL PRINCIPAL DE COMPARARE "MECI DIRECT" */}
-            {showCompareModal && compareList.length === 2 && (
-                <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowCompareModal(false)}>
+            {showCompareModal && compareList.length === 2 && createPortal(
+                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowCompareModal(false)}>
                     <div className="bg-slate-900 w-full max-w-4xl max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border-4 border-emerald-600/50" onClick={(e) => e.stopPropagation()}>
                         <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-center justify-between border-b-2 border-emerald-600/30">
                             <div className="flex items-center gap-3">
@@ -1759,7 +1767,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             );
                         })()}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
