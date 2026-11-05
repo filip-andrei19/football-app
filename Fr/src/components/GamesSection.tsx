@@ -15,7 +15,7 @@ interface Player {
     team?: string;
     team_logo?: string;
     league_name?: string;
-    league_id?: number | string; // Adăugat pentru filtru ligi
+    league_id?: number | string; 
     league_logo?: string;
     past_teams?: string[];
     market_value?: number; 
@@ -38,10 +38,8 @@ interface GridCriteria {
 const API_URL = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
-// ID-urile pentru Top 5 Ligi + România (pentru a filtra echipele obscure)
 const TOP_LEAGUES = [283, 39, 140, 135, 78, 61]; 
 
-// Algoritm Fisher-Yates pentru o amestecare PERFECT aleatorie
 function shuffleArray<T>(array: T[]): T[] {
     const newArr = [...array];
     for (let i = newArr.length - 1; i > 0; i--) {
@@ -70,7 +68,8 @@ export function GamesSection({ user }: GamesProps) {
     useEffect(() => {
         const fetchPlayers = async () => {
             try {
-                const res = await fetch(`${API_URL}/api/sport/players?limit=2000`);
+                // Fetch ridicat la 10.000 pentru a asigura preluarea întregii baze de date de 7000 de jucători
+                const res = await fetch(`${API_URL}/api/sport/players?limit=10000`);
                 if (res.ok) {
                     const data = await res.json();
                     setAllPlayers(data);
@@ -146,7 +145,7 @@ export function GamesSection({ user }: GamesProps) {
 }
 
 // ============================================================================
-// GAME 1: GRILA TRANSFERURILOR (TOP 5 LIGI + FISHER-YATES SHUFFLE)
+// GAME 1: GRILA TRANSFERURILOR (ALGORITM O(1) CU HĂRȚI DE MEMORIE)
 // ============================================================================
 function GridGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gridRows, setGridRows] = useState<GridCriteria[]>([]);
@@ -172,70 +171,88 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
     };
 
     const generateValidGrid = () => {
-        // Filtrăm jucătorii doar pentru ligile de top (plus România) pentru a garanta echipe cunoscute
-        const topPlayers = players.filter(p => p.league_id && TOP_LEAGUES.includes(Number(p.league_id)));
-
+        const criteriaPlayers = new Map<string, Set<string>>();
         const teamMap = new Map<string, string>();
         const natMap = new Map<string, string>();
         const leagueMap = new Map<string, string>();
-        const criteriaCounts = new Map<string, number>();
 
-        topPlayers.forEach(p => {
+        // Pre-calculăm apartenența fiecărui jucător la criterii (O(1) lookup time)
+        players.forEach(p => {
             const t = p.team_name || p.team;
-            if (t) { 
+            if (t) {
                 teamMap.set(t, p.team_logo || "");
-                criteriaCounts.set(t, (criteriaCounts.get(t) || 0) + 1);
+                if (!criteriaPlayers.has(`team:${t}`)) criteriaPlayers.set(`team:${t}`, new Set());
+                criteriaPlayers.get(`team:${t}`)!.add(p._id);
             }
             if (p.past_teams) {
                 p.past_teams.forEach(pt => {
                     teamMap.set(pt, "");
-                    criteriaCounts.set(pt, (criteriaCounts.get(pt) || 0) + 1);
+                    if (!criteriaPlayers.has(`team:${pt}`)) criteriaPlayers.set(`team:${pt}`, new Set());
+                    criteriaPlayers.get(`team:${pt}`)!.add(p._id);
                 });
             }
-            if (p.nationality) { 
+            if (p.nationality) {
                 natMap.set(p.nationality, getFlagEmoji(p.nationality));
-                criteriaCounts.set(p.nationality, (criteriaCounts.get(p.nationality) || 0) + 1);
+                if (!criteriaPlayers.has(`nat:${p.nationality}`)) criteriaPlayers.set(`nat:${p.nationality}`, new Set());
+                criteriaPlayers.get(`nat:${p.nationality}`)!.add(p._id);
             }
-            if (p.league_name) { 
+            if (p.league_name) {
                 leagueMap.set(p.league_name, p.league_logo || "");
-                criteriaCounts.set(p.league_name, (criteriaCounts.get(p.league_name) || 0) + 1);
+                if (!criteriaPlayers.has(`league:${p.league_name}`)) criteriaPlayers.set(`league:${p.league_name}`, new Set());
+                criteriaPlayers.get(`league:${p.league_name}`)!.add(p._id);
             }
         });
 
-        // Avem nevoie de minim 3 jucători pentru ca un criteriu să intre în grilă
-        const minPlayers = 3;
-        const filterValid = (map: Map<string, string>, type: 'team' | 'nationality' | 'league') => {
-            return Array.from(map.entries())
-                .filter(([val]) => (criteriaCounts.get(val) || 0) >= minPlayers)
-                .map(([val, img]) => ({ type, value: val, image: img }));
-        };
+        // Setăm reguli: liniile vor fi DOAR echipe (minim 5 jucători pentru a fi o echipă relevantă)
+        const teamCriteria = Array.from(teamMap.entries())
+            .filter(([val]) => (criteriaPlayers.get(`team:${val}`)?.size || 0) >= 5)
+            .map(([val, img]) => ({ type: 'team' as const, value: val, image: img }));
 
-        const allCriteria: GridCriteria[] = [
-            ...filterValid(teamMap, 'team'),
-            ...filterValid(natMap, 'nationality'),
-            ...filterValid(leagueMap, 'league')
-        ];
+        // Coloanele pot fi orice (echipe, națiuni, ligi) cu minim 3 jucători asociați
+        const natCriteria = Array.from(natMap.entries())
+            .filter(([val]) => (criteriaPlayers.get(`nat:${val}`)?.size || 0) >= 3)
+            .map(([val, img]) => ({ type: 'nationality' as const, value: val, image: img }));
+
+        const leagueCriteria = Array.from(leagueMap.entries())
+            .filter(([val]) => (criteriaPlayers.get(`league:${val}`)?.size || 0) >= 3)
+            .map(([val, img]) => ({ type: 'league' as const, value: val, image: img }));
+
+        const allColCriteria = [...teamCriteria, ...natCriteria, ...leagueCriteria];
 
         let validRows: GridCriteria[] = [];
         let validCols: GridCriteria[] = [];
         let foundValidGrid = false;
         let attempts = 0;
 
-        while (!foundValidGrid && attempts < 5000) {
+        // Verificăm intersecția dinamic în Hash Map
+        const checkIntersect = (rType: string, rVal: string, cType: string, cVal: string) => {
+            const rKey = rType === 'nationality' ? 'nat' : rType;
+            const cKey = cType === 'nationality' ? 'nat' : cType;
+            const rSet = criteriaPlayers.get(`${rKey}:${rVal}`);
+            const cSet = criteriaPlayers.get(`${cKey}:${cVal}`);
+            if (!rSet || !cSet) return false;
+            for (const id of rSet) {
+                if (cSet.has(id)) return true; // Am găsit jucător comun
+            }
+            return false;
+        };
+
+        // Rulăm până la 20.000 de verificări matematice (durează milisecunde)
+        while (!foundValidGrid && attempts < 20000) {
             attempts++;
             
-            // Folosim Fisher-Yates pentru a asigura alegeri total diferite de fiecare dată
-            const shuffledRows = shuffleArray(allCriteria).slice(0, 3);
+            // Liniile vor fi mereu Echipe pentru a garanta intersecții logice
+            const shuffledRows = shuffleArray(teamCriteria).slice(0, 3);
             
-            const validColsForTheseRows = shuffleArray(allCriteria).filter(col => {
+            const validColsForTheseRows = shuffleArray(allColCriteria).filter(col => {
+                // Nu vrem același club și pe linie și pe coloană
                 if (shuffledRows.some(r => r.value === col.value)) return false;
-
-                // Căutăm jucătorii în baza de date TOTALĂ, nu doar în topPlayers
-                return shuffledRows.every(row => {
-                    return players.some(p => checkMatch(p, row) && checkMatch(p, col));
-                });
+                
+                // Căutăm dacă există intersecții valide pentru TOATE cele 3 echipe alese
+                return shuffledRows.every(row => checkIntersect(row.type, row.value, col.type, col.value));
             });
 
+            // Gata, am găsit o grilă 3x3 validă!
             if (validColsForTheseRows.length >= 3) {
                 validRows = shuffledRows;
                 validCols = validColsForTheseRows.slice(0, 3);
@@ -248,7 +265,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             setGridCols(validCols);
             setAnswers({});
         } else {
-            toast.error("Baza de date e prea mică pentru a amesteca criteriile (încearcă din nou).");
+            toast.error("Baza de date e prea mică pentru a genera combinații noi.");
         }
     };
 
@@ -404,7 +421,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 }
 
 // ============================================================================
-// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - FISHER YATES SHUFFLE
+// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) 
 // ============================================================================
 function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
@@ -435,7 +452,6 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
     };
 
     const startGame = () => {
-        // Filtrăm pentru a folosi jucători cu stats valide, din top ligi (pentru recunoaștere)
         const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_LEAGUES.includes(Number(p.league_id)));
         
         if (validPlayers.length < 10) {
