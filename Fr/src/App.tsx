@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogOut, User, Settings, ShieldAlert, Moon, Sun, Calendar, AlertTriangle } from 'lucide-react';
+import { Home, Users, Star, Heart, ShoppingBag, Menu, X, LogOut, User, Settings, ShieldAlert, Moon, Sun, Calendar, AlertTriangle, Gamepad2 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
 import { HomeSection } from './components/HomeSection';
-import { DiasporaSection } from './components/DiasporaSection';
 import { FutureStarsSection } from './components/FutureStarsSection';
 import { UnsungHeroesSection } from './components/UnsungHeroesSection';
 import { CollectorsHubSection } from './components/CollectorsHubSection';
@@ -12,6 +11,7 @@ import { ProfileSection } from './components/ProfileSection';
 import { AdminDashboard } from './components/AdminDashboard'; 
 import { ChatWidget } from './components/ChatWidget'; 
 import { MatchesSection } from './components/MatchesSection';
+import { GamesSection } from './components/GamesSection'; // <-- Importăm noua secțiune de Games
 
 // Noul buton cu design sportiv care folosește „linii de teren” și texturi fotbalistice
 const Button = ({ children, onClick, variant, className, disabled, title }: any) => {
@@ -25,7 +25,8 @@ const Button = ({ children, onClick, variant, className, disabled, title }: any)
   return <button onClick={onClick} disabled={disabled} title={title} className={`${baseStyle} ${variants[variant || 'default']} ${className || ''}`}>{children}</button>;
 };
 
-type Section = 'home' | 'diaspora' | 'stars' | 'heroes' | 'collectors' | 'matches' | 'profile' | 'admin';
+// Am înlocuit 'diaspora' cu 'games' în tipul Section
+type Section = 'home' | 'games' | 'stars' | 'heroes' | 'collectors' | 'matches' | 'profile' | 'admin';
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<Section>('home');
@@ -153,7 +154,7 @@ export default function App() {
   const navigation = [
     { id: 'home' as Section, label: 'Teren', icon: Home },
     { id: 'matches' as Section, label: 'Meciuri', icon: Calendar }, 
-    { id: 'diaspora' as Section, label: 'Lotul Național', icon: Users },
+    { id: 'games' as Section, label: 'Jocuri', icon: Gamepad2 }, // <-- Aici a apărut butonul de Jocuri
     { id: 'stars' as Section, label: 'Tineri', icon: Star },
     { id: 'heroes' as Section, label: 'Legende', icon: Heart },
     { id: 'collectors' as Section, label: "Fanshop", icon: ShoppingBag },
@@ -163,7 +164,7 @@ export default function App() {
     switch (activeSection) {
       case 'home': return <HomeSection user={user!} onNavigate={setActiveSection} />;
       case 'matches': return <MatchesSection userEmail={user?.email} />;      
-      case 'diaspora': return <DiasporaSection />;
+      case 'games': return <GamesSection user={user!} />; // <-- Returnează componenta de jocuri
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
       case 'collectors': return <CollectorsHubSection user={user!} onOpenChat={handleOpenChat} initialPostId={sharedPostId} />;
@@ -360,7 +361,6 @@ export default function App() {
               Echipa a adus modificări tactice importante. Pentru a continua vizualizarea platformei, este obligatoriu să instalezi noua versiune.
             </p>
             
-            {/* AICI ESTE FIX-UL SINTACTIC: OBIECT { type: 'SKIP_WAITING' } */}
             <button 
               onClick={() => {
                 if (updateRegistration?.waiting) {
