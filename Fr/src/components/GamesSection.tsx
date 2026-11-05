@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity } from 'lucide-react';
+import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity, Globe } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // --- INTERFEȚE ---
@@ -13,8 +13,11 @@ interface Player {
     image?: string;
     team_name?: string;
     team?: string;
+    team_logo?: string;
     league_name?: string;
-    market_value?: number; // Cota de piață
+    league_logo?: string;
+    past_teams?: string[]; // Istoric echipe (pentru intersecția Echipă vs Echipă)
+    market_value?: number; 
     statistics_summary?: {
         rating?: string;
     };
@@ -25,15 +28,32 @@ interface GamesProps {
     user: { name: string; email: string };
 }
 
+interface GridCriteria {
+    type: 'team' | 'nationality' | 'league';
+    value: string;
+    image?: string;
+}
+
 const API_URL = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
+
+// Helper pentru steaguri
+const getFlagEmoji = (country: string) => {
+    const flags: Record<string, string> = {
+        'Romania': '🇷🇴', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Spain': '🇪🇸', 'Italy': '🇮🇹',
+        'Germany': '🇩🇪', 'France': '🇫🇷', 'Brazil': '🇧🇷', 'Argentina': '🇦🇷',
+        'Portugal': '🇵🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Croatia': '🇭🇷',
+        'Nigeria': '🇳🇬', 'Senegal': '🇸🇳', 'Morocco': '🇲🇦', 'USA': '🇺🇸',
+        'Uruguay': '🇺🇾', 'Colombia': '🇨🇴', 'Switzerland': '🇨🇭', 'Denmark': '🇩🇰'
+    };
+    return flags[country] || '🌍';
+};
 
 export function GamesSection({ user }: GamesProps) {
     const [activeGame, setActiveGame] = useState<'menu' | 'grid' | 'hilo'>('menu');
     const [allPlayers, setAllPlayers] = useState<Player[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Preluăm toți jucătorii din DB o singură dată pentru ambele jocuri
     useEffect(() => {
         const fetchPlayers = async () => {
             try {
@@ -113,72 +133,76 @@ export function GamesSection({ user }: GamesProps) {
 }
 
 // ============================================================================
-// GAME 1: GRILA TRANSFERURILOR (GENERATĂ 100% AUTOMAT)
+// GAME 1: GRILA TRANSFERURILOR (MIXTĂ ȘI CU LOGO-URI)
 // ============================================================================
 function GridGame({ players, onBack }: { players: Player[], onBack: () => void }) {
-    const [gridRows, setGridRows] = useState<{ type: string, value: string }[]>([]);
-    const [gridCols, setGridCols] = useState<{ type: string, value: string }[]>([]);
+    const [gridRows, setGridRows] = useState<GridCriteria[]>([]);
+    const [gridCols, setGridCols] = useState<GridCriteria[]>([]);
     const [answers, setAnswers] = useState<Record<string, Player | null>>({});
     
-    // State-uri pentru Modalul de Căutare a Răspunsului
     const [activeCell, setActiveCell] = useState<{ r: number, c: number } | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
 
-    // Generăm o grilă VALIDĂ din DB la montare
     useEffect(() => {
         generateValidGrid();
     }, []);
 
+    const checkMatch = (p: Player, criteria: GridCriteria) => {
+        if (criteria.type === 'team') {
+            const currentTeam = p.team_name || p.team;
+            const pastTeams = p.past_teams || [];
+            return currentTeam === criteria.value || pastTeams.includes(criteria.value);
+        }
+        if (criteria.type === 'nationality') return p.nationality === criteria.value;
+        if (criteria.type === 'league') return p.league_name === criteria.value;
+        return false;
+    };
+
     const generateValidGrid = () => {
-        // 1. Filtrăm echipele care au cel puțin 3 jucători în DB (pentru a avea șanse reale de intersecție)
-        const teamCounts = players.reduce((acc: any, p) => {
+        const teamMap = new Map<string, string>();
+        const natMap = new Map<string, string>();
+        const leagueMap = new Map<string, string>();
+
+        players.forEach(p => {
             const t = p.team_name || p.team;
-            if(t) { acc[t] = (acc[t] || 0) + 1; }
-            return acc;
-        }, {});
+            if (t) teamMap.set(t, p.team_logo || ""); 
+            if (p.nationality) natMap.set(p.nationality, getFlagEmoji(p.nationality));
+            if (p.league_name) leagueMap.set(p.league_name, p.league_logo || "");
+        });
 
-        // Păstrăm doar echipele cu un lot decent (minim 3 jucători)
-        const validTeamsPool = Object.keys(teamCounts).filter(t => teamCounts[t] >= 3);
-        const teamsToUse = validTeamsPool.length >= 3 ? validTeamsPool : Object.keys(teamCounts);
-
-        const nationalities = Array.from(new Set(players.map(p => p.nationality).filter(Boolean))) as string[];
-        const leagues = Array.from(new Set(players.map(p => p.league_name).filter(Boolean))) as string[];
-        
-        // Formăm o listă de coloane posibile
-        const possibleCols = [
-            ...nationalities.map(n => ({ type: 'nationality', value: n })),
-            ...leagues.map(l => ({ type: 'league', value: l }))
+        // Creăm un "pool" comun cu TOATE criteriile posibile
+        const allCriteria: GridCriteria[] = [
+            ...Array.from(teamMap.entries()).map(([val, img]) => ({ type: 'team' as const, value: val, image: img })),
+            ...Array.from(natMap.entries()).map(([val, img]) => ({ type: 'nationality' as const, value: val, image: img })),
+            ...Array.from(leagueMap.entries()).map(([val, img]) => ({ type: 'league' as const, value: val, image: img }))
         ];
 
-        let validRows: any[] = [];
-        let validCols: any[] = [];
+        let validRows: GridCriteria[] = [];
+        let validCols: GridCriteria[] = [];
         let foundValidGrid = false;
         let attempts = 0;
 
-        // 2. Mărim limita la 5000 de încercări pentru a fi siguri că găsim intersecții perfecte
+        // Căutăm o combinație perfectă în maxim 5000 de încercări
         while (!foundValidGrid && attempts < 5000) {
             attempts++;
             
-            // Alegem 3 echipe la întâmplare din pool-ul de echipe bogate în jucători
-            const shuffledTeams = [...teamsToUse].sort(() => 0.5 - Math.random()).slice(0, 3);
+            // Alegem 3 criterii random pentru rânduri (pot fi echipe, ligi, sau națiuni)
+            const shuffledRows = [...allCriteria].sort(() => 0.5 - Math.random()).slice(0, 3);
             
-            const validColsForTheseTeams = possibleCols.filter(col => {
-                return shuffledTeams.every(team => {
-                    return players.some(p => {
-                        const matchTeam = (p.team_name === team || p.team === team);
-                        const matchCol = col.type === 'nationality' 
-                            ? p.nationality === col.value 
-                            : p.league_name === col.value;
-                        return matchTeam && matchCol;
-                    });
+            // Căutăm coloane care intersectează cu succes TOATE cele 3 rânduri
+            const validColsForTheseRows = allCriteria.filter(col => {
+                // Nu vrem ca un rând și o coloană să fie identice (ex: Romania pe rând și Romania pe coloană)
+                if (shuffledRows.some(r => r.value === col.value)) return false;
+
+                // Verificăm dacă există minim un jucător pentru fiecare intersecție (Rând x Coloană)
+                return shuffledRows.every(row => {
+                    return players.some(p => checkMatch(p, row) && checkMatch(p, col));
                 });
             });
 
-            // Dacă am găsit cel puțin 3 coloane valide, avem o grilă complet funcțională!
-            if (validColsForTheseTeams.length >= 3) {
-                validRows = shuffledTeams.map(t => ({ type: 'team', value: t }));
-                // Alegem 3 coloane random din cele valide pentru a le afișa
-                validCols = validColsForTheseTeams.sort(() => 0.5 - Math.random()).slice(0, 3);
+            if (validColsForTheseRows.length >= 3) {
+                validRows = shuffledRows;
+                validCols = validColsForTheseRows.sort(() => 0.5 - Math.random()).slice(0, 3);
                 foundValidGrid = true;
             }
         }
@@ -188,7 +212,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             setGridCols(validCols);
             setAnswers({});
         } else {
-            toast.error("Baza de date e prea mică pentru a genera o grilă validă.");
+            toast.error("Baza de date e prea mică pentru a amesteca criteriile (încearcă din nou).");
         }
     };
 
@@ -199,13 +223,9 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         const rowCriteria = gridRows[r];
         const colCriteria = gridCols[c];
 
-        // Validăm alegerea utilizatorului
-        const matchRow = (player.team_name === rowCriteria.value || player.team === rowCriteria.value);
-        const matchCol = colCriteria.type === 'nationality' 
-            ? player.nationality === colCriteria.value 
-            : player.league_name === colCriteria.value;
+        const matchRow = checkMatch(player, rowCriteria);
+        const matchCol = checkMatch(player, colCriteria);
 
-        // Verificăm și dacă jucătorul n-a fost deja folosit în altă celulă
         const alreadyUsed = Object.values(answers).some(ans => ans?._id === player._id);
 
         if (alreadyUsed) {
@@ -229,6 +249,25 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 
     const score = Object.keys(answers).length;
 
+    // Helper pentru randarea cardului cu Criteriu (sus sau stânga)
+    const renderHeader = (item: GridCriteria) => (
+        <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-inner border-2 border-slate-200 dark:border-slate-700 h-full w-full">
+            {item.type === 'nationality' ? (
+                <span className="text-3xl sm:text-4xl mb-1 drop-shadow-sm leading-none">{item.image}</span>
+            ) : item.image ? (
+                <img src={item.image} alt={item.value} className="w-8 h-8 sm:w-10 sm:h-10 object-contain mb-1 drop-shadow-md bg-white rounded-md p-0.5" />
+            ) : (
+                <Globe className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400 mb-1" />
+            )}
+            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1 mb-0.5">
+                {item.type === 'nationality' ? 'Națiune' : item.type === 'team' ? 'Club' : 'Ligă'}
+            </span>
+            <span className="text-[10px] sm:text-xs font-black text-slate-900 dark:text-white uppercase leading-tight line-clamp-2 w-full truncate px-1" title={item.value}>
+                {item.value}
+            </span>
+        </div>
+    );
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between bg-slate-900 p-4 rounded-3xl border-2 border-slate-800">
@@ -236,34 +275,27 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 <div className="text-emerald-400 font-black uppercase tracking-widest text-sm flex items-center gap-2">
                     Scor Grilă: {score} / 9
                 </div>
-                {/* AICI AM REPARAT NUMELE FUNCȚIEI PENTRU A GENERA O NOUĂ GRILĂ */}
                 <button onClick={generateValidGrid} className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/> Grilă Nouă</button>
             </div>
 
             {gridRows.length > 0 && (
-                <div className="max-w-2xl mx-auto p-4 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 shadow-2xl">
-                    {/* Grilă de X și 0 */}
-                    <div className="grid grid-cols-4 gap-2 sm:gap-4">
+                <div className="max-w-3xl mx-auto p-3 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 shadow-2xl overflow-x-auto">
+                    <div className="grid grid-cols-[minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)] gap-2 sm:gap-4 min-w-[400px]">
                         {/* Celula goală stânga-sus */}
-                        <div className="flex items-center justify-center">
-                            <Trophy className="w-8 h-8 text-slate-300 dark:text-slate-700" />
+                        <div className="flex items-center justify-center p-2">
+                            <Trophy className="w-10 h-10 text-slate-200 dark:text-slate-800" />
                         </div>
                         
                         {/* Antet Coloane */}
                         {gridCols.map((col, idx) => (
-                            <div key={`col-${idx}`} className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-inner border-2 border-slate-200 dark:border-slate-700">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{col.type === 'nationality' ? 'Națiune' : 'Ligă'}</span>
-                                <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase leading-tight">{col.value}</span>
-                            </div>
+                            <div key={`col-${idx}`}>{renderHeader(col)}</div>
                         ))}
 
                         {/* Rânduri și Celule Grilă */}
                         {gridRows.map((row, rIdx) => (
                             <React.Fragment key={`row-${rIdx}`}>
-                                <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-inner border-2 border-slate-200 dark:border-slate-700">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Club</span>
-                                    <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase leading-tight">{row.value}</span>
-                                </div>
+                                
+                                <div>{renderHeader(row)}</div>
                                 
                                 {/* 3 Celule Interacționale pe rând */}
                                 {[0, 1, 2].map((cIdx) => {
@@ -272,7 +304,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                                         <div 
                                             key={`cell-${rIdx}-${cIdx}`} 
                                             onClick={() => !ans && setActiveCell({ r: rIdx, c: cIdx })}
-                                            className={`aspect-square rounded-2xl border-4 flex flex-col items-center justify-center cursor-pointer transition-all ${
+                                            className={`aspect-square rounded-2xl border-4 flex flex-col items-center justify-center cursor-pointer transition-all p-1 ${
                                                 ans 
                                                 ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' 
                                                 : 'bg-white dark:bg-slate-950 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'
@@ -280,8 +312,8 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                                         >
                                             {ans ? (
                                                 <>
-                                                    <img src={ans.image || GENERIC_USER_IMAGE} className="w-10 h-10 sm:w-16 sm:h-16 rounded-full object-cover mb-2 border-2 border-white dark:border-emerald-500 shadow-sm" />
-                                                    <span className="text-[9px] sm:text-xs font-black uppercase text-center text-slate-900 dark:text-white tracking-tight leading-none px-1">{ans.name}</span>
+                                                    <img src={ans.image || GENERIC_USER_IMAGE} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover mb-1 border-2 border-white dark:border-emerald-500 shadow-sm" />
+                                                    <span className="text-[9px] sm:text-[10px] font-black uppercase text-center text-slate-900 dark:text-white tracking-tight leading-none px-1 line-clamp-2">{ans.name}</span>
                                                 </>
                                             ) : (
                                                 <Search className="w-6 h-6 sm:w-8 sm:h-8 text-slate-300 dark:text-slate-600" />
@@ -305,7 +337,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                         </div>
                         <div className="p-5 space-y-4">
                             <div className="text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700">
-                                Căutăm: <span className="text-white">{gridRows[activeCell.r].value}</span> + <span className="text-white">{gridCols[activeCell.c].value}</span>
+                                Căutăm intersecția: <span className="text-white">{gridRows[activeCell.r].value}</span> + <span className="text-white">{gridCols[activeCell.c].value}</span>
                             </div>
                             <input 
                                 type="text"
@@ -352,12 +384,10 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
     const [playerA, setPlayerA] = useState<Player | null>(null);
     const [playerB, setPlayerB] = useState<Player | null>(null);
 
-    // Funcție de helper pentru extragerea valorii în funcție de categorie
     const getStatValue = (p: Player, cat: string) => {
         if (cat === 'age') return p.age || 0;
         if (cat === 'height') return parseInt(p.height?.replace(/\D/g, '') || "0", 10);
         if (cat === 'rating') return parseFloat(p.statistics_summary?.rating || "0");
-        // Dacă nu avem market_value în db, creăm o cotație falsă corelată cu rating-ul pentru a face jocul jucabil
         if (cat === 'market_value') {
             if (p.market_value) return p.market_value;
             const r = parseFloat(p.statistics_summary?.rating || "6.0");
@@ -375,7 +405,6 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
     };
 
     const startGame = () => {
-        // Filtrăm doar jucătorii care au stat valid
         const validPlayers = players.filter(p => getStatValue(p, category) > 0);
         if (validPlayers.length < 10) {
             toast.error("Nu sunt suficienți jucători în baza de date pentru această categorie.");
@@ -405,11 +434,8 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
         if (isCorrect) {
             toast.success("Corect!");
             setScore(prev => prev + 1);
-            
-            // Avansează jucătorul
             setPlayerA(playerB);
             
-            // Alege un nou playerB valid
             const validPlayers = players.filter(p => getStatValue(p, category) > 0);
             let nextPB = validPlayers[Math.floor(Math.random() * validPlayers.length)];
             while (nextPB._id === playerB._id || getStatValue(nextPB, category) === getStatValue(playerB, category)) {
