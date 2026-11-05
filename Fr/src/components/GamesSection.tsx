@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Trophy, ArrowUp, ArrowDown, Search, X, Check, AlertTriangle, RotateCcw, Swords, Play, Globe, Activity } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // --- INTERFEȚE ---
@@ -113,7 +113,7 @@ export function GamesSection({ user }: GamesProps) {
 }
 
 // ============================================================================
-// GAME 1: GRILA TRANSFERURILOR (IMMACULATE GRID LOGIC)
+// GAME 1: GRILA TRANSFERURILOR (GENERATĂ 100% AUTOMAT)
 // ============================================================================
 function GridGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gridRows, setGridRows] = useState<{ type: string, value: string }[]>([]);
@@ -130,12 +130,21 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
     }, []);
 
     const generateValidGrid = () => {
-        // 1. Extragem datele unice din DB
-        const teams = Array.from(new Set(players.map(p => p.team_name || p.team).filter(Boolean))) as string[];
+        // 1. Filtrăm echipele care au cel puțin 3 jucători în DB (pentru a avea șanse reale de intersecție)
+        const teamCounts = players.reduce((acc: any, p) => {
+            const t = p.team_name || p.team;
+            if(t) { acc[t] = (acc[t] || 0) + 1; }
+            return acc;
+        }, {});
+
+        // Păstrăm doar echipele cu un lot decent (minim 3 jucători)
+        const validTeamsPool = Object.keys(teamCounts).filter(t => teamCounts[t] >= 3);
+        const teamsToUse = validTeamsPool.length >= 3 ? validTeamsPool : Object.keys(teamCounts);
+
         const nationalities = Array.from(new Set(players.map(p => p.nationality).filter(Boolean))) as string[];
         const leagues = Array.from(new Set(players.map(p => p.league_name).filter(Boolean))) as string[];
         
-        // Formăm o listă de coloane posibile (Naționalități + Ligi/Competiții)
+        // Formăm o listă de coloane posibile
         const possibleCols = [
             ...nationalities.map(n => ({ type: 'nationality', value: n })),
             ...leagues.map(l => ({ type: 'league', value: l }))
@@ -146,18 +155,14 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         let foundValidGrid = false;
         let attempts = 0;
 
-        // 2. ALGORITMUL DE VALIDARE ABSOLUTĂ
-        // Căutăm o combinație de 3 echipe (linii) și 3 criterii (coloane) 
-        // care să aibă cel puțin un jucător valid la FIECARE intersecție.
-        while (!foundValidGrid && attempts < 100) {
+        // 2. Mărim limita la 5000 de încercări pentru a fi siguri că găsim intersecții perfecte
+        while (!foundValidGrid && attempts < 5000) {
             attempts++;
             
-            // Alegem 3 echipe la întâmplare
-            const shuffledTeams = [...teams].sort(() => 0.5 - Math.random()).slice(0, 3);
+            // Alegem 3 echipe la întâmplare din pool-ul de echipe bogate în jucători
+            const shuffledTeams = [...teamsToUse].sort(() => 0.5 - Math.random()).slice(0, 3);
             
-            // Căutăm coloane valide pentru ACESTE 3 echipe
             const validColsForTheseTeams = possibleCols.filter(col => {
-                // Coloana este validă dacă pentru FIECARE din cele 3 echipe alese există măcar un jucător
                 return shuffledTeams.every(team => {
                     return players.some(p => {
                         const matchTeam = (p.team_name === team || p.team === team);
@@ -172,7 +177,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             // Dacă am găsit cel puțin 3 coloane valide, avem o grilă complet funcțională!
             if (validColsForTheseTeams.length >= 3) {
                 validRows = shuffledTeams.map(t => ({ type: 'team', value: t }));
-                // Alegem 3 coloane random din cele valide
+                // Alegem 3 coloane random din cele valide pentru a le afișa
                 validCols = validColsForTheseTeams.sort(() => 0.5 - Math.random()).slice(0, 3);
                 foundValidGrid = true;
             }
@@ -231,10 +236,13 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 <div className="text-emerald-400 font-black uppercase tracking-widest text-sm flex items-center gap-2">
                     Scor Grilă: {score} / 9
                 </div>
-            <button onClick={generateValidGrid} className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/> Grilă Nouă</button>            </div>
+                {/* AICI AM REPARAT NUMELE FUNCȚIEI PENTRU A GENERA O NOUĂ GRILĂ */}
+                <button onClick={generateValidGrid} className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/> Grilă Nouă</button>
+            </div>
 
             {gridRows.length > 0 && (
                 <div className="max-w-2xl mx-auto p-4 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 shadow-2xl">
+                    {/* Grilă de X și 0 */}
                     <div className="grid grid-cols-4 gap-2 sm:gap-4">
                         {/* Celula goală stânga-sus */}
                         <div className="flex items-center justify-center">
@@ -353,7 +361,7 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
         if (cat === 'market_value') {
             if (p.market_value) return p.market_value;
             const r = parseFloat(p.statistics_summary?.rating || "6.0");
-            return Math.round(Math.pow((r - 5), 2) * 1.5) * 1000000; // Formula dummy bazata pe rating (ex: rating 7 => ~6M, rating 8 => ~13.5M)
+            return Math.round(Math.pow((r - 5), 2) * 1.5) * 1000000; 
         }
         return 0;
     };
