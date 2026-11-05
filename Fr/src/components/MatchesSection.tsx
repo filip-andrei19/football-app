@@ -261,9 +261,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [subFilter, setSubFilter] = useState<'all' | 'live' | 'finished' | 'favorites'>('all');
     
+    // States pentru Sistemul de Notificari & Favorite
     const [favoriteMatches, setFavoriteMatches] = useState<number[]>([]);
     const [favoriteTeams, setFavoriteTeams] = useState<string[]>([]); 
     
+    // Setări personalizate pentru tipul de notificări
     const [showNotifSettings, setShowNotifSettings] = useState(false);
     const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(() => {
         try {
@@ -299,6 +301,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const [lineupViewMode, setLineupViewMode] = useState<'both' | 'home' | 'away'>('both');
 
+    // === PERMISIUNI ȘI ABONARE WEB PUSH ===
     const subscribeToPushNotifications = async (email: string) => {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
         try {
@@ -563,14 +566,17 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         } catch (err: any) { alert(err.message); } finally { setLoadingRoster(false); }
     };
 
+    // Funcția a fost updatată pentru a prelua mereu clasamentul (pentru extra forma H2H)
     const handleMatchClick = async (match: Match) => {
         const cachedDetails = queryClient.getQueryData(['matchDetails', match.fixture_id]);
         if (!cachedDetails) setLoadingMatchDetails(true);
 
         setSelectedMatchDetails(match);
-        setStandingsData([]);
         setLineupViewMode('both');
         setActiveMatchTab(match.status_short === "NS" ? 'h2h' : 'events'); 
+
+        // Extragem clasamentul mereu pentru a asigura că avem Formă recentă dacă lipseste din details
+        fetchStandings(match.league_id);
 
         try {
             const fullData: any = await queryClient.fetchQuery({
@@ -589,15 +595,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 if (!oldMatches) return oldMatches;
                 return oldMatches.map(m => (m.fixture_id === fullData.fixture_id ? { ...m, ...fullData } : m));
             });
-
-            if (fullData.status_short === "NS" && (!fullData.lineups || fullData.lineups.length === 0)) {
-                fetchStandings(fullData.league_id);
-            }
         } catch (err) { console.error("Eroare detalii meci:", err); } finally { setLoadingMatchDetails(false); }
     };
 
     const fetchStandings = async (leagueId: number) => {
-        if (standingsData.length > 0) return;
         const cachedStandings = queryClient.getQueryData(['standings', leagueId]);
         if (!cachedStandings) setLoadingStandings(true);
 
@@ -782,16 +783,38 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     };
 
     const renderH2HSection = () => {
-        // Parsăm forma reală din baza de date
+        let rawHomeForm = selectedMatchDetails?.form?.home;
+        let rawAwayForm = selectedMatchDetails?.form?.away;
+
+        // Dacă backend-ul nu trimite forma direct, o scanăm din Clasamentul descărcat
+        if ((!rawHomeForm || !rawAwayForm) && standingsData.length > 0) {
+            standingsData.forEach(groupTable => {
+                groupTable.forEach((row: any) => {
+                    if (row.team?.id === selectedMatchDetails?.home_team_id && row.form) {
+                        rawHomeForm = row.form;
+                    }
+                    if (row.team?.id === selectedMatchDetails?.away_team_id && row.form) {
+                        rawAwayForm = row.form;
+                    }
+                });
+            });
+        }
+
         const parseForm = (formObj: any): string[] => {
-            if (!formObj) return ['?', '?', '?', '?', '?']; // Fără fake data
-            if (Array.isArray(formObj)) return formObj.slice(0, 5);
-            if (typeof formObj === 'string') return formObj.split('').slice(0, 5);
-            return ['?', '?', '?', '?', '?'];
+            let formArr: string[] = [];
+            if (Array.isArray(formObj)) formArr = formObj;
+            else if (typeof formObj === 'string') formArr = formObj.split('');
+            
+            const result = formArr.slice(0, 5);
+            // Dacă nu a jucat încă 5 meciuri, completăm cu '?'
+            while (result.length < 5) {
+                result.push('?');
+            }
+            return result;
         };
 
-        const realFormHome = parseForm(selectedMatchDetails?.form?.home);
-        const realFormAway = parseForm(selectedMatchDetails?.form?.away);
+        const realFormHome = parseForm(rawHomeForm);
+        const realFormAway = parseForm(rawAwayForm);
         
         let matchPredictions = selectedMatchDetails?.predictions;
 
@@ -811,7 +834,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 return formArray.reduce((total, result) => {
                     if (result === 'W') return total + 3;
                     if (result === 'D') return total + 1;
-                    return total; // 'L' sau '?' = 0 puncte
+                    return total;
                 }, 0);
             };
 
