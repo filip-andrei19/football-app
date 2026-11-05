@@ -15,8 +15,9 @@ interface Player {
     team?: string;
     team_logo?: string;
     league_name?: string;
+    league_id?: number | string; // Adăugat pentru filtru ligi
     league_logo?: string;
-    past_teams?: string[]; // Istoric echipe (pentru intersecția Echipă vs Echipă)
+    past_teams?: string[];
     market_value?: number; 
     statistics_summary?: {
         rating?: string;
@@ -37,7 +38,19 @@ interface GridCriteria {
 const API_URL = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
-// Helper pentru steaguri
+// ID-urile pentru Top 5 Ligi + România (pentru a filtra echipele obscure)
+const TOP_LEAGUES = [283, 39, 140, 135, 78, 61]; 
+
+// Algoritm Fisher-Yates pentru o amestecare PERFECT aleatorie
+function shuffleArray<T>(array: T[]): T[] {
+    const newArr = [...array];
+    for (let i = newArr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+    }
+    return newArr;
+}
+
 const getFlagEmoji = (country: string) => {
     const flags: Record<string, string> = {
         'Romania': '🇷🇴', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Spain': '🇪🇸', 'Italy': '🇮🇹',
@@ -57,7 +70,7 @@ export function GamesSection({ user }: GamesProps) {
     useEffect(() => {
         const fetchPlayers = async () => {
             try {
-                const res = await fetch(`${API_URL}/api/sport/players?limit=1000`);
+                const res = await fetch(`${API_URL}/api/sport/players?limit=2000`);
                 if (res.ok) {
                     const data = await res.json();
                     setAllPlayers(data);
@@ -133,7 +146,7 @@ export function GamesSection({ user }: GamesProps) {
 }
 
 // ============================================================================
-// GAME 1: GRILA TRANSFERURILOR (MIXTĂ ȘI CU LOGO-URI)
+// GAME 1: GRILA TRANSFERURILOR (TOP 5 LIGI + FISHER-YATES SHUFFLE)
 // ============================================================================
 function GridGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gridRows, setGridRows] = useState<GridCriteria[]>([]);
@@ -159,22 +172,48 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
     };
 
     const generateValidGrid = () => {
+        // Filtrăm jucătorii doar pentru ligile de top (plus România) pentru a garanta echipe cunoscute
+        const topPlayers = players.filter(p => p.league_id && TOP_LEAGUES.includes(Number(p.league_id)));
+
         const teamMap = new Map<string, string>();
         const natMap = new Map<string, string>();
         const leagueMap = new Map<string, string>();
+        const criteriaCounts = new Map<string, number>();
 
-        players.forEach(p => {
+        topPlayers.forEach(p => {
             const t = p.team_name || p.team;
-            if (t) teamMap.set(t, p.team_logo || ""); 
-            if (p.nationality) natMap.set(p.nationality, getFlagEmoji(p.nationality));
-            if (p.league_name) leagueMap.set(p.league_name, p.league_logo || "");
+            if (t) { 
+                teamMap.set(t, p.team_logo || "");
+                criteriaCounts.set(t, (criteriaCounts.get(t) || 0) + 1);
+            }
+            if (p.past_teams) {
+                p.past_teams.forEach(pt => {
+                    teamMap.set(pt, "");
+                    criteriaCounts.set(pt, (criteriaCounts.get(pt) || 0) + 1);
+                });
+            }
+            if (p.nationality) { 
+                natMap.set(p.nationality, getFlagEmoji(p.nationality));
+                criteriaCounts.set(p.nationality, (criteriaCounts.get(p.nationality) || 0) + 1);
+            }
+            if (p.league_name) { 
+                leagueMap.set(p.league_name, p.league_logo || "");
+                criteriaCounts.set(p.league_name, (criteriaCounts.get(p.league_name) || 0) + 1);
+            }
         });
 
-        // Creăm un "pool" comun cu TOATE criteriile posibile
+        // Avem nevoie de minim 3 jucători pentru ca un criteriu să intre în grilă
+        const minPlayers = 3;
+        const filterValid = (map: Map<string, string>, type: 'team' | 'nationality' | 'league') => {
+            return Array.from(map.entries())
+                .filter(([val]) => (criteriaCounts.get(val) || 0) >= minPlayers)
+                .map(([val, img]) => ({ type, value: val, image: img }));
+        };
+
         const allCriteria: GridCriteria[] = [
-            ...Array.from(teamMap.entries()).map(([val, img]) => ({ type: 'team' as const, value: val, image: img })),
-            ...Array.from(natMap.entries()).map(([val, img]) => ({ type: 'nationality' as const, value: val, image: img })),
-            ...Array.from(leagueMap.entries()).map(([val, img]) => ({ type: 'league' as const, value: val, image: img }))
+            ...filterValid(teamMap, 'team'),
+            ...filterValid(natMap, 'nationality'),
+            ...filterValid(leagueMap, 'league')
         ];
 
         let validRows: GridCriteria[] = [];
@@ -182,19 +221,16 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         let foundValidGrid = false;
         let attempts = 0;
 
-        // Căutăm o combinație perfectă în maxim 5000 de încercări
         while (!foundValidGrid && attempts < 5000) {
             attempts++;
             
-            // Alegem 3 criterii random pentru rânduri (pot fi echipe, ligi, sau națiuni)
-            const shuffledRows = [...allCriteria].sort(() => 0.5 - Math.random()).slice(0, 3);
+            // Folosim Fisher-Yates pentru a asigura alegeri total diferite de fiecare dată
+            const shuffledRows = shuffleArray(allCriteria).slice(0, 3);
             
-            // Căutăm coloane care intersectează cu succes TOATE cele 3 rânduri
-            const validColsForTheseRows = allCriteria.filter(col => {
-                // Nu vrem ca un rând și o coloană să fie identice (ex: Romania pe rând și Romania pe coloană)
+            const validColsForTheseRows = shuffleArray(allCriteria).filter(col => {
                 if (shuffledRows.some(r => r.value === col.value)) return false;
 
-                // Verificăm dacă există minim un jucător pentru fiecare intersecție (Rând x Coloană)
+                // Căutăm jucătorii în baza de date TOTALĂ, nu doar în topPlayers
                 return shuffledRows.every(row => {
                     return players.some(p => checkMatch(p, row) && checkMatch(p, col));
                 });
@@ -202,7 +238,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 
             if (validColsForTheseRows.length >= 3) {
                 validRows = shuffledRows;
-                validCols = validColsForTheseRows.sort(() => 0.5 - Math.random()).slice(0, 3);
+                validCols = validColsForTheseRows.slice(0, 3);
                 foundValidGrid = true;
             }
         }
@@ -249,7 +285,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 
     const score = Object.keys(answers).length;
 
-    // Helper pentru randarea cardului cu Criteriu (sus sau stânga)
     const renderHeader = (item: GridCriteria) => (
         <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-inner border-2 border-slate-200 dark:border-slate-700 h-full w-full">
             {item.type === 'nationality' ? (
@@ -281,23 +316,19 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             {gridRows.length > 0 && (
                 <div className="max-w-3xl mx-auto p-3 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 shadow-2xl overflow-x-auto">
                     <div className="grid grid-cols-[minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)] gap-2 sm:gap-4 min-w-[400px]">
-                        {/* Celula goală stânga-sus */}
                         <div className="flex items-center justify-center p-2">
                             <Trophy className="w-10 h-10 text-slate-200 dark:text-slate-800" />
                         </div>
                         
-                        {/* Antet Coloane */}
                         {gridCols.map((col, idx) => (
                             <div key={`col-${idx}`}>{renderHeader(col)}</div>
                         ))}
 
-                        {/* Rânduri și Celule Grilă */}
                         {gridRows.map((row, rIdx) => (
                             <React.Fragment key={`row-${rIdx}`}>
                                 
                                 <div>{renderHeader(row)}</div>
                                 
-                                {/* 3 Celule Interacționale pe rând */}
                                 {[0, 1, 2].map((cIdx) => {
                                     const ans = answers[`${rIdx}-${cIdx}`];
                                     return (
@@ -327,7 +358,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 </div>
             )}
 
-            {/* Modal Căutare Jucător pentru Celulă */}
             {activeCell && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
                     <div className="bg-slate-900 w-full max-w-lg rounded-3xl border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden">
@@ -374,7 +404,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 }
 
 // ============================================================================
-// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ)
+// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - FISHER YATES SHUFFLE
 // ============================================================================
 function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
@@ -405,20 +435,17 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
     };
 
     const startGame = () => {
-        const validPlayers = players.filter(p => getStatValue(p, category) > 0);
+        // Filtrăm pentru a folosi jucători cu stats valide, din top ligi (pentru recunoaștere)
+        const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_LEAGUES.includes(Number(p.league_id)));
+        
         if (validPlayers.length < 10) {
             toast.error("Nu sunt suficienți jucători în baza de date pentru această categorie.");
             return;
         }
 
-        const pA = validPlayers[Math.floor(Math.random() * validPlayers.length)];
-        let pB = validPlayers[Math.floor(Math.random() * validPlayers.length)];
-        while (pB._id === pA._id || getStatValue(pB, category) === getStatValue(pA, category)) {
-            pB = validPlayers[Math.floor(Math.random() * validPlayers.length)];
-        }
-
-        setPlayerA(pA);
-        setPlayerB(pB);
+        const shuffled = shuffleArray(validPlayers);
+        setPlayerA(shuffled[0]);
+        setPlayerB(shuffled[1]);
         setScore(0);
         setGameState('playing');
     };
@@ -436,11 +463,10 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
             setScore(prev => prev + 1);
             setPlayerA(playerB);
             
-            const validPlayers = players.filter(p => getStatValue(p, category) > 0);
-            let nextPB = validPlayers[Math.floor(Math.random() * validPlayers.length)];
-            while (nextPB._id === playerB._id || getStatValue(nextPB, category) === getStatValue(playerB, category)) {
-                nextPB = validPlayers[Math.floor(Math.random() * validPlayers.length)];
-            }
+            const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_LEAGUES.includes(Number(p.league_id)));
+            const shuffled = shuffleArray(validPlayers);
+            const nextPB = shuffled.find(p => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
+            
             setPlayerB(nextPB);
 
         } else {
