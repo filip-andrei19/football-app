@@ -289,6 +289,11 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   const [minMinutesFilter, setMinMinutesFilter] = useState<number>(0);
   const [minGoalsFilter, setMinGoalsFilter] = useState<number>(0);
   const [minRatingFilter, setMinRatingFilter] = useState<string>("0");
+  
+  // Noile filtre adăugate:
+  const [nationalityFilter, setNationalityFilter] = useState("Toate");
+  const [leagueFilter, setLeagueFilter] = useState("Toate");
+
   const [sortBy, setSortBy] = useState<'rating' | 'per90' | 'goals' | 'assists' | 'minutes'>('rating');
 
   const [onlyWatchlist, setOnlyWatchlist] = useState(false);
@@ -342,6 +347,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     minHeightFilter > 0 ||
     minMinutesFilter > 0 ||
     minGoalsFilter > 0 ||
+    nationalityFilter !== "Toate" ||
+    leagueFilter !== "Toate" ||
     parseFloat(minRatingFilter) > 0;
 
   useEffect(() => {
@@ -392,6 +399,11 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           if (minMinutesFilter > 0) params.append('minMinutes', String(minMinutesFilter));
           if (minGoalsFilter > 0) params.append('minGoals', String(minGoalsFilter));
           if (parseFloat(minRatingFilter) > 0) params.append('minRating', minRatingFilter);
+          
+          // Pentru filtrele noi, trimitem id-ul ligii sau nationalitatea strictă
+          if (nationalityFilter !== 'Toate') params.append('nationality', nationalityFilter);
+          if (leagueFilter !== 'Toate') params.append('league_id', leagueFilter);
+
           params.append('limit', '250');
 
           const response = await fetch(`${API_URL}/api/sport/players?${params.toString()}`);
@@ -416,6 +428,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   }, [
     searchTerm, searchMode, positionFilter, maxAgeFilter,
     minMinutesFilter, minGoalsFilter, minRatingFilter,
+    nationalityFilter, leagueFilter,
     showProFilters, hasActiveProFilters, onlyWatchlist,
     user?.email, API_URL
   ]);
@@ -424,6 +437,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     return players
       .filter((p) => {
         if (onlyWatchlist && !watchlistIds.includes(p._id)) return false;
+        
+        // Căutarea în frontend se face doar dacă backend-ul n-a filtrat-o deja complet (fallback layer)
         if (positionFilter !== "Toate") {
           const pos = (p.position || "").toLowerCase();
           if (positionFilter === "Portari" && !(pos.includes("goalkeeper") || pos.includes("portar"))) return false;
@@ -431,6 +446,17 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           if (positionFilter === "Mijlocași" && !(pos.includes("midfield") || pos.includes("mijloca"))) return false;
           if (positionFilter === "Atacanți" && !(pos.includes("forward") || pos.includes("striker") || pos.includes("wing") || pos.includes("ataca") || pos.includes("attack"))) return false;
         }
+        
+        if (nationalityFilter !== "Toate") {
+          const nat = (p.nationality || "").toLowerCase();
+          if (!nat.includes(nationalityFilter.toLowerCase())) return false;
+        }
+
+        if (leagueFilter !== "Toate") {
+            const lId = p.league_id ? p.league_id.toString() : "";
+            if (lId !== leagueFilter) return false;
+        }
+
         if (maxAgeFilter && p.age && p.age > Number(maxAgeFilter)) return false;
         if (minHeightFilter > 0 && parseHeightCm(p.height) < minHeightFilter) return false;
         if (minMinutesFilter > 0 && (p.statistics_summary?.minutes_played || 0) < minMinutesFilter) return false;
@@ -447,7 +473,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         if (sortBy === 'minutes') return mB.minutes - mA.minutes;
         return mB.rating - mA.rating || mB.goals - mA.goals;
       });
-  }, [players, onlyWatchlist, watchlistIds, positionFilter, maxAgeFilter, minHeightFilter, minMinutesFilter, minGoalsFilter, minRatingFilter, sortBy]);
+  }, [players, onlyWatchlist, watchlistIds, positionFilter, nationalityFilter, leagueFilter, maxAgeFilter, minHeightFilter, minMinutesFilter, minGoalsFilter, minRatingFilter, sortBy]);
 
   const toggleWatchlist = async (e: React.MouseEvent, player: Player) => {
     e.stopPropagation();
@@ -496,6 +522,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     setMinMinutesFilter(0);
     setMinGoalsFilter(0);
     setMinRatingFilter("0");
+    setNationalityFilter("Toate");
+    setLeagueFilter("Toate");
     setSortBy("rating");
     setOnlyWatchlist(false);
   };
@@ -740,9 +768,12 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10">
+              {/* GRILA FILTRELOR ACTUALIZATĂ */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
                 {[
                   { label: "Poziție în Teren", value: positionFilter, set: setPositionFilter, opts: [["Toate", "Toate pozițiile"], ["Portari", "Portari (GK)"], ["Fundași", "Fundași (DEF)"], ["Mijlocași", "Mijlocași (MID)"], ["Atacanți", "Atacanți (FWD)"]] },
+                  { label: "Naționalitate", value: nationalityFilter, set: setNationalityFilter, opts: [["Toate", "Orice Naționalitate"], ["Romania", "România 🇷🇴"], ["England", "Anglia 🏴󠁧󠁢󠁥󠁮󠁧󠁿"], ["Spain", "Spania 🇪🇸"], ["Italy", "Italia 🇮🇹"], ["Germany", "Germania 🇩🇪"], ["France", "Franța 🇫🇷"], ["Brazil", "Brazilia 🇧🇷"], ["Argentina", "Argentina 🇦🇷"]] },
+                  { label: "Campionat (Ligă)", value: leagueFilter, set: setLeagueFilter, opts: [["Toate", "Orice Competiție"], ["283", "Superliga (RO) 🇷🇴"], ["39", "Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿"], ["140", "La Liga 🇪🇸"], ["135", "Serie A 🇮🇹"], ["78", "Bundesliga 🇩🇪"], ["61", "Ligue 1 🇫🇷"]] },
                   { label: "Vârstă Maximă", value: maxAgeFilter, set: setMaxAgeFilter, opts: [["", "Orice vârstă"], ["19", "Sub 19 ani (U19)"], ["21", "Sub 21 ani (U21)"], ["23", "Sub 23 ani (U23)"], ["26", "Sub 26 ani"], ["30", "Sub 30 ani"]] },
                   { label: "Minutaj Minim", value: minMinutesFilter, set: (v:any)=>setMinMinutesFilter(Number(v)), opts: [[0, "Orice minutaj"], [180, "Minim 180'"], [450, "Minim 450'"], [900, "Minim 900'"], [1500, "Minim 1500'"]] },
                   { label: "Rating SofaScore", value: minRatingFilter, set: setMinRatingFilter, opts: [["0", "Orice notă"], ["6.5", "Peste 6.50"], ["6.8", "Peste 6.80"], ["7.0", "Peste 7.00"], ["7.3", "Peste 7.30 (Elită)"]] },
