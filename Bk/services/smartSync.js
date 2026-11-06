@@ -217,6 +217,19 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
                         finalStats = realClubInfo.stats; 
                     }
 
+                    // --- NOU: EXTRAGERE ISTORIC ECHIPE ---
+                    let pastTeams = new Set();
+                    if (item.transfers && Array.isArray(item.transfers)) {
+                        item.transfers.forEach(t => {
+                            if (t.teams && t.teams.out && t.teams.out.name) {
+                                pastTeams.add(t.teams.out.name);
+                            }
+                            if (t.teams && t.teams.in && t.teams.in.name) {
+                                pastTeams.add(t.teams.in.name);
+                            }
+                        });
+                    }
+
                     if (!p.id) continue;
 
                     await Player.deleteMany({ api_id: p.id });
@@ -239,6 +252,7 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
                         team_name: finalTeamName,
                         team_logo: finalTeamLogo,
                         league_id: leagueId || null,
+                        past_teams: Array.from(pastTeams), // <-- Salvare în baza de date
                         detailed_stats: finalStats.detailed_stats || [],
                         statistics_summary: {
                             team: finalTeamName,
@@ -295,6 +309,19 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                     let actualTeamLogo = teamLogo;
                     let actualLeagueId = totalStats.league_id || leagueId || null;
 
+                    // --- NOU: EXTRAGERE ISTORIC ECHIPE ---
+                    let pastTeams = new Set();
+                    if (item.transfers && Array.isArray(item.transfers)) {
+                        item.transfers.forEach(t => {
+                            if (t.teams && t.teams.out && t.teams.out.name) {
+                                pastTeams.add(t.teams.out.name);
+                            }
+                            if (t.teams && t.teams.in && t.teams.in.name) {
+                                pastTeams.add(t.teams.in.name);
+                            }
+                        });
+                    }
+
                     // Verificăm dacă există transferuri recente și jucătorul e împrumutat sau a schimbat echipa sezonul acesta
                     if (item.transfers && item.transfers.length > 0) {
                         const currentTransfer = item.transfers[0]; // Cel mai recent transfer
@@ -331,6 +358,7 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         team_logo: actualTeamLogo,
                         // Folosim ID-ul ligii curente (sau cel dedus din statistici)
                         league_id: actualLeagueId,
+                        past_teams: Array.from(pastTeams), // <-- Salvare în baza de date
                         detailed_stats: totalStats.detailed_stats || [],
                         statistics_summary: {
                             team_name: actualTeamName,
