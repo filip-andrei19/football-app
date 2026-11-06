@@ -67,7 +67,7 @@ export function GamesSection({ user }: GamesProps) {
     useEffect(() => {
         const fetchPlayers = async () => {
             try {
-                // Tragem toți jucătorii pentru a avea istoricul complet disponibil
+                // Tragem toți jucătorii pentru a avea istoricul complet
                 const res = await fetch(`${API_URL}/api/sport/players?limit=10000`);
                 if (res.ok) {
                     const data = await res.json();
@@ -144,7 +144,7 @@ export function GamesSection({ user }: GamesProps) {
 }
 
 // ============================================================================
-// GAME 1: GRILA TRANSFERURILOR (LOGICĂ AVANSATĂ CU SET-URI ȘI ISTORIC)
+// GAME 1: GRILA TRANSFERURILOR (MIX TOTAL ECHIPĂ/NAȚIUNE)
 // ============================================================================
 function GridGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gridRows, setGridRows] = useState<GridCriteria[]>([]);
@@ -158,13 +158,14 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         generateValidGrid();
     }, []);
 
-    // Verificarea finală a răspunsului dat de utilizator
+    // Verificarea finală a răspunsului - acum flexibilă pentru Istoric
     const checkMatch = (p: Player, criteria: GridCriteria) => {
         const val = criteria.value.toLowerCase().trim();
         if (criteria.type === 'team') {
             const currentTeam = (p.team_name || p.team || "").toLowerCase().trim();
             const pastTeams = (p.past_teams || []).map(t => t.toLowerCase().trim());
-            return currentTeam === val || pastTeams.includes(val);
+            // Folosim un match flexibil pentru a evita bug-urile de tip "Man City" vs "Manchester City"
+            return currentTeam.includes(val) || val.includes(currentTeam) || pastTeams.some(t => t.includes(val) || val.includes(t));
         }
         if (criteria.type === 'nationality') return (p.nationality || "").toLowerCase().trim() === val;
         if (criteria.type === 'league') return (p.league_name || "").toLowerCase().trim() === val;
@@ -172,11 +173,10 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
     };
 
     const generateValidGrid = () => {
-        // Hărți ultra-rapide pentru a găsi intersecțiile instantaneu
         const tagToPlayers = new Map<string, Set<string>>(); 
         const tagToMeta = new Map<string, GridCriteria>();
 
-        // 1. Etichetăm absolut toți jucătorii cu TOATE atributele lor (inclusiv foste echipe)
+        // 1. Etichetăm absolut toți jucătorii
         players.forEach(p => {
             const tags: GridCriteria[] = [];
             
@@ -199,7 +199,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 
             tags.forEach(t => {
                 if (!t.value) return;
-                const tagId = `${t.type}:${t.value}`;
+                const tagId = `${t.type}:${t.value.trim().toLowerCase()}`;
                 if (!tagToPlayers.has(tagId)) {
                     tagToPlayers.set(tagId, new Set());
                     tagToMeta.set(tagId, t);
@@ -208,29 +208,33 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             });
         });
 
-        // 2. Eliminăm criteriile obscure (păstrăm doar etichetele cu minim 4 jucători asociați)
-        const validTagIds = Array.from(tagToPlayers.keys()).filter(tId => tagToPlayers.get(tId)!.size >= 4);
+        // 2. Eliminăm criteriile cu mai puțin de 3 jucători pentru a evita fundăturile
+        const validTagIds = Array.from(tagToPlayers.keys()).filter(tId => tagToPlayers.get(tId)!.size >= 3);
 
         let foundValidGrid = false;
         let attempts = 0;
         let validRows: GridCriteria[] = [];
         let validCols: GridCriteria[] = [];
 
-        // 3. Căutăm matematica perfectă: 3 rânduri și 3 coloane care se intersectează complet
-        while (!foundValidGrid && attempts < 10000) {
+        // 3. Căutăm matematica perfectă: 3 rânduri și 3 coloane care se intersectează (MIX TOTAL)
+        while (!foundValidGrid && attempts < 15000) {
             attempts++;
             
             const shuffledTags = shuffleArray(validTagIds);
             const candidateRows = shuffledTags.slice(0, 3);
             
-            const candidateCols = validTagIds.filter(colTag => {
-                // Nu vrem același criteriu și pe rând și pe coloană
+            const candidateCols = shuffledTags.filter(colTag => {
+                // Nu vrem același criteriu pe rând și pe coloană
                 if (candidateRows.includes(colTag)) return false;
                 
                 const colSet = tagToPlayers.get(colTag)!;
+                const colType = colTag.split(':')[0];
 
-                // Verificăm dacă există INTERSECȚIE între această coloană și TOATE cele 3 rânduri alese
                 return candidateRows.every(rowTag => {
+                    const rowType = rowTag.split(':')[0];
+                    // Permitem Echipă vs Echipă, dar nu Nat vs Nat sau Ligă vs Ligă
+                    if (rowType === colType && rowType !== 'team') return false; 
+                    
                     const rowSet = tagToPlayers.get(rowTag)!;
                     let hasIntersection = false;
                     for (const playerId of rowSet) {
@@ -243,7 +247,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 });
             });
 
-            // Avem un grid complet valid care suportă Echipă vs Echipă, Națiune vs Ligă, etc!
             if (candidateCols.length >= 3) {
                 validRows = candidateRows.map(id => tagToMeta.get(id)!);
                 validCols = shuffleArray(candidateCols).slice(0, 3).map(id => tagToMeta.get(id)!);
@@ -396,7 +399,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                                         <div className="min-w-0">
                                             <div className="font-black text-white uppercase tracking-tight truncate">{p.name}</div>
                                             <div className="text-[9px] text-slate-400 group-hover:text-blue-100 font-bold uppercase tracking-widest truncate mt-0.5">
-                                                Echipă: {p.team_name || p.team} {p.past_teams?.length ? `| Fost: ${p.past_teams.join(', ')}` : ''} • {p.nationality}
+                                                Echipă: {p.team_name || p.team} {p.past_teams && p.past_teams.length > 0 ? `| Fost: ${p.past_teams.join(', ')}` : ''} • {p.nationality}
                                             </div>
                                         </div>
                                     </button>
