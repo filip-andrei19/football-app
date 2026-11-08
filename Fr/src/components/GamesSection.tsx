@@ -35,6 +35,12 @@ interface GridCriteria {
     image?: string;
 }
 
+// Interfață nouă pentru X și 0
+interface AnswerDetails {
+    player: Player;
+    markedBy: 'X' | 'O';
+}
+
 const API_URL = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
@@ -48,13 +54,27 @@ function shuffleArray<T>(array: T[]): T[] {
     return newArr;
 }
 
+// Eliminare diacritice pentru căutări (ex: Kante -> Kante, Mbappe -> Mbappe)
+const removeDiacritics = (str: string) => {
+    return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+};
+
+// Dicționar extins pentru naționalități fotbalistice majore
 const getFlagEmoji = (country: string) => {
     const flags: Record<string, string> = {
         'Romania': '🇷🇴', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Spain': '🇪🇸', 'Italy': '🇮🇹',
         'Germany': '🇩🇪', 'France': '🇫🇷', 'Brazil': '🇧🇷', 'Argentina': '🇦🇷',
         'Portugal': '🇵🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Croatia': '🇭🇷',
         'Nigeria': '🇳🇬', 'Senegal': '🇸🇳', 'Morocco': '🇲🇦', 'USA': '🇺🇸',
-        'Uruguay': '🇺🇾', 'Colombia': '🇨🇴', 'Switzerland': '🇨🇭', 'Denmark': '🇩🇰'
+        'Uruguay': '🇺🇾', 'Colombia': '🇨🇴', 'Switzerland': '🇨🇭', 'Denmark': '🇩🇰',
+        'Serbia': '🇷🇸', 'Poland': '🇵🇱', 'Sweden': '🇸🇪', 'Norway': '🇳🇴',
+        'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Ivory Coast': '🇨🇮', 'Cameroon': '🇨🇲',
+        'Ghana': '🇬🇭', 'Egypt': '🇪🇬', 'Algeria': '🇩🇿', 'Mali': '🇲🇱',
+        'Japan': '🇯🇵', 'South Korea': '🇰🇷', 'Australia': '🇦🇺', 'Mexico': '🇲🇽',
+        'Canada': '🇨🇦', 'Chile': '🇨🇱', 'Ecuador': '🇪🇨', 'Peru': '🇵🇪',
+        'Turkey': '🇹🇷', 'Greece': '🇬🇷', 'Czech Republic': '🇨🇿', 'Austria': '🇦🇹',
+        'Hungary': '🇭🇺', 'Ukraine': '🇺🇦', 'Slovakia': '🇸🇰', 'Ireland': '🇮🇪',
+        'Albania': '🇦🇱', 'Bosnia': '🇧🇦', 'Bulgaria': '🇧🇬'
     };
     return flags[country] || '🌍';
 };
@@ -67,7 +87,6 @@ export function GamesSection({ user }: GamesProps) {
     useEffect(() => {
         const fetchPlayers = async () => {
             try {
-                // Tragem toți jucătorii pentru a avea istoricul complet
                 const res = await fetch(`${API_URL}/api/sport/players?limit=10000`);
                 if (res.ok) {
                     const data = await res.json();
@@ -114,8 +133,8 @@ export function GamesSection({ user }: GamesProps) {
                         >
                             <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl group-hover:bg-emerald-500/40 transition-colors"></div>
                             <Activity className="w-12 h-12 text-emerald-400 mb-6" />
-                            <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Grila Transferurilor</h3>
-                            <p className="text-slate-400 font-bold text-sm mb-6 line-clamp-2">Găsește jucătorul perfect care să bifeze intersecția dintre echipe, naționalități și competiții.</p>
+                            <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Grila (X și 0)</h3>
+                            <p className="text-slate-400 font-bold text-sm mb-6 line-clamp-2">Găsește jucătorul perfect care să bifeze intersecția și câștigă meciul de X și 0.</p>
                             <button className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black uppercase tracking-widest text-xs group-hover:bg-emerald-500 transition-colors">
                                 <Play className="w-4 h-4 fill-current" /> Joacă Acum
                             </button>
@@ -144,57 +163,82 @@ export function GamesSection({ user }: GamesProps) {
 }
 
 // ============================================================================
-// GAME 1: GRILA TRANSFERURILOR (MIX TOTAL ECHIPĂ/NAȚIUNE)
+// GAME 1: GRILA TRANSFERURILOR (X ȘI 0, DOAR TOP 5 LIGI)
 // ============================================================================
 function GridGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gridRows, setGridRows] = useState<GridCriteria[]>([]);
     const [gridCols, setGridCols] = useState<GridCriteria[]>([]);
-    const [answers, setAnswers] = useState<Record<string, Player | null>>({});
+    
+    // State pentru X și 0
+    const [answers, setAnswers] = useState<Record<string, AnswerDetails>>({});
+    const [turn, setTurn] = useState<'X' | 'O'>('X');
+    const [winner, setWinner] = useState<'X' | 'O' | 'Draw' | null>(null);
     
     const [activeCell, setActiveCell] = useState<{ r: number, c: number } | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+
+    // Cele 5 Ligi de Top
+    const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
 
     useEffect(() => {
         generateValidGrid();
     }, []);
 
-    // Verificarea finală a răspunsului - acum flexibilă pentru Istoric
     const checkMatch = (p: Player, criteria: GridCriteria) => {
-        const val = criteria.value.toLowerCase().trim();
+        const val = removeDiacritics(criteria.value.toLowerCase().trim());
         if (criteria.type === 'team') {
-            const currentTeam = (p.team_name || p.team || "").toLowerCase().trim();
-            const pastTeams = (p.past_teams || []).map(t => t.toLowerCase().trim());
-            // Folosim un match flexibil pentru a evita bug-urile de tip "Man City" vs "Manchester City"
+            const currentTeam = removeDiacritics((p.team_name || p.team || "").toLowerCase().trim());
+            const pastTeams = (p.past_teams || []).map(t => removeDiacritics(t.toLowerCase().trim()));
             return currentTeam.includes(val) || val.includes(currentTeam) || pastTeams.some(t => t.includes(val) || val.includes(t));
         }
-        if (criteria.type === 'nationality') return (p.nationality || "").toLowerCase().trim() === val;
-        if (criteria.type === 'league') return (p.league_name || "").toLowerCase().trim() === val;
+        if (criteria.type === 'nationality') return removeDiacritics((p.nationality || "").toLowerCase().trim()) === val;
+        if (criteria.type === 'league') return removeDiacritics((p.league_name || "").toLowerCase().trim()) === val;
         return false;
     };
 
     const generateValidGrid = () => {
         const tagToPlayers = new Map<string, Set<string>>(); 
         const tagToMeta = new Map<string, GridCriteria>();
+        const knownTeamLogos = new Map<string, string>();
+        const top5Teams = new Set<string>();
 
-        // 1. Etichetăm absolut toți jucătorii
+        // 1. Identificăm ECHIPELE DOAR DIN TOP 5 LIGI și memorăm logo-urile lor
+        players.forEach(p => {
+            const tName = p.team_name?.toLowerCase().trim();
+            const t = p.team?.toLowerCase().trim();
+            
+            if (p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id))) {
+                if (tName) top5Teams.add(tName);
+                if (t) top5Teams.add(t);
+            }
+
+            if (tName && p.team_logo) knownTeamLogos.set(tName, p.team_logo);
+            if (t && p.team_logo) knownTeamLogos.set(t, p.team_logo);
+        });
+
+        // 2. Etichetăm jucătorii, PERMIȚÂND PE GRILĂ DOAR ECHIPE DIN TOP 5 LIGI
         players.forEach(p => {
             const tags: GridCriteria[] = [];
             
-            const currentTeam = p.team_name || p.team;
-            if (currentTeam) tags.push({ type: 'team', value: currentTeam, image: p.team_logo });
+            const currentTeam = (p.team_name || p.team)?.toLowerCase().trim();
+            // Adaugă echipa curentă DOAR dacă e din Top 5
+            if (currentTeam && top5Teams.has(currentTeam)) {
+                tags.push({ type: 'team', value: p.team_name || p.team || "", image: p.team_logo || knownTeamLogos.get(currentTeam) || "" });
+            }
             
+            // Adaugă echipele din trecut DOAR dacă fac parte din Top 5 Echipe recunoscute
             if (Array.isArray(p.past_teams)) {
                 p.past_teams.forEach(pt => {
-                    tags.push({ type: 'team', value: pt, image: "" });
+                    const pastT = pt.toLowerCase().trim();
+                    if (top5Teams.has(pastT)) {
+                        tags.push({ type: 'team', value: pt, image: knownTeamLogos.get(pastT) || "" });
+                    }
                 });
             }
             
+            // Adăugăm naționalitatea (acestea sunt mereu permise)
             if (p.nationality) {
                 tags.push({ type: 'nationality', value: p.nationality, image: getFlagEmoji(p.nationality) });
-            }
-            
-            if (p.league_name) {
-                tags.push({ type: 'league', value: p.league_name, image: p.league_logo });
             }
 
             tags.forEach(t => {
@@ -208,7 +252,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             });
         });
 
-        // 2. Eliminăm criteriile cu mai puțin de 3 jucători pentru a evita fundăturile
+        // Păstrăm criteriile care au măcar 3 jucători pentru a exista soluții
         const validTagIds = Array.from(tagToPlayers.keys()).filter(tId => tagToPlayers.get(tId)!.size >= 3);
 
         let foundValidGrid = false;
@@ -216,7 +260,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         let validRows: GridCriteria[] = [];
         let validCols: GridCriteria[] = [];
 
-        // 3. Căutăm matematica perfectă: 3 rânduri și 3 coloane care se intersectează (MIX TOTAL)
+        // Generăm Grila validă
         while (!foundValidGrid && attempts < 15000) {
             attempts++;
             
@@ -224,7 +268,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             const candidateRows = shuffledTags.slice(0, 3);
             
             const candidateCols = shuffledTags.filter(colTag => {
-                // Nu vrem același criteriu pe rând și pe coloană
                 if (candidateRows.includes(colTag)) return false;
                 
                 const colSet = tagToPlayers.get(colTag)!;
@@ -232,7 +275,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 
                 return candidateRows.every(rowTag => {
                     const rowType = rowTag.split(':')[0];
-                    // Permitem Echipă vs Echipă, dar nu Nat vs Nat sau Ligă vs Ligă
                     if (rowType === colType && rowType !== 'team') return false; 
                     
                     const rowSet = tagToPlayers.get(rowTag)!;
@@ -258,13 +300,15 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             setGridRows(validRows);
             setGridCols(validCols);
             setAnswers({});
+            setTurn('X');
+            setWinner(null);
         } else {
-            toast.error("Baza de date e prea mică pentru a genera combinații complexe.");
+            toast.error("Eroare la generarea grilei. Încearcă din nou.");
         }
     };
 
     const handleSelectPlayer = (player: Player) => {
-        if (!activeCell) return;
+        if (!activeCell || winner) return;
         const { r, c } = activeCell;
         
         const rowCriteria = gridRows[r];
@@ -273,7 +317,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         const matchRow = checkMatch(player, rowCriteria);
         const matchCol = checkMatch(player, colCriteria);
 
-        const alreadyUsed = Object.values(answers).some(ans => ans?._id === player._id);
+        const alreadyUsed = Object.values(answers).some(ans => ans?.player._id === player._id);
 
         if (alreadyUsed) {
             toast.error("Ai folosit deja acest jucător pe grilă!");
@@ -281,8 +325,35 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         }
 
         if (matchRow && matchCol) {
-            toast.success("Răspuns Corect!");
-            setAnswers(prev => ({ ...prev, [`${r}-${c}`]: player }));
+            const newAnswers = { ...answers, [`${r}-${c}`]: { player, markedBy: turn } };
+            setAnswers(newAnswers);
+            
+            // Verificare Câștigător (Linii, Coloane, Diagonale)
+            const lines = [
+                ['0-0', '0-1', '0-2'], ['1-0', '1-1', '1-2'], ['2-0', '2-1', '2-2'], // Linii
+                ['0-0', '1-0', '2-0'], ['0-1', '1-1', '2-1'], ['0-2', '1-2', '2-2'], // Coloane
+                ['0-0', '1-1', '2-2'], ['0-2', '1-1', '2-0']                         // Diagonale
+            ];
+            
+            let won = false;
+            for (let line of lines) {
+                const [a, b, c] = line;
+                if (newAnswers[a] && newAnswers[b] && newAnswers[c] &&
+                    newAnswers[a].markedBy === newAnswers[b].markedBy &&
+                    newAnswers[a].markedBy === newAnswers[c].markedBy) {
+                    setWinner(newAnswers[a].markedBy);
+                    won = true;
+                    toast.success(`Câștigător: ${newAnswers[a].markedBy === 'X' ? '❌' : '⚽'} !`, { icon: '🏆' });
+                    break;
+                }
+            }
+            
+            if (!won && Object.keys(newAnswers).length === 9) {
+                setWinner('Draw');
+                toast('Egalitate!', { icon: '🤝' });
+            }
+
+            setTurn(prev => prev === 'X' ? 'O' : 'X');
             setActiveCell(null);
             setSearchTerm("");
         } else {
@@ -290,11 +361,11 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         }
     };
 
+    // Căutare ignorând complet diacriticele
+    const normalizedSearch = removeDiacritics(searchTerm.toLowerCase());
     const searchResults = searchTerm.trim().length > 1 
-        ? players.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 10)
+        ? players.filter(p => removeDiacritics(p.name.toLowerCase()).includes(normalizedSearch)).slice(0, 10)
         : [];
-
-    const score = Object.keys(answers).length;
 
     const renderHeader = (item: GridCriteria) => (
         <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-inner border-2 border-slate-200 dark:border-slate-700 h-full w-full">
@@ -318,10 +389,21 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         <div className="space-y-6">
             <div className="flex items-center justify-between bg-slate-900 p-4 rounded-3xl border-2 border-slate-800">
                 <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
-                <div className="text-emerald-400 font-black uppercase tracking-widest text-sm flex items-center gap-2">
-                    Scor Grilă: {score} / 9
+                
+                {/* Indicator X și 0 */}
+                <div className="flex flex-col items-center">
+                    {winner ? (
+                        <div className="text-emerald-400 font-black uppercase tracking-widest text-sm animate-pulse flex items-center gap-2">
+                            {winner === 'Draw' ? 'Egalitate!' : `Câștigător: ${winner === 'X' ? '❌' : '⚽'}`}
+                        </div>
+                    ) : (
+                        <div className="text-blue-400 font-black uppercase tracking-widest text-sm flex items-center gap-2">
+                            Rândul: <span className="text-xl leading-none">{turn === 'X' ? '❌' : '⚽'}</span>
+                        </div>
+                    )}
                 </div>
-                <button onClick={generateValidGrid} className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/> Grilă Nouă</button>
+
+                <button onClick={generateValidGrid} className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/> Joc Nou</button>
             </div>
 
             {gridRows.length > 0 && (
@@ -345,18 +427,22 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                                     return (
                                         <div 
                                             key={`cell-${rIdx}-${cIdx}`} 
-                                            onClick={() => !ans && setActiveCell({ r: rIdx, c: cIdx })}
+                                            onClick={() => !ans && !winner && setActiveCell({ r: rIdx, c: cIdx })}
                                             className={`aspect-square rounded-2xl border-4 flex flex-col items-center justify-center cursor-pointer transition-all p-1 ${
                                                 ans 
                                                 ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' 
                                                 : 'bg-white dark:bg-slate-950 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                                            }`}
+                                            } ${winner && !ans ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
                                             {ans ? (
-                                                <>
-                                                    <img src={ans.image || GENERIC_USER_IMAGE} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover mb-1 border-2 border-white dark:border-emerald-500 shadow-sm" />
-                                                    <span className="text-[9px] sm:text-[10px] font-black uppercase text-center text-slate-900 dark:text-white tracking-tight leading-none px-1 line-clamp-2">{ans.name}</span>
-                                                </>
+                                                <div className="flex flex-col items-center justify-center w-full h-full space-y-1">
+                                                    <span className="text-3xl sm:text-4xl drop-shadow-md leading-none mb-1">
+                                                        {ans.markedBy === 'X' ? '❌' : '⚽'}
+                                                    </span>
+                                                    <span className="text-[9px] sm:text-[10px] font-black uppercase text-center text-slate-900 dark:text-white tracking-tight leading-none px-1 line-clamp-2">
+                                                        {ans.player.name}
+                                                    </span>
+                                                </div>
                                             ) : (
                                                 <Search className="w-6 h-6 sm:w-8 sm:h-8 text-slate-300 dark:text-slate-600" />
                                             )}
@@ -369,21 +455,23 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 </div>
             )}
 
-            {activeCell && (
+            {activeCell && !winner && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
                     <div className="bg-slate-900 w-full max-w-lg rounded-3xl border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden">
                         <div className="p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950">
-                            <h3 className="font-black text-white uppercase tracking-widest text-sm">Selectează Jucătorul</h3>
+                            <h3 className="font-black text-white uppercase tracking-widest text-sm flex items-center gap-2">
+                                Răspunde pentru {turn === 'X' ? '❌' : '⚽'}
+                            </h3>
                             <button onClick={() => {setActiveCell(null); setSearchTerm("");}} className="text-slate-400 hover:text-rose-500"><X className="w-5 h-5 font-bold" /></button>
                         </div>
                         <div className="p-5 space-y-4">
                             <div className="text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700">
-                                Căutăm intersecția: <span className="text-white">{gridRows[activeCell.r].value}</span> + <span className="text-white">{gridCols[activeCell.c].value}</span>
+                                Intersecția: <span className="text-white">{gridRows[activeCell.r].value}</span> + <span className="text-white">{gridCols[activeCell.c].value}</span>
                             </div>
                             <input 
                                 type="text"
                                 autoFocus
-                                placeholder="Caută jucător după nume..."
+                                placeholder="Caută jucător (ex: Kante, Mbappe)..."
                                 className="w-full bg-slate-950 border-2 border-slate-700 p-4 rounded-xl text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
@@ -393,19 +481,13 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                                     <button 
                                         key={p._id}
                                         onClick={() => handleSelectPlayer(p)}
-                                        className="w-full flex items-center gap-4 bg-slate-800 hover:bg-blue-600 p-3 rounded-xl transition-colors border border-slate-700 hover:border-blue-500 text-left group"
+                                        className="w-full flex items-center justify-center p-4 rounded-xl transition-colors border border-slate-700 hover:border-blue-500 bg-slate-800 hover:bg-blue-600 group"
                                     >
-                                        <img src={p.image || GENERIC_USER_IMAGE} className="w-10 h-10 rounded-full object-cover border border-slate-600 group-hover:border-white shrink-0" />
-                                        <div className="min-w-0">
-                                            <div className="font-black text-white uppercase tracking-tight truncate">{p.name}</div>
-                                            <div className="text-[9px] text-slate-400 group-hover:text-blue-100 font-bold uppercase tracking-widest truncate mt-0.5">
-                                                Echipă: {p.team_name || p.team} {p.past_teams && p.past_teams.length > 0 ? `| Fost: ${p.past_teams.join(', ')}` : ''} • {p.nationality}
-                                            </div>
-                                        </div>
+                                        <div className="font-black text-white uppercase tracking-tight truncate text-center text-lg">{p.name}</div>
                                     </button>
                                 ))}
                                 {searchTerm.length > 1 && searchResults.length === 0 && (
-                                    <div className="text-center p-4 text-slate-500 font-bold uppercase tracking-widest text-xs">Jucătorul nu există în baza de date.</div>
+                                    <div className="text-center p-4 text-slate-500 font-bold uppercase tracking-widest text-xs">Jucătorul nu a fost găsit.</div>
                                 )}
                             </div>
                         </div>
