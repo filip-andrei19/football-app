@@ -15,17 +15,56 @@ const TARGET_LEAGUES = [
     { id: 88, name: "Eredivisie (Olanda)" },
     { id: 94, name: "Primeira Liga (Portugalia)" },
     { id: 40, name: "Championship (Anglia L2)" },
-    // ECHIPELE DIN CUPELE EUROPENE (Aduc automat jucătorii și stats-urile din campionatele lor)
     { id: 2, name: "UEFA Champions League" },
     { id: 3, name: "UEFA Europa League" },
     { id: 848, name: "UEFA Conference League" }
 ];
 
-// Evidență în memorie pentru a evita dubla scanare a aceleiași echipe într-un interval scurt
+const TOP_LEAGUES = [283, 39, 140, 135, 78, 61]; 
 const recentTeamSyncMap = new Map();
 
 function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// --- FUNCȚIE SCUT PENTRU PROTEJAREA API-ULUI ---
+async function safeGet(url, config) {
+    const res = await axios.get(url, config);
+    
+    // Verificăm dacă API-ul ne trimite o eroare de limită
+    if (res.data && res.data.errors && Object.keys(res.data.errors).length > 0) {
+        const errorKey = Object.keys(res.data.errors)[0];
+        const errorMsg = res.data.errors[errorKey];
+        
+        if (errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('requests')) {
+            console.error(`\n[CRITIC] Limita API a fost atinsă: ${errorMsg}`);
+            console.error("🛑 OPRIRE DE URGENȚĂ A SCRIPTULUI PENTRU A EVITA BLOCAREA!");
+            process.exit(1); // Oprește complet execuția scriptului Node.js
+        }
+    }
+    return res;
+}
+
+async function getPlayerPastTeams(playerId) {
+    try {
+        const res = await safeGet(`${BASE_URL}/transfers?player=${playerId}`, {
+            headers: { 'x-apisports-key': API_KEY }
+        });
+        
+        let pastTeams = new Set();
+        if (res.data && res.data.response && res.data.response.length > 0) {
+            const transfers = res.data.response[0].transfers;
+            if (transfers && Array.isArray(transfers)) {
+                transfers.forEach(t => {
+                    if (t.teams && t.teams.out && t.teams.out.name) pastTeams.add(t.teams.out.name);
+                    if (t.teams && t.teams.in && t.teams.in.name) pastTeams.add(t.teams.in.name);
+                });
+            }
+        }
+        return Array.from(pastTeams);
+    } catch (err) {
+        return [];
+    }
 }
 
 function calculateTotalStats(statisticsArray, targetTeamId) {
@@ -39,7 +78,6 @@ function calculateTotalStats(statisticsArray, targetTeamId) {
         return defaultStats;
     }
 
-    // --- VARIABILE PENTRU ALGORITMUL PROPRIU "SCOUT IQ" ---
     let totalGoals = 0;
     let totalAssists = 0;
     let totalMinutes = 0;
@@ -63,7 +101,6 @@ function calculateTotalStats(statisticsArray, targetTeamId) {
         const compName = (s.league && s.league.name) ? s.league.name : "Competitie necunoscuta";
         const compType = (s.league && s.league.type) ? s.league.type : "Other";
 
-        // Extragem date avansate DOAR din meciurile oficiale (Campionat / Cupă)
         if (compType === "League" || compType === "Cup") {
             totalKeyPasses += (s.passes && s.passes.key) ? s.passes.key : 0;
             totalTackles += (s.tackles && s.tackles.total) ? s.tackles.total : 0;
@@ -73,7 +110,6 @@ function calculateTotalStats(statisticsArray, targetTeamId) {
             redCards += (s.cards && s.cards.red) ? s.cards.red : 0;
         }
 
-        // Adăugăm la totalurile generale
         defaultStats.total_appearances += apps;
         defaultStats.total_goals += goals;
         defaultStats.total_assists += assists;
@@ -102,18 +138,13 @@ function calculateTotalStats(statisticsArray, targetTeamId) {
         }
     }
 
-    // ========================================================
-    // ALGORITMUL PROPRIU DE RATING ("Scout IQ Index")
-    // ========================================================
     if (totalMinutes > 90) { 
-        // 1. Stabilim o bază și calculăm "Meciuri Echivalente" (per 90 min)
         let baseRating = 6.0;
         let performanceScore = 0;
         const matchesEquivalent = totalMinutes / 90; 
 
         const pos = defaultStats.position.toLowerCase();
 
-        // 2. Punctaj în funcție de Poziția Jucătorului
         if (pos.includes('attacker') || pos.includes('forward') || pos.includes('striker')) {
             performanceScore += (totalGoals * 1.5) + (totalAssists * 0.8) + (totalKeyPasses * 0.1);
         } else if (pos.includes('midfielder')) {
@@ -126,28 +157,17 @@ function calculateTotalStats(statisticsArray, targetTeamId) {
             performanceScore += (totalGoals * 1.0) + (totalAssists * 1.0) + (totalKeyPasses * 0.1) + (totalTackles * 0.1);
         }
 
-        // 3. Penalizări disciplinare (Cartonașe)
         let disciplinePenalty = (yellowCards * 0.15) + (redCards * 0.6);
-
-        // 4. Calculăm impactul mediu pe meci (Cât aduce jucătorul în 90 de min?)
         let impactPerMatch = performanceScore / matchesEquivalent;
-
-        // 5. Bonus de consistență: titularii incontestabili primesc un mic boost (max +0.3)
         let consistencyBonus = Math.min((totalMinutes / 3000) * 0.3, 0.3);
-
-        // 6. Formula Finală
         let finalRating = baseRating + impactPerMatch + consistencyBonus - (disciplinePenalty / matchesEquivalent);
 
-        // 7. Normalizare: Ne asigurăm că nota nu sare de 10.0 și nu cade sub 4.0
         finalRating = Math.max(4.0, Math.min(10.0, finalRating));
-
         defaultStats.rating = finalRating.toFixed(2);
         
     } else if (totalMinutes > 0 && totalMinutes <= 90) {
-        // A jucat prea puțin pentru ca algoritmul să fie precis
         defaultStats.rating = "6.00";
     } else {
-        // Nu a jucat deloc
         defaultStats.rating = null;
     }
 
@@ -156,7 +176,7 @@ function calculateTotalStats(statisticsArray, targetTeamId) {
 
 async function getRealClubInfoAndStats(playerId, nationalTeamId) {
     try {
-        const res = await axios.get(`${BASE_URL}/players?id=${playerId}&season=${SEASON}`, {
+        const res = await safeGet(`${BASE_URL}/players?id=${playerId}&season=${SEASON}`, {
             headers: { 'x-apisports-key': API_KEY }
         });
         
@@ -188,7 +208,7 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
 
     do {
         try {
-            const res = await axios.get(`${BASE_URL}/players?team=${teamId}&season=${SEASON}&page=${currentPage}`, {
+            const res = await safeGet(`${BASE_URL}/players?team=${teamId}&season=${SEASON}&page=${currentPage}`, {
                 headers: { 'x-apisports-key': API_KEY }
             });
             
@@ -217,17 +237,20 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
                         finalStats = realClubInfo.stats; 
                     }
 
-                    // --- NOU: EXTRAGERE ISTORIC ECHIPE ---
-                    let pastTeams = new Set();
-                    if (item.transfers && Array.isArray(item.transfers)) {
-                        item.transfers.forEach(t => {
-                            if (t.teams && t.teams.out && t.teams.out.name) {
-                                pastTeams.add(t.teams.out.name);
-                            }
-                            if (t.teams && t.teams.in && t.teams.in.name) {
-                                pastTeams.add(t.teams.in.name);
-                            }
-                        });
+                    const existingPlayer = await Player.findOne({ api_id: p.id });
+                    
+                    let pastTeamsArray = [];
+                    if (existingPlayer && existingPlayer.past_teams && existingPlayer.past_teams.length > 0) {
+                        pastTeamsArray = existingPlayer.past_teams;
+                    } else {
+                        const isOldEnough = p.age && p.age >= 22;
+                        const playsEnough = finalStats.minutes_played > 90;
+
+                        if (isOldEnough && playsEnough) {
+                            console.log(`     -> Descarc istoric VIP pt ${p.name} (Nationala)...`);
+                            pastTeamsArray = await getPlayerPastTeams(p.id);
+                            await wait(250); 
+                        }
                     }
 
                     if (!p.id) continue;
@@ -252,7 +275,7 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
                         team_name: finalTeamName,
                         team_logo: finalTeamLogo,
                         league_id: leagueId || null,
-                        past_teams: Array.from(pastTeams), // <-- Salvare în baza de date
+                        past_teams: pastTeamsArray, 
                         detailed_stats: finalStats.detailed_stats || [],
                         statistics_summary: {
                             team: finalTeamName,
@@ -288,7 +311,7 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
 
     do {
         try {
-            const res = await axios.get(`${BASE_URL}/players?team=${teamId}&season=${SEASON}&page=${currentPage}`, {
+            const res = await safeGet(`${BASE_URL}/players?team=${teamId}&season=${SEASON}&page=${currentPage}`, {
                 headers: { 'x-apisports-key': API_KEY }
             });
 
@@ -304,36 +327,36 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                     const p = item.player;
                     const totalStats = calculateTotalStats(item.statistics, teamId);
 
-                    // --- NOU: LOGICĂ PENTRU JUCĂTORII ÎMPRUMUTAȚI ---
                     let actualTeamName = teamName;
                     let actualTeamLogo = teamLogo;
                     let actualLeagueId = totalStats.league_id || leagueId || null;
 
-                    // --- NOU: EXTRAGERE ISTORIC ECHIPE ---
-                    let pastTeams = new Set();
-                    if (item.transfers && Array.isArray(item.transfers)) {
-                        item.transfers.forEach(t => {
-                            if (t.teams && t.teams.out && t.teams.out.name) {
-                                pastTeams.add(t.teams.out.name);
-                            }
-                            if (t.teams && t.teams.in && t.teams.in.name) {
-                                pastTeams.add(t.teams.in.name);
-                            }
-                        });
+                    const existingPlayer = await Player.findOne({ api_id: p.id });
+                    
+                    let pastTeamsArray = [];
+
+                    if (existingPlayer && existingPlayer.past_teams && existingPlayer.past_teams.length > 0) {
+                        pastTeamsArray = existingPlayer.past_teams;
+                    } else {
+                        const isTopLeague = TOP_LEAGUES.includes(Number(actualLeagueId));
+                        const isOldEnough = p.age && p.age >= 22;
+                        const playsEnough = totalStats.minutes_played > 90;
+
+                        if (isTopLeague && isOldEnough && playsEnough) {
+                            console.log(`     -> Descarc istoric VIP pentru ${p.name}...`);
+                            pastTeamsArray = await getPlayerPastTeams(p.id);
+                            await wait(250); 
+                        }
                     }
 
-                    // Verificăm dacă există transferuri recente și jucătorul e împrumutat sau a schimbat echipa sezonul acesta
                     if (item.transfers && item.transfers.length > 0) {
-                        const currentTransfer = item.transfers[0]; // Cel mai recent transfer
+                        const currentTransfer = item.transfers[0]; 
                         
-                        // Dacă echipa la care a ajuns (teams.in) este diferită de echipa scanată acum
                         if (currentTransfer.teams && currentTransfer.teams.in && currentTransfer.teams.in.id !== teamId) {
-                            // Dacă transferul s-a făcut în anul curent (ex: 2026-08-30)
                             const transferYear = new Date(currentTransfer.date).getFullYear();
                             if (transferYear >= SEASON) {
                                 actualTeamName = currentTransfer.teams.in.name;
                                 actualTeamLogo = currentTransfer.teams.in.logo;
-                                // Pentru a prelua liga corectă a noii echipe, ne bazăm strict pe datele de meci din statistics
                                 actualLeagueId = totalStats.league_id || null;
                             }
                         }
@@ -356,9 +379,8 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         team_name: actualTeamName,
                         team: actualTeamName, 
                         team_logo: actualTeamLogo,
-                        // Folosim ID-ul ligii curente (sau cel dedus din statistici)
                         league_id: actualLeagueId,
-                        past_teams: Array.from(pastTeams), // <-- Salvare în baza de date
+                        past_teams: pastTeamsArray, 
                         detailed_stats: totalStats.detailed_stats || [],
                         statistics_summary: {
                             team_name: actualTeamName,
@@ -373,10 +395,7 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
 
                     if (!p.id) continue;
 
-                    const existingPlayer = await Player.findOne({ api_id: p.id });
-
                     if (existingPlayer) {
-                        // Forțăm ca un jucător să nu primească naționalitatea României decât dacă API-ul o zice clar sau e la Națională
                         if (!p.nationality && existingPlayer.nationality === "Romania" && teamName !== "Romania (Nationala)") {
                             updateData.nationality = "Necunoscut";
                         }
@@ -402,50 +421,25 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
     } while (currentPage <= totalPages);
 }
 
-// ============================================================================
-// NOU: SINCRONIZARE AUTOMATĂ A JUCĂTORILOR UNEI ECHIPE IMEDIAT DUPĂ MECI (FT)
-// Folosește direct processTeamAndUpdate și algoritmul tău "Scout IQ Index"
-// ============================================================================
 async function syncTeamPlayersAfterMatch(teamId, teamName, teamLogo, leagueId) {
     if (!teamId) return;
-
     const now = Date.now();
     const lastSync = recentTeamSyncMap.get(Number(teamId)) || 0;
-
-    // Dacă echipa a fost deja sincronizată în ultimele 30 de minute, o sărim pentru a economisi request-uri
-    if (now - lastSync < 30 * 60 * 1000) {
-        console.log(`   [POST-MATCH SMART SYNC] Echipa ${teamName} (#${teamId}) a fost deja actualizată recent.`);
-        return;
-    }
-
+    if (now - lastSync < 30 * 60 * 1000) return;
     recentTeamSyncMap.set(Number(teamId), now);
-    console.log(`   [POST-MATCH SMART SYNC] Actualizez lotul și Scout IQ pentru: ${teamName} (#${teamId})...`);
     await processTeamAndUpdate(teamId, teamName || "Unknown", teamLogo || "", leagueId || null);
 }
 
 async function syncMatchTeamsPlayers(matchDoc) {
     if (!matchDoc) return;
-
-    await syncTeamPlayersAfterMatch(
-        matchDoc.home_team_id,
-        matchDoc.home_team_name,
-        matchDoc.home_team_logo,
-        matchDoc.league_id
-    );
-
+    await syncTeamPlayersAfterMatch(matchDoc.home_team_id, matchDoc.home_team_name, matchDoc.home_team_logo, matchDoc.league_id);
     await wait(2000);
-
-    await syncTeamPlayersAfterMatch(
-        matchDoc.away_team_id,
-        matchDoc.away_team_name,
-        matchDoc.away_team_logo,
-        matchDoc.league_id
-    );
+    await syncTeamPlayersAfterMatch(matchDoc.away_team_id, matchDoc.away_team_name, matchDoc.away_team_logo, matchDoc.league_id);
 }
 
 async function runNationalTeamSync() {
     try {
-        const allTeamsRes = await axios.get(`${BASE_URL}/teams`, {
+        const allTeamsRes = await safeGet(`${BASE_URL}/teams`, {
             headers: { 'x-apisports-key': API_KEY },
             params: { country: 'Romania' } 
         });
@@ -464,35 +458,22 @@ async function runNationalTeamSync() {
 }
 
 async function runDailySmartSync() {
-    console.log(`\n [SMART SYNC] Pornesc actualizarea completa...`);
-
+    console.log(`\n [SMART SYNC] Pornesc actualizarea cu FILTRU VIP si OPRIRE DE URGENTA...`);
     const EUROPEAN_CUPS = [2, 3, 848];
 
     for (const targetLeague of TARGET_LEAGUES) {
         console.log(`\n Incep procesarea pentru: ${targetLeague.name}...`);
         try {
             let teams = [];
-
             if (EUROPEAN_CUPS.includes(targetLeague.id)) {
-                // PENTRU CUPELE EUROPENE: Luăm DOAR echipele din faza grupelor (League Phase) folosind /standings
-                const standingsRes = await axios.get(`${BASE_URL}/standings?league=${targetLeague.id}&season=${SEASON}`, {
-                    headers: { 'x-apisports-key': API_KEY }
-                });
-
+                const standingsRes = await safeGet(`${BASE_URL}/standings?league=${targetLeague.id}&season=${SEASON}`, { headers: { 'x-apisports-key': API_KEY } });
                 const standingsList = standingsRes.data?.response?.[0]?.league?.standings;
                 if (standingsList && Array.isArray(standingsList)) {
-                    const allRows = standingsList.flat();
-                    teams = allRows.filter(row => row && row.team).map(row => ({ team: row.team }));
+                    teams = standingsList.flat().filter(row => row && row.team).map(row => ({ team: row.team }));
                 }
-                console.log(` -> Am extras ${teams.length} echipe calificate în faza grupelor pentru ${targetLeague.name}.`);
             } else {
-                // PENTRU CAMPIONATELE INTERNE: Metoda clasică
-                const teamsRes = await axios.get(`${BASE_URL}/teams?league=${targetLeague.id}&season=${SEASON}`, {
-                    headers: { 'x-apisports-key': API_KEY }
-                });
-                if (teamsRes.data && teamsRes.data.response) {
-                    teams = teamsRes.data.response;
-                }
+                const teamsRes = await safeGet(`${BASE_URL}/teams?league=${targetLeague.id}&season=${SEASON}`, { headers: { 'x-apisports-key': API_KEY } });
+                if (teamsRes.data && teamsRes.data.response) teams = teamsRes.data.response;
             }
 
             if (!teams || teams.length === 0) continue;
@@ -500,19 +481,15 @@ async function runDailySmartSync() {
             let count = 1;
             for (const t of teams) {
                 if (t && t.team) {
-                    console.log(`   [${count}/${teams.length}] Procesez echipa: ${t.team.name} (${targetLeague.name})...`);
+                    console.log(`   [${count}/${teams.length}] Procesez echipa: ${t.team.name}...`);
                     await processTeamAndUpdate(t.team.id, t.team.name, t.team.logo, targetLeague.id);
                     count++;
-                    await wait(3000); 
+                    await wait(2000); 
                 }
             }
-        } catch (error) { 
-            console.log(`Eroare la liga ${targetLeague.name}: ${error.message}`);
-        }
+        } catch (error) {}
     }
-
-    await runNationalTeamSync();
-    console.log(`\n [SMART SYNC FULL] Baza de date actualizata!`);
+    console.log(`\n [SMART SYNC FULL] Gata! Baza de date conține acum istoricul VIP-urilor!`);
 }
 
 module.exports = {
