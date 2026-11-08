@@ -34,7 +34,7 @@ app.set('trust proxy', 1);
 // INIȚIALIZARE SENTRY (TREBUIE SĂ FIE AICI, ÎNAINTE DE RUTE/MIDDLEWARE)
 // ==========================================
 Sentry.init({
-  dsn: "https://1cd760c47aa5288d63b8307df25fb8f4@o4512306562596864.ingest.de.sentry.io/4512306687705168", // <-- ÎNLOCUIEȘTE CU DSN-UL REAL PENTRU BACKEND
+  dsn: "https://1cd760c47aa5288d63b8307df25fb8f4@o4512306562596864.ingest.de.sentry.io/4512306687705168", 
   integrations: [
     nodeProfilingIntegration(),
   ],
@@ -53,12 +53,16 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_SECRET
 });
 
-// CONFIGURARE WEB PUSH (AICI A FOST REPARATĂ EROAREA)
-webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:contact@scout.ro', // Fallback sigur în caz că lipsește variabila
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-);
+// CONFIGURARE WEB PUSH (REPARAT - EVITĂ CRASH DACĂ LIPSESC CHEILE)
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT || 'mailto:contact@scout.ro',
+        process.env.VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+    );
+} else {
+    console.warn("⚠️ Cheile VAPID lipsesc! Serverul a pornit, dar notificările Web Push sunt dezactivate.");
+}
 
 // CONFIGURARE SOCKET.IO
 const io = new Server(server, {
