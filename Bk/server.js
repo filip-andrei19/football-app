@@ -53,9 +53,9 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_SECRET
 });
 
-// CONFIGURARE WEB PUSH
+// CONFIGURARE WEB PUSH (AICI A FOST REPARATĂ EROAREA)
 webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT,
+    process.env.VAPID_SUBJECT || 'mailto:contact@scout.ro', // Fallback sigur în caz că lipsește variabila
     process.env.VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY
 );
@@ -158,7 +158,7 @@ const User = mongoose.models.User || mongoose.model('User', userSchema);
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
-    authorRole: { type: String, default: 'user' }, // <-- ADAUGAT: Rolul autorului
+    authorRole: { type: String, default: 'user' }, 
     message: String,
     imageUrl: { type: String, default: "" },
     time: String,
@@ -185,7 +185,7 @@ const listingSchema = new mongoose.Schema({
     sellerEmail: { type: String, required: true },
     sellerPhone: { type: String },
     sellerAvatar: { type: String, default: '' },
-    reportedBy: { type: [String], default: [] }, // <-- ADAUGAT: Raportări anunțuri
+    reportedBy: { type: [String], default: [] }, 
     posted: { type: Date, default: Date.now }
 });
 listingSchema.index({ title: 'text', description: 'text' });
@@ -290,19 +290,17 @@ const startServer = async () => {
              ]);
         }
 
-        // RUTA DE TEST SENTRY (OPȚIONALĂ, PENTRU VERIFICARE)
         app.get("/debug-sentry", function mainHandler(req, res) {
             throw new Error("My first Sentry error!");
         });
 
-        // 2. Endpoint nou: Salvarea abonamentului (PushSubscription) în baza de date
         app.post('/api/notifications/subscribe', async (req, res) => {
             const { email, subscription } = req.body;
             
             try {
                 await User.findOneAndUpdate(
                     { email: email },
-                    { $addToSet: { pushSubscriptions: subscription } } // Evită duplicatele
+                    { $addToSet: { pushSubscriptions: subscription } } 
                 );
                 res.status(201).json({ success: true, message: 'Abonament Push salvat.' });
             } catch (err) {
@@ -553,7 +551,6 @@ const startServer = async () => {
 
         app.post('/api/messages/send', async (req, res) => {
             try {
-                // <-- ADAUGAT: authorRole
                 const { room, author, authorRole, message, time, imageUrl, imageBase64, replyTo } = req.body;
                 let finalImageUrl = "";
                 const rawImage = imageBase64 || imageUrl;
@@ -640,10 +637,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
-        // ==========================================
-        // RUTE PENTRU RAPORTAREA MESAJELOR
-        // ==========================================
-
         app.post('/api/messages/:id/report', async (req, res) => {
             try {
                 const { user } = req.body; 
@@ -678,10 +671,6 @@ const startServer = async () => {
                 res.json({ success: true });
             } catch (err) { res.status(500).json({ error: "Eroare la ignorare raport." }); }
         });
-
-        // ==========================================
-        // RUTE LISTINGS (ANUNȚURI)
-        // ==========================================
 
         app.post('/api/listings', async (req, res) => {
             try {
@@ -723,7 +712,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
-        // <-- ADAUGAT: Raportare Anunțuri
         app.post('/api/listings/:id/report', async (req, res) => {
             try {
                 const { user } = req.body; 
@@ -758,9 +746,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare la ignorare raport." }); }
         });
 
-        // ==========================================
-        // RUTA DE PLAYERS PENTRU SCOUTING
-        // ==========================================
         app.get('/api/sport/players', async (req, res) => {
             try {
                 const {
@@ -887,9 +872,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare." }); }
         });
 
-        // ==========================================
-        // MODIFICARE NOUĂ: Căutare EXACTĂ pentru loturi (Rezolvă problema OFI vs Sofia)
-        // ==========================================
         app.get('/api/sport/teams/:teamName/roster', async (req, res) => {
             try {
                 const teamNameRegex = new RegExp(`^${req.params.teamName.trim()}$`, 'i');
@@ -962,7 +944,6 @@ const startServer = async () => {
                 if (!matchDetails) return res.status(404).json({ error: "Meciul nu a fost găsit." });
                 io.emit("live_match_update", matchDetails);
 
-                // Funcția care trimite efectiv notificarea push (3. Funcția care trimite efectiv notificarea)
                 async function sendPushToUser(email, payload) {
                     try {
                         const user = await User.findOne({ email });
@@ -975,11 +956,9 @@ const startServer = async () => {
                             data: payload.data
                         });
                 
-                        // Trimite notificarea către toate dispozitivele salvate ale utilizatorului
                         const promises = user.pushSubscriptions.map(sub => 
                             webpush.sendNotification(sub, pushPayload).catch(err => {
                                 if (err.statusCode === 404 || err.statusCode === 410) {
-                                    // Abonamentul a expirat sau utilizatorul a blocat notificările -> îl ștergem
                                     return User.updateOne({ email }, { $pull: { pushSubscriptions: sub } });
                                 }
                             })
@@ -1002,9 +981,6 @@ const startServer = async () => {
             } catch (err) { res.status(500).json({ error: "Eroare la preluarea clasamentului." }); }
         });
 
-        // ==========================================
-        // RUTE ADMIN PENTRU ABATERI (STRIKES)
-        // ==========================================
         app.post('/api/admin/users/strike', async (req, res) => {
             try {
                 const { name } = req.body;
