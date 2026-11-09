@@ -193,7 +193,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 
     const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
 
-    // === FUNCȚIA DE VERIFICARE MUTATĂ AICI (PENTRU A EVITA EROAREA) ===
+    // === FUNCȚIA DE VERIFICARE ===
     const checkMatch = (p: Player, criteria: GridCriteria) => {
         const val = removeDiacritics(criteria.value.toLowerCase().trim());
         if (criteria.type === 'team') {
@@ -728,7 +728,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 }
 
 // ============================================================================
-// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) 
+// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - ACUM DOAR TOP 5 LIGI
 // ============================================================================
 function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
@@ -738,12 +738,18 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
     const [playerA, setPlayerA] = useState<Player | null>(null);
     const [playerB, setPlayerB] = useState<Player | null>(null);
 
+    // Cele 5 ligi de top (Premier League, La Liga, Serie A, Bundesliga, Ligue 1)
+    const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
+
     const getStatValue = (p: Player, cat: string) => {
         if (cat === 'age') return p.age || 0;
         if (cat === 'height') return parseInt(p.height?.replace(/\D/g, '') || "0", 10);
         if (cat === 'rating') return parseFloat(p.statistics_summary?.rating || "0");
         if (cat === 'market_value') {
+            // Dacă API-ul a adus o cotă reală, o folosim
             if (p.market_value) return p.market_value;
+
+            // Algoritm de fallback (Virtual Market Value)
             const rating = parseFloat(p.statistics_summary?.rating || "6.0");
             const age = p.age || 27; 
             const currentTeam = (p.team_name || p.team || "").toLowerCase();
@@ -776,10 +782,10 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
     };
 
     const startGame = () => {
-        const TOP_LEAGUES = [283, 39, 140, 135, 78, 61]; 
-        const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_LEAGUES.includes(Number(p.league_id)));
+        // Filtrăm lista pentru a permite DOAR jucători din ligile de top și care au statistica validă
+        const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
         
-        if (validPlayers.length < 10) { toast.error("Nu sunt suficienți jucători în baza de date."); return; }
+        if (validPlayers.length < 10) { toast.error("Nu sunt suficienți jucători în cele 5 ligi de top pentru această categorie."); return; }
         const shuffled = shuffleArray(validPlayers);
         setPlayerA(shuffled[0]);
         setPlayerB(shuffled[1]);
@@ -797,8 +803,9 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
             toast.success("Corect!");
             setScore(prev => prev + 1);
             setPlayerA(playerB);
-            const TOP_LEAGUES = [283, 39, 140, 135, 78, 61]; 
-            const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_LEAGUES.includes(Number(p.league_id)));
+            
+            // Re-filtrăm și căutăm următorul jucător
+            const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
             const shuffled = shuffleArray(validPlayers);
             const nextPB = shuffled.find(p => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
             setPlayerB(nextPB);

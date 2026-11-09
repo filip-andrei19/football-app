@@ -31,7 +31,6 @@ function wait(ms) {
 async function safeGet(url, config) {
     const res = await axios.get(url, config);
     
-    // Verificăm dacă API-ul ne trimite o eroare de limită
     if (res.data && res.data.errors && Object.keys(res.data.errors).length > 0) {
         const errorKey = Object.keys(res.data.errors)[0];
         const errorMsg = res.data.errors[errorKey];
@@ -39,7 +38,7 @@ async function safeGet(url, config) {
         if (errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('requests')) {
             console.error(`\n[CRITIC] Limita API a fost atinsă: ${errorMsg}`);
             console.error("🛑 OPRIRE DE URGENȚĂ A SCRIPTULUI PENTRU A EVITA BLOCAREA!");
-            process.exit(1); // Oprește complet execuția scriptului Node.js
+            process.exit(1); 
         }
     }
     return res;
@@ -256,6 +255,16 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
                     if (!p.id) continue;
 
                     await Player.deleteMany({ api_id: p.id });
+                    
+                    // --- AICI EXTRAGEM MARKET VALUE (Dacă există) ---
+                    // Notă: API-Sports ar putea să expună o cotă (gen "market_value" sau "value" în diferite structuri). 
+                    // Verificăm câteva proprietăți comune pe care s-ar putea să le primești de la ei.
+                    let playerMarketValue = null;
+                    if (p.market_value) {
+                         playerMarketValue = p.market_value;
+                    } else if (p.value) {
+                         playerMarketValue = p.value;
+                    }
 
                     const newPlayerData = {
                         api_id: p.id,
@@ -276,6 +285,7 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
                         team_logo: finalTeamLogo,
                         league_id: leagueId || null,
                         past_teams: pastTeamsArray, 
+                        market_value: playerMarketValue, // <--- ADĂUGAT
                         detailed_stats: finalStats.detailed_stats || [],
                         statistics_summary: {
                             team: finalTeamName,
@@ -361,6 +371,14 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                             }
                         }
                     }
+                    
+                    // --- AICI EXTRAGEM MARKET VALUE (Dacă există) ---
+                    let playerMarketValue = null;
+                    if (p.market_value) {
+                         playerMarketValue = p.market_value;
+                    } else if (p.value) {
+                         playerMarketValue = p.value;
+                    }
 
                     const updateData = {
                         api_id: p.id,
@@ -381,6 +399,7 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         team_logo: actualTeamLogo,
                         league_id: actualLeagueId,
                         past_teams: pastTeamsArray, 
+                        market_value: playerMarketValue, // <--- ADĂUGAT
                         detailed_stats: totalStats.detailed_stats || [],
                         statistics_summary: {
                             team_name: actualTeamName,
