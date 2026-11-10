@@ -58,8 +58,7 @@ const playTone = (frequency: number, type: OscillatorType, duration: number) => 
         gainNode.connect(audioCtx.destination);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + duration);
-    } catch (e) {
-    }
+    } catch (e) {}
 };
 
 const playSound = (type: 'correct' | 'wrong' | 'timeout' | 'win', isMuted: boolean = false) => {
@@ -82,7 +81,6 @@ const playSound = (type: 'correct' | 'wrong' | 'timeout' | 'win', isMuted: boole
     }
 };
 
-// Amestecare perfectă Fisher-Yates
 function shuffleArray<T>(array: T[]): T[] {
     const newArr = [...array];
     for (let i = newArr.length - 1; i > 0; i--) {
@@ -92,7 +90,6 @@ function shuffleArray<T>(array: T[]): T[] {
     return newArr;
 }
 
-// Eliminare diacritice
 const removeDiacritics = (str: string) => {
     return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
 };
@@ -204,21 +201,20 @@ export function GamesSection({ user }: GamesProps) {
                 </div>
             )}
 
-            {activeGame === 'grid' && <GridGame players={allPlayers} onBack={() => setActiveGame('menu')} isMuted={isMuted} />}
+            {activeGame === 'grid' && <GridGame players={allPlayers} onBack={() => setActiveGame('menu')} isMuted={isMuted} user={user} />}
             {activeGame === 'hilo' && <HiLoGame players={allPlayers} onBack={() => setActiveGame('menu')} user={user} isMuted={isMuted} />}
         </div>
     );
 }
 
 // ============================================================================
-// GAME 1: GRILA TRANSFERURILOR (X ȘI 0 - MULTIPLAYER & LOCAL)
+// GAME 1: GRILA TRANSFERURILOR (X ȘI 0) 
 // ============================================================================
 type GridMode = 'menu' | 'local' | 'online_menu' | 'online_setup' | 'online_playing';
 
-function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () => void, isMuted: boolean }) {
+function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBack: () => void, isMuted: boolean, user: any }) {
     const [mode, setMode] = useState<GridMode>('menu');
-    
-    // Grid & Joc
+    const [playerName, setPlayerName] = useState(user?.name || "");
     const [gridRows, setGridRows] = useState<GridCriteria[]>([]);
     const [gridCols, setGridCols] = useState<GridCriteria[]>([]);
     const [answers, setAnswers] = useState<Record<string, AnswerDetails>>({});
@@ -228,7 +224,6 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
     const [searchTerm, setSearchTerm] = useState("");
     const [timeLeft, setTimeLeft] = useState(60);
 
-    // Multiplayer Online (Best of 5) & Voturi
     const [roomCode, setRoomCode] = useState("");
     const [joinInput, setJoinInput] = useState("");
     const [myRole, setMyRole] = useState<'X' | 'O' | null>(null);
@@ -237,36 +232,27 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
     const [skipVotes, setSkipVotes] = useState({ X: false, O: false });
     const socketRef = useRef<Socket | null>(null);
     
-    // Refs pentru acces în hook-uri/intervale
     const gridRowsRef = useRef(gridRows);
     const gridColsRef = useRef(gridCols);
     const turnRef = useRef(turn);
     
-    useEffect(() => { 
-        gridRowsRef.current = gridRows; 
-        gridColsRef.current = gridCols; 
-    }, [gridRows, gridCols]);
-    
-    useEffect(() => { 
-        turnRef.current = turn; 
-    }, [turn]);
+    useEffect(() => { gridRowsRef.current = gridRows; gridColsRef.current = gridCols; }, [gridRows, gridCols]);
+    useEffect(() => { turnRef.current = turn; }, [turn]);
 
     const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
 
-    // === FUNCȚIA DE VERIFICARE ===
     const checkMatch = (p: Player, criteria: GridCriteria) => {
         const val = removeDiacritics(criteria.value.toLowerCase().trim());
         if (criteria.type === 'team') {
             const currentTeam = removeDiacritics((p.team_name || p.team || "").toLowerCase().trim());
-            const pastTeams = (p.past_teams || []).map(t => removeDiacritics(t.toLowerCase().trim()));
-            return currentTeam.includes(val) || val.includes(currentTeam) || pastTeams.some(t => t.includes(val) || val.includes(t));
+            const pastTeams = (p.past_teams || []).map((t: string) => removeDiacritics(t.toLowerCase().trim()));
+            return currentTeam.includes(val) || val.includes(currentTeam) || pastTeams.some((t: string) => t.includes(val) || val.includes(t));
         }
         if (criteria.type === 'nationality') return removeDiacritics((p.nationality || "").toLowerCase().trim()) === val;
         if (criteria.type === 'league') return removeDiacritics((p.league_name || "").toLowerCase().trim()) === val;
         return false;
     };
 
-    // ---- SETUP TIMER (Tiki-Taka) ----
     useEffect(() => {
         setTimeLeft(60); 
         if (winner || mode === 'menu' || mode === 'online_menu' || mode === 'online_setup') return;
@@ -298,10 +284,8 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [turn, winner, mode]);
+    }, [turn, winner, mode, isMuted, myRole, roomCode]);
 
-
-    // ---- SETUP SOCKET & ONLINE SYNC ----
     useEffect(() => {
         if (!socketRef.current) return;
         const socket = socketRef.current;
@@ -313,10 +297,10 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
                 if (payload.action === 'JOINED' && myRole === 'X') {
                     socket.emit("send_message", {
                         room: roomCode,
-                        message: JSON.stringify({ action: 'SYNC_GRID', gridRows: gridRowsRef.current, gridCols: gridColsRef.current })
+                        message: JSON.stringify({ action: 'SYNC_GRID', gridRows: gridRowsRef.current, gridCols: gridColsRef.current, hostName: playerName || 'Host' })
                     });
                     setMode('online_playing');
-                    toast.success("Adversarul s-a conectat! Începe meciul.", { icon: '🎮' });
+                    toast.success(`${payload.name || 'Adversarul'} s-a conectat! Începe meciul.`, { icon: '🎮' });
                 } 
                 else if (payload.action === 'SYNC_GRID') {
                     setGridRows(payload.gridRows);
@@ -326,7 +310,7 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
                     setWinner(null);
                     setMode('online_playing');
                     setSkipVotes({ X: false, O: false });
-                    if (myRole === 'O') toast.success("Conectat cu succes!", { icon: '✅' });
+                    if (myRole === 'O') toast.success(`Te-ai conectat la meciul lui ${payload.hostName}!`, { icon: '✅' });
                 } 
                 else if (payload.action === 'MOVE') {
                     if (payload.markedBy !== myRole) {
@@ -348,7 +332,6 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
                         const newVotes = { ...prev, [payload.role]: true };
                         if (newVotes.X && newVotes.O) {
                             toast("Ambii jucători au renunțat! Se generează altă grilă...", { icon: '🔄' });
-                            // Hostul inițiază regenerarea după o mică pauză vizuală
                             if (myRole === 'X') setTimeout(() => generateValidGrid(true), 1000);
                         } else {
                             toast(`Adversarul a votat să schimbe grila (1/2)`, { icon: '👀' });
@@ -371,9 +354,10 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
 
         socket.on("receive_message", handleSocketMessage);
         return () => { socket.off("receive_message", handleSocketMessage); };
-    }, [myRole, roomCode, isMuted]);
+    }, [myRole, roomCode, isMuted, playerName]);
 
     const startLocal = () => {
+        if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca!"); return; }
         setMode('local');
         setMatchScore({ X: 0, O: 0 });
         setSeriesWinner(null);
@@ -381,6 +365,7 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
     };
 
     const createOnlineRoom = () => {
+        if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca!"); return; }
         const code = Math.random().toString(36).substring(2, 7).toUpperCase();
         setRoomCode(code);
         setMyRole('X');
@@ -404,7 +389,7 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
         
         socketRef.current = io(API_URL);
         socketRef.current.emit("join_room", code);
-        socketRef.current.emit("send_message", { room: code, message: JSON.stringify({ action: 'JOINED' }) });
+        socketRef.current.emit("send_message", { room: code, message: JSON.stringify({ action: 'JOINED', name: playerName || 'Jucător Oaspete' }) });
     };
 
     const quitGame = () => {
@@ -440,20 +425,16 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
         }
     };
 
-    // ---- LOGICĂ MECI (FILTRAT STRICT PE TOP 5 LIGI) ----
     const generateValidGrid = (isNextMatch = false) => {
         setSkipVotes({ X: false, O: false });
-        
         const tagToPlayers = new Map<string, Set<string>>(); 
         const tagToMeta = new Map<string, GridCriteria>();
         const knownTeamLogos = new Map<string, string>();
         const top5Teams = new Set<string>();
 
-        // 1. Păstrăm exclusiv jucătorii care sunt activi în cele 5 ligi de top
-        const top5Players = players.filter(p => p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
+        const top5Players = players.filter((p: Player) => p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
 
-        // 2. Extragem DOAR echipele curente din Top 5
-        top5Players.forEach(p => {
+        top5Players.forEach((p: Player) => {
             const tName = p.team_name?.toLowerCase().trim();
             const t = p.team?.toLowerCase().trim();
             if (tName) top5Teams.add(tName);
@@ -462,31 +443,24 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
             if (t && p.team_logo) knownTeamLogos.set(t, p.team_logo);
         });
 
-        // 3. Generăm etichetele folosind doar jucătorii corecți
-        top5Players.forEach(p => {
+        top5Players.forEach((p: Player) => {
             const tags: GridCriteria[] = [];
             const currentTeam = (p.team_name || p.team)?.toLowerCase().trim();
             
             if (currentTeam && top5Teams.has(currentTeam)) {
                 tags.push({ type: 'team', value: p.team_name || p.team || "", image: p.team_logo || knownTeamLogos.get(currentTeam) || "" });
             }
-            
             if (Array.isArray(p.past_teams)) {
-                p.past_teams.forEach(pt => {
+                p.past_teams.forEach((pt: string) => {
                     const pastT = pt.toLowerCase().trim();
-                    // Intersecția cu echipele din trecut doar dacă acea echipă este acum în Top 5
-                    if (top5Teams.has(pastT)) {
-                        tags.push({ type: 'team', value: pt, image: knownTeamLogos.get(pastT) || "" });
-                    }
+                    if (top5Teams.has(pastT)) tags.push({ type: 'team', value: pt, image: knownTeamLogos.get(pastT) || "" });
                 });
             }
-            
-            // Fără "Necunoscut"
             if (p.nationality && !['necunoscut', 'unknown'].includes(p.nationality.toLowerCase().trim())) {
                 tags.push({ type: 'nationality', value: p.nationality, image: getFlagEmoji(p.nationality) });
             }
 
-            tags.forEach(t => {
+            tags.forEach((t: GridCriteria) => {
                 if (!t.value) return;
                 const tagId = `${t.type}:${t.value.trim().toLowerCase()}`;
                 if (!tagToPlayers.has(tagId)) {
@@ -497,7 +471,7 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
             });
         });
 
-        const validTagIds = Array.from(tagToPlayers.keys()).filter(tId => tagToPlayers.get(tId)!.size >= 3);
+        const validTagIds = Array.from(tagToPlayers.keys()).filter((tId: string) => tagToPlayers.get(tId)!.size >= 3);
         let foundValidGrid = false;
         let attempts = 0;
         let validRows: GridCriteria[] = [];
@@ -508,12 +482,12 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
             const shuffledTags = shuffleArray(validTagIds);
             const candidateRows = shuffledTags.slice(0, 3);
             
-            const candidateCols = shuffledTags.filter(colTag => {
+            const candidateCols = shuffledTags.filter((colTag: string) => {
                 if (candidateRows.includes(colTag)) return false;
                 const colSet = tagToPlayers.get(colTag)!;
                 const colType = colTag.split(':')[0];
 
-                return candidateRows.every(rowTag => {
+                return candidateRows.every((rowTag: string) => {
                     const rowType = rowTag.split(':')[0];
                     if (rowType === colType && rowType !== 'team') return false; 
                     const rowSet = tagToPlayers.get(rowTag)!;
@@ -525,8 +499,8 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
             });
 
             if (candidateCols.length >= 3) {
-                validRows = candidateRows.map(id => tagToMeta.get(id)!);
-                validCols = shuffleArray(candidateCols).slice(0, 3).map(id => tagToMeta.get(id)!);
+                validRows = candidateRows.map((id: string) => tagToMeta.get(id)!);
+                validCols = shuffleArray(candidateCols).slice(0, 3).map((id: string) => tagToMeta.get(id)!);
                 foundValidGrid = true;
             }
         }
@@ -600,7 +574,6 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
 
     const handleSelectPlayer = (player: Player) => {
         if (!activeCell || winner) return;
-        
         if (mode === 'online_playing' && turn !== myRole) {
             toast.error(`Nu e rândul tău!`);
             return;
@@ -643,10 +616,31 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
         }
     };
 
-    // Evaluare "Este rândul meu?"
     const isMyTurn = mode === 'local' || (mode === 'online_playing' && turn === myRole);
 
-    // ---- RENDER MENIURI ----
+    const renderHeader = (item: GridCriteria) => (
+        <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-inner border-2 border-slate-200 dark:border-slate-700 h-full w-full">
+            {item.type === 'nationality' ? (
+                <span className="text-3xl sm:text-4xl mb-1 drop-shadow-sm leading-none">{item.image}</span>
+            ) : item.image ? (
+                <img src={item.image} alt={item.value} className="w-8 h-8 sm:w-10 sm:h-10 object-contain mb-1 drop-shadow-md bg-white rounded-md p-0.5" />
+            ) : (
+                <Globe className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400 mb-1" />
+            )}
+            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1 mb-0.5">
+                {item.type === 'nationality' ? 'Națiune' : item.type === 'team' ? 'Club' : 'Ligă'}
+            </span>
+            <span className="text-[10px] sm:text-xs font-black text-slate-900 dark:text-white uppercase leading-tight line-clamp-2 w-full truncate px-1" title={item.value}>
+                {item.value}
+            </span>
+        </div>
+    );
+
+    const normalizedSearch = removeDiacritics(searchTerm.toLowerCase());
+    const searchResults: Player[] = searchTerm.trim().length > 1 
+        ? players.filter((p: Player) => removeDiacritics(p.name.toLowerCase()).includes(normalizedSearch)).slice(0, 10)
+        : [];
+
     if (mode === 'menu') {
         return (
             <div className="max-w-2xl mx-auto bg-slate-900 rounded-3xl p-8 border-4 border-slate-800 shadow-2xl text-center mt-10">
@@ -654,6 +648,17 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
                     <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
                     <h2 className="text-xl font-black text-white uppercase tracking-widest">Grila X & 0</h2>
                     <div className="w-16"></div>
+                </div>
+
+                <div className="mb-8 space-y-2 max-w-sm mx-auto">
+                    <label className="text-slate-400 font-bold uppercase tracking-widest text-xs">Numele tău în joc:</label>
+                    <input 
+                        type="text" 
+                        value={playerName}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlayerName(e.target.value)}
+                        className="w-full bg-slate-950 border-2 border-slate-700 p-3 rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-emerald-500 transition-colors"
+                        placeholder="Cum te numești?"
+                    />
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -664,7 +669,10 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
                             <div className="text-xs text-slate-500 font-bold uppercase tracking-widest">Doi jucători, un singur telefon/PC</div>
                         </div>
                     </button>
-                    <button onClick={() => setMode('online_menu')} className="p-8 rounded-2xl border-4 border-slate-800 hover:border-blue-500 bg-slate-950 flex flex-col items-center gap-4 transition-all group">
+                    <button onClick={() => {
+                        if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca online!"); return; }
+                        setMode('online_menu');
+                    }} className="p-8 rounded-2xl border-4 border-slate-800 hover:border-blue-500 bg-slate-950 flex flex-col items-center gap-4 transition-all group">
                         <Globe className="w-12 h-12 text-slate-400 group-hover:text-blue-400 transition-colors" />
                         <div>
                             <div className="font-black text-white uppercase tracking-widest mb-1">Online vs Prieten</div>
@@ -700,7 +708,7 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
                         type="text" 
                         placeholder="Ex: A7B9K" 
                         value={joinInput}
-                        onChange={(e) => setJoinInput(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setJoinInput(e.target.value)}
                         className="w-full bg-slate-900 border-2 border-slate-700 p-3 rounded-xl text-center text-white font-black uppercase tracking-[0.3em] outline-none focus:border-emerald-500 transition-colors"
                     />
                     <button onClick={joinOnlineRoom} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px]">
@@ -739,30 +747,6 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
             </div>
         );
     }
-
-    // ---- RENDER GRILĂ & JOC ----
-    const normalizedSearch = removeDiacritics(searchTerm.toLowerCase());
-    const searchResults = searchTerm.trim().length > 1 
-        ? players.filter(p => removeDiacritics(p.name.toLowerCase()).includes(normalizedSearch)).slice(0, 10)
-        : [];
-
-    const renderHeader = (item: GridCriteria) => (
-        <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-inner border-2 border-slate-200 dark:border-slate-700 h-full w-full">
-            {item.type === 'nationality' ? (
-                <span className="text-3xl sm:text-4xl mb-1 drop-shadow-sm leading-none">{item.image}</span>
-            ) : item.image ? (
-                <img src={item.image} alt={item.value} className="w-8 h-8 sm:w-10 sm:h-10 object-contain mb-1 drop-shadow-md bg-white rounded-md p-0.5" />
-            ) : (
-                <Globe className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400 mb-1" />
-            )}
-            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1 mb-0.5">
-                {item.type === 'nationality' ? 'Națiune' : item.type === 'team' ? 'Club' : 'Ligă'}
-            </span>
-            <span className="text-[10px] sm:text-xs font-black text-slate-900 dark:text-white uppercase leading-tight line-clamp-2 w-full truncate px-1" title={item.value}>
-                {item.value}
-            </span>
-        </div>
-    );
 
     return (
         <div className="space-y-4">
@@ -843,14 +827,14 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
                             <Trophy className="w-10 h-10 text-slate-200 dark:text-slate-800" />
                         </div>
                         
-                        {gridCols.map((col, idx) => (
+                        {gridCols.map((col: GridCriteria, idx: number) => (
                             <div key={`col-${idx}`}>{renderHeader(col)}</div>
                         ))}
 
-                        {gridRows.map((row, rIdx) => (
+                        {gridRows.map((row: GridCriteria, rIdx: number) => (
                             <React.Fragment key={`row-${rIdx}`}>
                                 <div>{renderHeader(row)}</div>
-                                {[0, 1, 2].map((cIdx) => {
+                                {[0, 1, 2].map((cIdx: number) => {
                                     const ans = answers[`${rIdx}-${cIdx}`];
                                     return (
                                         <div 
@@ -914,10 +898,10 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
                                 placeholder="Caută jucător (ex: Kante, Mbappe)..."
                                 className="w-full bg-slate-950 border-2 border-slate-700 p-4 rounded-xl text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors"
                                 value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                             />
                             <div className="max-h-64 overflow-y-auto space-y-2">
-                                {searchResults.map(p => (
+                                {searchResults.map((p: Player) => (
                                     <button 
                                         key={p._id}
                                         onClick={() => handleSelectPlayer(p)}
@@ -926,9 +910,9 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
                                         <div className="font-black text-white uppercase tracking-tight truncate text-center text-lg">{p.name}</div>
                                     </button>
                                 ))}
-                                {searchTerm.length > 1 && searchResults.length === 0 && (
+                                {searchTerm.length > 1 && searchResults.length === 0 ? (
                                     <div className="text-center p-4 text-slate-500 font-bold uppercase tracking-widest text-xs">Jucătorul nu a fost găsit.</div>
-                                )}
+                                ) : null}
                             </div>
                         </div>
                     </div>
@@ -939,19 +923,21 @@ function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () 
 }
 
 // ============================================================================
-// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - VIEȚI, LEADERBOARD, SOUNDS
+// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - NUME UNICE
 // ============================================================================
 function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBack: () => void, user: any, isMuted: boolean }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
     const [category, setCategory] = useState<'age' | 'height' | 'market_value' | 'rating'>('market_value');
     
+    const [playerName, setPlayerName] = useState(user?.name || "");
+    const [sessionName, setSessionName] = useState(""); 
+
     const [score, setScore] = useState(0);
     const [lives, setLives] = useState(3);
     const [playerA, setPlayerA] = useState<Player | null>(null);
     const [playerB, setPlayerB] = useState<Player | null>(null);
     const [revealResult, setRevealResult] = useState<'correct' | 'wrong' | null>(null);
     
-    // Leaderboard state
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [leaderboard, setLeaderboard] = useState<{name: string, score: number, date: string}[]>([]);
 
@@ -969,7 +955,19 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
         if (finalScore === 0) return;
         try {
             const local = JSON.parse(localStorage.getItem('hilo_leaderboard') || '[]');
-            local.push({ name: user.name || 'Jucător Anonim', score: finalScore, date: new Date().toISOString() });
+            const finalName = playerName.trim() || 'Jucător Anonim';
+            
+            const existingIndex = local.findIndex((e: any) => e.name.toLowerCase() === finalName.toLowerCase());
+            
+            if (existingIndex >= 0) {
+                if (finalScore > local[existingIndex].score) {
+                    local[existingIndex].score = finalScore;
+                    local[existingIndex].date = new Date().toISOString();
+                }
+            } else {
+                local.push({ name: finalName, score: finalScore, date: new Date().toISOString() });
+            }
+            
             local.sort((a: any, b: any) => b.score - a.score);
             localStorage.setItem('hilo_leaderboard', JSON.stringify(local.slice(0, 50)));
             setLeaderboard(local.slice(0, 50));
@@ -1039,7 +1037,23 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
     };
 
     const startGame = () => {
-        const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
+        const finalName = playerName.trim();
+        if (finalName.length < 2) { 
+            toast.error("Te rog să introduci un nume de minim 2 caractere."); 
+            return; 
+        }
+
+        if (finalName.toLowerCase() !== sessionName.toLowerCase()) {
+            const nameExists = leaderboard.some(entry => entry.name.toLowerCase() === finalName.toLowerCase());
+            if (nameExists) {
+                toast.error("Acest nume există deja în clasament! Alege altul pentru a putea juca.");
+                return;
+            }
+        }
+        
+        setSessionName(finalName);
+
+        const validPlayers = players.filter((p: Player) => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
         if (validPlayers.length < 10) { toast.error("Nu sunt suficienți jucători în cele 5 ligi de top pentru această categorie."); return; }
         const shuffled = shuffleArray(validPlayers);
         setPlayerA(shuffled[0]); setPlayerB(shuffled[1]); setScore(0); setLives(3); setRevealResult(null); setGameState('playing');
@@ -1059,9 +1073,9 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
             if (isCorrect) {
                 setScore(prev => prev + 1);
                 setPlayerA(playerB);
-                const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
+                const validPlayers = players.filter((p: Player) => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
                 const shuffled = shuffleArray(validPlayers);
-                const nextPB = shuffled.find(p => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
+                const nextPB = shuffled.find((p: Player) => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
                 setPlayerB(nextPB);
                 setRevealResult(null); 
             } else {
@@ -1069,9 +1083,9 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                     setLives(prev => prev - 1);
                     toast.error("Răspuns greșit! Ai pierdut o viață.");
                     setPlayerA(playerB);
-                    const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
+                    const validPlayers = players.filter((p: Player) => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
                     const shuffled = shuffleArray(validPlayers);
-                    const nextPB = shuffled.find(p => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
+                    const nextPB = shuffled.find((p: Player) => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
                     setPlayerB(nextPB);
                     setRevealResult(null);
                 } else {
@@ -1085,7 +1099,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
     };
 
     const shareScore = () => {
-        const text = `⚽ Football Games Hub - Hi-Lo\n🔥 Categoria: ${category.replace('_', ' ')}\n🏆 Scor final: ${score}\nJoci mai bine? Încearcă și tu!`;
+        const text = `⚽ Football Games Hub - Hi-Lo\n👤 ${playerName.trim()}\n🔥 Categoria: ${category.replace('_', ' ')}\n🏆 Scor final: ${score}\nJoci mai bine? Încearcă și tu!`;
         navigator.clipboard.writeText(text);
         toast.success("Scorul tău a fost copiat! Dă-i Paste prietenilor.", { icon: '📋' });
     };
@@ -1099,11 +1113,11 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                         <h2 className="text-xl font-black text-white uppercase tracking-widest flex items-center gap-2"><Trophy className="w-5 h-5 text-yellow-500" /> Clasament Global Hi-Lo</h2>
                         <div className="w-16"></div>
                     </div>
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
                         {leaderboard.length === 0 ? (
                             <p className="text-slate-500 text-center font-bold uppercase tracking-widest text-sm py-10">Niciun scor înregistrat încă.</p>
                         ) : (
-                            leaderboard.map((entry, idx) => (
+                            leaderboard.map((entry: any, idx: number) => (
                                 <div key={idx} className="flex justify-between items-center bg-slate-950 p-4 rounded-xl border border-slate-800">
                                     <div className="flex items-center gap-4">
                                         <span className={`text-xl font-black w-8 text-center ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-slate-600'}`}>#{idx + 1}</span>
@@ -1119,26 +1133,40 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
         }
 
         return (
-            <div className="max-w-2xl mx-auto bg-slate-900 rounded-3xl p-8 border-4 border-slate-800 shadow-2xl text-center space-y-8 mt-10">
-                <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4">
+            <div className="max-w-2xl mx-auto bg-slate-900 rounded-3xl p-8 border-4 border-slate-800 shadow-2xl text-center mt-10">
+                <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-8">
                     <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
                     <h2 className="text-xl font-black text-white uppercase tracking-widest">Setup: Hi-Lo</h2>
                     <button onClick={() => setShowLeaderboard(true)} className="text-yellow-500 hover:text-yellow-400 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><ListOrdered className="w-4 h-4"/> Top 50</button>
                 </div>
-                <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs">Alege criteriul de departajare:</h3>
-                <div className="grid grid-cols-2 gap-4">
-                    {[
-                        { id: 'market_value', label: 'Cotă de Piață' },
-                        { id: 'rating', label: 'Rating SofaScore' },
-                        { id: 'age', label: 'Vârstă' },
-                        { id: 'height', label: 'Înălțime' },
-                    ].map(c => (
-                        <button key={c.id} onClick={() => setCategory(c.id as any)} className={`p-4 rounded-2xl border-2 font-black uppercase tracking-widest transition-all ${category === c.id ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
-                            {c.label}
-                        </button>
-                    ))}
+
+                <div className="mb-8 space-y-2 max-w-sm mx-auto">
+                    <label className="text-slate-400 font-bold uppercase tracking-widest text-xs">Nume Jucător (Apare în clasament):</label>
+                    <input 
+                        type="text" 
+                        value={playerName}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlayerName(e.target.value)}
+                        className="w-full bg-slate-950 border-2 border-slate-700 p-3 rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Alege un nume unic..."
+                    />
                 </div>
-                <button onClick={startGame} className="w-full bg-emerald-600 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-lg hover:bg-emerald-500 transition-colors border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px]">Începe Jocul (Ai 3 vieți ❤️)</button>
+
+                <div className="space-y-6">
+                    <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs">Alege criteriul de departajare:</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        {[
+                            { id: 'market_value', label: 'Cotă de Piață' },
+                            { id: 'rating', label: 'Rating SofaScore' },
+                            { id: 'age', label: 'Vârstă' },
+                            { id: 'height', label: 'Înălțime' },
+                        ].map(c => (
+                            <button key={c.id} onClick={() => setCategory(c.id as any)} className={`p-4 rounded-2xl border-2 font-black uppercase tracking-widest transition-all ${category === c.id ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+                                {c.label}
+                            </button>
+                        ))}
+                    </div>
+                    <button onClick={startGame} className="w-full bg-emerald-600 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-lg hover:bg-emerald-500 transition-colors border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px]">Începe Jocul (Ai 3 vieți ❤️)</button>
+                </div>
             </div>
         );
     }
@@ -1174,10 +1202,10 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                 <button onClick={() => {saveScore(score); setGameState('setup')}} className="text-slate-400 hover:text-rose-500 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Renunță</button>
                 <div className="flex items-center gap-4">
                     <div className="text-white font-black uppercase tracking-widest text-sm hidden sm:flex items-center gap-2">
-                        Categoria: <span className="text-blue-400">{catLabel}</span>
+                        Jucător: <span className="text-blue-400">{playerName.trim() || 'Anonim'}</span>
                     </div>
                     <div className="flex items-center gap-1 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
-                        {[1, 2, 3].map(i => (
+                        {[1, 2, 3].map((i: number) => (
                             <Heart key={i} className={`w-4 h-4 sm:w-5 sm:h-5 transition-all ${lives >= i ? 'fill-rose-500 text-rose-500 animate-pulse' : 'fill-transparent text-slate-700'}`} />
                         ))}
                     </div>
