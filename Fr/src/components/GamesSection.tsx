@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity, Globe, Users, Share2, Copy, Crown } from 'lucide-react';
+import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity, Globe, Users, Share2, Copy, Crown, Timer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client';
 
@@ -177,6 +177,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
     const [winner, setWinner] = useState<'X' | 'O' | 'Draw' | null>(null);
     const [activeCell, setActiveCell] = useState<{ r: number, c: number } | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [timeLeft, setTimeLeft] = useState(60);
 
     // Multiplayer Online (Best of 5)
     const [roomCode, setRoomCode] = useState("");
@@ -186,10 +187,19 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
     const [seriesWinner, setSeriesWinner] = useState<'X' | 'O' | null>(null);
     const socketRef = useRef<Socket | null>(null);
     
-    // Refs pentru a avea mereu acces la ultima stare în socket listener
+    // Refs pentru acces în hook-uri/intervale
     const gridRowsRef = useRef(gridRows);
     const gridColsRef = useRef(gridCols);
-    useEffect(() => { gridRowsRef.current = gridRows; gridColsRef.current = gridCols; }, [gridRows, gridCols]);
+    const turnRef = useRef(turn);
+    
+    useEffect(() => { 
+        gridRowsRef.current = gridRows; 
+        gridColsRef.current = gridCols; 
+    }, [gridRows, gridCols]);
+    
+    useEffect(() => { 
+        turnRef.current = turn; 
+    }, [turn]);
 
     const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
 
@@ -206,6 +216,43 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         return false;
     };
 
+    // ---- SETUP TIMER (Tiki-Taka) ----
+    useEffect(() => {
+        setTimeLeft(60); // Resetează timerul la schimbarea turei
+        
+        if (winner || mode === 'menu' || mode === 'online_menu' || mode === 'online_setup') return;
+
+        const interval = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    
+                    // Doar jucătorul al cărui rând a expirat trimite semnalul pentru a evita dublarea
+                    const currentTurn = turnRef.current;
+                    const canEmit = mode === 'local' || (mode === 'online_playing' && currentTurn === myRole);
+                    
+                    if (canEmit) {
+                        if (mode === 'online_playing' && socketRef.current) {
+                            socketRef.current.emit("send_message", {
+                                room: roomCode,
+                                message: JSON.stringify({ action: 'SWITCH_TURN', nextTurn: currentTurn === 'X' ? 'O' : 'X', reason: 'timeout' })
+                            });
+                        }
+                        setTurn(currentTurn === 'X' ? 'O' : 'X');
+                        setActiveCell(null);
+                        setSearchTerm("");
+                        toast.error("Timpul a expirat! Pierzi rândul.");
+                    }
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [turn, winner, mode]);
+
+
     // ---- SETUP SOCKET & ONLINE SYNC ----
     useEffect(() => {
         if (!socketRef.current) return;
@@ -216,7 +263,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 const payload = JSON.parse(data.message);
                 
                 if (payload.action === 'JOINED' && myRole === 'X') {
-                    // Când un O s-a conectat, trimitem Grila Curentă către el
                     socket.emit("send_message", {
                         room: roomCode,
                         message: JSON.stringify({ action: 'SYNC_GRID', gridRows: gridRowsRef.current, gridCols: gridColsRef.current })
@@ -234,11 +280,18 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                     if (myRole === 'O') toast.success("Conectat cu succes!", { icon: '✅' });
                 } 
                 else if (payload.action === 'MOVE') {
-                    // Aplicăm mutarea doar dacă a fost făcută de adversar
                     if (payload.markedBy !== myRole) {
                         applyMove(payload.r, payload.c, payload.player, payload.markedBy);
                     }
                 } 
+                else if (payload.action === 'SWITCH_TURN') {
+                    setTurn(payload.nextTurn);
+                    setActiveCell(null);
+                    setSearchTerm("");
+                    if (payload.nextTurn === myRole) {
+                        toast.success(payload.reason === 'timeout' ? "Timpul adversarului a expirat! E rândul tău." : "Adversarul a greșit! E rândul tău.", { icon: '⏱️' });
+                    }
+                }
                 else if (payload.action === 'NEXT_MATCH') {
                     setGridRows(payload.gridRows);
                     setGridCols(payload.gridCols);
@@ -271,7 +324,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         
         socketRef.current = io(API_URL);
         socketRef.current.emit("join_room", code);
-        generateValidGrid(); // Hostul generează prima grilă în fundal
+        generateValidGrid(); 
     };
 
     const joinOnlineRoom = () => {
@@ -285,7 +338,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         
         socketRef.current = io(API_URL);
         socketRef.current.emit("join_room", code);
-        // Anunțăm Host-ul că am intrat
         socketRef.current.emit("send_message", { room: code, message: JSON.stringify({ action: 'JOINED' }) });
     };
 
@@ -379,6 +431,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             setAnswers({});
             setTurn('X');
             setWinner(null);
+            setTimeLeft(60);
             
             if (isNextMatch && mode.includes('online') && socketRef.current && myRole === 'X') {
                 socketRef.current.emit("send_message", {
@@ -437,7 +490,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
     const handleSelectPlayer = (player: Player) => {
         if (!activeCell || winner) return;
         
-        // Blocare mutări dacă e rândul celuilalt (Online)
         if (mode === 'online_playing' && turn !== myRole) {
             toast.error(`Nu e rândul tău! Așteaptă mutarea lui ${turn === 'X' ? '❌' : '⚽'}`);
             return;
@@ -465,9 +517,23 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             setActiveCell(null);
             setSearchTerm("");
         } else {
-            toast.error("Răspuns Greșit!");
+            // AICI: RĂSPUNS GREȘIT -> PIERZI RÂNDUL
+            toast.error("Răspuns Greșit! Ai pierdut rândul.", { icon: '❌' });
+            
+            if (mode === 'online_playing' && socketRef.current) {
+                socketRef.current.emit("send_message", {
+                    room: roomCode,
+                    message: JSON.stringify({ action: 'SWITCH_TURN', nextTurn: turn === 'X' ? 'O' : 'X', reason: 'wrong' })
+                });
+            }
+            setTurn(prev => prev === 'X' ? 'O' : 'X');
+            setActiveCell(null);
+            setSearchTerm("");
         }
     };
+
+    // Evaluare "Este rândul meu?" pentru blocare celule
+    const isMyTurn = mode === 'local' || (mode === 'online_playing' && turn === myRole);
 
     // ---- RENDER MENIURI ----
     if (mode === 'menu') {
@@ -536,8 +602,19 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 
     if (mode === 'online_setup') {
         return (
-            <div className="max-w-md mx-auto bg-slate-900 rounded-3xl p-8 border-4 border-slate-800 shadow-2xl text-center mt-10 space-y-6">
-                <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="relative max-w-md mx-auto bg-slate-900 rounded-3xl p-8 border-4 border-slate-800 shadow-2xl text-center mt-10 space-y-6">
+                
+                <button 
+                    onClick={() => {
+                        if (socketRef.current) socketRef.current.disconnect();
+                        setMode('online_menu');
+                    }}
+                    className="absolute top-4 left-4 text-slate-400 hover:text-rose-500 transition-colors p-2"
+                >
+                    <X className="w-6 h-6 font-bold" />
+                </button>
+
+                <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4 mt-2"></div>
                 <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Așteptăm jucătorul...</h3>
                 
                 {myRole === 'X' && (
@@ -607,7 +684,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 </div>
             )}
 
-            {/* HEADER MECI */}
+            {/* HEADER MECI - CU TIMER */}
             <div className="flex items-center justify-between bg-slate-900 p-4 rounded-3xl border-2 border-slate-800 shadow-xl">
                 <button onClick={quitGame} className="text-slate-400 hover:text-rose-500 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Ieșire</button>
                 
@@ -617,9 +694,16 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                             {winner === 'Draw' ? 'Egalitate!' : `Runda câștigată de: ${winner === 'X' ? '❌' : '⚽'}`}
                         </div>
                     ) : (
-                        <div className="text-blue-400 font-black uppercase tracking-widest text-sm flex items-center gap-2">
-                            Muta: <span className="text-2xl leading-none">{turn === 'X' ? '❌' : '⚽'}</span>
-                            {mode === 'online_playing' && turn === myRole && <span className="text-xs text-white bg-blue-600 px-2 py-0.5 rounded-md ml-2">(Tu)</span>}
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="text-blue-400 font-black uppercase tracking-widest text-sm flex items-center gap-2">
+                                Muta: <span className="text-2xl leading-none">{turn === 'X' ? '❌' : '⚽'}</span>
+                                {mode === 'online_playing' && turn === myRole && <span className="text-xs text-white bg-blue-600 px-2 py-0.5 rounded-md ml-2">(Tu)</span>}
+                            </div>
+                            
+                            {/* TIMER UI */}
+                            <div className={`flex items-center gap-1.5 text-xl font-black tabular-nums tracking-widest px-3 py-0.5 rounded-lg border-2 transition-colors ${timeLeft <= 10 ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-950 border-slate-800 text-white'}`}>
+                                <Timer className="w-4 h-4" /> 00:{timeLeft.toString().padStart(2, '0')}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -637,7 +721,12 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 
             {/* GRILA */}
             {gridRows.length > 0 && (
-                <div className="max-w-3xl mx-auto p-3 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 shadow-2xl overflow-x-auto">
+                <div className="max-w-3xl mx-auto p-3 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 shadow-2xl overflow-x-auto relative">
+                    {/* OVERLAY BLOCARE GRILĂ CÂND NU E RÂNDUL TĂU (Doar vizualizare) */}
+                    {!isMyTurn && !winner && (
+                        <div className="absolute inset-0 z-50 bg-transparent cursor-not-allowed" onClick={() => toast.error("Nu este rândul tău!")} title="Așteaptă mutarea adversarului"></div>
+                    )}
+
                     <div className="grid grid-cols-[minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)] gap-2 sm:gap-4 min-w-[400px]">
                         <div className="flex items-center justify-center p-2">
                             <Trophy className="w-10 h-10 text-slate-200 dark:text-slate-800" />
@@ -655,12 +744,20 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                                     return (
                                         <div 
                                             key={`cell-${rIdx}-${cIdx}`} 
-                                            onClick={() => !ans && !winner && setActiveCell({ r: rIdx, c: cIdx })}
-                                            className={`aspect-square rounded-2xl border-4 flex flex-col items-center justify-center cursor-pointer transition-all p-1 ${
+                                            onClick={() => {
+                                                if (winner) return;
+                                                if (!isMyTurn) {
+                                                    // Mesajul e acoperit de overlay-ul transparent de mai sus, dar ca extra măsură:
+                                                    if (mode === 'online_playing') toast.error("Așteaptă rândul tău!");
+                                                    return;
+                                                }
+                                                if (!ans) setActiveCell({ r: rIdx, c: cIdx });
+                                            }}
+                                            className={`aspect-square rounded-2xl border-4 flex flex-col items-center justify-center transition-all p-1 ${
                                                 ans 
                                                 ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' 
                                                 : 'bg-white dark:bg-slate-950 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                                            } ${winner && !ans ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            } ${winner || (!isMyTurn && !ans) ? 'cursor-not-allowed' : 'cursor-pointer'} ${winner && !ans ? 'opacity-50' : ''}`}
                                         >
                                             {ans ? (
                                                 <div className="flex flex-col items-center justify-center w-full h-full space-y-1">
@@ -684,7 +781,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             )}
 
             {/* MODAL CĂUTARE */}
-            {activeCell && !winner && (
+            {activeCell && !winner && isMyTurn && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
                     <div className="bg-slate-900 w-full max-w-lg rounded-3xl border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden">
                         <div className="p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950">
@@ -694,8 +791,13 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                             <button onClick={() => {setActiveCell(null); setSearchTerm("");}} className="text-slate-400 hover:text-rose-500"><X className="w-5 h-5 font-bold" /></button>
                         </div>
                         <div className="p-5 space-y-4">
-                            <div className="text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700">
-                                Intersecția: <span className="text-white">{gridRows[activeCell.r].value}</span> + <span className="text-white">{gridCols[activeCell.c].value}</span>
+                            <div className="text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700 flex justify-between items-center px-4">
+                                <div>
+                                    Intersecția: <span className="text-white">{gridRows[activeCell.r].value}</span> + <span className="text-white">{gridCols[activeCell.c].value}</span>
+                                </div>
+                                <div className={`text-sm font-black tabular-nums ${timeLeft <= 10 ? 'text-rose-500 animate-pulse' : 'text-blue-400'}`}>
+                                    {timeLeft}s
+                                </div>
                             </div>
                             <input 
                                 type="text"
@@ -728,7 +830,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 }
 
 // ============================================================================
-// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ)
+// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) 
 // ============================================================================
 function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
@@ -756,37 +858,32 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
     
             let baseValue = 2_000_000; 
     
-            // 1. MULTIPLICATOR DE VÂRSTĂ
             if (age <= 18) baseValue *= 5.5;      
             else if (age <= 21) baseValue *= 4.0; 
             else if (age <= 23) baseValue *= 2.8; 
             else if (age <= 26) baseValue *= 1.8; 
-            else if (age <= 29) baseValue *= 1.4; // Ridicat ușor pentru "peak age"
+            else if (age <= 29) baseValue *= 1.4; 
             else if (age <= 31) baseValue *= 0.8; 
             else if (age <= 34) baseValue *= 0.4; 
             else baseValue *= 0.1;                
     
-            // 2. MULTIPLICATOR DE PERFORMANȚĂ
             if (rating >= 8.5) baseValue *= 15;     
             else if (rating >= 8.0) baseValue *= 8; 
             else if (rating >= 7.5) baseValue *= 4; 
             else if (rating >= 7.0) baseValue *= 2; 
-            else if (rating >= 6.5) baseValue *= 1.3; // AM ACOPERIT ZONA LUI VALVERDE (6.5 - 6.99)
-            else if (rating < 6.0) baseValue *= 0.5; // Doar jucătorii sub 6.0 sunt penalizați masiv
+            else if (rating >= 6.5) baseValue *= 1.3; 
+            else if (rating < 6.0) baseValue *= 0.5; 
     
-            // 3. TAXA DE LIGĂ
             if (leagueId === 39) baseValue *= 2.0; 
             else if (leagueId === 140) baseValue *= 1.5; 
             else if (leagueId === 135 || leagueId === 78) baseValue *= 1.3; 
             
-            // 4. TAXA DE "GIANT CLUB"
             const giantClubs = ['real madrid', 'manchester city', 'arsenal', 'bayern', 'paris saint germain', 'liverpool', 'barcelona', 'chelsea'];
             const bigClubs = ['juventus', 'inter', 'ac milan', 'manchester united', 'tottenham', 'atletico madrid', 'borussia dortmund', 'napoli'];
             
             if (giantClubs.some(club => currentTeam.includes(club))) baseValue *= 2.2;
             else if (bigClubs.some(club => currentTeam.includes(club))) baseValue *= 1.5;
     
-            // 5. TAXA DE POZIȚIE
             if (position.includes('attacker') || position.includes('forward') || position.includes('wing') || position.includes('striker')) {
                 baseValue *= 1.3;
             } else if (position.includes('midfield')) {
@@ -795,12 +892,9 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
                 baseValue *= 0.7; 
             }
     
-            // --- REAJUSTĂRI FINALE ȘI ROTUNJIRE ---
-            
-            // Plasa de siguranță EXTINSĂ pentru Giganți
             if (giantClubs.some(club => currentTeam.includes(club))) {
-                if (age <= 23 && rating >= 6.8) baseValue = Math.max(baseValue, 45_000_000); // Tineri la Real/City
-                else if (age <= 29 && rating >= 6.5) baseValue = Math.max(baseValue, 60_000_000); // Peak age la Real/City (Valverde intră aici!)
+                if (age <= 23 && rating >= 6.8) baseValue = Math.max(baseValue, 45_000_000); 
+                else if (age <= 29 && rating >= 6.5) baseValue = Math.max(baseValue, 60_000_000); 
             }
     
             baseValue = Math.min(Math.max(baseValue, 1_000_000), 200_000_000);
@@ -823,7 +917,6 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
     };
 
     const startGame = () => {
-        // Filtrăm lista pentru a permite DOAR jucători din ligile de top și care au statistica validă
         const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
         
         if (validPlayers.length < 10) { toast.error("Nu sunt suficienți jucători în cele 5 ligi de top pentru această categorie."); return; }
@@ -845,7 +938,6 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
             setScore(prev => prev + 1);
             setPlayerA(playerB);
             
-            // Re-filtrăm și căutăm următorul jucător
             const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
             const shuffled = shuffleArray(validPlayers);
             const nextPB = shuffled.find(p => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
