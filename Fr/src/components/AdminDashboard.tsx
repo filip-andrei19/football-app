@@ -208,16 +208,31 @@ export function AdminDashboard({ user }: { user: any }) {
   const getGridRowForSlot = (index: number, form: string) => {
     if (index === 0) return 0; // GK
     const parts = form.split('-').map(Number); // ex: [4, 3, 3]
-    if (parts.length === 3) {
-        if (index <= parts[0]) return 1; 
-        if (index <= parts[0] + parts[1]) return 2; 
-        return 3; 
-    } else if (parts.length === 4) { 
-        if (index <= parts[0]) return 1; 
-        if (index <= parts[0] + parts[1] + parts[2]) return 2; 
-        return 3; 
+    let sum = 0;
+    for (let r = 0; r < parts.length; r++) {
+        sum += parts[r];
+        if (index <= sum) return r + 1;
     }
     return 1;
+  };
+
+  const getSlotLabel = (index: number, form: string) => {
+      if (index === 0) return "GK (Portar)";
+      const row = getGridRowForSlot(index, form);
+      const parts = form.split('-').length;
+      
+      if (parts === 3) { // ex: 4-3-3
+          if (row === 1) return `DEF (Fundaș) ${index}`;
+          if (row === 2) return `MID (Mijlocaș) ${index}`;
+          if (row === 3) return `ATT (Atacant) ${index}`;
+      }
+      if (parts === 4) { // ex: 4-2-3-1
+          if (row === 1) return `DEF (Fundaș) ${index}`;
+          if (row === 2) return `CDM (Închizător) ${index}`;
+          if (row === 3) return `CAM/W (Mij. Ofensiv) ${index}`;
+          if (row === 4) return `ST (Atacant) ${index}`;
+      }
+      return `Jucător ${index}`;
   };
 
   const handleSaveXI = () => {
@@ -225,6 +240,7 @@ export function AdminDashboard({ user }: { user: any }) {
         toast.error("Completează toate detaliile meciului!"); return;
     }
     
+    // Verificăm dacă toate cele 11 input-uri au text valid
     const isValid = slotPlayers.every(p => p !== null && p.name.trim().length > 0);
     if (!isValid) {
         toast.error("Trebuie să scrii numele pentru toți cei 11 jucători!"); return;
@@ -490,6 +506,7 @@ export function AdminDashboard({ user }: { user: any }) {
                 {/* 4. TAB VAR (RAPORTĂRI) */}
                 {activeTab === 'reports' && (
                     <div>
+                        {/* Secțiunea Raportări Mesaje */}
                         <div className="mb-6">
                             <h3 className="font-black text-lg sm:text-xl flex items-center gap-2 uppercase tracking-widest text-slate-900 dark:text-white">
                                 <Flag className="text-amber-500 w-6 h-6"/> Incidente Teren (Chat)
@@ -541,6 +558,7 @@ export function AdminDashboard({ user }: { user: any }) {
                             )}
                         </div>
 
+                        {/* Secțiunea Raportări Anunțuri */}
                         <div className="mb-6 pt-8 border-t-2 border-slate-100 dark:border-slate-800">
                             <h3 className="font-black text-lg sm:text-xl flex items-center gap-2 uppercase tracking-widest text-slate-900 dark:text-white">
                                 <ShoppingBag className="text-blue-500 w-6 h-6"/> Incidente Transferuri
@@ -583,6 +601,7 @@ export function AdminDashboard({ user }: { user: any }) {
 
                         {totalReports === 0 && reportedMessages.length === 0 && reportedListings.length === 0 && (
                             <div className="text-center py-20 bg-slate-50 dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 mt-6 relative overflow-hidden">
+                                {/* SVG Minge cu Bifa */}
                                 <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,transparent_0,transparent_100px,#10b981_101px,#10b981_105px,transparent_106px)]"></div>
                                 <div className="relative z-10 w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-emerald-500">
                                     <CheckCircle className="w-10 h-10"/>
@@ -623,11 +642,12 @@ export function AdminDashboard({ user }: { user: any }) {
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                     {Array.from({ length: 11 }).map((_, idx) => {
                                         const player = slotPlayers[idx];
+                                        const label = getSlotLabel(idx, formation);
                                         return (
                                             <input 
                                                 key={idx}
                                                 type="text"
-                                                placeholder={`Jucător ${idx + 1} ${idx === 0 ? '(Portar)' : ''}`}
+                                                placeholder={label}
                                                 value={player ? player.name : ''}
                                                 onChange={(e) => {
                                                     const newSlots = [...slotPlayers];

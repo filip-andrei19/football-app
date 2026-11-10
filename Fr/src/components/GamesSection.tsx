@@ -238,7 +238,7 @@ export function GamesSection({ user }: GamesProps) {
 }
 
 // ============================================================================
-// GAME 3: STARTING XI (GHICEȘTE PRIMUL 11) - WORDLE STYLE (CLICK SLOT)
+// GAME 3: STARTING XI (GHICEȘTE PRIMUL 11) - LITERĂ CU LITERĂ (WORDLE STYLE)
 // ============================================================================
 function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: boolean }) {
     const [match, setMatch] = useState<StartingXIData | null>(null);
@@ -248,6 +248,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
     // Stări pentru mecanica "Wordle" pe slot
     const [activeSlot, setActiveSlot] = useState<XIPlayer | null>(null);
     const [slotGuess, setSlotGuess] = useState("");
+    const [slotGuessesHistory, setSlotGuessesHistory] = useState<Record<string, string[]>>({});
     
     const [win, setWin] = useState(false);
 
@@ -259,22 +260,57 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         }
     }, []);
 
+    // Funcția care evaluează un cuvânt față de cel target și returnează culorile
+    const evaluateWordleGuess = (guess: string, target: string) => {
+        const targetClean = removeDiacritics(target).toUpperCase();
+        // Umplem sau tăiem guess-ul ca să fie exact de lungimea target-ului
+        const guessClean = removeDiacritics(guess).toUpperCase().padEnd(targetClean.length, ' ').slice(0, targetClean.length);
+        
+        const colors = new Array(targetClean.length).fill('bg-slate-600'); // Gri
+        const targetCounts: Record<string, number> = {};
+        
+        for (const char of targetClean) {
+            targetCounts[char] = (targetCounts[char] || 0) + 1;
+        }
+
+        // Pass 1: Litere corecte la locul corect (Verde)
+        for (let i = 0; i < targetClean.length; i++) {
+            if (guessClean[i] === targetClean[i]) {
+                colors[i] = 'bg-emerald-500';
+                targetCounts[guessClean[i]]--;
+            }
+        }
+
+        // Pass 2: Litere existente, dar pe loc greșit (Portocaliu)
+        for (let i = 0; i < targetClean.length; i++) {
+            if (colors[i] !== 'bg-emerald-500' && guessClean[i] !== ' ' && targetCounts[guessClean[i]] > 0) {
+                colors[i] = 'bg-amber-500';
+                targetCounts[guessClean[i]]--;
+            }
+        }
+
+        return { chars: guessClean.split(''), colors };
+    };
+
     const handleSlotGuess = (e: React.FormEvent) => {
         e.preventDefault();
         if (!activeSlot || !match || gaveUp || win) return;
         
-        const normalizedGuess = removeDiacritics(slotGuess.toLowerCase().trim());
-        if (normalizedGuess.length < 3) {
-            toast.error("Introdu măcar 3 litere pentru a ghici!");
-            return;
-        }
+        const guessText = slotGuess.trim();
+        if (guessText.length === 0) return;
 
-        const normalizedTarget = removeDiacritics(activeSlot.name.toLowerCase());
-        
-        // Verificăm dacă ce a scris utilizatorul se regăsește în numele real
-        if (normalizedTarget.includes(normalizedGuess)) {
+        const pid = activeSlot.id || activeSlot.dbId;
+        const targetClean = removeDiacritics(activeSlot.name).toUpperCase();
+        const userClean = removeDiacritics(guessText).toUpperCase();
+
+        // Adăugăm în istoricul de încercări
+        setSlotGuessesHistory(prev => ({
+            ...prev,
+            [pid as string]: [...(prev[pid as string] || []), guessText]
+        }));
+
+        if (userClean === targetClean) {
             playSound('correct', isMuted);
-            const pid = activeSlot.id || activeSlot.dbId;
             
             setGuessedIds(prev => {
                 const noile = new Set(prev);
@@ -288,11 +324,12 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 return noile;
             });
             
-            setActiveSlot(null);
-            setSlotGuess("");
+            setTimeout(() => {
+                setActiveSlot(null);
+                setSlotGuess("");
+            }, 800); // Scurt delay să se vadă verde complet
         } else {
             playSound('wrong', isMuted);
-            toast.error("Nume incorect! Mai încearcă.", { icon: '❌' });
             setSlotGuess("");
         }
     };
@@ -317,37 +354,38 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         );
     }
 
-    const rows = [0, 1, 2, 3].map(rowIndex => match.players.filter(p => p.gridRow === rowIndex));
+    const lines = [1, ...match.formation.split('-').map(Number)]; 
+    const rows: XIPlayer[][] = [];
+    
+    lines.forEach((_, rowIndex) => {
+        rows.push(match.players.filter(p => p.gridRow === rowIndex));
+    });
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 relative">
-            {/* Header Meci */}
             <div className="bg-slate-950 p-4 sm:p-6 rounded-3xl border-4 border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl">
                 <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-xs uppercase tracking-widest absolute sm:static top-6 left-6"><X className="w-4 h-4"/> Înapoi</button>
                 
                 <div className="flex-1 text-center flex flex-col items-center">
                     <div className="flex items-center gap-6 justify-center w-full">
-                        <div className="text-xl sm:text-3xl font-black text-white uppercase tracking-tighter truncate max-w-[120px] sm:max-w-[200px] text-right">{match.teamName}'s XI</div>
+                        <div className="text-xl sm:text-3xl font-black text-white uppercase tracking-tighter truncate max-w-[120px] sm:max-w-[200px] text-right">{match.teamName}</div>
                         <div className="bg-slate-800 px-4 py-1.5 rounded-xl border border-slate-700 font-black text-emerald-400 text-2xl tracking-[0.2em]">{match.score}</div>
                         <div className="text-xl sm:text-3xl font-black text-slate-400 uppercase tracking-tighter truncate max-w-[120px] sm:max-w-[200px] text-left">{match.opponent}</div>
                     </div>
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">{match.date} • Formație: {match.formation}</div>
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">{match.date} • FORMAȚIE: {match.formation}</div>
                 </div>
 
                 <div className="w-20 hidden sm:block"></div>
             </div>
 
-            {/* Terenul Verde (Pitch) */}
-            <div className="bg-[#4ade80] rounded-3xl border-8 border-white p-4 sm:p-8 min-h-[500px] relative shadow-2xl overflow-hidden flex flex-col justify-between gap-6 sm:gap-10">
-                {/* Linii Teren (CSS) */}
+            <div className="bg-[#4ade80] rounded-3xl border-8 border-white p-4 sm:p-8 min-h-[600px] relative shadow-2xl overflow-hidden flex flex-col-reverse justify-around gap-6">
                 <div className="absolute inset-0 border-[6px] border-white/40 m-4 rounded-xl pointer-events-none"></div>
                 <div className="absolute top-1/2 left-0 w-full h-[6px] bg-white/40 -translate-y-1/2 pointer-events-none"></div>
                 <div className="absolute top-1/2 left-1/2 w-32 h-32 border-[6px] border-white/40 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
                 
-                {/* Rânduri Jucători */}
-                {[3, 2, 1, 0].map(rowIndex => (
+                {rows.map((rowPlayers, rowIndex) => (
                     <div key={rowIndex} className="relative z-10 flex justify-center gap-4 sm:gap-12 w-full">
-                        {rows[rowIndex].map((player, idx) => {
+                        {rowPlayers.map((player, idx) => {
                             const pid = player.id || player.dbId;
                             const isGuessed = pid ? guessedIds.has(pid) : false;
                             const showRed = gaveUp && !isGuessed;
@@ -371,7 +409,6 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                                 <span className="text-[10px] font-black text-white">{player.name.substring(0,2).toUpperCase()}</span>
                                             </div>
                                         )}
-                                        {/* Iconiță de căutare dacă se poate da click pe el */}
                                         {isClickable && (
                                             <div className="absolute -bottom-2 -right-2 bg-blue-600 rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-md">
                                                 <Search className="w-3 h-3 text-white" />
@@ -396,7 +433,6 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 ))}
             </div>
 
-            {/* Bara Inferioară - Status & Renunță */}
             <div className="bg-slate-900 p-6 rounded-3xl border-4 border-slate-800 shadow-xl flex justify-between items-center gap-6">
                 <div className="text-3xl font-black text-white tracking-widest bg-slate-950 px-6 py-3 rounded-2xl border border-slate-800">
                     <span className="text-emerald-400">{guessedIds.size}</span><span className="text-slate-600">/11</span>
@@ -416,26 +452,55 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
             {/* Modal Ghicire Jucător (Wordle Style) */}
             {activeSlot && !win && !gaveUp && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
-                    <div className="bg-slate-900 w-full max-w-lg rounded-3xl border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden">
-                        <div className="p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950">
-                            <h3 className="font-black text-white uppercase tracking-widest text-sm flex items-center gap-2">Ghicește Jucătorul</h3>
+                    <div className="bg-slate-900 w-full max-w-3xl rounded-3xl border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+                        <div className="p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950 shrink-0">
+                            <h3 className="font-black text-white uppercase tracking-widest text-sm flex items-center gap-2">Ghicește Numele Jucătorului</h3>
                             <button onClick={() => {setActiveSlot(null); setSlotGuess("");}} className="text-slate-400 hover:text-rose-500"><X className="w-5 h-5 font-bold" /></button>
                         </div>
-                        <form onSubmit={handleSlotGuess} className="p-5 space-y-4 text-center">
-                            <div className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700">
-                                Introdu numele fotbalistului pentru această poziție. Ai încercări infinite!
+                        
+                        <div className="p-5 overflow-y-auto flex-1 flex flex-col items-center space-y-2">
+                            {/* Istoricul Încercărilor */}
+                            {(slotGuessesHistory[activeSlot.id || activeSlot.dbId || ''] || []).map((guess, idx) => {
+                                const { chars, colors } = evaluateWordleGuess(guess, activeSlot.name);
+                                return (
+                                    <div key={idx} className="flex gap-1 flex-wrap justify-center">
+                                        {chars.map((char, j) => (
+                                            <div key={j} className={`w-8 h-10 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded-md text-lg sm:text-xl border-2 border-transparent ${colors[j]}`}>
+                                                {char}
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })}
+                            
+                            {/* Rândul gol pentru indiciu lungime */}
+                            <div className="flex gap-1 flex-wrap justify-center opacity-50 mt-2">
+                                {removeDiacritics(activeSlot.name).toUpperCase().split('').map((char, j) => (
+                                    <div key={`empty-${j}`} className="w-8 h-10 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded-md text-lg sm:text-xl border-2 border-slate-700 bg-slate-800">
+                                        {char === ' ' ? ' ' : '_'}
+                                    </div>
+                                ))}
                             </div>
-                            <input 
-                                type="text"
-                                autoFocus
-                                placeholder="Cine a jucat aici?"
-                                className="w-full bg-slate-950 border-2 border-slate-700 p-4 rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors"
-                                value={slotGuess}
-                                onChange={e => setSlotGuess(e.target.value)}
-                            />
-                            <button type="submit" className="w-full mt-2 bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-xl font-black uppercase tracking-widest text-sm transition-all border-b-4 border-blue-800 hover:border-b-2 hover:translate-y-[2px]">
-                                Verifică
-                            </button>
+                        </div>
+
+                        <form onSubmit={handleSlotGuess} className="p-5 bg-slate-950 border-t-2 border-slate-800 shrink-0">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2 text-center">
+                                Verde: Corect | Portocaliu: Există în nume, dar altă poziție
+                            </div>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text"
+                                    autoFocus
+                                    placeholder="Scrie și apasă Enter..."
+                                    className="flex-1 bg-slate-900 border-2 border-slate-700 p-4 rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors"
+                                    value={slotGuess}
+                                    onChange={e => setSlotGuess(e.target.value)}
+                                    maxLength={activeSlot.name.length}
+                                />
+                                <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-6 rounded-xl font-black uppercase tracking-widest text-sm transition-all border-b-4 border-blue-800 hover:border-b-2 hover:translate-y-[2px]">
+                                    Testează
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -446,7 +511,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
 
 // ============================================================================
-// GAME 4: ADMIN DASHBOARD (PENTRU PRIMUL 11) - INTRODUCERE MANUALĂ
+// GAME 4: ADMIN DASHBOARD (PENTRU PRIMUL 11) - GENERARE ETICHETE DINAMICE
 // ============================================================================
 function AdminXIDashboard({ onBack }: { onBack: () => void }) {
     const [xis, setXis] = useState<StartingXIData[]>([]);
@@ -458,7 +523,6 @@ function AdminXIDashboard({ onBack }: { onBack: () => void }) {
     const [date, setDate] = useState("");
     const [formation, setFormation] = useState("4-3-3");
     
-    // În loc să căutăm în DB, adminul scrie numele direct
     const [slotPlayers, setSlotPlayers] = useState<(XIPlayer | null)[]>(Array(11).fill(null));
 
     useEffect(() => {
@@ -474,16 +538,32 @@ function AdminXIDashboard({ onBack }: { onBack: () => void }) {
     const getGridRowForSlot = (index: number, form: string) => {
         if (index === 0) return 0; 
         const parts = form.split('-').map(Number); 
-        if (parts.length === 3) {
-            if (index <= parts[0]) return 1; 
-            if (index <= parts[0] + parts[1]) return 2; 
-            return 3; 
-        } else if (parts.length === 4) { 
-            if (index <= parts[0]) return 1; 
-            if (index <= parts[0] + parts[1] + parts[2]) return 2; 
-            return 3; 
+        
+        let sum = 0;
+        for (let r = 0; r < parts.length; r++) {
+            sum += parts[r];
+            if (index <= sum) return r + 1;
         }
         return 1;
+    };
+
+    const getSlotLabel = (index: number, form: string) => {
+        if (index === 0) return "GK (Portar)";
+        const row = getGridRowForSlot(index, form);
+        const parts = form.split('-').length;
+        
+        if (parts === 3) { // ex: 4-3-3
+            if (row === 1) return `DEF (Fundaș) ${index}`;
+            if (row === 2) return `MID (Mijlocaș) ${index}`;
+            if (row === 3) return `ATT (Atacant) ${index}`;
+        }
+        if (parts === 4) { // ex: 4-2-3-1
+            if (row === 1) return `DEF (Fundaș) ${index}`;
+            if (row === 2) return `CDM (Închizător) ${index}`;
+            if (row === 3) return `CAM/W (Mij. Ofensiv) ${index}`;
+            if (row === 4) return `ST (Atacant) ${index}`;
+        }
+        return `Jucător ${index}`;
     };
 
     const handleSaveXI = () => {
@@ -491,7 +571,6 @@ function AdminXIDashboard({ onBack }: { onBack: () => void }) {
             toast.error("Completează toate detaliile meciului!"); return;
         }
         
-        // Verificăm dacă toate cele 11 input-uri au text valid
         const isValid = slotPlayers.every(p => p !== null && p.name.trim().length > 0);
         if (!isValid) {
             toast.error("Trebuie să scrii numele pentru toți cei 11 jucători!"); return;
@@ -556,11 +635,12 @@ function AdminXIDashboard({ onBack }: { onBack: () => void }) {
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {Array.from({ length: 11 }).map((_, idx) => {
                                 const player = slotPlayers[idx];
+                                const label = getSlotLabel(idx, formation);
                                 return (
                                     <input 
                                         key={idx}
                                         type="text"
-                                        placeholder={`Jucător ${idx + 1} ${idx === 0 ? '(Portar)' : ''}`}
+                                        placeholder={label}
                                         value={player ? player.name : ''}
                                         onChange={(e) => {
                                             const newSlots = [...slotPlayers];
@@ -1331,7 +1411,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 }
 
 // ============================================================================
-// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - NUME UNICE
+// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ)
 // ============================================================================
 function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBack: () => void, user: any, isMuted: boolean }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
