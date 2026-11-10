@@ -208,11 +208,18 @@ export function GamesSection({ user }: GamesProps) {
 }
 
 // ============================================================================
-// GAME 1: GRILA TRANSFERURILOR (X ȘI 0) 
+// GAME 1: GRILA TRANSFERURILOR (X ȘI 0) - STRICT TOP 5 LIGI
 // ============================================================================
 type GridMode = 'menu' | 'local' | 'online_menu' | 'online_setup' | 'online_playing';
 
 function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBack: () => void, isMuted: boolean, user: any }) {
+    
+    // --- FILTRARE STRICTĂ PE TOP 5 LIGI ---
+    const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
+    const top5Players = React.useMemo(() => {
+        return players.filter((p: Player) => p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
+    }, [players]);
+
     const [mode, setMode] = useState<GridMode>('menu');
     const [playerName, setPlayerName] = useState(user?.name || "");
     const [gridRows, setGridRows] = useState<GridCriteria[]>([]);
@@ -238,8 +245,6 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     
     useEffect(() => { gridRowsRef.current = gridRows; gridColsRef.current = gridCols; }, [gridRows, gridCols]);
     useEffect(() => { turnRef.current = turn; }, [turn]);
-
-    const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
 
     const checkMatch = (p: Player, criteria: GridCriteria) => {
         const val = removeDiacritics(criteria.value.toLowerCase().trim());
@@ -432,8 +437,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
         const knownTeamLogos = new Map<string, string>();
         const top5Teams = new Set<string>();
 
-        const top5Players = players.filter((p: Player) => p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
-
+        // EXTRAGEM DOAR JUCĂTORII ȘI ECHIPELE DIN TOP 5
         top5Players.forEach((p: Player) => {
             const tName = p.team_name?.toLowerCase().trim();
             const t = p.team?.toLowerCase().trim();
@@ -458,6 +462,9 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
             }
             if (p.nationality && !['necunoscut', 'unknown'].includes(p.nationality.toLowerCase().trim())) {
                 tags.push({ type: 'nationality', value: p.nationality, image: getFlagEmoji(p.nationality) });
+            }
+            if (p.league_name && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id))) {
+                tags.push({ type: 'league', value: p.league_name, image: p.league_logo || "" });
             }
 
             tags.forEach((t: GridCriteria) => {
@@ -636,9 +643,10 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
         </div>
     );
 
+    // CĂUTAREA FILTREAZĂ DOAR JUCĂTORI DIN TOP 5 LIGI
     const normalizedSearch = removeDiacritics(searchTerm.toLowerCase());
     const searchResults: Player[] = searchTerm.trim().length > 1 
-        ? players.filter((p: Player) => removeDiacritics(p.name.toLowerCase()).includes(normalizedSearch)).slice(0, 10)
+        ? top5Players.filter((p: Player) => removeDiacritics(p.name.toLowerCase()).includes(normalizedSearch)).slice(0, 10)
         : [];
 
     if (mode === 'menu') {
