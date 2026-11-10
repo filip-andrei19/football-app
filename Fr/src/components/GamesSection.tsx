@@ -728,7 +728,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 }
 
 // ============================================================================
-// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - ACUM DOAR TOP 5 LIGI + ALGORITM COTĂ REALISTĂ
+// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ)
 // ============================================================================
 function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
@@ -746,40 +746,38 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
         if (cat === 'height') return parseInt(p.height?.replace(/\D/g, '') || "0", 10);
         if (cat === 'rating') return parseFloat(p.statistics_summary?.rating || "0");
         if (cat === 'market_value') {
-            // Dacă API-ul (minune) aduce cota reală, o folosim direct
             if (p.market_value) return p.market_value;
     
-            // --- INIȚIALIZARE DATE BAZĂ ---
             const rating = parseFloat(p.statistics_summary?.rating || "6.0");
-            const age = p.age || 27; // Presupunem un peak dacă vârsta e necunoscută
+            const age = p.age || 27; 
             const currentTeam = (p.team_name || p.team || "").toLowerCase();
             const leagueId = Number(p.league_id);
             const position = (p.position || "").toLowerCase();
     
-            // Plecăm de la un salariu/valoare de bază a unui jucător profesionist mediu
             let baseValue = 2_000_000; 
     
-            // 1. MULTIPLICATOR DE VÂRSTĂ (Cel mai important pe piața actuală)
-            if (age <= 18) baseValue *= 5.5;      // Extratereștrii tineri (Yamal, Endrick)
-            else if (age <= 21) baseValue *= 4.0; // Golden Boys (Bellingham, Musiala)
-            else if (age <= 23) baseValue *= 2.8; // Tineri consacrați (Foden, Saka)
-            else if (age <= 26) baseValue *= 1.8; // Peak fizic
-            else if (age <= 29) baseValue *= 1.2; // Jucători maturi
-            else if (age <= 31) baseValue *= 0.8; // Începe devalorizarea ușoară
-            else if (age <= 34) baseValue *= 0.4; // Veterani
-            else baseValue *= 0.1;                // Jucători la final de carieră
+            // 1. MULTIPLICATOR DE VÂRSTĂ
+            if (age <= 18) baseValue *= 5.5;      
+            else if (age <= 21) baseValue *= 4.0; 
+            else if (age <= 23) baseValue *= 2.8; 
+            else if (age <= 26) baseValue *= 1.8; 
+            else if (age <= 29) baseValue *= 1.4; // Ridicat ușor pentru "peak age"
+            else if (age <= 31) baseValue *= 0.8; 
+            else if (age <= 34) baseValue *= 0.4; 
+            else baseValue *= 0.1;                
     
-            // 2. MULTIPLICATOR DE PERFORMANȚĂ (Rating SofaScore)
-            if (rating >= 8.5) baseValue *= 15;     // Balonul de Aur (sezon istoric)
-            else if (rating >= 8.0) baseValue *= 8; // World Class
-            else if (rating >= 7.5) baseValue *= 4; // Top Player
-            else if (rating >= 7.0) baseValue *= 2; // Titular solid
-            else if (rating < 6.5) baseValue *= 0.5; // Rezerve slabe / Formă proastă
+            // 2. MULTIPLICATOR DE PERFORMANȚĂ
+            if (rating >= 8.5) baseValue *= 15;     
+            else if (rating >= 8.0) baseValue *= 8; 
+            else if (rating >= 7.5) baseValue *= 4; 
+            else if (rating >= 7.0) baseValue *= 2; 
+            else if (rating >= 6.5) baseValue *= 1.3; // AM ACOPERIT ZONA LUI VALVERDE (6.5 - 6.99)
+            else if (rating < 6.0) baseValue *= 0.5; // Doar jucătorii sub 6.0 sunt penalizați masiv
     
-            // 3. TAXA DE LIGĂ (Unele ligi vând mult mai scump)
-            if (leagueId === 39) baseValue *= 2.0; // Premier League Tax
-            else if (leagueId === 140) baseValue *= 1.5; // La Liga Tax
-            else if (leagueId === 135 || leagueId === 78) baseValue *= 1.3; // Serie A & Bundesliga
+            // 3. TAXA DE LIGĂ
+            if (leagueId === 39) baseValue *= 2.0; 
+            else if (leagueId === 140) baseValue *= 1.5; 
+            else if (leagueId === 135 || leagueId === 78) baseValue *= 1.3; 
             
             // 4. TAXA DE "GIANT CLUB"
             const giantClubs = ['real madrid', 'manchester city', 'arsenal', 'bayern', 'paris saint germain', 'liverpool', 'barcelona', 'chelsea'];
@@ -788,28 +786,25 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
             if (giantClubs.some(club => currentTeam.includes(club))) baseValue *= 2.2;
             else if (bigClubs.some(club => currentTeam.includes(club))) baseValue *= 1.5;
     
-            // 5. TAXA DE POZIȚIE (Atacanții costă mereu mai mult)
+            // 5. TAXA DE POZIȚIE
             if (position.includes('attacker') || position.includes('forward') || position.includes('wing') || position.includes('striker')) {
                 baseValue *= 1.3;
             } else if (position.includes('midfield')) {
                 baseValue *= 1.1;
             } else if (position.includes('goalkeeper') || position.includes('portar')) {
-                baseValue *= 0.7; // Portarii sunt mai ieftini pe piață
+                baseValue *= 0.7; 
             }
     
             // --- REAJUSTĂRI FINALE ȘI ROTUNJIRE ---
             
-            // Un jucător titular la Real Madrid / City sub 23 de ani nu poate fi mai ieftin de 30M
-            if (giantClubs.some(club => currentTeam.includes(club)) && age <= 23 && rating >= 7.0) {
-                baseValue = Math.max(baseValue, 35_000_000);
+            // Plasa de siguranță EXTINSĂ pentru Giganți
+            if (giantClubs.some(club => currentTeam.includes(club))) {
+                if (age <= 23 && rating >= 6.8) baseValue = Math.max(baseValue, 45_000_000); // Tineri la Real/City
+                else if (age <= 29 && rating >= 6.5) baseValue = Math.max(baseValue, 60_000_000); // Peak age la Real/City (Valverde intră aici!)
             }
     
-            // Limităm extremele (niciun jucător generat nu depășește 200M și nu scade sub 1M dacă e în top 5)
             baseValue = Math.min(Math.max(baseValue, 1_000_000), 200_000_000);
     
-            // Rotunjim valorile ca să pară sume de transfer reale (din milion în milion)
-            // Dacă jucătorul sare de 10M, rotunjim la cel mai apropiat milion. 
-            // Dacă e sub 10M, lăsăm rotunjire la 500k.
             if (baseValue > 10_000_000) {
                 return Math.round(baseValue / 1_000_000) * 1_000_000;
             } else {
