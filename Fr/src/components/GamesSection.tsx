@@ -517,7 +517,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             setActiveCell(null);
             setSearchTerm("");
         } else {
-            // AICI: RĂSPUNS GREȘIT -> PIERZI RÂNDUL
             toast.error("Răspuns Greșit! Ai pierdut rândul.", { icon: '❌' });
             
             if (mode === 'online_playing' && socketRef.current) {
@@ -532,7 +531,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         }
     };
 
-    // Evaluare "Este rândul meu?" pentru blocare celule
+    // Evaluare "Este rândul meu?"
     const isMyTurn = mode === 'local' || (mode === 'online_playing' && turn === myRole);
 
     // ---- RENDER MENIURI ----
@@ -603,7 +602,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
     if (mode === 'online_setup') {
         return (
             <div className="relative max-w-md mx-auto bg-slate-900 rounded-3xl p-8 border-4 border-slate-800 shadow-2xl text-center mt-10 space-y-6">
-                
                 <button 
                     onClick={() => {
                         if (socketRef.current) socketRef.current.disconnect();
@@ -656,7 +654,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 
     return (
         <div className="space-y-4">
-            {/* SERIE CÂȘTIGATĂ OVERLAY */}
             {seriesWinner && (
                 <div className="fixed inset-0 z-[200000] bg-slate-950/90 backdrop-blur-lg flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in duration-500">
                     <Crown className="w-32 h-32 text-yellow-400 animate-bounce mb-6 drop-shadow-[0_0_30px_rgba(250,204,21,0.5)]" />
@@ -669,7 +666,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 </div>
             )}
 
-            {/* SCOR MULTIPLAYER */}
             {(mode === 'online_playing' || mode === 'local') && (
                 <div className="max-w-3xl mx-auto flex justify-between items-center bg-slate-900 p-4 rounded-2xl border-2 border-slate-800 shadow-xl">
                     <div className="flex flex-col">
@@ -684,7 +680,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 </div>
             )}
 
-            {/* HEADER MECI - CU TIMER */}
             <div className="flex items-center justify-between bg-slate-900 p-4 rounded-3xl border-2 border-slate-800 shadow-xl">
                 <button onClick={quitGame} className="text-slate-400 hover:text-rose-500 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Ieșire</button>
                 
@@ -699,8 +694,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                                 Muta: <span className="text-2xl leading-none">{turn === 'X' ? '❌' : '⚽'}</span>
                                 {mode === 'online_playing' && turn === myRole && <span className="text-xs text-white bg-blue-600 px-2 py-0.5 rounded-md ml-2">(Tu)</span>}
                             </div>
-                            
-                            {/* TIMER UI */}
                             <div className={`flex items-center gap-1.5 text-xl font-black tabular-nums tracking-widest px-3 py-0.5 rounded-lg border-2 transition-colors ${timeLeft <= 10 ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-950 border-slate-800 text-white'}`}>
                                 <Timer className="w-4 h-4" /> 00:{timeLeft.toString().padStart(2, '0')}
                             </div>
@@ -719,10 +712,8 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 )}
             </div>
 
-            {/* GRILA */}
             {gridRows.length > 0 && (
                 <div className="max-w-3xl mx-auto p-3 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 shadow-2xl overflow-x-auto relative">
-                    {/* OVERLAY BLOCARE GRILĂ CÂND NU E RÂNDUL TĂU (Doar vizualizare) */}
                     {!isMyTurn && !winner && (
                         <div className="absolute inset-0 z-50 bg-transparent cursor-not-allowed" onClick={() => toast.error("Nu este rândul tău!")} title="Așteaptă mutarea adversarului"></div>
                     )}
@@ -747,7 +738,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                                             onClick={() => {
                                                 if (winner) return;
                                                 if (!isMyTurn) {
-                                                    // Mesajul e acoperit de overlay-ul transparent de mai sus, dar ca extra măsură:
                                                     if (mode === 'online_playing') toast.error("Așteaptă rândul tău!");
                                                     return;
                                                 }
@@ -780,7 +770,6 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                 </div>
             )}
 
-            {/* MODAL CĂUTARE */}
             {activeCell && !winner && isMyTurn && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
                     <div className="bg-slate-900 w-full max-w-lg rounded-3xl border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden">
@@ -830,7 +819,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 }
 
 // ============================================================================
-// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) 
+// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - CU REVEAL ANIMAT
 // ============================================================================
 function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
@@ -839,8 +828,10 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
     const [score, setScore] = useState(0);
     const [playerA, setPlayerA] = useState<Player | null>(null);
     const [playerB, setPlayerB] = useState<Player | null>(null);
+    
+    // NOU: Starea pentru dezvăluirea rezultatului
+    const [revealResult, setRevealResult] = useState<'correct' | 'wrong' | null>(null);
 
-    // Cele 5 ligi de top (Premier League, La Liga, Serie A, Bundesliga, Ligue 1)
     const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
 
     const getStatValue = (p: Player, cat: string) => {
@@ -924,27 +915,37 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
         setPlayerA(shuffled[0]);
         setPlayerB(shuffled[1]);
         setScore(0);
+        setRevealResult(null);
         setGameState('playing');
     };
 
     const handleGuess = (guess: 'higher' | 'lower') => {
-        if (!playerA || !playerB) return;
+        // Previne multiple click-uri pe durata animației
+        if (!playerA || !playerB || revealResult) return; 
+
         const valA = getStatValue(playerA, category);
         const valB = getStatValue(playerB, category);
         const isCorrect = (guess === 'higher' && valB >= valA) || (guess === 'lower' && valB <= valA);
 
-        if (isCorrect) {
-            toast.success("Corect!");
-            setScore(prev => prev + 1);
-            setPlayerA(playerB);
-            
-            const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
-            const shuffled = shuffleArray(validPlayers);
-            const nextPB = shuffled.find(p => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
-            setPlayerB(nextPB);
-        } else {
-            setGameState('gameover');
-        }
+        // Afișăm rezultatul
+        setRevealResult(isCorrect ? 'correct' : 'wrong');
+
+        // Așteptăm 1.2 secunde pentru ca utilizatorul să vadă valoarea
+        setTimeout(() => {
+            if (isCorrect) {
+                setScore(prev => prev + 1);
+                setPlayerA(playerB);
+                
+                const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
+                const shuffled = shuffleArray(validPlayers);
+                const nextPB = shuffled.find(p => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
+                setPlayerB(nextPB);
+                setRevealResult(null); // Resetăm cardul la starea inițială
+            } else {
+                setGameState('gameover');
+                setRevealResult(null); // Resetăm pentru meciul următor
+            }
+        }, 1200); 
     };
 
     if (gameState === 'setup') {
@@ -1014,6 +1015,8 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 h-[60vh] min-h-[500px]">
+                
+                {/* JUCĂTOR A (STÂNGA) */}
                 <div className="flex-1 bg-slate-900 rounded-3xl border-4 border-slate-800 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden shadow-2xl">
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950/80 z-0"></div>
                     <div className="relative z-10 flex flex-col items-center">
@@ -1031,21 +1034,42 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
                     <div className="w-16 h-16 bg-rose-600 rounded-full flex items-center justify-center text-white font-black italic text-2xl border-4 border-slate-950 shadow-[0_0_20px_rgba(225,29,72,0.5)]">VS</div>
                 </div>
 
-                <div className="flex-1 bg-slate-900 rounded-3xl border-4 border-slate-800 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden shadow-2xl">
+                {/* JUCĂTOR B (DREAPTA) - CU TRANZIȚII CULORI */}
+                <div className={`flex-1 rounded-3xl border-4 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden shadow-2xl transition-colors duration-300 ${
+                    revealResult === 'correct' ? 'bg-emerald-900 border-emerald-500' :
+                    revealResult === 'wrong' ? 'bg-rose-900 border-rose-500' :
+                    'bg-slate-900 border-slate-800'
+                }`}>
                      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950/80 z-0"></div>
                      <div className="relative z-10 flex flex-col items-center w-full">
                         <img src={playerB?.image || GENERIC_USER_IMAGE} className="w-40 h-40 rounded-full object-cover border-4 border-white shadow-xl mb-6 bg-white" />
                         <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-2">{playerB?.name}</h2>
                         <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">{playerB?.team_name || playerB?.team}</p>
-                        <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-4">Are {catLabel}</p>
-                        <div className="flex flex-col gap-3 w-full max-w-xs">
-                            <button onClick={() => handleGuess('higher')} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-lg transition-all border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px] flex items-center justify-center gap-2 shadow-lg">
-                                <ArrowUp className="w-6 h-6" /> Mai Mare
-                            </button>
-                            <button onClick={() => handleGuess('lower')} className="w-full bg-rose-600 hover:bg-rose-500 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-lg transition-all border-b-4 border-rose-800 hover:border-b-2 hover:translate-y-[2px] flex items-center justify-center gap-2 shadow-lg">
-                                <ArrowDown className="w-6 h-6" /> Mai Mică
-                            </button>
-                        </div>
+                        <p className={`text-xs font-black uppercase tracking-widest mb-4 ${
+                            revealResult === 'correct' ? 'text-emerald-300' :
+                            revealResult === 'wrong' ? 'text-rose-300' :
+                            'text-emerald-400'
+                        }`}>Are {catLabel}</p>
+                        
+                        {/* DEZVĂLUIRE SAU BUTOANE */}
+                        {revealResult ? (
+                            <div className="animate-in fade-in zoom-in duration-300">
+                                <div className={`text-5xl font-black drop-shadow-md bg-white/10 px-6 py-3 rounded-2xl border border-white/20 ${
+                                    revealResult === 'correct' ? 'text-emerald-400' : 'text-rose-400'
+                                }`}>
+                                    {playerB && getStatFormat(getStatValue(playerB, category), category)}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-3 w-full max-w-xs animate-in fade-in duration-300">
+                                <button onClick={() => handleGuess('higher')} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-lg transition-all border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px] flex items-center justify-center gap-2 shadow-lg">
+                                    <ArrowUp className="w-6 h-6" /> Mai Mare
+                                </button>
+                                <button onClick={() => handleGuess('lower')} className="w-full bg-rose-600 hover:bg-rose-500 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-lg transition-all border-b-4 border-rose-800 hover:border-b-2 hover:translate-y-[2px] flex items-center justify-center gap-2 shadow-lg">
+                                    <ArrowDown className="w-6 h-6" /> Mai Mică
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
