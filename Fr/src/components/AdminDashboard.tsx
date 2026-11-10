@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Users, Newspaper, Ban, CheckCircle, Search, Loader2, Plus, Trash2, ShoppingBag, X, Save, FileText, Edit, Flag, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Users, Newspaper, Ban, CheckCircle, Search, Loader2, Plus, Trash2, ShoppingBag, X, Save, FileText, Edit, Flag, AlertTriangle, Shirt, LayoutDashboard } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface UserData { _id: string; name: string; email: string; role: string; isBanned: boolean; avatar?: string; strikes?: number; }
@@ -7,10 +7,27 @@ interface ListingData { _id: string; title: string; category: string; price: str
 interface StoryData { _id: string; title: string; role: string; organization: string; excerpt: string; content: string; date: string; postedAt: string; }
 interface ReportedMessage { _id: string; author: string; message: string; imageUrl?: string; room: string; reportedBy: string[]; timestamp: string; }
 
+// --- INTERFEȚE STARTING XI ---
+interface XIPlayer {
+    id: string;
+    name: string;
+    gridRow: number; 
+}
+
+interface StartingXIData {
+    id: string;
+    teamName: string;
+    opponent: string;
+    date: string;
+    score: string;
+    formation: string; 
+    players: XIPlayer[];
+}
+
 const API_URL = (import.meta as any).env.VITE_API_URL ? `${(import.meta as any).env.VITE_API_URL}/api` : 'https://football-backend-m2a4.onrender.com/api';
 
 export function AdminDashboard({ user }: { user: any }) {
-  const [activeTab, setActiveTab] = useState<'users' | 'listings' | 'news' | 'reports'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'listings' | 'news' | 'reports' | 'xi'>('users');
   
   const [users, setUsers] = useState<UserData[]>([]);
   const [listings, setListings] = useState<ListingData[]>([]);
@@ -18,6 +35,15 @@ export function AdminDashboard({ user }: { user: any }) {
   const [reportedMessages, setReportedMessages] = useState<ReportedMessage[]>([]);
   const [reportedListings, setReportedListings] = useState<ListingData[]>([]);
   
+  // Stări pentru Primul 11 (Starting XI)
+  const [xis, setXis] = useState<StartingXIData[]>([]);
+  const [teamName, setTeamName] = useState("");
+  const [opponent, setOpponent] = useState("");
+  const [score, setScore] = useState("");
+  const [date, setDate] = useState("");
+  const [formation, setFormation] = useState("4-3-3");
+  const [slotPlayers, setSlotPlayers] = useState<(XIPlayer | null)[]>(Array(11).fill(null));
+
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -44,6 +70,10 @@ export function AdminDashboard({ user }: { user: any }) {
 
         const resRepListings = await fetch(`${API_URL}/admin/reported-listings`);
         if (resRepListings.ok) setReportedListings(await resRepListings.json());
+
+        // Fetch pentru Starting XI (LocalStorage momentan)
+        const localXis = JSON.parse(localStorage.getItem('hilo_starting_xis') || '[]');
+        setXis(localXis);
 
     } catch (err) { toast.error("Eroare la încărcarea datelor."); } 
     finally { setLoading(false); }
@@ -169,6 +199,59 @@ export function AdminDashboard({ user }: { user: any }) {
       } catch(err) { toast.error("Eroare."); }
   };
 
+  // Funcții pentru Admin Starting XI
+  const saveToLocal = (data: StartingXIData[]) => {
+    localStorage.setItem('hilo_starting_xis', JSON.stringify(data));
+    setXis(data);
+  };
+
+  const getGridRowForSlot = (index: number, form: string) => {
+    if (index === 0) return 0; // GK
+    const parts = form.split('-').map(Number); // ex: [4, 3, 3]
+    if (parts.length === 3) {
+        if (index <= parts[0]) return 1; 
+        if (index <= parts[0] + parts[1]) return 2; 
+        return 3; 
+    } else if (parts.length === 4) { 
+        if (index <= parts[0]) return 1; 
+        if (index <= parts[0] + parts[1] + parts[2]) return 2; 
+        return 3; 
+    }
+    return 1;
+  };
+
+  const handleSaveXI = () => {
+    if (!teamName || !opponent || !score || !date) {
+        toast.error("Completează toate detaliile meciului!"); return;
+    }
+    
+    const isValid = slotPlayers.every(p => p !== null && p.name.trim().length > 0);
+    if (!isValid) {
+        toast.error("Trebuie să scrii numele pentru toți cei 11 jucători!"); return;
+    }
+
+    const newXI: StartingXIData = {
+        id: Math.random().toString(36).substring(2, 9),
+        teamName, opponent, score, date, formation,
+        players: slotPlayers as XIPlayer[]
+    };
+
+    const updated = [...xis, newXI];
+    saveToLocal(updated);
+    toast.success("Meci salvat cu succes!");
+    
+    setTeamName(""); setOpponent(""); setScore(""); setDate("");
+    setSlotPlayers(Array(11).fill(null));
+  };
+
+  const handleDeleteXI = (id: string) => {
+    if(window.confirm("Ești sigur că vrei să ștergi acest meci?")) {
+        const updated = xis.filter(x => x.id !== id);
+        saveToLocal(updated);
+        toast.success("Meci șters.");
+    }
+  };
+
   const filteredUsers = users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredListings = listings.filter(l => l.title.toLowerCase().includes(searchTerm.toLowerCase()) || l.seller.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredStories = stories.filter(s => s.title.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -224,7 +307,8 @@ export function AdminDashboard({ user }: { user: any }) {
                 { id: 'users', label: 'Echipe / Lot', icon: Users },
                 { id: 'listings', label: 'Piața Transferuri', icon: ShoppingBag },
                 { id: 'news', label: 'Sala Trofeelor', icon: Newspaper },
-                { id: 'reports', label: `Camera VAR (${totalReports})`, icon: AlertTriangle }
+                { id: 'reports', label: `Camera VAR (${totalReports})`, icon: AlertTriangle },
+                { id: 'xi', label: 'Primul 11 (Games)', icon: Shirt }
             ].map(tab => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -246,7 +330,7 @@ export function AdminDashboard({ user }: { user: any }) {
 
         {/* CONTENT */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border-2 border-slate-200 dark:border-slate-800 p-4 sm:p-6 min-h-[500px]">
-            {activeTab !== 'reports' && (
+            {activeTab !== 'reports' && activeTab !== 'xi' && (
                 <div className="relative max-w-lg mb-6 mx-auto sm:mx-0">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <Search className="text-slate-400 w-5 h-5" />
@@ -406,7 +490,6 @@ export function AdminDashboard({ user }: { user: any }) {
                 {/* 4. TAB VAR (RAPORTĂRI) */}
                 {activeTab === 'reports' && (
                     <div>
-                        {/* Secțiunea Raportări Mesaje */}
                         <div className="mb-6">
                             <h3 className="font-black text-lg sm:text-xl flex items-center gap-2 uppercase tracking-widest text-slate-900 dark:text-white">
                                 <Flag className="text-amber-500 w-6 h-6"/> Incidente Teren (Chat)
@@ -458,7 +541,6 @@ export function AdminDashboard({ user }: { user: any }) {
                             )}
                         </div>
 
-                        {/* Secțiunea Raportări Anunțuri */}
                         <div className="mb-6 pt-8 border-t-2 border-slate-100 dark:border-slate-800">
                             <h3 className="font-black text-lg sm:text-xl flex items-center gap-2 uppercase tracking-widest text-slate-900 dark:text-white">
                                 <ShoppingBag className="text-blue-500 w-6 h-6"/> Incidente Transferuri
@@ -501,7 +583,6 @@ export function AdminDashboard({ user }: { user: any }) {
 
                         {totalReports === 0 && reportedMessages.length === 0 && reportedListings.length === 0 && (
                             <div className="text-center py-20 bg-slate-50 dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 mt-6 relative overflow-hidden">
-                                {/* SVG Minge cu Bifa */}
                                 <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,transparent_0,transparent_100px,#10b981_101px,#10b981_105px,transparent_106px)]"></div>
                                 <div className="relative z-10 w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-emerald-500">
                                     <CheckCircle className="w-10 h-10"/>
@@ -510,6 +591,88 @@ export function AdminDashboard({ user }: { user: any }) {
                                 <p className="text-sm font-bold text-slate-500 mt-2 uppercase tracking-widest relative z-10">VAR-ul nu are nimic de analizat momentan.</p>
                             </div>
                         )}
+                    </div>
+                )}
+                
+                {/* 5. TAB PRIMUL 11 (ADMIN) */}
+                {activeTab === 'xi' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Formular Adăugare MANUALĂ */}
+                        <div className="bg-slate-900 p-6 rounded-3xl border-4 border-slate-800 shadow-xl space-y-4">
+                            <h3 className="text-lg font-black text-white uppercase tracking-widest mb-4 border-b-2 border-slate-800 pb-2">Adaugă Meci Nou</h3>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <input type="text" placeholder="Echipa Ta (ex: Real Madrid)" value={teamName} onChange={e=>setTeamName(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-3 rounded-xl text-white font-bold text-sm uppercase outline-none focus:border-blue-500" />
+                                <input type="text" placeholder="Adversar (ex: Barcelona)" value={opponent} onChange={e=>setOpponent(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-3 rounded-xl text-white font-bold text-sm uppercase outline-none focus:border-blue-500" />
+                                <input type="text" placeholder="Scor (ex: 2-1)" value={score} onChange={e=>setScore(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-3 rounded-xl text-white font-bold text-sm uppercase outline-none focus:border-blue-500" />
+                                <input type="text" placeholder="Data (ex: 2014)" value={date} onChange={e=>setDate(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-3 rounded-xl text-white font-bold text-sm uppercase outline-none focus:border-blue-500" />
+                            </div>
+
+                            <div className="pt-2">
+                                <label className="text-slate-400 font-bold text-xs uppercase tracking-widest block mb-2">Alege Formația</label>
+                                <select value={formation} onChange={e=>{setFormation(e.target.value); setSlotPlayers(Array(11).fill(null));}} className="w-full bg-slate-950 border-2 border-slate-700 p-3 rounded-xl text-white font-black text-sm outline-none focus:border-blue-500">
+                                    <option value="4-3-3">4-3-3</option>
+                                    <option value="4-4-2">4-4-2</option>
+                                    <option value="4-2-3-1">4-2-3-1</option>
+                                    <option value="3-5-2">3-5-2</option>
+                                </select>
+                            </div>
+
+                            <div className="pt-4 space-y-2">
+                                <label className="text-slate-400 font-bold text-xs uppercase tracking-widest block mb-2">Introdu Numele Jucătorilor (11)</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {Array.from({ length: 11 }).map((_, idx) => {
+                                        const player = slotPlayers[idx];
+                                        return (
+                                            <input 
+                                                key={idx}
+                                                type="text"
+                                                placeholder={`Jucător ${idx + 1} ${idx === 0 ? '(Portar)' : ''}`}
+                                                value={player ? player.name : ''}
+                                                onChange={(e) => {
+                                                    const newSlots = [...slotPlayers];
+                                                    newSlots[idx] = {
+                                                        id: player?.id || Math.random().toString(36).substring(2, 9),
+                                                        name: e.target.value,
+                                                        gridRow: getGridRowForSlot(idx, formation)
+                                                    };
+                                                    setSlotPlayers(newSlots);
+                                                }}
+                                                className={`p-3 rounded-xl border-2 text-[10px] font-bold uppercase transition-colors outline-none focus:border-blue-500 ${
+                                                    player?.name.trim() ? 'bg-blue-900/30 border-blue-500 text-blue-300' : 'bg-slate-950 border-slate-700 text-slate-300'
+                                                }`}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <button onClick={handleSaveXI} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-black uppercase tracking-widest text-sm transition-all border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px] mt-4 flex items-center justify-center gap-2">
+                                <Plus className="w-5 h-5" /> Salvează Meciul
+                            </button>
+                        </div>
+
+                        {/* Lista Meciuri */}
+                        <div className="bg-slate-900 p-6 rounded-3xl border-4 border-slate-800 shadow-xl flex flex-col">
+                            <h3 className="text-lg font-black text-white uppercase tracking-widest mb-4 border-b-2 border-slate-800 pb-2">Meciuri Existente</h3>
+                            <div className="flex-1 overflow-y-auto space-y-3 pr-2 max-h-[600px]">
+                                {xis.length === 0 ? (
+                                    <p className="text-slate-500 text-center font-bold text-sm uppercase py-10">Nu ai adăugat niciun meci.</p>
+                                ) : (
+                                    xis.map(x => (
+                                        <div key={x.id} className="bg-slate-950 border border-slate-700 rounded-xl p-4 flex justify-between items-center group hover:border-slate-500 transition-colors">
+                                            <div>
+                                                <div className="font-black text-white uppercase text-sm truncate">{x.teamName} vs {x.opponent}</div>
+                                                <div className="text-xs text-slate-400 font-bold uppercase mt-1">{x.date} • {x.formation}</div>
+                                            </div>
+                                            <button onClick={() => handleDeleteXI(x.id)} className="bg-rose-900/30 text-rose-500 p-2 rounded-lg hover:bg-rose-600 hover:text-white transition-colors" title="Șterge">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
                 </>
