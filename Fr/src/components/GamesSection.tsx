@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity, Globe, Users, Share2, Copy, Crown, Timer } from 'lucide-react';
+import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity, Globe, Users, Share2, Copy, Crown, Timer, Heart, Volume2, VolumeX, ListOrdered, Share } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client';
 
@@ -44,6 +44,44 @@ interface AnswerDetails {
 const API_URL = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
+// --- SOUND ENGINE (Web Audio API) ---
+const playTone = (frequency: number, type: OscillatorType, duration: number) => {
+    try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + duration);
+    } catch (e) {
+    }
+};
+
+const playSound = (type: 'correct' | 'wrong' | 'timeout' | 'win', isMuted: boolean = false) => {
+    if (isMuted) return;
+    if (type === 'correct') { 
+        playTone(600, 'sine', 0.1); 
+        setTimeout(() => playTone(800, 'sine', 0.2), 100); 
+    }
+    if (type === 'wrong') { 
+        playTone(300, 'sawtooth', 0.4); 
+    }
+    if (type === 'timeout') { 
+        playTone(400, 'square', 0.2); 
+        setTimeout(() => playTone(400, 'square', 0.5), 300); 
+    }
+    if (type === 'win') { 
+        playTone(500, 'sine', 0.2); 
+        setTimeout(() => playTone(650, 'sine', 0.2), 200); 
+        setTimeout(() => playTone(800, 'sine', 0.4), 400); 
+    }
+};
+
 // Amestecare perfectă Fisher-Yates
 function shuffleArray<T>(array: T[]): T[] {
     const newArr = [...array];
@@ -82,6 +120,7 @@ export function GamesSection({ user }: GamesProps) {
     const [activeGame, setActiveGame] = useState<'menu' | 'grid' | 'hilo'>('menu');
     const [allPlayers, setAllPlayers] = useState<Player[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isMuted, setIsMuted] = useState(false);
 
     useEffect(() => {
         const fetchPlayers = async () => {
@@ -111,6 +150,16 @@ export function GamesSection({ user }: GamesProps) {
 
     return (
         <div className="max-w-5xl mx-auto py-8 px-2 sm:px-4 min-h-[80vh] relative z-0 animate-in fade-in duration-500 pb-20">
+             {activeGame !== 'menu' && (
+                <button 
+                    onClick={() => setIsMuted(!isMuted)} 
+                    className="absolute top-0 right-4 sm:right-6 z-50 bg-slate-800 p-2 rounded-full border border-slate-700 text-slate-400 hover:text-white transition-colors"
+                    title={isMuted ? "Activează Sunetul" : "Dezactivează Sunetul"}
+                >
+                    {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+            )}
+
             {activeGame === 'menu' && (
                 <div className="space-y-8">
                     <div className="text-center space-y-4 mb-12">
@@ -155,8 +204,8 @@ export function GamesSection({ user }: GamesProps) {
                 </div>
             )}
 
-            {activeGame === 'grid' && <GridGame players={allPlayers} onBack={() => setActiveGame('menu')} />}
-            {activeGame === 'hilo' && <HiLoGame players={allPlayers} onBack={() => setActiveGame('menu')} />}
+            {activeGame === 'grid' && <GridGame players={allPlayers} onBack={() => setActiveGame('menu')} isMuted={isMuted} />}
+            {activeGame === 'hilo' && <HiLoGame players={allPlayers} onBack={() => setActiveGame('menu')} user={user} isMuted={isMuted} />}
         </div>
     );
 }
@@ -166,7 +215,7 @@ export function GamesSection({ user }: GamesProps) {
 // ============================================================================
 type GridMode = 'menu' | 'local' | 'online_menu' | 'online_setup' | 'online_playing';
 
-function GridGame({ players, onBack }: { players: Player[], onBack: () => void }) {
+function GridGame({ players, onBack, isMuted }: { players: Player[], onBack: () => void, isMuted: boolean }) {
     const [mode, setMode] = useState<GridMode>('menu');
     
     // Grid & Joc
@@ -179,12 +228,13 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
     const [searchTerm, setSearchTerm] = useState("");
     const [timeLeft, setTimeLeft] = useState(60);
 
-    // Multiplayer Online (Best of 5)
+    // Multiplayer Online (Best of 5) & Voturi
     const [roomCode, setRoomCode] = useState("");
     const [joinInput, setJoinInput] = useState("");
     const [myRole, setMyRole] = useState<'X' | 'O' | null>(null);
     const [matchScore, setMatchScore] = useState({ X: 0, O: 0 });
     const [seriesWinner, setSeriesWinner] = useState<'X' | 'O' | null>(null);
+    const [skipVotes, setSkipVotes] = useState({ X: false, O: false });
     const socketRef = useRef<Socket | null>(null);
     
     // Refs pentru acces în hook-uri/intervale
@@ -218,16 +268,14 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 
     // ---- SETUP TIMER (Tiki-Taka) ----
     useEffect(() => {
-        setTimeLeft(60); // Resetează timerul la schimbarea turei
-        
+        setTimeLeft(60); 
         if (winner || mode === 'menu' || mode === 'online_menu' || mode === 'online_setup') return;
 
         const interval = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     clearInterval(interval);
-                    
-                    // Doar jucătorul al cărui rând a expirat trimite semnalul pentru a evita dublarea
+                    playSound('timeout', isMuted);
                     const currentTurn = turnRef.current;
                     const canEmit = mode === 'local' || (mode === 'online_playing' && currentTurn === myRole);
                     
@@ -277,11 +325,12 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                     setTurn('X');
                     setWinner(null);
                     setMode('online_playing');
+                    setSkipVotes({ X: false, O: false });
                     if (myRole === 'O') toast.success("Conectat cu succes!", { icon: '✅' });
                 } 
                 else if (payload.action === 'MOVE') {
                     if (payload.markedBy !== myRole) {
-                        applyMove(payload.r, payload.c, payload.player, payload.markedBy);
+                        applyMove(payload.r, payload.c, payload.player, payload.markedBy, true);
                     }
                 } 
                 else if (payload.action === 'SWITCH_TURN') {
@@ -290,7 +339,22 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                     setSearchTerm("");
                     if (payload.nextTurn === myRole) {
                         toast.success(payload.reason === 'timeout' ? "Timpul adversarului a expirat! E rândul tău." : "Adversarul a greșit! E rândul tău.", { icon: '⏱️' });
+                    } else if (payload.reason === 'wrong') {
+                        playSound('wrong', isMuted);
                     }
+                }
+                else if (payload.action === 'SKIP_VOTE') {
+                    setSkipVotes(prev => {
+                        const newVotes = { ...prev, [payload.role]: true };
+                        if (newVotes.X && newVotes.O) {
+                            toast("Ambii jucători au renunțat! Se generează altă grilă...", { icon: '🔄' });
+                            // Hostul inițiază regenerarea după o mică pauză vizuală
+                            if (myRole === 'X') setTimeout(() => generateValidGrid(true), 1000);
+                        } else {
+                            toast(`Adversarul a votat să schimbe grila (1/2)`, { icon: '👀' });
+                        }
+                        return newVotes;
+                    });
                 }
                 else if (payload.action === 'NEXT_MATCH') {
                     setGridRows(payload.gridRows);
@@ -298,14 +362,16 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                     setAnswers({});
                     setTurn('X');
                     setWinner(null);
-                    toast("Host-ul a pornit meciul următor!", { icon: '🔥' });
+                    setTimeLeft(60);
+                    setSkipVotes({ X: false, O: false });
+                    toast("S-a generat o nouă grilă!", { icon: '🔥' });
                 }
             } catch (err) {}
         };
 
         socket.on("receive_message", handleSocketMessage);
         return () => { socket.off("receive_message", handleSocketMessage); };
-    }, [myRole, roomCode]);
+    }, [myRole, roomCode, isMuted]);
 
     const startLocal = () => {
         setMode('local');
@@ -346,37 +412,77 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         onBack();
     };
 
-    // ---- LOGICĂ MECI ----
+    const handleSkipVote = () => {
+        if (mode === 'local') {
+            generateValidGrid(true);
+            return;
+        }
+        
+        if (mode === 'online_playing' && myRole) {
+            setSkipVotes(prev => {
+                const newVotes = { ...prev, [myRole]: true };
+                
+                if (socketRef.current) {
+                    socketRef.current.emit("send_message", {
+                        room: roomCode,
+                        message: JSON.stringify({ action: 'SKIP_VOTE', role: myRole })
+                    });
+                }
+                
+                if (newVotes.X && newVotes.O && myRole === 'X') {
+                    toast("Ambii jucători au renunțat! Se generează altă grilă...", { icon: '🔄' });
+                    setTimeout(() => generateValidGrid(true), 1000);
+                } else if (!newVotes.X || !newVotes.O) {
+                    toast.success("Ai votat pentru schimbarea grilei.");
+                }
+                return newVotes;
+            });
+        }
+    };
+
+    // ---- LOGICĂ MECI (FILTRAT STRICT PE TOP 5 LIGI) ----
     const generateValidGrid = (isNextMatch = false) => {
+        setSkipVotes({ X: false, O: false });
+        
         const tagToPlayers = new Map<string, Set<string>>(); 
         const tagToMeta = new Map<string, GridCriteria>();
         const knownTeamLogos = new Map<string, string>();
         const top5Teams = new Set<string>();
 
-        players.forEach(p => {
+        // 1. Păstrăm exclusiv jucătorii care sunt activi în cele 5 ligi de top
+        const top5Players = players.filter(p => p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
+
+        // 2. Extragem DOAR echipele curente din Top 5
+        top5Players.forEach(p => {
             const tName = p.team_name?.toLowerCase().trim();
             const t = p.team?.toLowerCase().trim();
-            if (p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id))) {
-                if (tName) top5Teams.add(tName);
-                if (t) top5Teams.add(t);
-            }
+            if (tName) top5Teams.add(tName);
+            if (t) top5Teams.add(t);
             if (tName && p.team_logo) knownTeamLogos.set(tName, p.team_logo);
             if (t && p.team_logo) knownTeamLogos.set(t, p.team_logo);
         });
 
-        players.forEach(p => {
+        // 3. Generăm etichetele folosind doar jucătorii corecți
+        top5Players.forEach(p => {
             const tags: GridCriteria[] = [];
             const currentTeam = (p.team_name || p.team)?.toLowerCase().trim();
+            
             if (currentTeam && top5Teams.has(currentTeam)) {
                 tags.push({ type: 'team', value: p.team_name || p.team || "", image: p.team_logo || knownTeamLogos.get(currentTeam) || "" });
             }
+            
             if (Array.isArray(p.past_teams)) {
                 p.past_teams.forEach(pt => {
                     const pastT = pt.toLowerCase().trim();
-                    if (top5Teams.has(pastT)) tags.push({ type: 'team', value: pt, image: knownTeamLogos.get(pastT) || "" });
+                    // Intersecția cu echipele din trecut doar dacă acea echipă este acum în Top 5
+                    if (top5Teams.has(pastT)) {
+                        tags.push({ type: 'team', value: pt, image: knownTeamLogos.get(pastT) || "" });
+                    }
                 });
             }
-            if (p.nationality) {
+            
+            // Fără "Necunoscut"
+            if (p.nationality && !['necunoscut', 'unknown'].includes(p.nationality.toLowerCase().trim())) {
                 tags.push({ type: 'nationality', value: p.nationality, image: getFlagEmoji(p.nationality) });
             }
 
@@ -466,10 +572,14 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         
         if (won && winMark) {
             setWinner(winMark);
+            playSound('win', isMuted);
             toast.success(`Câștigător runda: ${winMark === 'X' ? '❌' : '⚽'} !`, { icon: '🏆' });
             setMatchScore(prev => {
                 const newScore = { ...prev, [winMark!]: prev[winMark!] + 1 };
-                if (newScore[winMark!] >= 3) setSeriesWinner(winMark);
+                if (newScore[winMark!] >= 3) {
+                     setSeriesWinner(winMark);
+                     playSound('win', isMuted);
+                }
                 return newScore;
             });
         } else if (Object.keys(currentAnswers).length === 9) {
@@ -478,7 +588,8 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         }
     };
 
-    const applyMove = (r: number, c: number, player: Player, markedBy: 'X' | 'O') => {
+    const applyMove = (r: number, c: number, player: Player, markedBy: 'X' | 'O', isRemote = false) => {
+        if (!isRemote) playSound('correct', isMuted);
         setAnswers(prev => {
             const newAnswers = { ...prev, [`${r}-${c}`]: { player, markedBy } };
             checkWinCondition(newAnswers);
@@ -491,7 +602,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
         if (!activeCell || winner) return;
         
         if (mode === 'online_playing' && turn !== myRole) {
-            toast.error(`Nu e rândul tău! Așteaptă mutarea lui ${turn === 'X' ? '❌' : '⚽'}`);
+            toast.error(`Nu e rândul tău!`);
             return;
         }
 
@@ -517,6 +628,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
             setActiveCell(null);
             setSearchTerm("");
         } else {
+            playSound('wrong', isMuted);
             toast.error("Răspuns Greșit! Ai pierdut rândul.", { icon: '❌' });
             
             if (mode === 'online_playing' && socketRef.current) {
@@ -689,7 +801,7 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                             {winner === 'Draw' ? 'Egalitate!' : `Runda câștigată de: ${winner === 'X' ? '❌' : '⚽'}`}
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center gap-1">
+                        <div className="flex flex-col items-center gap-2">
                             <div className="text-blue-400 font-black uppercase tracking-widest text-sm flex items-center gap-2">
                                 Muta: <span className="text-2xl leading-none">{turn === 'X' ? '❌' : '⚽'}</span>
                                 {mode === 'online_playing' && turn === myRole && <span className="text-xs text-white bg-blue-600 px-2 py-0.5 rounded-md ml-2">(Tu)</span>}
@@ -697,6 +809,14 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
                             <div className={`flex items-center gap-1.5 text-xl font-black tabular-nums tracking-widest px-3 py-0.5 rounded-lg border-2 transition-colors ${timeLeft <= 10 ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-950 border-slate-800 text-white'}`}>
                                 <Timer className="w-4 h-4" /> 00:{timeLeft.toString().padStart(2, '0')}
                             </div>
+                            
+                            <button 
+                                onClick={handleSkipVote} 
+                                disabled={mode === 'online_playing' && myRole ? skipVotes[myRole] : false}
+                                className="text-[10px] uppercase font-bold tracking-widest bg-slate-800 hover:bg-slate-700 px-4 py-1.5 rounded-lg text-slate-300 transition-colors disabled:opacity-50 border border-slate-700"
+                            >
+                                {mode === 'local' ? 'Schimbă Grila' : `Renunță la grilă (${(skipVotes.X ? 1 : 0) + (skipVotes.O ? 1 : 0)}/2)`}
+                            </button>
                         </div>
                     )}
                 </div>
@@ -819,18 +939,42 @@ function GridGame({ players, onBack }: { players: Player[], onBack: () => void }
 }
 
 // ============================================================================
-// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - CU REVEAL ANIMAT
+// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - VIEȚI, LEADERBOARD, SOUNDS
 // ============================================================================
-function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }) {
+function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBack: () => void, user: any, isMuted: boolean }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
     const [category, setCategory] = useState<'age' | 'height' | 'market_value' | 'rating'>('market_value');
     
     const [score, setScore] = useState(0);
+    const [lives, setLives] = useState(3);
     const [playerA, setPlayerA] = useState<Player | null>(null);
     const [playerB, setPlayerB] = useState<Player | null>(null);
-    
-    // NOU: Starea pentru dezvăluirea rezultatului
     const [revealResult, setRevealResult] = useState<'correct' | 'wrong' | null>(null);
+    
+    // Leaderboard state
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [leaderboard, setLeaderboard] = useState<{name: string, score: number, date: string}[]>([]);
+
+    useEffect(() => {
+        const fetchLeaderboard = async () => {
+            try {
+                const local = JSON.parse(localStorage.getItem('hilo_leaderboard') || '[]');
+                setLeaderboard(local);
+            } catch (e) {}
+        };
+        fetchLeaderboard();
+    }, [gameState]);
+
+    const saveScore = (finalScore: number) => {
+        if (finalScore === 0) return;
+        try {
+            const local = JSON.parse(localStorage.getItem('hilo_leaderboard') || '[]');
+            local.push({ name: user.name || 'Jucător Anonim', score: finalScore, date: new Date().toISOString() });
+            local.sort((a: any, b: any) => b.score - a.score);
+            localStorage.setItem('hilo_leaderboard', JSON.stringify(local.slice(0, 50)));
+            setLeaderboard(local.slice(0, 50));
+        } catch (e) {}
+    };
 
     const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
 
@@ -840,7 +984,6 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
         if (cat === 'rating') return parseFloat(p.statistics_summary?.rating || "0");
         if (cat === 'market_value') {
             if (p.market_value) return p.market_value;
-    
             const rating = parseFloat(p.statistics_summary?.rating || "6.0");
             const age = p.age || 27; 
             const currentTeam = (p.team_name || p.team || "").toLowerCase();
@@ -848,7 +991,6 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
             const position = (p.position || "").toLowerCase();
     
             let baseValue = 2_000_000; 
-    
             if (age <= 18) baseValue *= 5.5;      
             else if (age <= 21) baseValue *= 4.0; 
             else if (age <= 23) baseValue *= 2.8; 
@@ -871,30 +1013,19 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
             
             const giantClubs = ['real madrid', 'manchester city', 'arsenal', 'bayern', 'paris saint germain', 'liverpool', 'barcelona', 'chelsea'];
             const bigClubs = ['juventus', 'inter', 'ac milan', 'manchester united', 'tottenham', 'atletico madrid', 'borussia dortmund', 'napoli'];
-            
             if (giantClubs.some(club => currentTeam.includes(club))) baseValue *= 2.2;
             else if (bigClubs.some(club => currentTeam.includes(club))) baseValue *= 1.5;
-    
-            if (position.includes('attacker') || position.includes('forward') || position.includes('wing') || position.includes('striker')) {
-                baseValue *= 1.3;
-            } else if (position.includes('midfield')) {
-                baseValue *= 1.1;
-            } else if (position.includes('goalkeeper') || position.includes('portar')) {
-                baseValue *= 0.7; 
-            }
+            
+            if (position.includes('attacker') || position.includes('forward') || position.includes('wing') || position.includes('striker')) baseValue *= 1.3;
+            else if (position.includes('midfield')) baseValue *= 1.1;
+            else if (position.includes('goalkeeper') || position.includes('portar')) baseValue *= 0.7; 
     
             if (giantClubs.some(club => currentTeam.includes(club))) {
                 if (age <= 23 && rating >= 6.8) baseValue = Math.max(baseValue, 45_000_000); 
                 else if (age <= 29 && rating >= 6.5) baseValue = Math.max(baseValue, 60_000_000); 
             }
-    
             baseValue = Math.min(Math.max(baseValue, 1_000_000), 200_000_000);
-    
-            if (baseValue > 10_000_000) {
-                return Math.round(baseValue / 1_000_000) * 1_000_000;
-            } else {
-                return Math.round(baseValue / 500_000) * 500_000;
-            }
+            return baseValue > 10_000_000 ? Math.round(baseValue / 1_000_000) * 1_000_000 : Math.round(baseValue / 500_000) * 500_000;
         }
         return 0;
     };
@@ -909,52 +1040,90 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
 
     const startGame = () => {
         const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
-        
         if (validPlayers.length < 10) { toast.error("Nu sunt suficienți jucători în cele 5 ligi de top pentru această categorie."); return; }
         const shuffled = shuffleArray(validPlayers);
-        setPlayerA(shuffled[0]);
-        setPlayerB(shuffled[1]);
-        setScore(0);
-        setRevealResult(null);
-        setGameState('playing');
+        setPlayerA(shuffled[0]); setPlayerB(shuffled[1]); setScore(0); setLives(3); setRevealResult(null); setGameState('playing');
     };
 
     const handleGuess = (guess: 'higher' | 'lower') => {
-        // Previne multiple click-uri pe durata animației
         if (!playerA || !playerB || revealResult) return; 
 
         const valA = getStatValue(playerA, category);
         const valB = getStatValue(playerB, category);
         const isCorrect = (guess === 'higher' && valB >= valA) || (guess === 'lower' && valB <= valA);
 
-        // Afișăm rezultatul
         setRevealResult(isCorrect ? 'correct' : 'wrong');
+        playSound(isCorrect ? 'correct' : 'wrong', isMuted);
 
-        // Așteptăm 1.2 secunde pentru ca utilizatorul să vadă valoarea
         setTimeout(() => {
             if (isCorrect) {
                 setScore(prev => prev + 1);
                 setPlayerA(playerB);
-                
                 const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
                 const shuffled = shuffleArray(validPlayers);
                 const nextPB = shuffled.find(p => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
                 setPlayerB(nextPB);
-                setRevealResult(null); // Resetăm cardul la starea inițială
+                setRevealResult(null); 
             } else {
-                setGameState('gameover');
-                setRevealResult(null); // Resetăm pentru meciul următor
+                if (lives > 1) {
+                    setLives(prev => prev - 1);
+                    toast.error("Răspuns greșit! Ai pierdut o viață.");
+                    setPlayerA(playerB);
+                    const validPlayers = players.filter(p => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
+                    const shuffled = shuffleArray(validPlayers);
+                    const nextPB = shuffled.find(p => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
+                    setPlayerB(nextPB);
+                    setRevealResult(null);
+                } else {
+                    setLives(0);
+                    saveScore(score);
+                    setGameState('gameover');
+                    setRevealResult(null); 
+                }
             }
         }, 1200); 
     };
 
+    const shareScore = () => {
+        const text = `⚽ Football Games Hub - Hi-Lo\n🔥 Categoria: ${category.replace('_', ' ')}\n🏆 Scor final: ${score}\nJoci mai bine? Încearcă și tu!`;
+        navigator.clipboard.writeText(text);
+        toast.success("Scorul tău a fost copiat! Dă-i Paste prietenilor.", { icon: '📋' });
+    };
+
     if (gameState === 'setup') {
+        if (showLeaderboard) {
+            return (
+                <div className="max-w-2xl mx-auto bg-slate-900 rounded-3xl p-8 border-4 border-slate-800 shadow-2xl mt-10">
+                    <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
+                        <button onClick={() => setShowLeaderboard(false)} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
+                        <h2 className="text-xl font-black text-white uppercase tracking-widest flex items-center gap-2"><Trophy className="w-5 h-5 text-yellow-500" /> Clasament Global Hi-Lo</h2>
+                        <div className="w-16"></div>
+                    </div>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {leaderboard.length === 0 ? (
+                            <p className="text-slate-500 text-center font-bold uppercase tracking-widest text-sm py-10">Niciun scor înregistrat încă.</p>
+                        ) : (
+                            leaderboard.map((entry, idx) => (
+                                <div key={idx} className="flex justify-between items-center bg-slate-950 p-4 rounded-xl border border-slate-800">
+                                    <div className="flex items-center gap-4">
+                                        <span className={`text-xl font-black w-8 text-center ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-slate-600'}`}>#{idx + 1}</span>
+                                        <span className="font-bold text-white truncate max-w-[150px] sm:max-w-[300px]">{entry.name}</span>
+                                    </div>
+                                    <span className="font-black text-emerald-400 text-xl">{entry.score} pct</span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="max-w-2xl mx-auto bg-slate-900 rounded-3xl p-8 border-4 border-slate-800 shadow-2xl text-center space-y-8 mt-10">
                 <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4">
                     <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
                     <h2 className="text-xl font-black text-white uppercase tracking-widest">Setup: Hi-Lo</h2>
-                    <div className="w-16"></div>
+                    <button onClick={() => setShowLeaderboard(true)} className="text-yellow-500 hover:text-yellow-400 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><ListOrdered className="w-4 h-4"/> Top 50</button>
                 </div>
                 <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs">Alege criteriul de departajare:</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -964,20 +1133,12 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
                         { id: 'age', label: 'Vârstă' },
                         { id: 'height', label: 'Înălțime' },
                     ].map(c => (
-                        <button 
-                            key={c.id}
-                            onClick={() => setCategory(c.id as any)}
-                            className={`p-4 rounded-2xl border-2 font-black uppercase tracking-widest transition-all ${
-                                category === c.id ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'
-                            }`}
-                        >
+                        <button key={c.id} onClick={() => setCategory(c.id as any)} className={`p-4 rounded-2xl border-2 font-black uppercase tracking-widest transition-all ${category === c.id ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
                             {c.label}
                         </button>
                     ))}
                 </div>
-                <button onClick={startGame} className="w-full bg-emerald-600 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-lg hover:bg-emerald-500 transition-colors border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px]">
-                    Începe Jocul
-                </button>
+                <button onClick={startGame} className="w-full bg-emerald-600 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-lg hover:bg-emerald-500 transition-colors border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px]">Începe Jocul (Ai 3 vieți ❤️)</button>
             </div>
         );
     }
@@ -986,14 +1147,19 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
         return (
             <div className="max-w-lg mx-auto bg-slate-900 rounded-3xl p-8 border-4 border-rose-600/50 shadow-2xl text-center space-y-6 mt-10">
                 <AlertTriangle className="w-16 h-16 text-rose-500 mx-auto mb-2" />
-                <h2 className="text-4xl font-black uppercase tracking-tighter text-white">Fluier Final</h2>
+                <h2 className="text-4xl font-black uppercase tracking-tighter text-white">Fără Vieți Ramase</h2>
                 <div className="bg-slate-950 rounded-2xl p-6 border-2 border-slate-800">
-                    <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-2">Scorul Tău</p>
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-2">Scorul Tău Final</p>
                     <p className="text-6xl font-black text-blue-500 drop-shadow-md">{score}</p>
                 </div>
+                
+                <button onClick={shareScore} className="w-full bg-[#1DA1F2] hover:bg-[#1a91da] text-white p-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-colors border-b-4 border-[#147bba] hover:border-b-2 hover:translate-y-[2px] flex items-center justify-center gap-2">
+                    <Share className="w-5 h-5" /> Trimite Rezultatul
+                </button>
+
                 <div className="flex gap-4">
-                    <button onClick={startGame} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-colors border-b-4 border-blue-800 hover:border-b-2 hover:translate-y-[2px]">Joacă din nou</button>
-                    <button onClick={() => setGameState('setup')} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-colors border-b-4 border-slate-950 hover:border-b-2 hover:translate-y-[2px]">Schimbă Categoria</button>
+                    <button onClick={startGame} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-colors border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px]">Joacă din nou</button>
+                    <button onClick={() => setGameState('setup')} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white p-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-colors border-b-4 border-slate-950 hover:border-b-2 hover:translate-y-[2px]">Meniu Hi-Lo</button>
                 </div>
             </div>
         );
@@ -1005,17 +1171,23 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between bg-slate-900 p-4 rounded-3xl border-2 border-slate-800 shadow-lg">
-                <button onClick={() => setGameState('setup')} className="text-slate-400 hover:text-rose-500 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Renunță</button>
-                <div className="text-white font-black uppercase tracking-widest text-sm flex items-center gap-2">
-                    Categoria: <span className="text-blue-400">{catLabel}</span>
+                <button onClick={() => {saveScore(score); setGameState('setup')}} className="text-slate-400 hover:text-rose-500 flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Renunță</button>
+                <div className="flex items-center gap-4">
+                    <div className="text-white font-black uppercase tracking-widest text-sm hidden sm:flex items-center gap-2">
+                        Categoria: <span className="text-blue-400">{catLabel}</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                        {[1, 2, 3].map(i => (
+                            <Heart key={i} className={`w-4 h-4 sm:w-5 sm:h-5 transition-all ${lives >= i ? 'fill-rose-500 text-rose-500 animate-pulse' : 'fill-transparent text-slate-700'}`} />
+                        ))}
+                    </div>
                 </div>
-                <div className="text-emerald-400 font-black uppercase tracking-widest text-sm">
+                <div className="text-emerald-400 font-black uppercase tracking-widest text-sm bg-emerald-950/30 px-3 py-1.5 rounded-lg">
                     Scor: {score}
                 </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 h-[60vh] min-h-[500px]">
-                
                 {/* JUCĂTOR A (STÂNGA) */}
                 <div className="flex-1 bg-slate-900 rounded-3xl border-4 border-slate-800 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden shadow-2xl">
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950/80 z-0"></div>
@@ -1034,11 +1206,10 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
                     <div className="w-16 h-16 bg-rose-600 rounded-full flex items-center justify-center text-white font-black italic text-2xl border-4 border-slate-950 shadow-[0_0_20px_rgba(225,29,72,0.5)]">VS</div>
                 </div>
 
-                {/* JUCĂTOR B (DREAPTA) - CU TRANZIȚII CULORI */}
+                {/* JUCĂTOR B (DREAPTA) */}
                 <div className={`flex-1 rounded-3xl border-4 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden shadow-2xl transition-colors duration-300 ${
                     revealResult === 'correct' ? 'bg-emerald-900 border-emerald-500' :
-                    revealResult === 'wrong' ? 'bg-rose-900 border-rose-500' :
-                    'bg-slate-900 border-slate-800'
+                    revealResult === 'wrong' ? 'bg-rose-900 border-rose-500' : 'bg-slate-900 border-slate-800'
                 }`}>
                      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950/80 z-0"></div>
                      <div className="relative z-10 flex flex-col items-center w-full">
@@ -1046,12 +1217,9 @@ function HiLoGame({ players, onBack }: { players: Player[], onBack: () => void }
                         <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-2">{playerB?.name}</h2>
                         <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">{playerB?.team_name || playerB?.team}</p>
                         <p className={`text-xs font-black uppercase tracking-widest mb-4 ${
-                            revealResult === 'correct' ? 'text-emerald-300' :
-                            revealResult === 'wrong' ? 'text-rose-300' :
-                            'text-emerald-400'
+                            revealResult === 'correct' ? 'text-emerald-300' : revealResult === 'wrong' ? 'text-rose-300' : 'text-emerald-400'
                         }`}>Are {catLabel}</p>
                         
-                        {/* DEZVĂLUIRE SAU BUTOANE */}
                         {revealResult ? (
                             <div className="animate-in fade-in zoom-in duration-300">
                                 <div className={`text-5xl font-black drop-shadow-md bg-white/10 px-6 py-3 rounded-2xl border border-white/20 ${
