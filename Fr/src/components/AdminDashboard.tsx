@@ -9,13 +9,15 @@ interface ReportedMessage { _id: string; author: string; message: string; imageU
 
 // --- INTERFEȚE STARTING XI ---
 interface XIPlayer {
-    id: string;
+    _id?: string;
+    id?: string; 
     name: string;
     gridRow: number; 
 }
 
 interface StartingXIData {
-    id: string;
+    _id?: string;
+    id?: string;
     teamName: string;
     opponent: string;
     date: string;
@@ -71,11 +73,13 @@ export function AdminDashboard({ user }: { user: any }) {
         const resRepListings = await fetch(`${API_URL}/admin/reported-listings`);
         if (resRepListings.ok) setReportedListings(await resRepListings.json());
 
-        // Fetch pentru Starting XI (LocalStorage momentan)
-        const localXis = JSON.parse(localStorage.getItem('hilo_starting_xis') || '[]');
-        setXis(localXis);
+        // Fetch pentru Starting XI (Din MongoDB)
+        const resXi = await fetch(`${API_URL}/sport/starting-xi`);
+        if (resXi.ok) {
+            setXis(await resXi.json());
+        }
 
-    } catch (err) { toast.error("Eroare la încărcarea datelor."); } 
+    } catch (err) { toast.error("Eroare la încărcarea datelor din baza de date."); } 
     finally { setLoading(false); }
   };
 
@@ -199,15 +203,11 @@ export function AdminDashboard({ user }: { user: any }) {
       } catch(err) { toast.error("Eroare."); }
   };
 
-  // Funcții pentru Admin Starting XI
-  const saveToLocal = (data: StartingXIData[]) => {
-    localStorage.setItem('hilo_starting_xis', JSON.stringify(data));
-    setXis(data);
-  };
+  // --- Funcții pentru Admin Starting XI (API) ---
 
   const getGridRowForSlot = (index: number, form: string) => {
     if (index === 0) return 0; // GK
-    const parts = form.split('-').map(Number); // ex: [4, 3, 3]
+    const parts = form.split('-').map(Number); 
     let sum = 0;
     for (let r = 0; r < parts.length; r++) {
         sum += parts[r];
@@ -235,7 +235,7 @@ export function AdminDashboard({ user }: { user: any }) {
       return `Jucător ${index}`;
   };
 
-  const handleSaveXI = () => {
+  const handleSaveXI = async () => {
     if (!teamName || !opponent || !score || !date) {
         toast.error("Completează toate detaliile meciului!"); return;
     }
@@ -246,25 +246,46 @@ export function AdminDashboard({ user }: { user: any }) {
         toast.error("Trebuie să scrii numele pentru toți cei 11 jucători!"); return;
     }
 
-    const newXI: StartingXIData = {
-        id: Math.random().toString(36).substring(2, 9),
+    const newXI = {
         teamName, opponent, score, date, formation,
         players: slotPlayers as XIPlayer[]
     };
 
-    const updated = [...xis, newXI];
-    saveToLocal(updated);
-    toast.success("Meci salvat cu succes!");
-    
-    setTeamName(""); setOpponent(""); setScore(""); setDate("");
-    setSlotPlayers(Array(11).fill(null));
+    try {
+        const res = await fetch(`${API_URL}/sport/starting-xi`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newXI)
+        });
+
+        if (res.ok) {
+            const savedXI = await res.json();
+            setXis([...xis, savedXI]);
+            toast.success("Meci salvat cu succes în baza de date!");
+            
+            setTeamName(""); setOpponent(""); setScore(""); setDate("");
+            setSlotPlayers(Array(11).fill(null));
+        } else {
+            toast.error("Eroare la salvarea în baza de date.");
+        }
+    } catch (e) {
+        toast.error("Nu s-a putut conecta la server.");
+    }
   };
 
-  const handleDeleteXI = (id: string) => {
-    if(window.confirm("Ești sigur că vrei să ștergi acest meci?")) {
-        const updated = xis.filter(x => x.id !== id);
-        saveToLocal(updated);
-        toast.success("Meci șters.");
+  const handleDeleteXI = async (id: string) => {
+    if(window.confirm("Ești sigur că vrei să ștergi acest meci definitiv?")) {
+        try {
+            const res = await fetch(`${API_URL}/sport/starting-xi/${id}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                setXis(xis.filter(x => (x._id || x.id) !== id));
+                toast.success("Meci șters din baza de date.");
+            }
+        } catch (e) {
+            toast.error("Eroare la ștergerea meciului din baza de date.");
+        }
     }
   };
 
@@ -422,7 +443,7 @@ export function AdminDashboard({ user }: { user: any }) {
                     </div>
                 )}
 
-                {/* 2. LISTINGS TAB (Piața de transferuri/anunțuri) */}
+                {/* 2. LISTINGS TAB */}
                 {activeTab === 'listings' && (
                      <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 dark:border-slate-800">
                         <table className="w-full text-left">
@@ -506,7 +527,6 @@ export function AdminDashboard({ user }: { user: any }) {
                 {/* 4. TAB VAR (RAPORTĂRI) */}
                 {activeTab === 'reports' && (
                     <div>
-                        {/* Secțiunea Raportări Mesaje */}
                         <div className="mb-6">
                             <h3 className="font-black text-lg sm:text-xl flex items-center gap-2 uppercase tracking-widest text-slate-900 dark:text-white">
                                 <Flag className="text-amber-500 w-6 h-6"/> Incidente Teren (Chat)
@@ -558,7 +578,6 @@ export function AdminDashboard({ user }: { user: any }) {
                             )}
                         </div>
 
-                        {/* Secțiunea Raportări Anunțuri */}
                         <div className="mb-6 pt-8 border-t-2 border-slate-100 dark:border-slate-800">
                             <h3 className="font-black text-lg sm:text-xl flex items-center gap-2 uppercase tracking-widest text-slate-900 dark:text-white">
                                 <ShoppingBag className="text-blue-500 w-6 h-6"/> Incidente Transferuri
@@ -601,7 +620,6 @@ export function AdminDashboard({ user }: { user: any }) {
 
                         {totalReports === 0 && reportedMessages.length === 0 && reportedListings.length === 0 && (
                             <div className="text-center py-20 bg-slate-50 dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 mt-6 relative overflow-hidden">
-                                {/* SVG Minge cu Bifa */}
                                 <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,transparent_0,transparent_100px,#10b981_101px,#10b981_105px,transparent_106px)]"></div>
                                 <div className="relative z-10 w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-emerald-500">
                                     <CheckCircle className="w-10 h-10"/>
@@ -616,7 +634,7 @@ export function AdminDashboard({ user }: { user: any }) {
                 {/* 5. TAB PRIMUL 11 (ADMIN) */}
                 {activeTab === 'xi' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Formular Adăugare MANUALĂ */}
+                        {/* Formular Adăugare MANUALĂ API */}
                         <div className="bg-slate-900 p-6 rounded-3xl border-4 border-slate-800 shadow-xl space-y-4">
                             <h3 className="text-lg font-black text-white uppercase tracking-widest mb-4 border-b-2 border-slate-800 pb-2">Adaugă Meci Nou</h3>
                             
@@ -652,7 +670,8 @@ export function AdminDashboard({ user }: { user: any }) {
                                                 onChange={(e) => {
                                                     const newSlots = [...slotPlayers];
                                                     newSlots[idx] = {
-                                                        id: player?.id || Math.random().toString(36).substring(2, 9),
+                                                        _id: player?._id || Math.random().toString(36).substring(2, 9),
+                                                        id: player?._id || Math.random().toString(36).substring(2, 9),
                                                         name: e.target.value,
                                                         gridRow: getGridRowForSlot(idx, formation)
                                                     };
@@ -672,7 +691,7 @@ export function AdminDashboard({ user }: { user: any }) {
                             </button>
                         </div>
 
-                        {/* Lista Meciuri */}
+                        {/* Lista Meciuri DB */}
                         <div className="bg-slate-900 p-6 rounded-3xl border-4 border-slate-800 shadow-xl flex flex-col">
                             <h3 className="text-lg font-black text-white uppercase tracking-widest mb-4 border-b-2 border-slate-800 pb-2">Meciuri Existente</h3>
                             <div className="flex-1 overflow-y-auto space-y-3 pr-2 max-h-[600px]">
@@ -680,12 +699,12 @@ export function AdminDashboard({ user }: { user: any }) {
                                     <p className="text-slate-500 text-center font-bold text-sm uppercase py-10">Nu ai adăugat niciun meci.</p>
                                 ) : (
                                     xis.map(x => (
-                                        <div key={x.id} className="bg-slate-950 border border-slate-700 rounded-xl p-4 flex justify-between items-center group hover:border-slate-500 transition-colors">
+                                        <div key={x._id || x.id} className="bg-slate-950 border border-slate-700 rounded-xl p-4 flex justify-between items-center group hover:border-slate-500 transition-colors">
                                             <div>
                                                 <div className="font-black text-white uppercase text-sm truncate">{x.teamName} vs {x.opponent}</div>
                                                 <div className="text-xs text-slate-400 font-bold uppercase mt-1">{x.date} • {x.formation}</div>
                                             </div>
-                                            <button onClick={() => handleDeleteXI(x.id)} className="bg-rose-900/30 text-rose-500 p-2 rounded-lg hover:bg-rose-600 hover:text-white transition-colors" title="Șterge">
+                                            <button onClick={() => handleDeleteXI(x._id || x.id || '')} className="bg-rose-900/30 text-rose-500 p-2 rounded-lg hover:bg-rose-600 hover:text-white transition-colors" title="Șterge">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
@@ -699,7 +718,7 @@ export function AdminDashboard({ user }: { user: any }) {
             )}
         </div>
 
-        {/* MODAL ADĂUGARE / EDITARE ȘTIRE (Formular de Legitimație) */}
+        {/* MODAL ADĂUGARE / EDITARE ȘTIRE */}
         {showStoryModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
                 <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[92vh] border-4 border-emerald-600/30">
