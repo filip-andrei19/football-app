@@ -52,3 +52,29 @@ exports.triggerSmartSync = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ==========================================================
+// --- NOU: STARTING XI (PRIMUL 11) ---
+// ==========================================================
+exports.addStartingXI = async (req, res) => {
+  await handleRequest(res, sportService.createStartingXI, req.body);
+};
+
+exports.getStartingXIs = async (req, res) => {
+  await handleRequest(res, sportService.getAllStartingXIs);
+};
+
+exports.deleteStartingXI = async (req, res) => {
+  await handleRequest(res, sportService.deleteStartingXI, req.params.id);
+};
+
+// ==========================================================
+// --- NOU: LEADERBOARD HI-LO ---
+// ==========================================================
+exports.addLeaderboardEntry = async (req, res) => {
+  await handleRequest(res, sportService.createLeaderboardEntry, req.body);
+};
+
+exports.getLeaderboard = async (req, res) => {
+  await handleRequest(res, sportService.getLeaderboard);
+};

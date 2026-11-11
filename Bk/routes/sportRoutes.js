@@ -33,4 +33,14 @@ router.get('/coaches', sportController.getCoaches);
 router.post('/matches', auth, validate(createMatchSchema), sportController.addMatch);
 router.get('/matches', sportController.getMatches); 
 
+// --- NOU: RUTE PENTRU STARTING XI (PRIMUL 11) ---
+// Notă: Am lăsat rutele libere momentan, dar poți adăuga middleware-ul 'auth' la POST și DELETE dacă vrei securitate strictă
+router.post('/starting-xi', sportController.addStartingXI);
+router.get('/starting-xi', sportController.getStartingXIs);
+router.delete('/starting-xi/:id', sportController.deleteStartingXI);
+
+// --- NOU: RUTE PENTRU LEADERBOARD HI-LO ---
+router.post('/leaderboard', sportController.addLeaderboardEntry);
+router.get('/leaderboard', sportController.getLeaderboard);
+
 module.exports = router;
