@@ -74,7 +74,7 @@ export function AdminDashboard({ user }: { user: any }) {
         if (resRepListings.ok) setReportedListings(await resRepListings.json());
 
         // Fetch pentru Starting XI (Din MongoDB)
-        const resXi = await fetch(`${API_URL}/sport/starting-xi`);
+        const resXi = await fetch(`${API_URL.replace(/\/api$/, '')}/sport/starting-xi`);
         if (resXi.ok) {
             setXis(await resXi.json());
         }
@@ -252,7 +252,7 @@ export function AdminDashboard({ user }: { user: any }) {
     };
 
     try {
-        const res = await fetch(`${API_URL}/sport/starting-xi`, {
+        const res = await fetch(`${API_URL.replace(/\/api$/, '')}/sport/starting-xi`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newXI)
@@ -276,7 +276,7 @@ export function AdminDashboard({ user }: { user: any }) {
   const handleDeleteXI = async (id: string) => {
     if(window.confirm("Ești sigur că vrei să ștergi acest meci definitiv?")) {
         try {
-            const res = await fetch(`${API_URL}/sport/starting-xi/${id}`, {
+            const res = await fetch(`${API_URL.replace(/\/api$/, '')}/sport/starting-xi/${id}`, {
                 method: 'DELETE'
             });
             if (res.ok) {
