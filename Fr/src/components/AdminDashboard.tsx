@@ -74,7 +74,7 @@ export function AdminDashboard({ user }: { user: any }) {
         if (resRepListings.ok) setReportedListings(await resRepListings.json());
 
         // Fetch pentru Starting XI (Din MongoDB)
-        const resXi = await fetch('https://football-backend-m2a4.onrender.com/api/sport/starting-xi');
+        const resXi = await fetch(`${API_URL}/sport/starting-xi`);
         if (resXi.ok) {
             setXis(await resXi.json());
         }
@@ -246,13 +246,19 @@ export function AdminDashboard({ user }: { user: any }) {
         toast.error("Trebuie să scrii numele pentru toți cei 11 jucători!"); return;
     }
 
+    // ELIMINĂM _id ARTIFICIAL GENERAT DE FRONTEND PENTRU A EVITA EROAREA MONGOOSE (CastError)
+    const cleanPlayers = slotPlayers.map(p => ({
+        name: p!.name,
+        gridRow: p!.gridRow
+    }));
+
     const newXI = {
         teamName, opponent, score, date, formation,
-        players: slotPlayers as XIPlayer[]
+        players: cleanPlayers
     };
 
     try {
-        const res = await fetch('https://football-backend-m2a4.onrender.com/api/sport/starting-xi', {
+        const res = await fetch(`${API_URL}/sport/starting-xi`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newXI)
@@ -266,25 +272,30 @@ export function AdminDashboard({ user }: { user: any }) {
             setTeamName(""); setOpponent(""); setScore(""); setDate("");
             setSlotPlayers(Array(11).fill(null));
         } else {
-            toast.error("Eroare la salvarea în baza de date.");
+            // ACUM AFIȘĂM EROAREA EXACTĂ DE LA BACKEND
+            const errData = await res.json();
+            toast.error(`Eroare backend: ${errData.error || 'Necunoscută'}`);
+            console.error("Eroare detaliată Backend:", errData);
         }
     } catch (e) {
-        toast.error("Nu s-a putut conecta la server.");
+        toast.error("Nu m-am putut conecta la server. Verifică dacă rulează!");
     }
   };
 
   const handleDeleteXI = async (id: string) => {
     if(window.confirm("Ești sigur că vrei să ștergi acest meci definitiv?")) {
         try {
-            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/starting-xi/${id}`, {
+            const res = await fetch(`${API_URL}/sport/starting-xi/${id}`, {
                 method: 'DELETE'
             });
             if (res.ok) {
                 setXis(xis.filter(x => (x._id || x.id) !== id));
                 toast.success("Meci șters din baza de date.");
+            } else {
+                toast.error("A apărut o problemă la ștergerea meciului.");
             }
         } catch (e) {
-            toast.error("Eroare la ștergerea meciului din baza de date.");
+            toast.error("Eroare la conectarea cu baza de date pentru ștergere.");
         }
     }
   };
@@ -669,9 +680,8 @@ export function AdminDashboard({ user }: { user: any }) {
                                                 value={player ? player.name : ''}
                                                 onChange={(e) => {
                                                     const newSlots = [...slotPlayers];
+                                                    // Am scos generarea manuală de `_id` pentru a preveni crash-ul bazei de date!
                                                     newSlots[idx] = {
-                                                        _id: player?._id || Math.random().toString(36).substring(2, 9),
-                                                        id: player?._id || Math.random().toString(36).substring(2, 9),
                                                         name: e.target.value,
                                                         gridRow: getGridRowForSlot(idx, formation)
                                                     };
