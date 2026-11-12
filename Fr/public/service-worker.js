@@ -1,6 +1,6 @@
-// Versiunea 2.60 - Update PWA cu notificare personalizată & Web Push (Modern Arena)
+// Versiunea 2.61 - Update PWA cu notificare personalizată, Web Push & Fix Cache (Modern Arena)
 
-const CACHE_NAME = 'scoutpro-cache-v2.60'; // Nume nou pentru noul cache
+const CACHE_NAME = 'scoutpro-cache-v2.61'; // Nume nou pentru noul cache
 const urlsToCache = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
@@ -24,7 +24,7 @@ self.addEventListener('activate', (event) => {
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
-                    // Ștergem orice cache care nu este cel actual (v2.22)
+                    // Ștergem orice cache care nu este cel actual (v2.61)
                     if (cacheName !== CACHE_NAME) {
                         console.log('Se șterge vechiul echipament (cache):', cacheName);
                         return caches.delete(cacheName);
@@ -39,6 +39,22 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+
+    // 1. Ignoră toate cererile care NU sunt de tip GET (ex: POST, PUT, DELETE)
+    if (event.request.method !== 'GET') {
+        return; // Lasă browserul să le trimită direct pe internet, fără să intervină Service Worker-ul
+    }
+
+    // 2. Ignoră cererile către Sentry, extensii Chrome sau API-ul de backend
+    if (
+        url.hostname.includes('sentry.io') || 
+        url.pathname.includes('/api/') || 
+        url.protocol === 'chrome-extension:'
+    ) {
+        return; // Bypass la cache
+    }
+
     event.respondWith(
         caches.match(event.request).then((response) => response || fetch(event.request))
     );
