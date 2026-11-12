@@ -27,6 +27,9 @@ const { hardResetAndLoad } = require('./services/initialLoad');
 const { runDailySmartSync, runNationalTeamSync } = require('./services/smartSync');
 const { sync7DaysWindow, syncLiveMatches, getFixtureDetailsOnDemand, getLeagueStandingsOnDemand } = require('./services/matchSync');
 
+// --- IMPORT RUTE SPORT (NOU PENTRU STARTING XI) ---
+const sportRoutes = require('./routes/sportRoutes');
+
 const app = express();
 app.set('trust proxy', 1);
 
@@ -297,6 +300,11 @@ const startServer = async () => {
         app.get("/debug-sentry", function mainHandler(req, res) {
             throw new Error("My first Sentry error!");
         });
+
+        // ==========================================
+        // MONTARE RUTE SPORT (PENTRU PRIMUL 11 & LEADERBOARD)
+        // ==========================================
+        app.use('/api/sport', sportRoutes);
 
         app.post('/api/notifications/subscribe', async (req, res) => {
             const { email, subscription } = req.body;
