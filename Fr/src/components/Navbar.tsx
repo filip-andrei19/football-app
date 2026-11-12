@@ -19,73 +19,69 @@ export default function Navbar({ onNavigate }: NavbarProps) {
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  
   const handleMobileNavigate = (section: string) => {
     onNavigate(section);
     setIsMobileMenuOpen(false);
   };
 
   return (
-    // Am modificat 'z-50' în 'z-30' pentru a permite modalelor să se suprapună peste navbar
-    <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center justify-between">
         
-        {/* === LOGO & DESKTOP MENU === */}
-        <div className="mr-4 hidden md:flex">
+        {/* === LEFT SIDE (Mobile Menu Trigger & Logo) === */}
+        <div className="flex items-center">
+          <Button 
+            variant="ghost" 
+            className="md:hidden mr-2 -ml-2" 
+            size="icon"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+          >
+             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+
           <button 
             onClick={() => onNavigate('home')} 
-            className="mr-6 flex items-center space-x-2 outline-none"
+            className="flex items-center space-x-2 outline-none md:mr-6"
           >
-            <span className="hidden font-bold sm:inline-block">
+            <span className="font-bold sm:inline-block">
               CollectorsHub
             </span>
           </button>
-          
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            <button 
-              onClick={() => onNavigate('heroes')}
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              Heroes
-            </button>
-            <button 
-              onClick={() => onNavigate('collectors')} 
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              Hub
-            </button>
-            <button 
-              onClick={() => onNavigate('dashboard')} 
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              Dashboard
-            </button>
-          </nav>
         </div>
+        
+        {/* === CENTER (Desktop Links) === */}
+        <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+          <button 
+            onClick={() => onNavigate('heroes')}
+            className="transition-colors hover:text-foreground/80 text-foreground/60"
+          >
+            Heroes
+          </button>
+          <button 
+            onClick={() => onNavigate('collectors')} 
+            className="transition-colors hover:text-foreground/80 text-foreground/60"
+          >
+            Hub
+          </button>
+          <button 
+            onClick={() => onNavigate('dashboard')} 
+            className="transition-colors hover:text-foreground/80 text-foreground/60"
+          >
+            Dashboard
+          </button>
+        </nav>
 
-        {/* === MOBILE MENU TRIGGER (BUTONUL CU 3 LINII) === */}
-        <Button 
-          variant="ghost" 
-          className="inline-flex md:hidden mr-2" 
-          size="icon"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
-        >
-           {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
-
-        {/* === RIGHT SIDE (SEARCH + USER) === */}
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <div className="w-full flex-1 md:w-auto md:flex-none">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search..." className="pl-8 h-9 md:w-[300px] lg:w-[300px]" />
-            </div>
+        {/* === RIGHT SIDE (Search pe Desktop + User Menu) === */}
+        <div className="flex items-center space-x-2">
+          {/* Căutarea e vizibilă sus doar pe tablete și desktop */}
+          <div className="hidden sm:block relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search..." className="pl-8 h-9 w-[200px] lg:w-[300px]" />
           </div>
           
-          {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
+              <Button variant="ghost" size="icon" className="rounded-full shrink-0">
                 <User className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
@@ -103,31 +99,37 @@ export default function Navbar({ onNavigate }: NavbarProps) {
         </div>
       </div>
 
-      {/* === MOBILE MENU CONTENT (APARE DOAR CÂND E DESCHIS) === */}
+      {/* === MOBILE MENU CONTENT (Dropdown Peste Conținut) === */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t bg-background p-4 animate-in slide-in-from-top-5">
-          <nav className="grid gap-4 text-sm font-medium">
+        <div className="md:hidden absolute top-14 left-0 w-full border-b bg-background p-4 animate-in slide-in-from-top-2 shadow-lg">
+          {/* Bara de search mutată în interiorul meniului pe mobil pentru a nu sparge design-ul */}
+          <div className="relative mb-4 sm:hidden">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search for items, heroes..." className="pl-9 h-10 w-full rounded-xl bg-accent/50" />
+          </div>
+
+          <nav className="grid gap-2 text-sm font-medium">
             <button 
               onClick={() => handleMobileNavigate('home')}
-              className="flex items-center p-2 rounded-md hover:bg-accent hover:text-accent-foreground text-left"
+              className="flex items-center p-3 rounded-lg hover:bg-accent hover:text-accent-foreground text-left font-bold"
             >
               Home / CollectorsHub
             </button>
             <button 
               onClick={() => handleMobileNavigate('heroes')}
-              className="flex items-center p-2 rounded-md hover:bg-accent hover:text-accent-foreground text-left"
+              className="flex items-center p-3 rounded-lg hover:bg-accent hover:text-accent-foreground text-left font-bold"
             >
               Heroes
             </button>
             <button 
               onClick={() => handleMobileNavigate('collectors')}
-              className="flex items-center p-2 rounded-md hover:bg-accent hover:text-accent-foreground text-left"
+              className="flex items-center p-3 rounded-lg hover:bg-accent hover:text-accent-foreground text-left font-bold"
             >
               Hub
             </button>
             <button 
               onClick={() => handleMobileNavigate('dashboard')}
-              className="flex items-center p-2 rounded-md hover:bg-accent hover:text-accent-foreground text-left"
+              className="flex items-center p-3 rounded-lg hover:bg-accent hover:text-accent-foreground text-left font-bold"
             >
               Dashboard
             </button>

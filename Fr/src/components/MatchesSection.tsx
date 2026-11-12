@@ -3,36 +3,14 @@ import { createPortal } from 'react-dom';
 import { io } from 'socket.io-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-    Calendar,
-    Trophy,
-    Activity,
-    X,
-    Globe,
-    User as UserIcon,
-    Star,
-    MapPin,
-    Users,
-    BarChart2,
-    ListOrdered,
-    Clock,
-    Scale,
-    Bookmark,
-    Check,
-    TrendingUp,
-    Swords,
-    History,
-    ArrowUp,
-    ArrowDown,
-    Minus,
-    Heart,
-    Bell,
-    Settings
+    Calendar, Trophy, Activity, X, Globe, User as UserIcon, Star,
+    MapPin, Users, BarChart2, ListOrdered, Clock, Scale, Bookmark,
+    Check, TrendingUp, Swords, History, ArrowUp, ArrowDown, Minus,
+    Heart, Bell, Settings
 } from 'lucide-react';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
-
 const socket = io("https://football-backend-m2a4.onrender.com");
-
 const PRIORITY_LEAGUES = [283, 284, 2, 3, 848, 39, 140, 135, 78, 61];
 
 interface Match {
@@ -118,7 +96,6 @@ interface NotificationPrefs {
     redCards: boolean;
 }
 
-// === FUNCȚII UTILITARE PENTRU WEB PUSH ===
 const urlB64ToUint8Array = (base64String: string) => {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -130,14 +107,9 @@ const urlB64ToUint8Array = (base64String: string) => {
     return outputArray;
 };
 
-// === FUNCȚII DE SCOUTING & GRAFICE ===
 const computeScoutingMetrics = (player: Player) => {
   const stats = player.statistics_summary || {
-    total_goals: 0,
-    total_assists: 0,
-    total_appearances: 0,
-    minutes_played: 0,
-    rating: "0"
+    total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0"
   };
 
   const posLower = (player.position || "").toLowerCase();
@@ -155,7 +127,6 @@ const computeScoutingMetrics = (player: Player) => {
   const minsPerContribution = (goals + assists) > 0 ? Math.round(minutes / (goals + assists)) : 0;
 
   const BASE_SCORE = 19;
-
   let primaryScore = BASE_SCORE;
   let primaryLabel = "Finalizare";
   
@@ -203,9 +174,10 @@ const computeScoutingMetrics = (player: Player) => {
 
 const PlayerRadarChart = ({ primaryPlayer }: { primaryPlayer: Player }) => {
     const m1 = computeScoutingMetrics(primaryPlayer);
-    const size = 230;
+    const isMobile = window.innerWidth < 640;
+    const size = isMobile ? 180 : 230;
     const center = size / 2;
-    const radius = 78;
+    const radius = isMobile ? 60 : 78;
     const axes = m1.radar.map(r => r.label);
 
     const getCoordinates = (index: number, value: number) => {
@@ -228,9 +200,7 @@ const PlayerRadarChart = ({ primaryPlayer }: { primaryPlayer: Player }) => {
                         const { x, y } = getCoordinates(idx, level);
                         return `${x},${y}`;
                     }).join(" ");
-                    return (
-                        <polygon key={level} points={pts} fill="none" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="1" strokeDasharray={level < 100 ? "3 3" : undefined} />
-                    );
+                    return <polygon key={level} points={pts} fill="none" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="1" strokeDasharray={level < 100 ? "3 3" : undefined} />;
                 })}
                 {axes.map((_, idx) => {
                     const end = getCoordinates(idx, 100);
@@ -242,8 +212,8 @@ const PlayerRadarChart = ({ primaryPlayer }: { primaryPlayer: Player }) => {
                     const labelPos = getCoordinates(idx, 120);
                     return (
                         <g key={idx}>
-                            <circle cx={pt1.x} cy={pt1.y} r="4" fill="#facc15" stroke="#fff" strokeWidth="1.5" />
-                            <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" className="text-[10px] font-black fill-slate-700 dark:fill-slate-200 uppercase tracking-wider">
+                            <circle cx={pt1.x} cy={pt1.y} r={isMobile ? "3" : "4"} fill="#facc15" stroke="#fff" strokeWidth="1.5" />
+                            <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" className="text-[8px] sm:text-[10px] font-black fill-slate-700 dark:fill-slate-200 uppercase tracking-wider">
                                 {item.label} ({item.value})
                             </text>
                         </g>
@@ -261,11 +231,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [subFilter, setSubFilter] = useState<'all' | 'live' | 'finished' | 'favorites'>('all');
     
-    // States pentru Sistemul de Notificari & Favorite
     const [favoriteMatches, setFavoriteMatches] = useState<number[]>([]);
     const [favoriteTeams, setFavoriteTeams] = useState<string[]>([]); 
     
-    // Setări personalizate pentru tipul de notificări
     const [showNotifSettings, setShowNotifSettings] = useState(false);
     const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(() => {
         try {
@@ -301,7 +269,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const [lineupViewMode, setLineupViewMode] = useState<'both' | 'home' | 'away'>('both');
 
-    // === PERMISIUNI ȘI ABONARE WEB PUSH ===
     const subscribeToPushNotifications = async (email: string) => {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
         try {
@@ -323,18 +290,14 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email, subscription: subscription })
             });
-        } catch (error) {
-            console.error('Eroare la abonarea Push:', error);
-        }
+        } catch (error) { console.error('Eroare la abonarea Push:', error); }
     };
 
     useEffect(() => {
         if ("Notification" in window) {
             if (Notification.permission === "default") {
                 Notification.requestPermission().then(permission => {
-                    if (permission === "granted" && userEmail) {
-                        subscribeToPushNotifications(userEmail);
-                    }
+                    if (permission === "granted" && userEmail) subscribeToPushNotifications(userEmail);
                 });
             } else if (Notification.permission === "granted" && userEmail) {
                 subscribeToPushNotifications(userEmail);
@@ -364,25 +327,20 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: userEmail })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.user) {
-                        if (data.user.favoriteMatches) setFavoriteMatches(data.user.favoriteMatches);
-                        if (data.user.favoriteTeams) setFavoriteTeams(data.user.favoriteTeams);
-                        if (data.user.scoutWatchlist) {
-                            setWatchlistIds(data.user.scoutWatchlist);
-                            localStorage.setItem('scout_watchlist_ids', JSON.stringify(data.user.scoutWatchlist));
-                        }
+            }).then(res => res.json()).then(data => {
+                if (data.success && data.user) {
+                    if (data.user.favoriteMatches) setFavoriteMatches(data.user.favoriteMatches);
+                    if (data.user.favoriteTeams) setFavoriteTeams(data.user.favoriteTeams);
+                    if (data.user.scoutWatchlist) {
+                        setWatchlistIds(data.user.scoutWatchlist);
+                        localStorage.setItem('scout_watchlist_ids', JSON.stringify(data.user.scoutWatchlist));
                     }
-                })
-                .catch(() => {});
+                }
+            }).catch(() => {});
         }
     }, [userEmail]);
 
-    const localDateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000)
-        .toISOString()
-        .split('T')[0];
+    const localDateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
     const { data: matches = [], isLoading: loading } = useQuery({
         queryKey: ['matches', localDateStr],
@@ -421,19 +379,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         const triggerNotification = (title: string, body: string) => {
                             if (!("Notification" in window) || Notification.permission !== "granted") return;
                             const options = {
-                                body,
-                                icon: updatedMatch.league_logo || '/icon-192.png',
-                                badge: '/icon-192.png',
-                                vibrate: [200, 100, 200, 100, 200],
-                                data: { fixtureId: updatedMatch.fixture_id }
+                                body, icon: updatedMatch.league_logo || '/icon-192.png', badge: '/icon-192.png',
+                                vibrate: [200, 100, 200, 100, 200], data: { fixtureId: updatedMatch.fixture_id }
                             };
-                            
                             if (navigator.serviceWorker) {
-                                navigator.serviceWorker.ready.then(registration => {
-                                    registration.showNotification(title, options);
-                                }).catch(() => {
-                                    new Notification(title, options as any);
-                                });
+                                navigator.serviceWorker.ready.then(reg => { reg.showNotification(title, options); }).catch(() => { new Notification(title, options as any); });
                             } else {
                                 new Notification(title, options as any);
                             }
@@ -453,67 +403,29 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 return oldMatches;
             });
 
-            setSelectedMatchDetails(prev =>
-                prev && prev.fixture_id === updatedMatch.fixture_id ? { ...prev, ...updatedMatch } : prev
-            );
+            setSelectedMatchDetails(prev => prev && prev.fixture_id === updatedMatch.fixture_id ? { ...prev, ...updatedMatch } : prev);
         });
         return () => { socket.off("live_match_update"); };
     }, [favoriteMatches, favoriteTeams, queryClient]);
 
-    useEffect(() => {
-        const handleMessage = (event: MessageEvent) => {
-            if (event.data && event.data.type === 'NAVIGATE_TO_MATCH') {
-                const matchId = event.data.fixtureId;
-                const foundMatch = matches.find((m: Match) => m.fixture_id === Number(matchId));
-                if (foundMatch) {
-                    handleMatchClick(foundMatch);
-                }
-            }
-        };
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.addEventListener('message', handleMessage);
-        }
-        return () => {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.removeEventListener('message', handleMessage);
-            }
-        };
-    }, [matches]);
-
-    const toggleNotifPref = (key: keyof NotificationPrefs) => {
-        setNotifPrefs(prev => ({ ...prev, [key]: !prev[key] }));
-    };
+    const toggleNotifPref = (key: keyof NotificationPrefs) => { setNotifPrefs(prev => ({ ...prev, [key]: !prev[key] })); };
 
     const toggleFavoriteTeam = async (e: React.MouseEvent, teamName: string) => {
         e.stopPropagation();
         if (!userEmail) { alert("Trebuie să ai legitimație (cont) pentru a salva echipe la favorite!"); return; }
-        
         const isFav = favoriteTeams.includes(teamName);
         const newFavTeams = isFav ? favoriteTeams.filter(t => t !== teamName) : [...favoriteTeams, teamName];
         setFavoriteTeams(newFavTeams);
-
         try {
-            await fetch(`https://football-backend-m2a4.onrender.com/api/users/favorite-teams/toggle`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: userEmail, teamName })
-            });
-        } catch (err) {
-            console.error("Eroare la salvarea echipei:", err);
-            setFavoriteTeams(favoriteTeams);
-        }
+            await fetch(`https://football-backend-m2a4.onrender.com/api/users/favorite-teams/toggle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: userEmail, teamName }) });
+        } catch (err) { setFavoriteTeams(favoriteTeams); }
     };
 
     const toggleFavoriteMatch = async (e: React.MouseEvent, fixtureId: number) => {
         e.stopPropagation();
         if (!userEmail) { alert("Trebuie să ai legitimație (cont) pentru a salva meciuri la favorite!"); return; }
         try {
-            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/users/favorite-matches/toggle`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: userEmail, fixtureId })
-            });
+            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/users/favorite-matches/toggle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: userEmail, fixtureId }) });
             const data = await res.json();
             if (data.success) { setFavoriteMatches(data.favoriteMatches); }
         } catch (err) { console.error(err); }
@@ -529,11 +441,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         localStorage.setItem('scout_watchlist_ids', JSON.stringify(updated));
 
         try {
-            await fetch(`https://football-backend-m2a4.onrender.com/api/users/watchlist/toggle`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: userEmail, playerId })
-            });
+            await fetch(`https://football-backend-m2a4.onrender.com/api/users/watchlist/toggle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: userEmail, playerId }) });
         } catch (err) { console.error(err); }
     };
 
@@ -551,13 +459,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         e.stopPropagation();
         const cachedRoster = queryClient.getQueryData(['teamRoster', teamName]);
         if (!cachedRoster) { setLoadingRoster(true); setSelectedTeam(null); }
-
         try {
             const data: any = await queryClient.fetchQuery({
                 queryKey: ['teamRoster', teamName],
                 queryFn: async () => {
                     const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/teams/${encodeURIComponent(teamName)}/roster`);
-                    if (!res.ok) throw new Error("Nu am putut prelua lotul. Echipa încă nu este înregistrată complet la comisie.");
+                    if (!res.ok) throw new Error("Nu am putut prelua lotul.");
                     return res.json();
                 },
                 staleTime: 60 * 60 * 1000, 
@@ -566,7 +473,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         } catch (err: any) { alert(err.message); } finally { setLoadingRoster(false); }
     };
 
-    // Funcția a fost updatată pentru a prelua mereu clasamentul (pentru extra forma H2H)
     const handleMatchClick = async (match: Match) => {
         const cachedDetails = queryClient.getQueryData(['matchDetails', match.fixture_id]);
         if (!cachedDetails) setLoadingMatchDetails(true);
@@ -575,7 +481,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         setLineupViewMode('both');
         setActiveMatchTab(match.status_short === "NS" ? 'h2h' : 'events'); 
 
-        // Extragem clasamentul mereu pentru a asigura că avem Formă recentă dacă lipseste din details
         fetchStandings(match.league_id);
 
         try {
@@ -590,7 +495,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             });
 
             setSelectedMatchDetails(fullData);
-            
             queryClient.setQueriesData<Match[]>({ queryKey: ['matches'] }, (oldMatches) => {
                 if (!oldMatches) return oldMatches;
                 return oldMatches.map(m => (m.fixture_id === fullData.fixture_id ? { ...m, ...fullData } : m));
@@ -601,7 +505,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const fetchStandings = async (leagueId: number) => {
         const cachedStandings = queryClient.getQueryData(['standings', leagueId]);
         if (!cachedStandings) setLoadingStandings(true);
-
         try {
             const data: any = await queryClient.fetchQuery({
                 queryKey: ['standings', leagueId],
@@ -661,18 +564,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const renderStatus = (match: Match) => {
         const status = match.status_short;
         const liveStatuses = ["1H", "2H", "HT", "ET", "P", "BT", "LIVE"];
-        
-        if (status === "NS") {
-            return null; 
-        }
-        
-        if (liveStatuses.includes(status)) {
-            return <span className="text-rose-600 font-black animate-pulse text-[10px] sm:text-xs tracking-widest uppercase">{match.elapsed ? `${match.elapsed}'` : status}</span>;
-        }
-        if (status === "FT" || status === "AET" || status === "PEN") {
-            return <span className="text-slate-400 font-black text-[10px] sm:text-xs uppercase tracking-widest">Final</span>;
-        }
-        return <span className="text-amber-500 font-black text-[10px] sm:text-xs uppercase tracking-widest">{status}</span>;
+        if (status === "NS") return null; 
+        if (liveStatuses.includes(status)) return <span className="text-rose-600 font-black animate-pulse text-[10px] sm:text-xs tracking-widest uppercase">{match.elapsed ? `${match.elapsed}'` : status}</span>;
+        if (status === "FT" || status === "AET" || status === "PEN") return <span className="text-slate-400 font-black text-[9px] sm:text-xs uppercase tracking-widest">Final</span>;
+        return <span className="text-amber-500 font-black text-[9px] sm:text-xs uppercase tracking-widest">{status}</span>;
     };
 
     const translateStatLabel = (type: string) => {
@@ -763,21 +658,23 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         const isGK = pPos === 'G';
         const badges = getPlayerMatchBadges(pName, item?.player?.id);
         const shortName = pName.includes(' ') ? `${pName.split(' ')[0].charAt(0)}. ${pName.split(' ').slice(-1)[0]}` : pName;
+        
         let shirtStyle = isAwayTeam ? "bg-slate-900 text-white border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" : "bg-white text-slate-900 border-slate-300 shadow-[0_0_10px_rgba(255,255,255,0.5)]";
         if (isGK) { shirtStyle = isAwayTeam ? "bg-amber-500 text-slate-950 border-amber-300" : "bg-yellow-400 text-slate-950 border-white"; }
+        
         const ratingNum = pRating ? parseFloat(pRating) : 0;
         const ratingBg = ratingNum >= 7.5 ? "bg-emerald-500" : ratingNum >= 6.8 ? "bg-emerald-600" : ratingNum > 0 ? "bg-amber-500" : "bg-slate-700";
 
         return (
-            <div key={item?.player?.id || `${pName}-${idx}`} onClick={() => handleLineupPlayerClick(pName)} className="cursor-pointer group flex flex-col items-center select-none w-[50px] sm:w-[85px] z-10 mx-1" title={`${pName} (#${pNum}) - Poziție: ${pPos || 'Titular'}`}>
+            <div key={item?.player?.id || `${pName}-${idx}`} onClick={() => handleLineupPlayerClick(pName)} className="cursor-pointer group flex flex-col items-center select-none w-auto sm:w-[85px] z-10 mx-0.5 sm:mx-1" title={`${pName} (#${pNum}) - Poziție: ${pPos || 'Titular'}`}>
                 <div className="relative">
-                    <div className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full ${shirtStyle} font-black text-xs sm:text-base flex items-center justify-center border-[3px] sm:border-4 group-hover:scale-110 transition-transform`}>{pNum}</div>
-                    {ratingNum > 0 && <span className={`absolute -top-1.5 -right-2 sm:-right-3 ${ratingBg} text-white text-[8px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.5 rounded shadow-sm border border-white/30`}>{ratingNum.toFixed(1)}</span>}
-                    {badges.goals > 0 && <span className="absolute -bottom-1 -right-1 sm:-bottom-1.5 sm:-right-2 bg-white text-[8px] sm:text-[10px] rounded-full px-1 shadow border border-slate-200 font-black text-slate-900">⚽{badges.goals > 1 ? badges.goals : ''}</span>}
-                    {(badges.yellow || badges.red) && <span className={`absolute -top-1 -left-1 w-2.5 h-3 sm:w-3 sm:h-4 rounded-sm shadow border border-white/50 ${badges.red ? 'bg-red-600' : 'bg-yellow-400'}`} />}
-                    {badges.subOut && <span className="absolute -bottom-1 -left-1 sm:-bottom-1.5 sm:-left-2 bg-slate-900 text-white text-[7px] sm:text-[8px] rounded-full w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center shadow border border-white/50">🔄</span>}
+                    <div className={`w-7 h-7 sm:w-12 sm:h-12 rounded-full ${shirtStyle} font-black text-[9px] sm:text-base flex items-center justify-center border-2 sm:border-4 group-hover:scale-110 transition-transform`}>{pNum}</div>
+                    {ratingNum > 0 && <span className={`absolute -top-1.5 -right-1 sm:-right-3 ${ratingBg} text-white text-[6px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.5 rounded shadow-sm border border-white/30`}>{ratingNum.toFixed(1)}</span>}
+                    {badges.goals > 0 && <span className="absolute -bottom-1 -right-1 sm:-bottom-1.5 sm:-right-2 bg-white text-[7px] sm:text-[10px] rounded-full px-0.5 sm:px-1 shadow border border-slate-200 font-black text-slate-900">⚽{badges.goals > 1 ? badges.goals : ''}</span>}
+                    {(badges.yellow || badges.red) && <span className={`absolute -top-1 -left-1 w-2 h-2.5 sm:w-3 sm:h-4 rounded-[1px] sm:rounded-sm shadow border border-white/50 ${badges.red ? 'bg-red-600' : 'bg-yellow-400'}`} />}
+                    {badges.subOut && <span className="absolute -bottom-1 -left-1 sm:-bottom-1.5 sm:-left-2 bg-slate-900 text-white text-[6px] sm:text-[8px] rounded-full w-2.5 h-2.5 sm:w-4 sm:h-4 flex items-center justify-center shadow border border-white/50">🔄</span>}
                 </div>
-                <div className="mt-1 bg-slate-950/90 text-white text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md max-w-full text-center border border-white/10 tracking-wide leading-tight w-full break-words">{shortName}</div>
+                <div className="mt-0.5 sm:mt-1 bg-slate-950/90 text-white text-[6px] sm:text-[10px] font-bold px-1 sm:px-1.5 py-0.5 rounded shadow-md max-w-full text-center border border-white/10 tracking-tight sm:tracking-wide leading-tight w-full break-words truncate">{shortName}</div>
             </div>
         );
     };
@@ -786,7 +683,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         let rawHomeForm = selectedMatchDetails?.form?.home;
         let rawAwayForm = selectedMatchDetails?.form?.away;
 
-        // Dacă backend-ul nu trimite forma direct, o scanăm din Clasamentul descărcat
         if ((!rawHomeForm || !rawAwayForm) && standingsData.length > 0) {
             standingsData.forEach(groupTable => {
                 groupTable.forEach((row: any) => {
@@ -804,12 +700,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             let formArr: string[] = [];
             if (Array.isArray(formObj)) formArr = formObj;
             else if (typeof formObj === 'string') formArr = formObj.split('');
-            
             const result = formArr.slice(0, 5);
-            // Dacă nu a jucat încă 5 meciuri, completăm cu '?'
-            while (result.length < 5) {
-                result.push('?');
-            }
+            while (result.length < 5) { result.push('?'); }
             return result;
         };
 
@@ -822,11 +714,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             const getTeamPrestige = (teamName: string) => {
                 if (!teamName) return 60;
                 const t = teamName.toLowerCase();
-                
                 if (t.match(/real madrid|manchester city|bayern|barcelona|liverpool|arsenal|psg|inter|bayer leverkusen/)) return 95;
                 if (t.match(/juventus|milan|atletico|dortmund|chelsea|tottenham|manchester utd|manchester united|napoli|aston villa/)) return 85;
                 if (t.match(/newcastle|leipzig|lazio|roma|atalanta|porto|benfica|sporting|fcsb|cfr cluj|craiova|rapid|dinamo|galatasaray|fenerbahce|besiktas|ajax|psv/)) return 75;
-                
                 return 60;
             };
 
@@ -840,21 +730,17 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             const homePrestige = getTeamPrestige(selectedMatchDetails?.home_team_name || "");
             const awayPrestige = getTeamPrestige(selectedMatchDetails?.away_team_name || "");
-            
             const homeFormPts = calculateFormPoints(realFormHome);
             const awayFormPts = calculateFormPoints(realFormAway);
 
             const homeAdvantage = 5; 
-
             const homeTotal = homePrestige + homeFormPts + homeAdvantage;
             const awayTotal = awayPrestige + awayFormPts;
             const matchTotal = homeTotal + awayTotal;
 
             const diff = Math.abs(homeTotal - awayTotal);
             let drawChance = Math.max(12, 30 - Math.floor(diff / 2));
-            
             const remainingChance = 100 - drawChance;
-            
             let homeChance = Math.round((homeTotal / matchTotal) * remainingChance);
             let awayChance = remainingChance - homeChance;
 
@@ -865,45 +751,45 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             if (res === 'W') return 'bg-emerald-500';
             if (res === 'D') return 'bg-slate-500';
             if (res === 'L') return 'bg-rose-500';
-            return 'bg-slate-700'; // Gri pentru lipsă date (?)
+            return 'bg-slate-700';
         };
 
         return (
-            <div className="space-y-6">
-                <div className="bg-slate-900 rounded-3xl p-5 border-2 border-slate-800 shadow-sm">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-emerald-400 mb-6 flex items-center gap-2 border-b-2 border-slate-800 pb-3">
-                        <Swords className="w-4 h-4" /> Predicția Meciului (Șanse de câștig)
+            <div className="space-y-4 sm:space-y-6">
+                <div className="bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border-2 border-slate-800 shadow-sm">
+                    <h4 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-400 mb-4 sm:mb-6 flex items-center gap-1.5 sm:gap-2 border-b-2 border-slate-800 pb-2 sm:pb-3">
+                        <Swords className="w-3 h-3 sm:w-4 sm:h-4" /> Predicție Câștigător
                     </h4>
-                    <div className="flex items-center gap-4 text-xs font-black uppercase tracking-widest mb-2">
-                        <span className="flex-1 text-emerald-500 text-left">{matchPredictions.home}% {selectedMatchDetails?.home_team_name}</span>
-                        <span className="flex-1 text-slate-500 text-center">{matchPredictions.draw}% Egal</span>
-                        <span className="flex-1 text-blue-500 text-right">{matchPredictions.away}% {selectedMatchDetails?.away_team_name}</span>
+                    <div className="flex items-center gap-2 sm:gap-4 text-[9px] sm:text-xs font-black uppercase tracking-widest mb-1.5 sm:mb-2">
+                        <span className="flex-1 text-emerald-500 text-left truncate">{matchPredictions.home}% <span className="hidden sm:inline">{selectedMatchDetails?.home_team_name}</span></span>
+                        <span className="flex-1 text-slate-500 text-center">{matchPredictions.draw}% <span className="hidden sm:inline">Egal</span></span>
+                        <span className="flex-1 text-blue-500 text-right truncate">{matchPredictions.away}% <span className="hidden sm:inline">{selectedMatchDetails?.away_team_name}</span></span>
                     </div>
-                    <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden flex border border-slate-700">
+                    <div className="w-full h-2 sm:h-3 bg-slate-800 rounded-full overflow-hidden flex border border-slate-700">
                         <div style={{ width: `${matchPredictions.home}%` }} className="bg-emerald-500 h-full transition-all"></div>
                         <div style={{ width: `${matchPredictions.draw}%` }} className="bg-slate-500 h-full transition-all"></div>
                         <div style={{ width: `${matchPredictions.away}%` }} className="bg-blue-500 h-full transition-all"></div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="bg-white dark:bg-slate-950 rounded-3xl p-5 border-2 border-slate-200 dark:border-slate-800">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2 justify-center">
-                            Formă Recentă • {selectedMatchDetails?.home_team_name}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border-2 border-slate-200 dark:border-slate-800">
+                        <h4 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 sm:mb-4 flex items-center justify-center text-center">
+                            Formă {selectedMatchDetails?.home_team_name}
                         </h4>
-                        <div className="flex justify-center gap-2">
+                        <div className="flex justify-center gap-1.5 sm:gap-2">
                             {realFormHome.map((res, i) => (
-                                <div key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs ${formColor(res)} shadow-sm`}>{res}</div>
+                                <div key={i} className={`w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center text-white font-black text-[10px] sm:text-xs ${formColor(res)} shadow-sm`}>{res}</div>
                             ))}
                         </div>
                     </div>
-                    <div className="bg-white dark:bg-slate-950 rounded-3xl p-5 border-2 border-slate-200 dark:border-slate-800">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2 justify-center">
-                            Formă Recentă • {selectedMatchDetails?.away_team_name}
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border-2 border-slate-200 dark:border-slate-800">
+                        <h4 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 sm:mb-4 flex items-center justify-center text-center">
+                            Formă {selectedMatchDetails?.away_team_name}
                         </h4>
-                        <div className="flex justify-center gap-2">
+                        <div className="flex justify-center gap-1.5 sm:gap-2">
                             {realFormAway.map((res, i) => (
-                                <div key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs ${formColor(res)} shadow-sm`}>{res}</div>
+                                <div key={i} className={`w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center text-white font-black text-[10px] sm:text-xs ${formColor(res)} shadow-sm`}>{res}</div>
                             ))}
                         </div>
                     </div>
@@ -985,25 +871,25 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     }, [standingsData, matches, selectedMatchDetails]);
 
     return (
-        <div className="max-w-5xl mx-auto py-8 px-2 sm:px-4 min-h-[80vh] relative z-0 animate-in fade-in duration-500 pb-20">
+        <div className="w-full max-w-5xl mx-auto py-6 sm:py-8 px-2 sm:px-4 min-h-[80vh] relative z-0 animate-in fade-in duration-500 pb-24 sm:pb-20 mt-4 sm:mt-0">
             <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-[0.03] dark:opacity-[0.05]">
                 <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,#000_20px,#000_22px)]"></div>
             </div>
 
             {/* HEADER & DATE SELECTOR BAR */}
-            <div className="mb-8 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900 border-2 border-slate-800 p-4 rounded-3xl shadow-xl text-white">
+            <div className="mb-6 sm:mb-8 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border-2 border-slate-800 p-4 rounded-2xl sm:rounded-3xl shadow-xl text-white">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-emerald-500/20 rounded-2xl border border-emerald-500/30">
-                            <Calendar className="w-6 h-6 text-emerald-400" />
+                        <div className="p-2 sm:p-2.5 bg-emerald-500/20 rounded-xl sm:rounded-2xl border border-emerald-500/30 shrink-0">
+                            <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
                         </div>
                         <div>
-                            <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight">Program Meciuri</h2>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{matches.length} Meciuri găsite în arhivă</p>
+                            <h2 className="text-base sm:text-xl font-black uppercase tracking-tight">Program Meciuri</h2>
+                            <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">{matches.length} Meciuri azi</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 flex-wrap">
+                    <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-950 p-1.5 rounded-xl sm:rounded-2xl border border-slate-800 flex-wrap sm:flex-nowrap overflow-x-auto scrollbar-hide">
                         {[
                             { id: 'all', label: 'Toate' },
                             { id: 'live', label: `Live (${liveCount})` },
@@ -1013,7 +899,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             <button
                                 key={fil.id}
                                 onClick={() => setSubFilter(fil.id as any)}
-                                className={`px-3 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all ${
+                                className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${
                                     subFilter === fil.id
                                         ? 'bg-emerald-600 text-white shadow-md'
                                         : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -1024,31 +910,31 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         ))}
                         <button
                             onClick={() => setShowNotifSettings(true)}
-                            className="px-3 py-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-slate-900 transition-colors ml-auto flex items-center gap-1.5 border border-transparent hover:border-amber-500/30"
+                            className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-slate-400 hover:text-amber-400 hover:bg-slate-900 transition-colors ml-auto flex items-center gap-1.5 border border-transparent hover:border-amber-500/30 shrink-0"
                             title="Setări Notificări"
                         >
-                            <Settings className="w-4 h-4" />
-                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider hidden sm:inline">Alerte</span>
+                            <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span className="text-[9px] sm:text-xs font-black uppercase tracking-wider hidden sm:inline">Alerte</span>
                         </button>
                     </div>
                 </div>
 
-                {/* SCROLLER ZILE */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {/* SCROLLER ZILE - Orizontal pe mobil */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-2 px-2 sm:mx-0 sm:px-0">
                     {dates.map((item, idx) => {
                         const isSelected = item.date.toDateString() === selectedDate.toDateString();
                         return (
                             <button
                                 key={idx}
                                 onClick={() => setSelectedDate(item.date)}
-                                className={`flex-1 min-w-[90px] py-3 px-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${
+                                className={`snap-start flex-1 min-w-[70px] sm:min-w-[90px] py-2 sm:py-3 px-2 sm:px-3 rounded-xl sm:rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${
                                     isSelected
-                                        ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-900/30 scale-[1.02]'
+                                        ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-900/30 scale-105 sm:scale-[1.02]'
                                         : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-emerald-500'
                                 }`}
                             >
-                                <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{item.label}</span>
-                                <span className="text-xs sm:text-sm font-black mt-0.5">
+                                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-80">{item.label}</span>
+                                <span className="text-[10px] sm:text-sm font-black mt-0.5">
                                     {item.date.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' })}
                                 </span>
                             </button>
@@ -1059,29 +945,29 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* LISTA DE MECIURI PE LIGI */}
             {loading ? (
-                <div className="flex flex-col items-center justify-center py-24">
-                    <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
-                    <p className="text-xs font-black uppercase tracking-widest text-slate-400 animate-pulse">Se scanează transmisiile live...</p>
+                <div className="flex flex-col items-center justify-center py-16 sm:py-24">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3 sm:mb-4 shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
+                    <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-400 animate-pulse">Se scanează transmisiile live...</p>
                 </div>
             ) : filteredMatches.length === 0 ? (
-                <div className="text-center py-24 bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 max-w-lg mx-auto p-8 shadow-sm">
-                    <Trophy className="w-12 h-12 text-slate-400 mx-auto mb-4 opacity-40" />
-                    <h3 className="text-xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2">Niciun Meci Disponibil</h3>
-                    <p className="text-slate-500 font-bold uppercase text-xs">Nu există meciuri înregistrate pentru filtrul sau data selectată.</p>
+                <div className="text-center py-16 sm:py-24 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 max-w-lg mx-auto p-6 sm:p-8 shadow-sm">
+                    <Trophy className="w-10 h-10 sm:w-12 sm:h-12 text-slate-400 mx-auto mb-3 sm:mb-4 opacity-40" />
+                    <h3 className="text-lg sm:text-xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-1.5 sm:mb-2">Niciun Meci Disponibil</h3>
+                    <p className="text-slate-500 font-bold uppercase text-[10px] sm:text-xs">Nu există meciuri înregistrate pentru filtrul sau data selectată.</p>
                 </div>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                     {sortedLeagueNames.map((leagueName) => {
                         const leagueData = groupedMatches[leagueName];
                         return (
-                            <div key={leagueName} className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                                <div className="bg-slate-100 dark:bg-slate-950 px-4 sm:px-6 py-3 border-b-2 border-slate-200 dark:border-slate-800 flex items-center gap-3">
+                            <div key={leagueName} className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                                <div className="bg-slate-100 dark:bg-slate-950 px-3 sm:px-6 py-2.5 sm:py-3 border-b-2 border-slate-200 dark:border-slate-800 flex items-center gap-2 sm:gap-3">
                                     {leagueData.logo ? (
-                                        <img src={leagueData.logo} alt={leagueName} className="w-6 h-6 object-contain bg-white rounded-md p-0.5" />
+                                        <img src={leagueData.logo} alt={leagueName} className="w-5 h-5 sm:w-6 sm:h-6 object-contain bg-white rounded p-0.5" />
                                     ) : (
-                                        <Globe className="w-5 h-5 text-emerald-500" />
+                                        <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
                                     )}
-                                    <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white uppercase tracking-wider">{leagueName}</h3>
+                                    <h3 className="font-black text-[10px] sm:text-sm text-slate-900 dark:text-white uppercase tracking-wider truncate">{leagueName}</h3>
                                 </div>
                                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                                     {leagueData.items.map((match: Match) => {
@@ -1090,42 +976,42 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                             <div
                                                 key={match.fixture_id}
                                                 onClick={() => handleMatchClick(match)}
-                                                className="flex items-center justify-between p-3 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer gap-2 group"
+                                                className="flex items-center justify-between p-2.5 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer gap-2 group"
                                             >
                                                 <button
                                                     onClick={(e) => toggleFavoriteMatch(e, match.fixture_id)}
-                                                    className={`p-2 rounded-xl border transition shrink-0 ${isFav ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-amber-500'}`}
+                                                    className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border transition shrink-0 ${isFav ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-amber-500'}`}
                                                     title="Marchează la favorite"
                                                 >
-                                                    <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+                                                    <Heart className={`w-3.5 h-3.5 sm:w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
                                                 </button>
 
-                                                <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 px-2 min-w-0">
-                                                    <div className="flex items-center justify-end gap-2 text-right min-w-0">
-                                                        <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white uppercase tracking-tight truncate" title={match.home_team_name}>
+                                                <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-4 px-1 sm:px-2 min-w-0">
+                                                    <div className="flex items-center justify-end gap-1.5 sm:gap-2 text-right min-w-0">
+                                                        <span className="font-black text-[10px] sm:text-sm text-slate-900 dark:text-white uppercase tracking-tight truncate" title={match.home_team_name}>
                                                             {match.home_team_name}
                                                         </span>
-                                                        <img src={match.home_team_logo} alt="home" className="w-6 h-6 sm:w-7 sm:h-7 object-contain bg-white rounded-lg p-0.5 shrink-0" />
+                                                        <img src={match.home_team_logo} alt="home" className="w-5 h-5 sm:w-7 sm:h-7 object-contain bg-white rounded p-0.5 shrink-0" />
                                                     </div>
 
-                                                    <div className="flex flex-col items-center justify-center px-2 shrink-0 min-w-[75px] sm:min-w-[90px]">
+                                                    <div className="flex flex-col items-center justify-center px-1 sm:px-2 shrink-0 min-w-[60px] sm:min-w-[90px]">
                                                         {match.status_short === "NS" ? (
-                                                            <span className="text-slate-500 font-black text-sm sm:text-base bg-slate-100 dark:bg-slate-800/50 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                            <span className="text-slate-500 font-black text-[10px] sm:text-base bg-slate-100 dark:bg-slate-800/50 px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700">
                                                                 {new Date(match.timestamp * 1000).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}
                                                             </span>
                                                         ) : (
                                                             <div className="flex flex-col items-center">
-                                                                <span className="font-black text-lg sm:text-xl text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800/50 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                                                <span className="font-black text-sm sm:text-xl text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800/50 px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                                                                     {match.home_goals ?? 0} - {match.away_goals ?? 0}
                                                                 </span>
-                                                                <span className="mt-1">{renderStatus(match)}</span>
+                                                                <span className="mt-0.5 sm:mt-1">{renderStatus(match)}</span>
                                                             </div>
                                                         )}
                                                     </div>
 
-                                                    <div className="flex items-center gap-2 text-left min-w-0">
-                                                        <img src={match.away_team_logo} alt="away" className="w-6 h-6 sm:w-7 sm:h-7 object-contain bg-white rounded-lg p-0.5 shrink-0" />
-                                                        <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white uppercase tracking-tight truncate" title={match.away_team_name}>
+                                                    <div className="flex items-center gap-1.5 sm:gap-2 text-left min-w-0">
+                                                        <img src={match.away_team_logo} alt="away" className="w-5 h-5 sm:w-7 sm:h-7 object-contain bg-white rounded p-0.5 shrink-0" />
+                                                        <span className="font-black text-[10px] sm:text-sm text-slate-900 dark:text-white uppercase tracking-tight truncate" title={match.away_team_name}>
                                                             {match.away_team_name}
                                                         </span>
                                                     </div>
@@ -1142,27 +1028,27 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             
             {loadingRoster && createPortal(
                 <div className="fixed inset-0 z-[999999] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
-                    <h3 className="text-xl font-black tracking-widest text-emerald-400 mt-4 animate-pulse uppercase">Scanăm Lotul...</h3>
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
+                    <h3 className="text-lg sm:text-xl font-black tracking-widest text-emerald-400 mt-3 sm:mt-4 animate-pulse uppercase">Scanăm Lotul...</h3>
                 </div>,
                 document.body
             )}
 
-            {/* MODAL SETĂRI NOTIFICĂRI (FLASHSCORE STYLE) */}
+            {/* MODAL SETĂRI NOTIFICĂRI */}
             {showNotifSettings && createPortal(
                 <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in" onClick={() => setShowNotifSettings(false)}>
-                    <div className="bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl border-4 border-slate-700" onClick={e => e.stopPropagation()}>
-                        <div className="bg-slate-950 text-white p-5 border-b-2 border-slate-800 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <Bell className="w-5 h-5 text-amber-500" />
-                                <h2 className="text-lg font-black uppercase tracking-widest">Alerte Live</h2>
+                    <div className="bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl border-2 sm:border-4 border-slate-700" onClick={e => e.stopPropagation()}>
+                        <div className="bg-slate-950 text-white p-4 sm:p-5 border-b-2 border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+                                <h2 className="text-sm sm:text-lg font-black uppercase tracking-widest">Alerte Live</h2>
                             </div>
-                            <button onClick={() => setShowNotifSettings(false)} className="p-2 bg-slate-800 hover:bg-rose-600 rounded-full transition-colors text-white">
+                            <button onClick={() => setShowNotifSettings(false)} className="p-1.5 sm:p-2 bg-slate-800 hover:bg-rose-600 rounded-full transition-colors text-white">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest text-center mb-6">Alege ce primești pentru meciurile/echipele favorite</p>
+                        <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+                            <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest text-center mb-4 sm:mb-6">Alege ce primești pentru meciurile favorite</p>
                             
                             {[
                                 { id: 'goals', label: 'Goluri Marcate', icon: '⚽' },
@@ -1171,16 +1057,16 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 { id: 'fullTime', label: 'Final de Meci', icon: '🏁' },
                                 { id: 'redCards', label: 'Cartonașe Roșii', icon: '🟥' },
                             ].map((setting) => (
-                                <div key={setting.id} className="flex items-center justify-between bg-slate-800 p-4 rounded-2xl border border-slate-700">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xl">{setting.icon}</span>
-                                        <span className="text-sm font-black text-white uppercase tracking-wider">{setting.label}</span>
+                                <div key={setting.id} className="flex items-center justify-between bg-slate-800 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-700">
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                        <span className="text-lg sm:text-xl">{setting.icon}</span>
+                                        <span className="text-[10px] sm:text-sm font-black text-white uppercase tracking-wider">{setting.label}</span>
                                     </div>
                                     <button 
                                         onClick={() => toggleNotifPref(setting.id as keyof NotificationPrefs)}
-                                        className={`w-12 h-6 rounded-full transition-colors relative ${notifPrefs[setting.id as keyof NotificationPrefs] ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                                        className={`w-10 h-5 sm:w-12 sm:h-6 rounded-full transition-colors relative shrink-0 ${notifPrefs[setting.id as keyof NotificationPrefs] ? 'bg-emerald-500' : 'bg-slate-600'}`}
                                     >
-                                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${notifPrefs[setting.id as keyof NotificationPrefs] ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                                        <div className={`w-3.5 h-3.5 sm:w-4 sm:h-4 bg-white rounded-full absolute top-[3px] sm:top-1 transition-transform ${notifPrefs[setting.id as keyof NotificationPrefs] ? 'translate-x-6 sm:translate-x-7' : 'translate-x-1'}`}></div>
                                     </button>
                                 </div>
                             ))}
@@ -1192,40 +1078,43 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* MODAL DETALII MECI */}
             {selectedMatchDetails && createPortal(
-                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
-                        <div className="bg-slate-950 border-b-4 border-emerald-600 text-white p-4 sm:p-6 shrink-0 relative overflow-hidden">
-                            <button onClick={() => setSelectedMatchDetails(null)} className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 bg-slate-800 hover:bg-rose-600 border border-slate-700 rounded-full transition-colors z-20">
-                                <X className="w-5 h-5 font-bold" />
+                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-0 sm:p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
+                    <div className="bg-white dark:bg-slate-900 sm:rounded-3xl w-full h-[100dvh] sm:h-auto sm:max-w-4xl sm:max-h-[92vh] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.5)] sm:border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
+                        <div className="bg-slate-950 border-b-2 sm:border-b-4 border-emerald-600 text-white p-3 sm:p-6 shrink-0 relative overflow-hidden pt-safe">
+                            <button onClick={() => setSelectedMatchDetails(null)} className="absolute top-2 right-2 sm:top-4 sm:right-4 p-1.5 sm:p-2 bg-slate-800 hover:bg-rose-600 border border-slate-700 rounded-lg sm:rounded-full transition-colors z-20">
+                                <X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" />
                             </button>
-                            <div className="flex items-center justify-center gap-2 text-[10px] sm:text-xs text-emerald-400 font-black tracking-widest mb-6 relative z-10 uppercase">
-                                {selectedMatchDetails.league_logo && <img src={selectedMatchDetails.league_logo} alt="league" className="w-5 h-5 object-contain bg-white rounded-md p-0.5" />}
-                                <span>{selectedMatchDetails.league_name}</span>
-                                {selectedMatchDetails.league_round && <span className="text-slate-500">• {selectedMatchDetails.league_round}</span>}
+                            <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-[9px] sm:text-xs text-emerald-400 font-black tracking-widest mb-4 sm:mb-6 relative z-10 uppercase pr-8 sm:pr-0">
+                                {selectedMatchDetails.league_logo && <img src={selectedMatchDetails.league_logo} alt="league" className="w-4 h-4 sm:w-5 sm:h-5 object-contain bg-white rounded p-0.5" />}
+                                <span className="truncate max-w-[150px] sm:max-w-none">{selectedMatchDetails.league_name}</span>
+                                {selectedMatchDetails.league_round && <span className="text-slate-500 hidden sm:inline">• {selectedMatchDetails.league_round}</span>}
                             </div>
-                            <div className="flex items-center justify-between gap-2 sm:gap-6 max-w-2xl mx-auto relative z-10">
+                            
+                            {/* SCOREBOARD-ul COMPACTAT PENTRU MOBIL */}
+                            <div className="flex items-center justify-between gap-1 sm:gap-6 max-w-2xl mx-auto relative z-10 px-1 sm:px-0">
                                 <div onClick={e => handleTeamClick(e, selectedMatchDetails.home_team_name)} className="flex-1 flex flex-col items-center text-center cursor-pointer group">
-                                    <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white rounded-2xl p-2 sm:p-3 shadow-[0_0_15px_rgba(255,255,255,0.2)] mb-3 group-hover:scale-110 transition-transform">
+                                    <div className="w-12 h-12 sm:w-24 sm:h-24 bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-3 shadow-[0_0_15px_rgba(255,255,255,0.2)] mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
                                         <img src={selectedMatchDetails.home_team_logo} alt={selectedMatchDetails.home_team_name} className="w-full h-full object-contain" />
                                     </div>
-                                    <span className="font-black text-xs sm:text-base tracking-tight group-hover:text-emerald-400 transition-colors line-clamp-2">{selectedMatchDetails.home_team_name}</span>
+                                    <span className="font-black text-[9px] sm:text-base tracking-tight group-hover:text-emerald-400 transition-colors line-clamp-2 max-w-[80px] sm:max-w-none">{selectedMatchDetails.home_team_name}</span>
                                 </div>
-                                <div className="flex flex-col items-center justify-center px-2 sm:px-4 shrink-0">
-                                    <div className="text-4xl sm:text-6xl font-black tracking-tighter bg-slate-900 border-2 border-slate-700 shadow-inner px-4 sm:px-6 py-2 sm:py-3 rounded-2xl flex items-center justify-center min-w-[120px] sm:min-w-[160px]">
+                                <div className="flex flex-col items-center justify-center px-1 sm:px-4 shrink-0">
+                                    <div className="text-2xl sm:text-6xl font-black tracking-tighter bg-slate-900 border-2 border-slate-700 shadow-inner px-3 sm:px-6 py-1 sm:py-3 rounded-xl sm:rounded-2xl flex items-center justify-center min-w-[70px] sm:min-w-[160px]">
                                         {selectedMatchDetails.status_short === "NS" ? <span className="text-slate-600">- : -</span> : <span className={["1H", "2H", "HT", "LIVE", "P"].includes(selectedMatchDetails.status_short) ? "text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]" : "text-white"}>{selectedMatchDetails.home_goals ?? 0} - {selectedMatchDetails.away_goals ?? 0}</span>}
                                     </div>
-                                    <div className="mt-3 bg-slate-800 px-3 py-1 rounded border border-slate-700">{renderStatus(selectedMatchDetails)}</div>
+                                    <div className="mt-1.5 sm:mt-3 bg-slate-800 px-2 sm:px-3 py-0.5 sm:py-1 rounded border border-slate-700">{renderStatus(selectedMatchDetails)}</div>
                                 </div>
                                 <div onClick={e => handleTeamClick(e, selectedMatchDetails.away_team_name)} className="flex-1 flex flex-col items-center text-center cursor-pointer group">
-                                    <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white rounded-2xl p-2 sm:p-3 shadow-[0_0_15px_rgba(255,255,255,0.2)] mb-3 group-hover:scale-110 transition-transform">
+                                    <div className="w-12 h-12 sm:w-24 sm:h-24 bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-3 shadow-[0_0_15px_rgba(255,255,255,0.2)] mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
                                         <img src={selectedMatchDetails.away_team_logo} alt={selectedMatchDetails.away_team_name} className="w-full h-full object-contain" />
                                     </div>
-                                    <span className="font-black text-xs sm:text-base tracking-tight group-hover:text-emerald-400 transition-colors line-clamp-2">{selectedMatchDetails.away_team_name}</span>
+                                    <span className="font-black text-[9px] sm:text-base tracking-tight group-hover:text-emerald-400 transition-colors line-clamp-2 max-w-[80px] sm:max-w-none">{selectedMatchDetails.away_team_name}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex border-b-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shrink-0 overflow-x-auto scrollbar-hide">
+                        {/* TABS CULISANTE PE MOBIL */}
+                        <div className="flex border-b-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shrink-0 overflow-x-auto scrollbar-hide snap-x">
                             {[
                                 { id: 'events', label: 'Evenimente', icon: Clock }, 
                                 { id: 'lineups', label: 'Tactică', icon: Users }, 
@@ -1235,18 +1124,18 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             ].map(tab => {
                                 const isActive = activeMatchTab === tab.id;
                                 return (
-                                    <button key={tab.id} onClick={() => { setActiveMatchTab(tab.id as any); if (tab.id === 'standings') fetchStandings(selectedMatchDetails.league_id); }} className={`flex-1 py-3.5 px-4 text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 border-b-4 transition-all whitespace-nowrap ${isActive ? 'border-emerald-600 bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-inner' : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800'}`}>
-                                        <tab.icon className="w-4 h-4" /> {tab.label}
+                                    <button key={tab.id} onClick={() => { setActiveMatchTab(tab.id as any); if (tab.id === 'standings') fetchStandings(selectedMatchDetails.league_id); }} className={`snap-start flex-1 py-3 sm:py-3.5 px-3 sm:px-4 text-[9px] sm:text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1.5 sm:gap-2 border-b-4 transition-all whitespace-nowrap min-w-fit ${isActive ? 'border-emerald-600 bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-inner' : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800'}`}>
+                                        <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> {tab.label}
                                     </button>
                                 )
                             })}
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50 dark:bg-slate-900">
+                        <div className="flex-1 overflow-y-auto p-2 sm:p-6 bg-slate-50 dark:bg-slate-900 pb-safe-bottom">
                             {loadingMatchDetails ? (
                                 <div className="flex flex-col items-center justify-center py-16">
-                                    <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                    <p className="text-xs font-black tracking-widest text-slate-500 uppercase">Se decriptează foaia de joc...</p>
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
+                                    <p className="text-[10px] sm:text-xs font-black tracking-widest text-slate-500 uppercase">Se decriptează foaia de joc...</p>
                                 </div>
                             ) : (
                                 <>
@@ -1255,30 +1144,30 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     {activeMatchTab === 'events' && (
                                         <div>
                                             {!selectedMatchDetails.events || selectedMatchDetails.events.length === 0 ? (
-                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">Niciun eveniment notabil până acum.</div>
+                                                <div className="text-center py-12 sm:py-16 bg-white dark:bg-slate-950 rounded-2xl sm:rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-[10px] sm:text-xs uppercase mx-2 sm:mx-0">Niciun eveniment notabil până acum.</div>
                                             ) : (
-                                                <div className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 divide-y-2 divide-slate-100 dark:divide-slate-800 overflow-hidden shadow-sm">
+                                                <div className="bg-white dark:bg-slate-950 rounded-xl sm:rounded-3xl border sm:border-2 border-slate-200 dark:border-slate-800 divide-y sm:divide-y-2 divide-slate-100 dark:divide-slate-800 overflow-hidden shadow-sm mx-1 sm:mx-0">
                                                     {selectedMatchDetails.ht_home_goals !== null && selectedMatchDetails.ht_home_goals !== undefined && (
-                                                        <div className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-black text-center py-2.5 text-[10px] sm:text-xs tracking-widest uppercase">Pauză (HT) • Scor: <span className="text-slate-900 dark:text-white">{selectedMatchDetails.ht_home_goals} - {selectedMatchDetails.ht_away_goals}</span></div>
+                                                        <div className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-black text-center py-2 sm:py-2.5 text-[9px] sm:text-xs tracking-widest uppercase">Pauză (HT) • Scor: <span className="text-slate-900 dark:text-white">{selectedMatchDetails.ht_home_goals} - {selectedMatchDetails.ht_away_goals}</span></div>
                                                     )}
                                                     {selectedMatchDetails.events.map((ev: any, idx: number) => {
                                                         const isHome = ev.team?.id === selectedMatchDetails.home_team_id;
                                                         let icon = "•";
                                                         if (ev.type === "Goal") icon = "⚽"; else if (ev.type === "Card" && ev.detail === "Yellow Card") icon = "🟨"; else if (ev.type === "Card" && ev.detail?.includes("Red")) icon = "🟥"; else if (ev.type === "subst") icon = "🔄";
                                                         return (
-                                                            <div key={idx} className={`flex items-center p-3 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors ${isHome ? 'flex-row' : 'flex-row-reverse text-right'}`}>
-                                                                <div className="w-12 sm:w-16 font-black text-slate-900 dark:text-white text-center shrink-0 text-sm sm:text-base bg-slate-100 dark:bg-slate-800 py-1 rounded">{ev.time?.elapsed}'</div>
-                                                                <div className="text-xl sm:text-2xl mx-3 sm:mx-4 shrink-0 drop-shadow-md">{icon}</div>
+                                                            <div key={idx} className={`flex items-center p-2.5 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors ${isHome ? 'flex-row' : 'flex-row-reverse text-right'}`}>
+                                                                <div className="w-8 sm:w-16 font-black text-slate-900 dark:text-white text-center shrink-0 text-[10px] sm:text-base bg-slate-100 dark:bg-slate-800 py-0.5 sm:py-1 rounded">{ev.time?.elapsed}'</div>
+                                                                <div className="text-sm sm:text-2xl mx-2 sm:mx-4 shrink-0 drop-shadow-md">{icon}</div>
                                                                 <div className="flex-1 min-w-0">
                                                                     {ev.type === "subst" ? (
                                                                         <>
-                                                                            <p className="font-black text-emerald-600 dark:text-emerald-500 tracking-tight text-xs sm:text-sm truncate uppercase">INTRĂ: {ev.assist?.name || "N/A"}</p>
-                                                                            <p className="text-[10px] font-bold text-rose-600 dark:text-rose-500 tracking-widest truncate mt-0.5 uppercase">IESE: {ev.player?.name}</p>
+                                                                            <p className="font-black text-emerald-600 dark:text-emerald-500 tracking-tight text-[9px] sm:text-sm truncate uppercase">INTRĂ: {ev.assist?.name || "N/A"}</p>
+                                                                            <p className="text-[8px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-500 tracking-widest truncate mt-0.5 uppercase">IESE: {ev.player?.name}</p>
                                                                         </>
                                                                     ) : (
                                                                         <>
-                                                                            <p className="font-black text-slate-900 dark:text-white tracking-tight text-xs sm:text-sm truncate">{ev.player?.name}</p>
-                                                                            {ev.assist?.name && <p className="text-[10px] font-bold text-slate-500 tracking-widest truncate mt-0.5">Pasă: {ev.assist.name}</p>}
+                                                                            <p className="font-black text-slate-900 dark:text-white tracking-tight text-[10px] sm:text-sm truncate">{ev.player?.name}</p>
+                                                                            {ev.assist?.name && <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 tracking-widest truncate mt-0.5">Pasă: {ev.assist.name}</p>}
                                                                         </>
                                                                     )}
                                                                 </div>
@@ -1286,7 +1175,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         );
                                                     })}
                                                     {["FT", "AET", "PEN"].includes(selectedMatchDetails.status_short) && (
-                                                        <div className="bg-slate-900 border-t-4 border-emerald-500 text-white font-black text-center py-3 text-[10px] sm:text-xs tracking-widest uppercase">Fluier Final • <span className="text-emerald-400">Scor Oficial: {selectedMatchDetails.home_goals} - {selectedMatchDetails.away_goals}</span></div>
+                                                        <div className="bg-slate-900 border-t-2 sm:border-t-4 border-emerald-500 text-white font-black text-center py-2 sm:py-3 text-[9px] sm:text-xs tracking-widest uppercase">Fluier Final • <span className="text-emerald-400">Scor: {selectedMatchDetails.home_goals} - {selectedMatchDetails.away_goals}</span></div>
                                                     )}
                                                 </div>
                                             )}
@@ -1296,42 +1185,42 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     {activeMatchTab === 'lineups' && (
                                         <div>
                                             {!selectedMatchDetails.lineups || selectedMatchDetails.lineups.length === 0 ? (
-                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">Antrenorii nu au trimis foaia de joc.</div>
+                                                <div className="text-center py-12 sm:py-16 bg-white dark:bg-slate-950 rounded-2xl sm:rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-[10px] sm:text-xs uppercase mx-2 sm:mx-0">Antrenorii nu au trimis foaia de joc.</div>
                                             ) : (
-                                                <div className="space-y-6">
-                                                    <div className="flex flex-wrap items-center justify-center gap-2 bg-slate-200 dark:bg-slate-800 p-2 rounded-2xl max-w-lg mx-auto shadow-inner border border-slate-300 dark:border-slate-700">
-                                                        <button onClick={() => setLineupViewMode('both')} className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] sm:text-xs font-black tracking-widest transition-all uppercase ${lineupViewMode === 'both' ? 'bg-emerald-600 text-white shadow-md' : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>⚽ Teren (Ambele)</button>
-                                                        <button onClick={() => setLineupViewMode('home')} className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] sm:text-xs font-black tracking-widest transition-all flex items-center justify-center gap-1.5 uppercase ${lineupViewMode === 'home' ? 'bg-slate-900 text-white shadow-md border border-slate-700' : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>
-                                                            {homeTeamLineup?.team?.logo && <img src={homeTeamLineup.team.logo} className="w-4 h-4 object-contain bg-white rounded p-0.5" />}
-                                                            <span className="truncate max-w-[95px]">{homeTeamLineup?.team?.name || 'Gazde'}</span>
+                                                <div className="space-y-4 sm:space-y-6">
+                                                    <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 bg-slate-200 dark:bg-slate-800 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl max-w-lg mx-auto shadow-inner border border-slate-300 dark:border-slate-700">
+                                                        <button onClick={() => setLineupViewMode('both')} className={`flex-1 py-1.5 sm:py-2.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-black tracking-widest transition-all uppercase ${lineupViewMode === 'both' ? 'bg-emerald-600 text-white shadow-md' : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>⚽ Teren <span className="hidden sm:inline">(Ambele)</span></button>
+                                                        <button onClick={() => setLineupViewMode('home')} className={`flex-1 py-1.5 sm:py-2.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-black tracking-widest transition-all flex items-center justify-center gap-1 sm:gap-1.5 uppercase ${lineupViewMode === 'home' ? 'bg-slate-900 text-white shadow-md border border-slate-700' : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>
+                                                            {homeTeamLineup?.team?.logo && <img src={homeTeamLineup.team.logo} className="w-3 h-3 sm:w-4 sm:h-4 object-contain bg-white rounded p-0.5 shrink-0" />}
+                                                            <span className="truncate max-w-[60px] sm:max-w-[95px]">{homeTeamLineup?.team?.name || 'Gazde'}</span>
                                                         </button>
-                                                        <button onClick={() => setLineupViewMode('away')} className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] sm:text-xs font-black tracking-widest transition-all flex items-center justify-center gap-1.5 uppercase ${lineupViewMode === 'away' ? 'bg-blue-600 text-white shadow-md border border-blue-500' : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>
-                                                            {awayTeamLineup?.team?.logo && <img src={awayTeamLineup.team.logo} className="w-4 h-4 object-contain bg-white rounded p-0.5" />}
-                                                            <span className="truncate max-w-[95px]">{awayTeamLineup?.team?.name || 'Oaspeți'}</span>
+                                                        <button onClick={() => setLineupViewMode('away')} className={`flex-1 py-1.5 sm:py-2.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-black tracking-widest transition-all flex items-center justify-center gap-1 sm:gap-1.5 uppercase ${lineupViewMode === 'away' ? 'bg-blue-600 text-white shadow-md border border-blue-500' : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>
+                                                            {awayTeamLineup?.team?.logo && <img src={awayTeamLineup.team.logo} className="w-3 h-3 sm:w-4 sm:h-4 object-contain bg-white rounded p-0.5 shrink-0" />}
+                                                            <span className="truncate max-w-[60px] sm:max-w-[95px]">{awayTeamLineup?.team?.name || 'Oaspeți'}</span>
                                                         </button>
                                                     </div>
 
-                                                    <div className={`relative w-full ${lineupViewMode === 'both' ? 'h-[850px] sm:h-[950px]' : 'h-[600px] sm:h-[700px]'} rounded-3xl overflow-hidden shadow-2xl border-4 sm:border-8 border-slate-900 flex flex-col justify-between p-1 sm:p-5 select-none`} style={{ backgroundImage: 'repeating-linear-gradient(to bottom, #10b981 0px, #10b981 50px, #059669 50px, #059669 100px)' }}>
-                                                        <div className="absolute inset-2 sm:inset-3 border-4 border-white/50 rounded-xl pointer-events-none"></div>
-                                                        <div className="absolute top-1/2 inset-x-2 sm:inset-x-3 h-1 bg-white/50 -translate-y-1/2 pointer-events-none"></div>
-                                                        <div className="absolute top-1/2 left-1/2 w-24 h-24 sm:w-40 sm:h-40 border-4 border-white/50 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-                                                        <div className="absolute top-1/2 left-1/2 w-2 h-2 sm:w-3 sm:h-3 bg-white/70 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+                                                    <div className={`relative w-full ${lineupViewMode === 'both' ? 'h-[750px] sm:h-[950px]' : 'h-[500px] sm:h-[700px]'} rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl border-2 sm:border-8 border-slate-900 flex flex-col justify-between p-1 sm:p-5 select-none`} style={{ backgroundImage: 'repeating-linear-gradient(to bottom, #10b981 0px, #10b981 40px, #059669 40px, #059669 80px)' }}>
+                                                        <div className="absolute inset-1.5 sm:inset-3 border-2 sm:border-4 border-white/50 rounded-lg sm:rounded-xl pointer-events-none"></div>
+                                                        <div className="absolute top-1/2 inset-x-1.5 sm:inset-x-3 h-0.5 sm:h-1 bg-white/50 -translate-y-1/2 pointer-events-none"></div>
+                                                        <div className="absolute top-1/2 left-1/2 w-16 h-16 sm:w-40 sm:h-40 border-2 sm:border-4 border-white/50 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+                                                        <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 sm:w-3 sm:h-3 bg-white/70 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
 
                                                         {lineupViewMode === 'both' ? (
                                                             <>
-                                                                <div className="flex-1 flex flex-col justify-around relative z-10 pb-4 pt-1">
+                                                                <div className="flex-1 flex flex-col justify-around relative z-10 pb-2 sm:pb-4 pt-1">
                                                                     {homeRowsTopDown.map((rowItems, rIdx) => (
                                                                         <div key={`home-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, false, pIdx))}</div>
                                                                     ))}
                                                                 </div>
-                                                                <div className="flex-1 flex flex-col justify-around relative z-10 pt-4 pb-1">
+                                                                <div className="flex-1 flex flex-col justify-around relative z-10 pt-2 sm:pt-4 pb-1">
                                                                     {awayRowsBottomUp.map((rowItems, rIdx) => (
                                                                         <div key={`away-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, true, pIdx))}</div>
                                                                     ))}
                                                                 </div>
                                                             </>
                                                         ) : (
-                                                            <div className="flex-1 flex flex-col justify-around relative z-10 py-4">
+                                                            <div className="flex-1 flex flex-col justify-around relative z-10 py-2 sm:py-4">
                                                                 {singleTeamRows.map((rowItems, rIdx) => (
                                                                     <div key={`single-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, lineupViewMode === 'away', pIdx))}</div>
                                                                 ))}
@@ -1344,12 +1233,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     )}
 
                                     {activeMatchTab === 'stats' && (
-                                        <div>
+                                        <div className="px-1 sm:px-0">
                                             {!selectedMatchDetails.statistics || selectedMatchDetails.statistics.length < 2 ? (
-                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">Datele statistice nu au fost procesate încă.</div>
+                                                <div className="text-center py-12 sm:py-16 bg-white dark:bg-slate-950 rounded-2xl sm:rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-[10px] sm:text-xs uppercase">Datele statistice nu au fost procesate încă.</div>
                                             ) : (
                                                 <>
-                                                    <div className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 p-5 sm:p-8 space-y-6 shadow-sm">
+                                                    <div className="bg-white dark:bg-slate-950 rounded-2xl sm:rounded-3xl border-2 border-slate-200 dark:border-slate-800 p-3 sm:p-8 space-y-4 sm:space-y-6 shadow-sm">
                                                         {(() => {
                                                             const homeStats = selectedMatchDetails.statistics[0].statistics;
                                                             const awayStats = selectedMatchDetails.statistics[1].statistics;
@@ -1363,13 +1252,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                 const homePercent = total > 0 ? Math.round((homeNum / total) * 100) : 50;
                                                                 const awayPercent = 100 - homePercent;
                                                                 return (
-                                                                    <div key={statItem.type} className="space-y-2">
-                                                                        <div className="flex justify-between text-sm sm:text-base font-black">
-                                                                            <span className="text-slate-900 dark:text-white w-10 text-left">{homeValRaw}</span>
-                                                                            <span className="text-slate-400 text-[10px] tracking-widest text-center flex-1 uppercase">{translateStatLabel(statItem.type)}</span>
-                                                                            <span className="text-slate-900 dark:text-white w-10 text-right">{awayValRaw}</span>
+                                                                    <div key={statItem.type} className="space-y-1.5 sm:space-y-2">
+                                                                        <div className="flex justify-between text-[11px] sm:text-base font-black">
+                                                                            <span className="text-slate-900 dark:text-white w-8 sm:w-10 text-left">{homeValRaw}</span>
+                                                                            <span className="text-slate-400 text-[8px] sm:text-[10px] tracking-widest text-center flex-1 uppercase truncate px-1">{translateStatLabel(statItem.type)}</span>
+                                                                            <span className="text-slate-900 dark:text-white w-8 sm:w-10 text-right">{awayValRaw}</span>
                                                                         </div>
-                                                                        <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex border border-slate-200 dark:border-slate-700">
+                                                                        <div className="w-full h-2 sm:h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex border border-slate-200 dark:border-slate-700">
                                                                             <div style={{ width: `${homePercent}%` }} className="bg-emerald-500 h-full transition-all"></div>
                                                                             <div style={{ width: `${awayPercent}%` }} className="bg-blue-500 h-full transition-all"></div>
                                                                         </div>
@@ -1386,48 +1275,48 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     {activeMatchTab === 'standings' && (
                                         <div>
                                             {loadingStandings ? (
-                                                <div className="flex flex-col items-center justify-center py-16">
-                                                    <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                                    <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase">Se preia clasamentul oficial...</span>
+                                                <div className="flex flex-col items-center justify-center py-12 sm:py-16">
+                                                    <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
+                                                    <span className="text-[8px] sm:text-[10px] font-black tracking-widest text-slate-500 uppercase">Se preia clasamentul oficial...</span>
                                                 </div>
                                             ) : !standingsData || standingsData.length === 0 ? (
-                                                <div className="text-center py-16 bg-white dark:bg-slate-950 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-xs uppercase">Clasamentul nu este disponibil în arhivă.</div>
+                                                <div className="text-center py-12 sm:py-16 bg-white dark:bg-slate-950 rounded-2xl sm:rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-[10px] sm:text-xs uppercase mx-2 sm:mx-0">Clasamentul nu este disponibil în arhivă.</div>
                                             ) : (
-                                                <div className="space-y-6">
+                                                <div className="space-y-4 sm:space-y-6 mx-1 sm:mx-0">
                                                     {liveStandings.map((groupTable: any[], gIdx: number) => (
-                                                        <div key={gIdx} className="bg-white dark:bg-slate-950 rounded-3xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm relative">
-                                                            <div className="overflow-x-auto">
-                                                                <table className="w-full text-xs sm:text-sm text-left">
-                                                                    <thead className="bg-slate-900 text-slate-400 font-black tracking-widest text-[9px] border-b-2 border-slate-700 uppercase">
+                                                        <div key={gIdx} className="bg-white dark:bg-slate-950 rounded-xl sm:rounded-3xl border sm:border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm relative">
+                                                            <div className="overflow-x-auto scrollbar-hide">
+                                                                <table className="w-full text-[10px] sm:text-sm text-left min-w-[300px]">
+                                                                    <thead className="bg-slate-900 text-slate-400 font-black tracking-widest text-[8px] sm:text-[9px] border-b sm:border-b-2 border-slate-700 uppercase">
                                                                         <tr>
-                                                                            <th className="py-4 px-3 text-center w-12">Loc</th>
-                                                                            <th className="py-4 px-3 text-center w-8">+/-</th>
-                                                                            <th className="py-4 px-3">Formație</th>
-                                                                            <th className="py-4 px-3 text-center">J</th>
-                                                                            <th className="py-4 px-3 text-center">G</th>
-                                                                            <th className="py-4 px-3 text-center text-emerald-400">PCT</th>
+                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3 text-center w-8 sm:w-12">Loc</th>
+                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3 text-center w-6 sm:w-8">+/-</th>
+                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3">Formație</th>
+                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3 text-center">J</th>
+                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3 text-center">G</th>
+                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3 text-center text-emerald-400">PCT</th>
                                                                         </tr>
                                                                     </thead>
-                                                                    <tbody className="divide-y-2 divide-slate-100 dark:divide-slate-800/50">
+                                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                                                                         {groupTable.map((row: any) => {
                                                                             const isCurrentTeam = row.team?.id === selectedMatchDetails.home_team_id || row.team?.id === selectedMatchDetails.away_team_id;
                                                                             const isPlayingNow = row.isLivePlaying;
                                                                             return (
                                                                                 <tr key={row.team?.id || row.originalRank} onClick={e => row.team?.name && handleTeamClick(e, row.team.name)} className={`cursor-pointer transition-colors ${isPlayingNow ? 'bg-amber-50 dark:bg-amber-900/10' : isCurrentTeam ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-900'}`}>
-                                                                                    <td className="py-3.5 px-3 text-center font-black text-slate-500">{row.liveRank}</td>
-                                                                                    <td className="py-3.5 px-3 text-center">
-                                                                                        {row.trend === 'up' && <ArrowUp className="w-3 h-3 text-emerald-500 mx-auto" />}
-                                                                                        {row.trend === 'down' && <ArrowDown className="w-3 h-3 text-rose-500 mx-auto" />}
-                                                                                        {row.trend === 'same' && <Minus className="w-3 h-3 text-slate-300 dark:text-slate-600 mx-auto" />}
+                                                                                    <td className="py-2 sm:py-3.5 px-1 sm:px-3 text-center font-black text-slate-500">{row.liveRank}</td>
+                                                                                    <td className="py-2 sm:py-3.5 px-1 sm:px-3 text-center">
+                                                                                        {row.trend === 'up' && <ArrowUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500 mx-auto" />}
+                                                                                        {row.trend === 'down' && <ArrowDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-rose-500 mx-auto" />}
+                                                                                        {row.trend === 'same' && <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-300 dark:text-slate-600 mx-auto" />}
                                                                                     </td>
-                                                                                    <td className="py-3.5 px-3 flex items-center gap-2 sm:gap-3">
-                                                                                        <img src={row.team?.logo} alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 object-contain bg-white rounded p-0.5" />
-                                                                                        <span className={`font-black tracking-tight truncate max-w-[120px] sm:max-w-[200px] ${isCurrentTeam ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.team?.name}</span>
-                                                                                        {isPlayingNow && <span className="ml-1 px-1.5 py-0.5 bg-rose-600 text-white text-[8px] font-black rounded uppercase animate-pulse">Live</span>}
+                                                                                    <td className="py-2 sm:py-3.5 px-1 sm:px-3 flex items-center gap-1.5 sm:gap-3">
+                                                                                        <img src={row.team?.logo} alt="logo" className="w-4 h-4 sm:w-6 sm:h-6 object-contain bg-white rounded p-0.5 shrink-0" />
+                                                                                        <span className={`font-black tracking-tight truncate max-w-[85px] sm:max-w-[200px] ${isCurrentTeam ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.team?.name}</span>
+                                                                                        {isPlayingNow && <span className="ml-0.5 sm:ml-1 px-1 sm:px-1.5 py-0.5 bg-rose-600 text-white text-[6px] sm:text-[8px] font-black rounded uppercase animate-pulse">Live</span>}
                                                                                     </td>
-                                                                                    <td className="py-3.5 px-3 text-center font-bold text-slate-500 dark:text-slate-400">{row.livePlayed}</td>
-                                                                                    <td className="py-3.5 px-3 text-center font-bold text-slate-500 dark:text-slate-400 text-[11px]">{row.liveGoalsFor}:{row.liveGoalsAgainst}</td>
-                                                                                    <td className={`py-3.5 px-3 text-center font-black text-sm ${isPlayingNow ? 'text-amber-500' : isCurrentTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.livePoints}</td>
+                                                                                    <td className="py-2 sm:py-3.5 px-1 sm:px-3 text-center font-bold text-slate-500 dark:text-slate-400">{row.livePlayed}</td>
+                                                                                    <td className="py-2 sm:py-3.5 px-1 sm:px-3 text-center font-bold text-slate-500 dark:text-slate-400 text-[9px] sm:text-[11px] whitespace-nowrap">{row.liveGoalsFor}:{row.liveGoalsAgainst}</td>
+                                                                                    <td className={`py-2 sm:py-3.5 px-1 sm:px-3 text-center font-black text-xs sm:text-sm ${isPlayingNow ? 'text-amber-500' : isCurrentTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.livePoints}</td>
                                                                                 </tr>
                                                                             );
                                                                         })}
@@ -1443,344 +1332,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 </>
                             )}
                         </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-
-            {/* MODAL LOT (Echipa Extinsă) */}
-            {selectedTeam && createPortal(
-                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/95 backdrop-blur-md transition-opacity" onClick={() => setSelectedTeam(null)}>
-                    <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-slate-700 animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
-                        <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-4 border-slate-700 relative">
-                            <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-16 sm:pr-0">
-                                <div className="w-14 h-14 sm:w-20 sm:h-20 bg-white p-1.5 sm:p-2 rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-                                    <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" />
-                                </div>
-                                <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                                    <div className="min-w-0">
-                                        <h2 className="text-xl sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{selectedTeam.teamInfo.name}</h2>
-                                        <p className="text-[10px] sm:text-base text-emerald-400 font-bold uppercase tracking-widest mt-0.5 truncate">
-                                            ⚽ LOTUL OFICIAL • {selectedTeam.teamInfo.totalPlayers} Jucători
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="absolute top-4 right-4 sm:static flex items-center gap-2">
-                                <button
-                                    onClick={(e) => toggleFavoriteTeam(e, selectedTeam.teamInfo.name)}
-                                    className={`p-2 sm:p-2.5 rounded-xl border-2 transition ${favoriteTeams.includes(selectedTeam.teamInfo.name) ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-amber-500'}`}
-                                    title="Adaugă Echipa la Favorite (Notificări Live)"
-                                >
-                                    <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${favoriteTeams.includes(selectedTeam.teamInfo.name) ? 'fill-current' : ''}`} />
-                                </button>
-                                <button onClick={() => setSelectedTeam(null)} className="p-2 sm:p-3 bg-white/10 hover:bg-rose-500 rounded-xl sm:rounded-full border border-white/20 hover:border-rose-600 transition-colors text-white shrink-0">
-                                    <X className="w-4 h-4 sm:w-6 sm:h-6" />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="overflow-y-auto p-3 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-6 flex-1">
-                            {[
-                                { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-500 border-amber-500", bg: "bg-amber-500/10" },
-                                { title: "Fundași", data: selectedTeam.squad.Defenders, color: "text-blue-500 border-blue-500", bg: "bg-blue-500/10" },
-                                { title: "Mijlocași", data: selectedTeam.squad.Midfielders, color: "text-emerald-500 border-emerald-500", bg: "bg-emerald-500/10" },
-                                { title: "Atacanți", data: selectedTeam.squad.Attackers, color: "text-rose-500 border-rose-500", bg: "bg-rose-500/10" }
-                            ].map((section, idx) => section.data.length > 0 && (
-                                <div key={idx} className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border-2 border-slate-200 dark:border-slate-800 overflow-hidden">
-                                    <div className={`px-4 py-3 border-l-4 ${section.color} ${section.bg} border-b border-b-slate-100 dark:border-b-slate-800`}>
-                                        <h3 className={`font-black uppercase tracking-wider text-sm sm:text-base ${section.color.split(' ')[0]}`}>{section.title}</h3>
-                                    </div>
-                                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                                        {section.data.map(p => {
-                                            const isSelectedForCompare = compareList.some(item => item._id === p._id);
-                                            return (
-                                                <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between p-3 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition gap-3 cursor-pointer">
-                                                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                                                        <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-10 h-10 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="font-bold text-slate-900 dark:text-white text-sm sm:text-base truncate uppercase tracking-tight" title={p.name}>{p.name}</p>
-                                                            <div className="flex gap-2 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase tracking-wider">
-                                                                {p.age && <span className="shrink-0">{p.age} ani</span>}
-                                                                {p.nationality && <span className="truncate">• {p.nationality}</span>}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 shrink-0">
-                                                        <button
-                                                            onClick={(e) => toggleComparePlayer(e, p)}
-                                                            title="Compară jucătorul"
-                                                            className={`p-2.5 sm:p-3 rounded-xl border-2 transition ${
-                                                                isSelectedForCompare
-                                                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
-                                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600'
-                                                            }`}
-                                                        >
-                                                            {isSelectedForCompare ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : <Scale className="w-4 h-4 sm:w-5 sm:h-5" />}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-
-            {/* MODAL DETALII JUCĂTOR (Scouting Card) */}
-            {selectedPlayer && createPortal(
-                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedPlayer(null)}>
-                    <div className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[95vh] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
-                        <div className="relative bg-slate-900 shrink-0 px-5 sm:px-8 py-6 sm:py-8 border-b-4 border-emerald-500 overflow-hidden">
-                            <button onClick={() => setSelectedPlayer(null)} className="absolute top-4 right-4 bg-slate-950/50 border border-white/20 hover:bg-rose-500 hover:border-rose-500 rounded-full p-2 text-white transition-colors z-20">
-                                <X className="w-5 h-5 font-bold" />
-                            </button>
-                            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 sm:gap-6 relative z-10">
-                                <img src={selectedPlayer.image || GENERIC_USER_IMAGE} alt={selectedPlayer.name} className="w-32 h-32 md:w-40 md:h-40 rounded-2xl object-cover border-4 border-white shadow-2xl bg-slate-800 shrink-0" onError={e => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
-                                <div className="text-white text-center sm:text-left flex-1 min-w-0">
-                                    <h2 className="text-3xl md:text-5xl font-black tracking-tighter break-words whitespace-normal drop-shadow-md leading-tight mb-2 uppercase">{selectedPlayer.name}</h2>
-                                    <div className="flex items-center justify-center sm:justify-start gap-2">
-                                        {selectedPlayer.team_logo && <img src={selectedPlayer.team_logo} alt="logo" className="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-md p-1 object-contain" />}
-                                        <span className="font-bold text-lg sm:text-xl text-emerald-400 tracking-widest truncate uppercase">{selectedPlayer.team_name || selectedPlayer.team}</span>
-                                    </div>
-                                </div>
-                                <div className="flex sm:flex-col gap-2 shrink-0 mt-4 sm:mt-0">
-                                    <button
-                                        onClick={(e) => toggleWatchlist(e, selectedPlayer)}
-                                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 border-b-4 transition ${
-                                            watchlistIds.includes(selectedPlayer._id)
-                                                ? 'bg-amber-500 border-amber-700 text-slate-950'
-                                                : 'bg-white border-slate-300 text-slate-900 hover:bg-emerald-50'
-                                        }`}
-                                    >
-                                        <Bookmark className="w-4 h-4 fill-current" />
-                                        {watchlistIds.includes(selectedPlayer._id) ? 'În Listă' : 'Listă'}
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            toggleComparePlayer(e, selectedPlayer);
-                                            setSelectedPlayer(null);
-                                        }}
-                                        className="px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-slate-800 border-b-4 border-slate-950 hover:bg-slate-700 text-white flex items-center gap-2 transition"
-                                    >
-                                        <Scale className="w-4 h-4" /> Compară
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50 dark:bg-slate-950">
-                            <div className="flex flex-wrap justify-center sm:justify-start gap-3 mb-8">
-                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black tracking-wider text-slate-800 dark:text-slate-200 uppercase">
-                                    <Globe className="w-4 h-4 text-emerald-500" /> {selectedPlayer.nationality || "N/A"}
-                                </div>
-                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black tracking-wider text-slate-800 dark:text-slate-200 uppercase">
-                                    <UserIcon className="w-4 h-4 text-emerald-500" /> {selectedPlayer.age ? `${selectedPlayer.age} ANI` : "N/A"}
-                                </div>
-                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-black tracking-wider text-slate-800 dark:text-slate-200 uppercase">
-                                    <Activity className="w-4 h-4 text-emerald-500" /> {selectedPlayer.height || "-"} / {selectedPlayer.weight || "-"}
-                                </div>
-                                <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/40 px-4 py-2 rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-xs sm:text-sm font-black tracking-wider text-emerald-800 dark:text-emerald-400 uppercase">
-                                    {selectedPlayer.position || "N/A"}
-                                </div>
-                            </div>
-
-                            <h3 className="text-lg font-black tracking-widest text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b-2 border-emerald-500/20 pb-2 uppercase">
-                                <Trophy className="w-6 h-6 text-amber-500" /> Cifrele Sezonului
-                            </h3>
-                            
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-10">
-                                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center shadow-sm">
-                                    <span className="block text-3xl font-black text-slate-900 dark:text-white leading-none">{selectedPlayer.statistics_summary?.total_appearances || 0}</span>
-                                    <span className="text-[10px] tracking-widest text-slate-400 font-bold mt-2 uppercase">Meciuri</span>
-                                </div>
-                                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center border-b-4 border-b-emerald-500 shadow-sm">
-                                    <span className="block text-3xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{selectedPlayer.statistics_summary?.total_goals || 0}</span>
-                                    <span className="text-[10px] tracking-widest text-slate-400 font-bold mt-2 uppercase">Goluri</span>
-                                </div>
-                                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center border-b-4 border-b-blue-500 shadow-sm">
-                                    <span className="block text-3xl font-black text-blue-600 dark:text-blue-400 leading-none">{selectedPlayer.statistics_summary?.total_assists || 0}</span>
-                                    <span className="text-[10px] tracking-widest text-slate-400 font-bold mt-2 uppercase">Pase Dec.</span>
-                                </div>
-                                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center shadow-sm">
-                                    <span className="block text-3xl font-black text-slate-900 dark:text-white leading-none">{selectedPlayer.statistics_summary?.minutes_played || 0}'</span>
-                                    <span className="text-[10px] tracking-widest text-slate-400 font-bold mt-2 uppercase">Minute</span>
-                                </div>
-                                <div className="bg-amber-50/50 dark:bg-amber-900/10 p-4 rounded-2xl border-2 border-amber-300 dark:border-amber-700 text-center flex flex-col justify-center shadow-sm">
-                                    <span className="block text-3xl font-black text-amber-500 leading-none">{selectedPlayer.statistics_summary?.rating ? parseFloat(selectedPlayer.statistics_summary.rating).toFixed(2) : "-"}</span>
-                                    <span className="text-[10px] tracking-widest text-amber-600/80 font-bold mt-2 uppercase">SofaScore</span>
-                                </div>
-                            </div>
-
-                            {(() => {
-                                const m = computeScoutingMetrics(selectedPlayer);
-                                return (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-900 p-6 rounded-3xl shadow-xl mb-10 border-4 border-emerald-600/30">
-                                        <div>
-                                            <h4 className="text-xs font-black uppercase tracking-widest text-emerald-400 mb-4 flex items-center gap-2">
-                                                <Activity className="w-4 h-4" /> Analiza Scouter (Radar)
-                                            </h4>
-                                            <PlayerRadarChart primaryPlayer={selectedPlayer} />
-                                        </div>
-                                        <div className="space-y-4 flex flex-col justify-center">
-                                            <h4 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
-                                                <TrendingUp className="w-4 h-4" /> Randament Raportat la 90 Minute
-                                            </h4>
-                                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                                                <div className="bg-slate-800 p-4 rounded-2xl border-2 border-emerald-500/30 text-center">
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Goluri / 90'</span>
-                                                    <p className="text-3xl font-black text-white mt-1">{m.goalsPer90}</p>
-                                                </div>
-                                                <div className="bg-slate-800 p-4 rounded-2xl border-2 border-blue-500/30 text-center">
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Assist / 90'</span>
-                                                    <p className="text-3xl font-black text-white mt-1">{m.assistsPer90}</p>
-                                                </div>
-                                                <div className="bg-slate-800 p-4 rounded-2xl border-2 border-amber-500/30 text-center">
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">Contribuții (G+A)/90'</span>
-                                                    <p className="text-3xl font-black text-amber-400 mt-1">{m.contributionsPer90}</p>
-                                                </div>
-                                                <div className="bg-slate-800 p-4 rounded-2xl border-2 border-slate-700 text-center">
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Min/Contribuție</span>
-                                                    <p className="text-3xl font-black text-white mt-1">{m.minsPerContribution > 0 ? `${m.minsPerContribution}'` : '-'}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-
-            {/* BARA DE COMPARARE JUCĂTORI (Plutitoare) */}
-            {compareList.length > 0 && createPortal(
-                <div className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-[999999] bg-slate-950 px-4 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
-                    <div className="flex items-center gap-3 overflow-hidden">
-                        <Scale className="w-6 h-6 text-emerald-400 shrink-0 animate-pulse" />
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            {compareList.map((p) => (
-                                <div key={p._id} className="flex items-center gap-2 bg-slate-800 border border-slate-600 pl-1 pr-2 py-1 rounded-xl text-xs font-black uppercase tracking-wider text-white truncate">
-                                    <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-6 h-6 rounded-md object-cover" />
-                                    <span className="truncate max-w-[80px] sm:max-w-[120px]">{p.name}</span>
-                                    <button onClick={(e) => toggleComparePlayer(e, p)} className="text-slate-400 hover:text-rose-400 ml-1 bg-slate-900 p-0.5 rounded">
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ))}
-                            {compareList.length === 1 && (
-                                <span className="text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-widest hidden sm:inline border border-dashed border-emerald-500/50 px-2 py-1 rounded-lg">
-                                    + Selectează Adversar
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                        <button
-                            disabled={compareList.length < 2}
-                            onClick={() => setShowCompareModal(true)}
-                            className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition border-b-4 ${
-                                compareList.length === 2
-                                    ? 'bg-emerald-500 border-emerald-700 text-slate-950 hover:bg-emerald-400 hover:translate-y-[2px] hover:border-b-2'
-                                    : 'bg-slate-800 border-slate-900 text-slate-500 cursor-not-allowed'
-                            }`}
-                        >
-                            VS ({compareList.length}/2)
-                        </button>
-                    </div>
-                </div>,
-                document.body
-            )}
-
-            {/* MODALUL PRINCIPAL DE COMPARARE "MECI DIRECT" */}
-            {showCompareModal && compareList.length === 2 && createPortal(
-                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowCompareModal(false)}>
-                    <div className="bg-slate-900 w-full max-w-4xl max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border-4 border-emerald-600/50" onClick={(e) => e.stopPropagation()}>
-                        <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-center justify-between border-b-2 border-emerald-600/30">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-500/20 rounded-lg">
-                                    <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
-                                </div>
-                                <h2 className="text-base sm:text-2xl font-black uppercase tracking-widest">
-                                    MECI DIRECT: <span className="text-emerald-400">Analiză</span>
-                                </h2>
-                            </div>
-                            <button onClick={() => setShowCompareModal(false)} className="p-2.5 bg-slate-800 hover:bg-rose-500 hover:border-rose-500 border border-slate-700 rounded-full transition text-white">
-                                <X className="w-5 h-5 font-bold" />
-                            </button>
-                        </div>
-
-                        {(() => {
-                            const p1 = compareList[0];
-                            const p2 = compareList[1];
-                            const m1 = computeScoutingMetrics(p1);
-                            const m2 = computeScoutingMetrics(p2);
-
-                            const rows = [
-                                { label: "Rating SofaScore", v1: m1.rating, v2: m2.rating, format: (v: number) => (v > 0 ? v.toFixed(2) : "-") },
-                                { label: "Meciuri Jucate", v1: m1.apps, v2: m2.apps, format: (v: number) => String(v) },
-                                { label: "Minute Jucate", v1: m1.minutes, v2: m2.minutes, format: (v: number) => `${v}'` },
-                                { label: "Total Goluri", v1: m1.goals, v2: m2.goals, format: (v: number) => String(v) },
-                                { label: "Pase Decisive", v1: m1.assists, v2: m2.assists, format: (v: number) => String(v) },
-                                { label: "Goluri / 90'", v1: m1.goalsPer90, v2: m2.goalsPer90, format: (v: number) => String(v) },
-                                { label: "Contribuții / 90'", v1: m1.contributionsPer90, v2: m2.contributionsPer90, format: (v: number) => String(v) }
-                            ];
-
-                            return (
-                                <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-900 space-y-6">
-                                    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 sm:gap-4 items-center bg-slate-800 p-4 sm:p-6 rounded-3xl border-2 border-slate-700 relative overflow-hidden">
-                                        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1 bg-slate-700/50 skew-x-[-15deg]"></div>
-                                        <div className="flex flex-col items-center text-center relative z-10">
-                                            <img src={p1.image || GENERIC_USER_IMAGE} alt={p1.name} className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.3)] mb-3 bg-white" />
-                                            <h3 className="font-black text-sm sm:text-xl text-white uppercase tracking-tight">{p1.name}</h3>
-                                            <span className="text-[10px] sm:text-xs font-black tracking-widest text-emerald-400 mt-1 uppercase bg-emerald-900/40 px-2 py-1 rounded">{p1.team || p1.team_name}</span>
-                                        </div>
-                                        <div className="relative z-10 flex flex-col items-center justify-center">
-                                            <span className="text-3xl sm:text-5xl font-black italic text-slate-700 tracking-tighter">VS</span>
-                                        </div>
-                                        <div className="flex flex-col items-center text-center relative z-10">
-                                            <img src={p2.image || GENERIC_USER_IMAGE} alt={p2.name} className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] mb-3 bg-white" />
-                                            <h3 className="font-black text-sm sm:text-xl text-white uppercase tracking-tight">{p2.name}</h3>
-                                            <span className="text-[10px] sm:text-xs font-black tracking-widest text-blue-400 mt-1 uppercase bg-blue-900/40 px-2 py-1 rounded">{p2.team || p2.team_name}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-slate-800 p-4 sm:p-8 rounded-3xl border-2 border-slate-700 space-y-5">
-                                        {rows.map((r, idx) => {
-                                            const total = r.v1 + r.v2;
-                                            const p1Pct = total > 0 ? Math.round((r.v1 / total) * 100) : 50;
-                                            const p2Pct = 100 - p1Pct;
-                                            const p1Wins = r.v1 > r.v2;
-                                            const p2Wins = r.v2 > r.v1;
-                                            const isTie = r.v1 === r.v2;
-
-                                            return (
-                                                <div key={idx} className="space-y-2">
-                                                    <div className="flex justify-between text-xs sm:text-sm font-black uppercase tracking-widest">
-                                                        <span className={p1Wins ? "text-yellow-400" : (isTie ? "text-slate-400" : "text-slate-500")}>{r.format(r.v1)}</span>
-                                                        <span className="text-slate-300">{r.label}</span>
-                                                        <span className={p2Wins ? "text-blue-400" : (isTie ? "text-slate-400" : "text-slate-500")}>{r.format(r.v2)}</span>
-                                                    </div>
-                                                    <div className="w-full h-3 sm:h-4 bg-slate-900 rounded-sm overflow-hidden flex border border-slate-700">
-                                                        <div style={{ width: `${p1Pct}%` }} className="bg-gradient-to-r from-yellow-600 to-yellow-400 h-full transition-all relative">
-                                                            {p1Wins && <div className="absolute right-0 top-0 bottom-0 w-1 bg-white"></div>}
-                                                        </div>
-                                                        <div style={{ width: `${p2Pct}%` }} className="bg-gradient-to-l from-blue-700 to-blue-500 h-full transition-all relative">
-                                                            {p2Wins && <div className="absolute left-0 top-0 bottom-0 w-1 bg-white"></div>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            );
-                        })()}
                     </div>
                 </div>,
                 document.body
