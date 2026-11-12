@@ -58,6 +58,9 @@ interface StartingXIData {
     date: string;
     score: string;
     formation: string; 
+    teamColor?: string;     // NOU
+    opponentColor?: string; // NOU
+    isHome?: boolean;       // NOU
     players: XIPlayer[];
 }
 
@@ -378,9 +381,22 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 
                 <div className="flex-1 text-center flex flex-col items-center">
                     <div className="flex items-center gap-6 justify-center w-full">
-                        <div className="text-xl sm:text-3xl font-black text-white uppercase tracking-tighter truncate max-w-[120px] sm:max-w-[200px] text-right">{match.teamName}</div>
-                        <div className="bg-slate-800 px-4 py-1.5 rounded-xl border border-slate-700 font-black text-emerald-400 text-2xl tracking-[0.2em]">{match.score}</div>
-                        <div className="text-xl sm:text-3xl font-black text-slate-400 uppercase tracking-tighter truncate max-w-[120px] sm:max-w-[200px] text-left">{match.opponent}</div>
+                        {/* ECHIPA DIN STÂNGA (Acasă) */}
+                        <div className="text-xl sm:text-3xl font-black uppercase tracking-tighter truncate max-w-[120px] sm:max-w-[200px] text-right"
+                            style={{ color: match.isHome !== false ? match.teamColor || '#ffffff' : match.opponentColor || '#94a3b8' }}>
+                            {match.isHome !== false ? match.teamName : match.opponent}
+                        </div>
+                        
+                        {/* SCORUL */}
+                        <div className="bg-slate-800 px-4 py-1.5 rounded-xl border border-slate-700 font-black text-emerald-400 text-2xl tracking-[0.2em]">
+                            {match.score}
+                        </div>
+                        
+                        {/* ECHIPA DIN DREAPTA (Deplasare) */}
+                        <div className="text-xl sm:text-3xl font-black uppercase tracking-tighter truncate max-w-[120px] sm:max-w-[200px] text-left"
+                            style={{ color: match.isHome !== false ? match.opponentColor || '#94a3b8' : match.teamColor || '#ffffff' }}>
+                            {match.isHome !== false ? match.opponent : match.teamName}
+                        </div>
                     </div>
                     <div className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">{match.date} • FORMAȚIE: {match.formation}</div>
                 </div>
@@ -413,7 +429,14 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                     }}
                                 >
                                     <div className={`w-12 h-12 sm:w-16 sm:h-16 relative flex items-center justify-center`}>
-                                        <Shirt className={`w-full h-full drop-shadow-lg ${rowIndex === 0 ? 'fill-yellow-400 text-yellow-600' : 'fill-white text-slate-200'} ${showRed ? 'opacity-50' : ''}`} />
+                                        <Shirt 
+                                            className={`w-full h-full drop-shadow-lg ${showRed ? 'opacity-50' : ''}`} 
+                                            style={{ 
+                                                fill: rowIndex === 0 ? '#fbbf24' : (match.teamColor || '#ffffff'), // Portarul e galben, restul au culoarea aleasă
+                                                stroke: rowIndex === 0 ? '#b45309' : 'rgba(0,0,0,0.3)',             // Contur pentru contrast
+                                                strokeWidth: 1.5
+                                            }} 
+                                        />
                                         {(isGuessed || showRed) && (
                                             <div className="absolute -bottom-2 -right-2 bg-slate-900 rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-md">
                                                 <span className="text-[10px] font-black text-white">{player.name.substring(0,2).toUpperCase()}</span>

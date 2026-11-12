@@ -13,6 +13,10 @@ const startingXISchema = new mongoose.Schema({
     date: { type: String, required: true },
     score: { type: String, required: true },
     formation: { type: String, required: true, default: '4-3-3' },
+    // --- NOU: SETĂRI ECHIPAMENT ȘI TEREN ---
+    teamColor: { type: String, default: '#ffffff' },
+    opponentColor: { type: String, default: '#000000' },
+    isHome: { type: Boolean, default: true },
     players: [xiPlayerSchema]
 }, { timestamps: true });
 

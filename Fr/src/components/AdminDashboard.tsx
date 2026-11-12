@@ -23,6 +23,9 @@ interface StartingXIData {
     date: string;
     score: string;
     formation: string; 
+    teamColor?: string;     // NOU
+    opponentColor?: string; // NOU
+    isHome?: boolean;       // NOU
     players: XIPlayer[];
 }
 
@@ -44,6 +47,9 @@ export function AdminDashboard({ user }: { user: any }) {
   const [score, setScore] = useState("");
   const [date, setDate] = useState("");
   const [formation, setFormation] = useState("4-3-3");
+  const [teamColor, setTeamColor] = useState("#ffffff");
+  const [opponentColor, setOpponentColor] = useState("#000000");
+  const [isHome, setIsHome] = useState(true);
   const [slotPlayers, setSlotPlayers] = useState<(XIPlayer | null)[]>(Array(11).fill(null));
 
   const [loading, setLoading] = useState(true);
@@ -254,6 +260,7 @@ export function AdminDashboard({ user }: { user: any }) {
 
     const newXI = {
         teamName, opponent, score, date, formation,
+        teamColor, opponentColor, isHome,
         players: cleanPlayers
     };
 
@@ -270,6 +277,7 @@ export function AdminDashboard({ user }: { user: any }) {
             toast.success("Meci salvat cu succes în baza de date!");
             
             setTeamName(""); setOpponent(""); setScore(""); setDate("");
+            setTeamColor("#ffffff"); setOpponentColor("#000000"); setIsHome(true);
             setSlotPlayers(Array(11).fill(null));
         } else {
             // ACUM AFIȘĂM EROAREA EXACTĂ DE LA BACKEND
@@ -664,6 +672,24 @@ export function AdminDashboard({ user }: { user: any }) {
                                     <option value="4-2-3-1">4-2-3-1</option>
                                     <option value="3-5-2">3-5-2</option>
                                 </select>
+                            </div>
+                            
+                            {/* NOU: Setări Echipament și Teren */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                                <div className="bg-slate-950 border-2 border-slate-700 p-3 rounded-xl flex items-center justify-between">
+                                    <label className="text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Tricou (Tu)</label>
+                                    <input type="color" value={teamColor} onChange={e=>setTeamColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer bg-transparent border-none outline-none" />
+                                </div>
+                                <div className="bg-slate-950 border-2 border-slate-700 p-3 rounded-xl flex items-center justify-between">
+                                    <label className="text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Adversar</label>
+                                    <input type="color" value={opponentColor} onChange={e=>setOpponentColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer bg-transparent border-none outline-none" />
+                                </div>
+                                <div className="bg-slate-950 border-2 border-slate-700 p-3 rounded-xl flex items-center justify-between">
+                                    <label className="text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2">
+                                        Acasă?
+                                    </label>
+                                    <input type="checkbox" checked={isHome} onChange={e=>setIsHome(e.target.checked)} className="w-5 h-5 accent-blue-500 cursor-pointer" />
+                                </div>
                             </div>
 
                             <div className="pt-4 space-y-2">
