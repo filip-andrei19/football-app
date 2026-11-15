@@ -269,7 +269,12 @@ export function AdminDashboard({ user }: { user: any }) {
   };
 
   const handleEditXI = (match: StartingXIData) => {
-    setEditingXiId(match._id || match.id || null);
+    const validId = match._id || match.id;
+    if (!validId) {
+        toast.error("Meciul nu are un ID valid.");
+        return;
+    }
+    setEditingXiId(validId);
     setTeamName(match.teamName || "");
     setOpponent(match.opponent || "");
     setScore(match.score || "");
@@ -735,7 +740,7 @@ export function AdminDashboard({ user }: { user: any }) {
                                 </div>
                             </div>
                             
-                            {/* PREVIEW CULORI INTELIGENTE (GAZDĂ STÂNGA, OASPETE DREAPTA) */}
+                            {/* PREVIEW CULORI INTELIGENTE */}
                             <div className="flex gap-2 sm:gap-4 justify-center py-2">
                                 <div 
                                     className="px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-sm border border-white/20"
@@ -792,7 +797,6 @@ export function AdminDashboard({ user }: { user: any }) {
                                     <p className="text-slate-500 text-center font-bold text-[10px] sm:text-sm uppercase py-5 sm:py-10">Baza de date e goală.</p>
                                 ) : (
                                     xis.map(x => {
-                                        // Previziunea în lista de editare păstrează aceeași logică inteligentă de culori stânga(acasă)-dreapta(deplasare)
                                         const hColor = x.isHome !== false ? (x.teamColor || '#334155') : (x.opponentColor || '#334155');
                                         const aColor = x.isHome !== false ? (x.opponentColor || '#334155') : (x.teamColor || '#334155');
                                         const hName = x.isHome !== false ? x.teamName : x.opponent;
