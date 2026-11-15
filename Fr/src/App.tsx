@@ -11,9 +11,8 @@ import { ProfileSection } from './components/ProfileSection';
 import { AdminDashboard } from './components/AdminDashboard'; 
 import { ChatWidget } from './components/ChatWidget'; 
 import { MatchesSection } from './components/MatchesSection';
-import { GamesSection } from './components/GamesSection'; // <-- Importăm noua secțiune de Games
+import { GamesSection } from './components/GamesSection'; 
 
-// Noul buton cu design sportiv care folosește „linii de teren” și texturi fotbalistice
 const Button = ({ children, onClick, variant, className, disabled, title }: any) => {
   const baseStyle = "inline-flex items-center justify-center rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all duration-300 h-10 sm:h-12 px-4 sm:px-5 outline-none disabled:opacity-50 border-b-4 hover:border-b-2 hover:translate-y-[2px] shadow-sm";
   const variants: any = {
@@ -25,7 +24,6 @@ const Button = ({ children, onClick, variant, className, disabled, title }: any)
   return <button onClick={onClick} disabled={disabled} title={title} className={`${baseStyle} ${variants[variant || 'default']} ${className || ''}`}>{children}</button>;
 };
 
-// Am înlocuit 'diaspora' cu 'games' în tipul Section
 type Section = 'home' | 'games' | 'stars' | 'heroes' | 'collectors' | 'matches' | 'profile' | 'admin';
 
 export default function App() {
@@ -41,7 +39,6 @@ export default function App() {
 
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
   
-  // State pentru a stoca înregistrarea Service Worker-ului și a forța ecranul de update
   const [updateRegistration, setUpdateRegistration] = useState<any>(null);
 
   const checkAdminWarnings = (userData: any) => {
@@ -85,7 +82,6 @@ export default function App() {
       }
   }, [user]);
 
-  // LOGICĂ UPDATE OBLIGATORIU NATIVĂ (Fără virtual module)
   useEffect(() => {
     const handleUpdate = (e: any) => {
       setUpdateRegistration(e.detail);
@@ -154,7 +150,7 @@ export default function App() {
   const navigation = [
     { id: 'home' as Section, label: 'Teren', icon: Home },
     { id: 'matches' as Section, label: 'Meciuri', icon: Calendar }, 
-    { id: 'games' as Section, label: 'Jocuri', icon: Gamepad2 }, // <-- Aici a apărut butonul de Jocuri
+    { id: 'games' as Section, label: 'Jocuri', icon: Gamepad2 }, 
     { id: 'stars' as Section, label: 'Tineri', icon: Star },
     { id: 'heroes' as Section, label: 'Legende', icon: Heart },
     { id: 'collectors' as Section, label: "Fanshop", icon: ShoppingBag },
@@ -164,7 +160,7 @@ export default function App() {
     switch (activeSection) {
       case 'home': return <HomeSection user={user!} onNavigate={setActiveSection} />;
       case 'matches': return <MatchesSection userEmail={user?.email} />;      
-      case 'games': return <GamesSection user={user!} />; // <-- Returnează componenta de jocuri
+      case 'games': return <GamesSection user={user!} />; 
       case 'stars': return <FutureStarsSection />;
       case 'heroes': return <UnsungHeroesSection />;
       case 'collectors': return <CollectorsHubSection user={user!} onOpenChat={handleOpenChat} initialPostId={sharedPostId} />;
@@ -174,7 +170,7 @@ export default function App() {
     }
   };
 
-  if (!user) return <><Toaster /><AuthPage onLoginSuccess={handleLoginSuccess} /></>;
+  if (!user) return <><Toaster position="bottom-center" toastOptions={{ style: { background: '#020617', color: '#fff', border: '2px solid #10b981', borderRadius: '16px', fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '1px', marginBottom: '80px' } }} /><AuthPage onLoginSuccess={handleLoginSuccess} /></>;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-emerald-50 flex flex-col font-sans transition-colors duration-500 relative overflow-hidden">
@@ -182,7 +178,28 @@ export default function App() {
       {/* Background decorativ subtil - gazon/meci de noapte */}
       <div className="absolute inset-0 pointer-events-none opacity-5 dark:opacity-10 bg-[repeating-linear-gradient(45deg,transparent,transparent_40px,#000_40px,#000_42px)]"></div>
       
-      <Toaster position="bottom-right" toastOptions={{ style: { background: '#020617', color: '#fff', border: '2px solid #10b981', borderRadius: '16px', fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '1px' } }} />
+      {/* 
+        AICI AM MODIFICAT TOASTER-UL 
+        Am mutat poziția pe `bottom-center` (sau `top-center`) 
+        și i-am adăugat o margine inferioară pentru a sta deasupra eventualelor elemente.
+      */}
+      <Toaster 
+          position="bottom-center" 
+          toastOptions={{ 
+              style: { 
+                  background: '#020617', 
+                  color: '#fff', 
+                  border: '2px solid #10b981', 
+                  borderRadius: '16px', 
+                  fontWeight: '900', 
+                  textTransform: 'uppercase', 
+                  fontSize: '12px', 
+                  letterSpacing: '1px',
+                  marginBottom: '80px', // Te asiguri ca e mai sus de un eventual buton de chat (sau bara de navigatie mobile)
+                  zIndex: 9999999
+              } 
+          }} 
+      />
 
       {/* HEADER TACTIC (Tabelă) */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md transition-colors duration-300 shadow-lg border-b-4 border-slate-200 dark:border-slate-800">
@@ -271,7 +288,7 @@ export default function App() {
 
         {/* Meniu mobil ajustat sportiv */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t-4 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-4 shadow-xl flex flex-col gap-3 animate-in slide-in-from-top-5 absolute w-full">
+          <div className="lg:hidden border-t-4 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-4 shadow-xl flex flex-col gap-3 animate-in slide-in-from-top-5 absolute w-full z-40">
             {navigation.map((item) => {
               const isActive = activeSection === item.id;
               return (
@@ -307,13 +324,13 @@ export default function App() {
       </header>
 
       {/* Secțiunea centrală (Terenul de Joc) */}
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 relative">
+      <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 relative z-10">
         {renderSection()}
       </main>
 
       {/* AVERTISMENT ADMIN (Cartonaș Roșu VAR) */}
       {showWarning && (
-        <div className="fixed bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border-4 border-rose-600 rounded-3xl p-5 shadow-[0_20px_50px_rgba(225,29,72,0.5)] z-[9999] w-[92%] max-w-md flex items-start gap-4 animate-in slide-in-from-bottom-5">
+        <div className="fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border-4 border-rose-600 rounded-3xl p-5 shadow-[0_20px_50px_rgba(225,29,72,0.5)] z-[9999] w-[92%] max-w-md flex items-start gap-4 animate-in slide-in-from-bottom-5">
           <div className="w-8 h-12 rounded bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.8)] flex items-center justify-center shrink-0 border-2 border-white self-center -rotate-12">
             <span className="text-xl font-black text-white leading-none">!</span>
           </div>

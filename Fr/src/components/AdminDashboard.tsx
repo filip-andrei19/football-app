@@ -242,9 +242,16 @@ export function AdminDashboard({ user }: { user: any }) {
       }
       if (parts === 4) {
           if (row === 1) return `DEF ${index}`;
+          if (row === 2) return `CDM/MID ${index}`;
+          if (row === 3) return `CAM/MID ${index}`;
+          if (row === 4) return `ATT ${index}`;
+      }
+      if (parts === 5) {
+          if (row === 1) return `DEF ${index}`;
           if (row === 2) return `CDM ${index}`;
-          if (row === 3) return `CAM ${index}`;
-          if (row === 4) return `ST ${index}`;
+          if (row === 3) return `MID ${index}`;
+          if (row === 4) return `CAM ${index}`;
+          if (row === 5) return `ATT ${index}`;
       }
       return `Jucător ${index}`;
   };
@@ -361,7 +368,7 @@ export function AdminDashboard({ user }: { user: any }) {
             </div>
         </div>
 
-        {/* MENIU TACTIC - S-a adăugat scrolling orizontal neted pentru mobil */}
+        {/* MENIU TACTIC */}
         <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-3 -mx-2 px-2 sm:mx-0 sm:px-0 border-b-2 border-slate-200 dark:border-slate-800 scrollbar-hide snap-x">
             {[
                 { id: 'users', label: 'Echipe / Lot', icon: Users },
@@ -644,10 +651,21 @@ export function AdminDashboard({ user }: { user: any }) {
 
                             <div className="pt-2">
                                 <select value={formation} onChange={e=>{setFormation(e.target.value); setSlotPlayers(Array(11).fill(null));}} className="w-full bg-slate-950 border-2 border-slate-700 p-2.5 sm:p-3 rounded-lg sm:rounded-xl text-white font-black text-xs sm:text-sm outline-none">
-                                    <option value="4-3-3">Formație: 4-3-3</option>
-                                    <option value="4-4-2">Formație: 4-4-2</option>
-                                    <option value="4-2-3-1">Formație: 4-2-3-1</option>
-                                    <option value="3-5-2">Formație: 3-5-2</option>
+                                    <option value="4-3-3">4-3-3</option>
+                                    <option value="4-4-2">4-4-2</option>
+                                    <option value="4-2-3-1">4-2-3-1</option>
+                                    <option value="4-1-4-1">4-1-4-1</option>
+                                    <option value="4-5-1">4-5-1</option>
+                                    <option value="4-4-1-1">4-4-1-1</option>
+                                    <option value="4-3-2-1">4-3-2-1</option>
+                                    <option value="4-1-2-1-2">4-1-2-1-2</option>
+                                    <option value="4-2-2-2">4-2-2-2</option>
+                                    <option value="3-5-2">3-5-2</option>
+                                    <option value="3-4-3">3-4-3</option>
+                                    <option value="3-4-2-1">3-4-2-1</option>
+                                    <option value="3-4-1-2">3-4-1-2</option>
+                                    <option value="5-3-2">5-3-2</option>
+                                    <option value="5-4-1">5-4-1</option>
                                 </select>
                             </div>
                             
@@ -747,6 +765,37 @@ export function AdminDashboard({ user }: { user: any }) {
                 </>
             )}
         </div>
+
+        {/* MODAL ȘTIRE PĂSTRAT PENTRU REFERINȚĂ - L-AM LĂSAT NEMODIFICAT CA LOGICĂ, DOAR SCALAT PE MOBIL */}
+        {showStoryModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4">
+                {/* Contentul modalului e neatins ca structura dar cu padding ajustat */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] border-2 sm:border-4 border-emerald-600/30">
+                    <div className="p-4 border-b-2 sm:border-b-4 border-emerald-500 flex justify-between items-center bg-slate-900 text-white">
+                        <h3 className="text-sm sm:text-lg font-black uppercase tracking-widest flex items-center gap-2">
+                            {editingId ? 'Actualizează' : 'Adaugă Erou'}
+                        </h3>
+                        <button onClick={() => setShowStoryModal(false)} className="bg-slate-800 p-1.5 sm:p-2 rounded-full border border-slate-700"><X className="w-4 h-4 sm:w-5 sm:h-5"/></button>
+                    </div>
+                    
+                    <div className="p-4 sm:p-6 overflow-y-auto space-y-3 sm:space-y-5 bg-slate-50 dark:bg-slate-950">
+                         {/* Formularul ramane identic functional, doar clase responsive */}
+                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.title} onChange={e => setNewStory({...newStory, title: e.target.value})} placeholder="NUME EROU" />
+                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.date} onChange={e => setNewStory({...newStory, date: e.target.value})} placeholder="ANUL/PERIOADA" />
+                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.role} onChange={e => setNewStory({...newStory, role: e.target.value})} placeholder="ROL (EX: Maseur)" />
+                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.organization} onChange={e => setNewStory({...newStory, organization: e.target.value})} placeholder="CLUB/TEREN" />
+                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold text-white" value={newStory.excerpt} onChange={e => setNewStory({...newStory, excerpt: e.target.value})} placeholder="Prezentare scurtă..." />
+                         <textarea className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-medium text-white min-h-[100px]" value={newStory.content} onChange={e => setNewStory({...newStory, content: e.target.value})} placeholder="Povestea completă..."></textarea>
+                    </div>
+                    
+                    <div className="p-3 sm:p-4 border-t-2 border-slate-800 bg-slate-900">
+                        <button onClick={handleSaveStory} className="w-full bg-emerald-600 text-white font-black uppercase text-xs sm:text-sm py-3 rounded-xl border-b-4 border-emerald-800">
+                            Salvează
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 }
