@@ -67,6 +67,17 @@ interface StartingXIData {
 const API_URL = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 
+// --- FUNCȚIE CONTRAST CULORI ---
+const getContrastTextColor = (hexColor: string) => {
+    if (!hexColor) return '#ffffff';
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) || 0;
+    const g = parseInt(hex.substring(2, 4), 16) || 0;
+    const b = parseInt(hex.substring(4, 6), 16) || 0;
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 128 ? '#0f172a' : '#ffffff'; // Returnează Gri închis (pentru fundal luminos) sau Alb (pentru fundal închis)
+};
+
 // --- SOUND ENGINE (Web Audio API) ---
 const playTone = (frequency: number, type: OscillatorType, duration: number) => {
     try {
@@ -374,35 +385,45 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         rows.push(match.players.filter(p => p.gridRow === rowIndex));
     });
 
+    const homeColor = match.teamColor || '#334155';
+    const awayColor = match.opponentColor || '#334155';
+
     return (
         <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 relative">
             
-            {/* Header scor/meci adaptat pt mobil (stiva verticala daca nu are loc, altfel orizontal) */}
+            {/* Header scor/meci - AICI APLICĂM CULORILE DINAMICE PE FUNDAL */}
             <div className="bg-slate-950 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-slate-800 flex flex-col justify-between items-center gap-3 sm:gap-4 shadow-xl">
                 <div className="w-full flex justify-between items-center md:hidden mb-2">
                     <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[10px] uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
                 </div>
 
                 <div className="flex-1 text-center flex flex-col items-center w-full">
-                    <div className="flex items-center justify-between sm:justify-center w-full sm:gap-6">
+                    <div className="flex items-center justify-between sm:justify-center w-full sm:gap-4">
+                        
                         {/* ECHIPA DIN STÂNGA (Acasă) */}
-                        <div className="flex-1 text-base sm:text-3xl font-black uppercase tracking-tighter truncate text-right px-2"
-                            style={{ color: match.isHome !== false ? match.teamColor || '#ffffff' : match.opponentColor || '#94a3b8' }}>
+                        <div className="flex-1 text-xs sm:text-3xl font-black uppercase tracking-tighter truncate text-center sm:text-right px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl shadow-md border-2 border-white/10"
+                            style={{ 
+                                backgroundColor: match.isHome !== false ? homeColor : awayColor,
+                                color: getContrastTextColor(match.isHome !== false ? homeColor : awayColor)
+                            }}>
                             {match.isHome !== false ? match.teamName : match.opponent}
                         </div>
                         
                         {/* SCORUL */}
-                        <div className="shrink-0 bg-slate-800 px-3 py-1 sm:px-4 sm:py-1.5 rounded-lg sm:rounded-xl border border-slate-700 font-black text-emerald-400 text-lg sm:text-2xl tracking-[0.2em]">
+                        <div className="shrink-0 bg-slate-800 px-3 py-1 sm:px-6 sm:py-2 rounded-lg sm:rounded-2xl border-2 border-slate-700 font-black text-emerald-400 text-lg sm:text-3xl tracking-[0.2em] shadow-lg mx-1 sm:mx-2 z-10">
                             {match.score}
                         </div>
                         
                         {/* ECHIPA DIN DREAPTA (Deplasare) */}
-                        <div className="flex-1 text-base sm:text-3xl font-black uppercase tracking-tighter truncate text-left px-2"
-                            style={{ color: match.isHome !== false ? match.opponentColor || '#94a3b8' : match.teamColor || '#ffffff' }}>
+                        <div className="flex-1 text-xs sm:text-3xl font-black uppercase tracking-tighter truncate text-center sm:text-left px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl shadow-md border-2 border-white/10"
+                            style={{ 
+                                backgroundColor: match.isHome !== false ? awayColor : homeColor,
+                                color: getContrastTextColor(match.isHome !== false ? awayColor : homeColor)
+                            }}>
                             {match.isHome !== false ? match.opponent : match.teamName}
                         </div>
                     </div>
-                    <div className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] mt-3 sm:mt-2">
+                    <div className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] mt-3 sm:mt-4">
                         {match.date} • FORMAȚIE: {match.formation}
                     </div>
                 </div>
@@ -412,7 +433,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 </div>
             </div>
 
-            {/* TERENUL DE JOC - Scalat pe telefon pentru a incapea toata formatia fara scroll */}
+            {/* TERENUL DE JOC */}
             <div className="bg-[#4ade80] rounded-2xl sm:rounded-3xl border-4 sm:border-8 border-white py-6 px-2 sm:p-8 min-h-[450px] sm:min-h-[600px] relative shadow-2xl overflow-hidden flex flex-col-reverse justify-around gap-2 sm:gap-6 mx-1 sm:mx-0">
                 {/* Liniile terenului */}
                 <div className="absolute inset-0 border-4 sm:border-[6px] border-white/40 m-2 sm:m-4 rounded-lg sm:rounded-xl pointer-events-none"></div>
@@ -493,7 +514,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 ) : <div className="flex-1 sm:flex-none sm:w-[120px]"></div>}
             </div>
 
-            {/* Modal Ghicire Jucător (Wordle Style) - Fullscreen pe mobil, centrat */}
+            {/* Modal Ghicire Jucător (Wordle Style) */}
             {activeSlot && !win && !gaveUp && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/95 sm:bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in">
                     <div className="bg-slate-900 w-full h-[100dvh] sm:h-auto sm:max-w-3xl sm:rounded-3xl sm:border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden max-h-[100dvh] sm:max-h-[90vh]">

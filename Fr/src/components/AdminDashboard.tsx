@@ -31,6 +31,17 @@ interface StartingXIData {
 
 const API_URL = (import.meta as any).env.VITE_API_URL ? `${(import.meta as any).env.VITE_API_URL}/api` : 'https://football-backend-m2a4.onrender.com/api';
 
+// --- FUNCȚIE CONTRAST CULORI PENTRU NUME ECHIPE ---
+const getContrastTextColor = (hexColor: string) => {
+    if (!hexColor) return '#ffffff';
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) || 0;
+    const g = parseInt(hex.substring(2, 4), 16) || 0;
+    const b = parseInt(hex.substring(4, 6), 16) || 0;
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 128 ? '#0f172a' : '#ffffff'; 
+};
+
 export function AdminDashboard({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState<'users' | 'listings' | 'news' | 'reports' | 'xi'>('users');
   
@@ -47,8 +58,8 @@ export function AdminDashboard({ user }: { user: any }) {
   const [score, setScore] = useState("");
   const [date, setDate] = useState("");
   const [formation, setFormation] = useState("4-3-3");
-  const [teamColor, setTeamColor] = useState("#ffffff");
-  const [opponentColor, setOpponentColor] = useState("#000000");
+  const [teamColor, setTeamColor] = useState("#3b82f6"); 
+  const [opponentColor, setOpponentColor] = useState("#ef4444"); 
   const [isHome, setIsHome] = useState(true);
   const [slotPlayers, setSlotPlayers] = useState<(XIPlayer | null)[]>(Array(11).fill(null));
 
@@ -272,7 +283,7 @@ export function AdminDashboard({ user }: { user: any }) {
             toast.success("Meci salvat cu succes!");
             
             setTeamName(""); setOpponent(""); setScore(""); setDate("");
-            setTeamColor("#ffffff"); setOpponentColor("#000000"); setIsHome(true);
+            setTeamColor("#3b82f6"); setOpponentColor("#ef4444"); setIsHome(true);
             setSlotPlayers(Array(11).fill(null));
         } else {
             const errData = await res.json();
@@ -625,8 +636,8 @@ export function AdminDashboard({ user }: { user: any }) {
                             <h3 className="text-sm sm:text-lg font-black text-white uppercase tracking-widest mb-3 sm:mb-4 border-b-2 border-slate-800 pb-2">Meci Nou</h3>
                             
                             <div className="grid grid-cols-2 gap-2 sm:gap-4">
-                                <input type="text" placeholder="Echipa (ex: Steaua)" value={teamName} onChange={e=>setTeamName(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white font-bold text-[10px] sm:text-sm uppercase outline-none focus:border-blue-500" />
-                                <input type="text" placeholder="Adversar (ex: Dinamo)" value={opponent} onChange={e=>setOpponent(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white font-bold text-[10px] sm:text-sm uppercase outline-none focus:border-blue-500" />
+                                <input type="text" placeholder="Echipa (Acasă)" value={teamName} onChange={e=>setTeamName(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white font-bold text-[10px] sm:text-sm uppercase outline-none focus:border-blue-500" />
+                                <input type="text" placeholder="Adversar (Deplasare)" value={opponent} onChange={e=>setOpponent(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white font-bold text-[10px] sm:text-sm uppercase outline-none focus:border-blue-500" />
                                 <input type="text" placeholder="Scor (2-1)" value={score} onChange={e=>setScore(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white font-bold text-[10px] sm:text-sm uppercase outline-none focus:border-blue-500" />
                                 <input type="text" placeholder="Data/An" value={date} onChange={e=>setDate(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white font-bold text-[10px] sm:text-sm uppercase outline-none focus:border-blue-500" />
                             </div>
@@ -640,23 +651,39 @@ export function AdminDashboard({ user }: { user: any }) {
                                 </select>
                             </div>
                             
-                            <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 mt-2">
                                 <div className="bg-slate-950 border-2 border-slate-700 p-2 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-1">
-                                    <label className="text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase">Tu</label>
+                                    <label className="text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase">Culoare Gazdă</label>
                                     <input type="color" value={teamColor} onChange={e=>setTeamColor(e.target.value)} className="w-6 h-6 sm:w-8 sm:h-8 rounded cursor-pointer bg-transparent border-none outline-none" />
                                 </div>
                                 <div className="bg-slate-950 border-2 border-slate-700 p-2 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-1">
-                                    <label className="text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase">Rival</label>
+                                    <label className="text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase">Culoare Oaspete</label>
                                     <input type="color" value={opponentColor} onChange={e=>setOpponentColor(e.target.value)} className="w-6 h-6 sm:w-8 sm:h-8 rounded cursor-pointer bg-transparent border-none outline-none" />
                                 </div>
-                                <div className="bg-slate-950 border-2 border-slate-700 p-2 rounded-lg flex flex-col items-center justify-center gap-1">
-                                    <label className="text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase">Acasă?</label>
+                                <div className="bg-slate-950 border-2 border-slate-700 p-2 rounded-lg flex flex-col sm:flex-row items-center justify-center gap-2 col-span-2 sm:col-span-1">
+                                    <label className="text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase">Joci Acasă?</label>
                                     <input type="checkbox" checked={isHome} onChange={e=>setIsHome(e.target.checked)} className="w-4 h-4 sm:w-5 sm:h-5 accent-blue-500" />
+                                </div>
+                            </div>
+                            
+                            {/* PREVIEW CULORI INTELIGENTE */}
+                            <div className="flex gap-2 sm:gap-4 justify-center py-2">
+                                <div 
+                                    className="px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-sm border border-white/20"
+                                    style={{ backgroundColor: teamColor, color: getContrastTextColor(teamColor) }}
+                                >
+                                    {teamName || "Gazdă"}
+                                </div>
+                                <div 
+                                    className="px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-sm border border-white/20"
+                                    style={{ backgroundColor: opponentColor, color: getContrastTextColor(opponentColor) }}
+                                >
+                                    {opponent || "Oaspete"}
                                 </div>
                             </div>
 
                             <div className="pt-2">
-                                <label className="text-slate-400 font-bold text-[10px] uppercase tracking-widest block mb-2">Introdu Nume (11 Jucători)</label>
+                                <label className="text-slate-400 font-bold text-[10px] uppercase tracking-widest block mb-2">Introdu Nume Jucători 11 (Cei din tabăra "{isHome ? 'Acasă' : 'Deplasare'}")</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {Array.from({ length: 11 }).map((_, idx) => {
                                         const player = slotPlayers[idx];
@@ -678,7 +705,7 @@ export function AdminDashboard({ user }: { user: any }) {
                             </div>
 
                             <button onClick={handleSaveXI} className="w-full bg-emerald-600 text-white p-3 sm:p-4 rounded-xl font-black uppercase text-xs sm:text-sm border-b-4 border-emerald-800 mt-2 flex items-center justify-center gap-2">
-                                <Save className="w-4 h-4" /> Salvează
+                                <Save className="w-4 h-4" /> Salvează Meciul
                             </button>
                         </div>
 
@@ -689,17 +716,29 @@ export function AdminDashboard({ user }: { user: any }) {
                                 {xis.length === 0 ? (
                                     <p className="text-slate-500 text-center font-bold text-[10px] sm:text-sm uppercase py-5 sm:py-10">Baza de date e goală.</p>
                                 ) : (
-                                    xis.map(x => (
+                                    xis.map(x => {
+                                        const hColor = x.teamColor || '#334155';
+                                        const aColor = x.opponentColor || '#334155';
+                                        
+                                        return (
                                         <div key={x._id || x.id} className="bg-slate-950 border border-slate-700 rounded-lg sm:rounded-xl p-3 flex justify-between items-center">
-                                            <div className="min-w-0 pr-2">
-                                                <div className="font-black text-white uppercase text-[10px] sm:text-sm truncate">{x.teamName} vs {x.opponent}</div>
-                                                <div className="text-[9px] sm:text-xs text-slate-400 font-bold uppercase mt-0.5">{x.date} • {x.formation}</div>
+                                            <div className="min-w-0 pr-2 flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="font-black text-[9px] sm:text-xs px-2 py-0.5 rounded uppercase truncate max-w-[100px]" style={{ backgroundColor: hColor, color: getContrastTextColor(hColor) }}>
+                                                        {x.teamName}
+                                                    </span>
+                                                    <span className="text-slate-500 font-bold text-[8px] sm:text-[10px]">VS</span>
+                                                    <span className="font-black text-[9px] sm:text-xs px-2 py-0.5 rounded uppercase truncate max-w-[100px]" style={{ backgroundColor: aColor, color: getContrastTextColor(aColor) }}>
+                                                        {x.opponent}
+                                                    </span>
+                                                </div>
+                                                <div className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase mt-0.5">{x.date} • {x.formation}</div>
                                             </div>
                                             <button onClick={() => handleDeleteXI(x._id || x.id || '')} className="bg-rose-900/30 text-rose-500 p-2 rounded-md hover:bg-rose-600 hover:text-white transition-colors shrink-0">
                                                 <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                             </button>
                                         </div>
-                                    ))
+                                    )})
                                 )}
                             </div>
                         </div>
@@ -708,37 +747,6 @@ export function AdminDashboard({ user }: { user: any }) {
                 </>
             )}
         </div>
-
-        {/* MODAL ȘTIRE PĂSTRAT PENTRU REFERINȚĂ - L-AM LĂSAT NEMODIFICAT CA LOGICĂ, DOAR SCALAT PE MOBIL */}
-        {showStoryModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4">
-                {/* Contentul modalului e neatins ca structura dar cu padding ajustat */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] border-2 sm:border-4 border-emerald-600/30">
-                    <div className="p-4 border-b-2 sm:border-b-4 border-emerald-500 flex justify-between items-center bg-slate-900 text-white">
-                        <h3 className="text-sm sm:text-lg font-black uppercase tracking-widest flex items-center gap-2">
-                            {editingId ? 'Actualizează' : 'Adaugă Erou'}
-                        </h3>
-                        <button onClick={() => setShowStoryModal(false)} className="bg-slate-800 p-1.5 sm:p-2 rounded-full border border-slate-700"><X className="w-4 h-4 sm:w-5 sm:h-5"/></button>
-                    </div>
-                    
-                    <div className="p-4 sm:p-6 overflow-y-auto space-y-3 sm:space-y-5 bg-slate-50 dark:bg-slate-950">
-                         {/* Formularul ramane identic functional, doar clase responsive */}
-                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.title} onChange={e => setNewStory({...newStory, title: e.target.value})} placeholder="NUME EROU" />
-                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.date} onChange={e => setNewStory({...newStory, date: e.target.value})} placeholder="ANUL/PERIOADA" />
-                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.role} onChange={e => setNewStory({...newStory, role: e.target.value})} placeholder="ROL (EX: Maseur)" />
-                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.organization} onChange={e => setNewStory({...newStory, organization: e.target.value})} placeholder="CLUB/TEREN" />
-                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold text-white" value={newStory.excerpt} onChange={e => setNewStory({...newStory, excerpt: e.target.value})} placeholder="Prezentare scurtă..." />
-                         <textarea className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-medium text-white min-h-[100px]" value={newStory.content} onChange={e => setNewStory({...newStory, content: e.target.value})} placeholder="Povestea completă..."></textarea>
-                    </div>
-                    
-                    <div className="p-3 sm:p-4 border-t-2 border-slate-800 bg-slate-900">
-                        <button onClick={handleSaveStory} className="w-full bg-emerald-600 text-white font-black uppercase text-xs sm:text-sm py-3 rounded-xl border-b-4 border-emerald-800">
-                            Salvează
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
     </div>
   );
 }
