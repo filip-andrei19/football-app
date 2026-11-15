@@ -321,47 +321,48 @@ export function AdminDashboard({ user }: { user: any }) {
     };
 
     try {
-        const method = editingXiId ? 'PUT' : 'POST';
-        const url = editingXiId ? `${API_URL}/sport/starting-xi/${editingXiId}` : `${API_URL}/sport/starting-xi`;
+        // Dacă suntem în modul editare, ștergem mai întâi meciul vechi
+        if (editingXiId) {
+            console.log(`Ștergem meciul vechi: ${API_URL}/sport/starting-xi/${editingXiId}`);
+            const deleteRes = await fetch(`${API_URL}/sport/starting-xi/${editingXiId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!deleteRes.ok) {
+                 toast.error("Eroare la ștergerea meciului vechi pentru suprascriere.");
+                 return;
+            }
+            // Scoatem meciul vechi din starea locală
+            setXis(prev => prev.filter(x => (x._id || x.id) !== editingXiId));
+        }
 
-        console.log(`Sending ${method} request to: ${url}`);
-        console.log('Payload:', newXI);
-
-        const res = await fetch(url, {
-            method: method,
+        // Creăm meciul nou (sau cel modificat) cu metoda POST, care știm sigur că funcționează
+        console.log(`Salvăm noul meci: ${API_URL}/sport/starting-xi`);
+        const postRes = await fetch(`${API_URL}/sport/starting-xi`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newXI)
         });
 
-        console.log(`Response status: ${res.status} ${res.statusText}`);
-
-        if (res.ok) {
-            const savedXI = await res.json();
+        if (postRes.ok) {
+            const savedXI = await postRes.json();
             
-            if (editingXiId) {
-                setXis(xis.map(x => (x._id || x.id) === editingXiId ? savedXI : x));
-                toast.success("Meci actualizat cu succes!");
-            } else {
-                setXis([...xis, savedXI]);
-                toast.success("Meci salvat cu succes!");
-            }
-            
+            setXis(prev => [...prev, savedXI]);
+            toast.success(editingXiId ? "Meci actualizat cu succes!" : "Meci salvat cu succes!");
             resetXiForm();
         } else {
-             // Încercăm să parsăm JSON-ul cu grijă, deoarece unele servere returnează HTML în caz de eroare 404/500
-            let errorMsg = `Eroare ${res.status}: ${res.statusText}`;
+            let errorMsg = `Eroare ${postRes.status}: ${postRes.statusText}`;
             try {
-                const errData = await res.json();
+                const errData = await postRes.json();
                 errorMsg = errData.error || errData.message || errorMsg;
             } catch (jsonError) {
-                console.error("Could not parse error response as JSON", jsonError);
+                console.error("Eroare parsare JSON", jsonError);
             }
-            console.error("Backend error details:", errorMsg);
             toast.error(errorMsg);
         }
     } catch (e: any) {
-        console.error("Eroare de rețea sau CORS:", e);
-        toast.error("Eroare de rețea. Verifică consola (F12) pentru detalii.");
+        console.error("Eroare de rețea:", e);
+        toast.error("Eroare de rețea. Verifică conexiunea.");
     }
   };
 
