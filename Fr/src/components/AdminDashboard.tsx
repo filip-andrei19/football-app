@@ -29,7 +29,11 @@ interface StartingXIData {
     players: XIPlayer[];
 }
 
-const API_URL = (import.meta as any).env.VITE_API_URL ? `${(import.meta as any).env.VITE_API_URL}/api` : 'https://football-backend-m2a4.onrender.com/api';
+// --- CONEXIUNE STANDARDIZATĂ LA SERVER ---
+const API_BASE = window.location.hostname === "localhost" 
+    ? "http://localhost:3000" 
+    : "https://football-backend-m2a4.onrender.com";
+const API_URL = `${API_BASE}/api`;
 
 // --- FUNCȚIE CONTRAST CULORI PENTRU NUME ECHIPE ---
 const getContrastTextColor = (hexColor: string) => {
@@ -284,7 +288,6 @@ export function AdminDashboard({ user }: { user: any }) {
     setOpponentColor(match.opponentColor || "#ef4444");
     setIsHome(match.isHome !== false);
     
-    // Populam cu grijă jucătorii pe pozițiile lor (până la 11 max)
     const newSlots = Array(11).fill(null);
     if (match.players && Array.isArray(match.players)) {
         match.players.forEach((p, idx) => {
@@ -292,7 +295,7 @@ export function AdminDashboard({ user }: { user: any }) {
         });
     }
     setSlotPlayers(newSlots);
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll sus pentru a edita
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSaveXI = async () => {
@@ -342,7 +345,8 @@ export function AdminDashboard({ user }: { user: any }) {
             const errData = await res.json();
             toast.error(`Eroare backend: ${errData.error || 'Necunoscută'}`);
         }
-    } catch (e) {
+    } catch (e: any) {
+        console.error("Eroare Salvare:", e);
         toast.error("Nu m-am putut conecta la server.");
     }
   };
@@ -355,7 +359,7 @@ export function AdminDashboard({ user }: { user: any }) {
             });
             if (res.ok) {
                 setXis(xis.filter(x => (x._id || x.id) !== id));
-                if (editingXiId === id) resetXiForm(); // Resetam form-ul dacă ștergem meciul editat curent
+                if (editingXiId === id) resetXiForm();
                 toast.success("Meci șters.");
             } else {
                 toast.error("Problemă la ștergere.");
@@ -415,7 +419,7 @@ export function AdminDashboard({ user }: { user: any }) {
             </div>
         </div>
 
-        {/* MENIU TACTIC - S-a adăugat scrolling orizontal neted pentru mobil */}
+        {/* MENIU TACTIC */}
         <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-3 -mx-2 px-2 sm:mx-0 sm:px-0 border-b-2 border-slate-200 dark:border-slate-800 scrollbar-hide snap-x">
             {[
                 { id: 'users', label: 'Echipe / Lot', icon: Users },
@@ -740,7 +744,7 @@ export function AdminDashboard({ user }: { user: any }) {
                                 </div>
                             </div>
                             
-                            {/* PREVIEW CULORI INTELIGENTE */}
+                            {/* PREVIEW CULORI INTELIGENTE (GAZDĂ STÂNGA, OASPETE DREAPTA) */}
                             <div className="flex gap-2 sm:gap-4 justify-center py-2">
                                 <div 
                                     className="px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-sm border border-white/20"
@@ -797,6 +801,7 @@ export function AdminDashboard({ user }: { user: any }) {
                                     <p className="text-slate-500 text-center font-bold text-[10px] sm:text-sm uppercase py-5 sm:py-10">Baza de date e goală.</p>
                                 ) : (
                                     xis.map(x => {
+                                        // Previziunea în lista de editare păstrează aceeași logică inteligentă de culori stânga(acasă)-dreapta(deplasare)
                                         const hColor = x.isHome !== false ? (x.teamColor || '#334155') : (x.opponentColor || '#334155');
                                         const aColor = x.isHome !== false ? (x.opponentColor || '#334155') : (x.teamColor || '#334155');
                                         const hName = x.isHome !== false ? x.teamName : x.opponent;
@@ -836,7 +841,7 @@ export function AdminDashboard({ user }: { user: any }) {
             )}
         </div>
 
-        {/* MODAL ȘTIRE PĂSTRAT PENTRU REFERINȚĂ */}
+        {/* MODAL ȘTIRE */}
         {showStoryModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] border-2 sm:border-4 border-emerald-600/30">
