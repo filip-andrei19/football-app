@@ -75,7 +75,7 @@ const getContrastTextColor = (hexColor: string) => {
     const g = parseInt(hex.substring(2, 4), 16) || 0;
     const b = parseInt(hex.substring(4, 6), 16) || 0;
     const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-    return yiq >= 128 ? '#0f172a' : '#ffffff'; // Returnează Gri închis (pentru fundal luminos) sau Alb (pentru fundal închis)
+    return yiq >= 128 ? '#0f172a' : '#ffffff'; 
 };
 
 // --- SOUND ENGINE (Web Audio API) ---
@@ -556,10 +556,9 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                     type="text"
                                     autoFocus
                                     placeholder="SCRIE..."
-                                    className="flex-1 bg-slate-900 border-2 border-slate-700 p-3 sm:p-4 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors text-xs sm:text-base"
+                                    className="flex-1 bg-slate-900 border-2 border-slate-700 p-3 sm:p-4 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors text-xs sm:text-base shrink-0"
                                     value={slotGuess}
                                     onChange={e => setSlotGuess(e.target.value)}
-                                    maxLength={activeSlot.name.length}
                                 />
                                 <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 sm:px-6 rounded-lg sm:rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-all border-b-2 sm:border-b-4 border-blue-800 hover:border-b-2 hover:translate-y-[2px]">
                                     Testează
