@@ -14,15 +14,17 @@ const sportController = require('../controllers/sportController');
 
 // --- RUTE ---
 router.post('/players', auth, validate(createPlayerSchema), sportController.addPlayer);
-router.get('/players', sportController.getPlayers);       
-router.get('/players/:id', sportController.getPlayerById); 
+// ❌ OPRITE: Aceste rute blocau filtrele avansate din server.js!
+// router.get('/players', sportController.getPlayers);       
+// router.get('/players/:id', sportController.getPlayerById); 
 
 // --- NOU: RUTA DE TRIGGER PENTRU POPULARE ---
 router.get('/trigger-sync', sportController.triggerSmartSync);
 
 router.post('/teams', auth, validate(createTeamSchema), sportController.addTeam);
-router.get('/teams', sportController.getTeams);
-router.get('/teams/:id', sportController.getTeamById);
+// ❌ OPRITE: Aceste rute blocau căutarea echipelor (teams/search) din server.js!
+// router.get('/teams', sportController.getTeams);
+// router.get('/teams/:id', sportController.getTeamById);
 
 router.post('/competitions', auth, validate(createCompetitionSchema), sportController.addCompetition);
 router.get('/competitions', sportController.getCompetitions);
@@ -34,7 +36,6 @@ router.post('/matches', auth, validate(createMatchSchema), sportController.addMa
 router.get('/matches', sportController.getMatches); 
 
 // --- NOU: RUTE PENTRU STARTING XI (PRIMUL 11) ---
-// Notă: Am lăsat rutele libere momentan, dar poți adăuga middleware-ul 'auth' la POST și DELETE dacă vrei securitate strictă
 router.post('/starting-xi', sportController.addStartingXI);
 router.get('/starting-xi', sportController.getStartingXIs);
 router.delete('/starting-xi/:id', sportController.deleteStartingXI);

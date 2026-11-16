@@ -111,7 +111,6 @@ const computeScoutingMetrics = (player: Player) => {
   const contributionsPer90 = goalsPer90 + assistsPer90;
   const minsPerContribution = (goals + assists) > 0 ? Math.round(minutes / (goals + assists)) : 0;
 
-  // 1. FINALIZARE SAU APĂRARE (în funcție de poziție)
   let primaryScore = 20;
   let primaryLabel = "Finalizare";
   if (isDefensive) {
@@ -121,19 +120,14 @@ const computeScoutingMetrics = (player: Player) => {
       primaryScore = Math.min(99, Math.max(20, Math.round(25 + (goalsPer90 * 75) + (Math.min(goals, 20) * 1.5))));
   }
 
-  // 2. CREAȚIE: Un prag de 0.5+ Assisturi/90' reprezintă elita.
   const creativityScore = Math.min(99, Math.max(20, Math.round(25 + (assistsPer90 * 100) + (Math.min(assists, 15) * 1.5))));
-
-  // 3. CONSTANȚĂ: Combinație între procentajul de meciuri jucate (din 38) și minute. (3000 de minute = constanță max)
   const consistencyScore = Math.min(99, Math.max(25, Math.round(20 + (Math.min(apps, 38) * 1.2) + (Math.min(minutes, 3000) / 75))));
 
-  // 4. FORMĂ: Normalizată strict pe curba notelor SofaScore (6.0 este mediocru, 8.0+ este istoric)
   let formScore = 30;
   if (rating > 5.5) {
       formScore = Math.min(99, Math.max(30, Math.round(30 + ((rating - 6.0) * 35))));
   }
 
-  // 5. IMPACT: O medie hibridă între formă (evaluarea AI/algoritmică) și contribuțiile generale.
   const impactScore = Math.min(99, Math.max(25, Math.round((formScore * 0.4) + (contributionsPer90 * 55) + 15)));
 
   return {
@@ -156,7 +150,6 @@ const computeScoutingMetrics = (player: Player) => {
   };
 };
 
-// Componentă SVG Radar Chart - Adaptată ușor pentru mobil
 const PlayerRadarChart = ({
   primaryPlayer,
   secondaryPlayer
@@ -167,7 +160,6 @@ const PlayerRadarChart = ({
   const m1 = computeScoutingMetrics(primaryPlayer);
   const m2 = secondaryPlayer ? computeScoutingMetrics(secondaryPlayer) : null;
 
-  // Pe ecrane mici reducem dimensiunea grafului
   const isMobile = window.innerWidth < 640;
   const size = isMobile ? 180 : 230;
   const center = size / 2;
@@ -291,7 +283,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   const [minGoalsFilter, setMinGoalsFilter] = useState<number>(0);
   const [minRatingFilter, setMinRatingFilter] = useState<string>("0");
   
-  // Noile filtre adăugate:
   const [nationalityFilter, setNationalityFilter] = useState("Toate");
   const [leagueFilter, setLeagueFilter] = useState("Toate");
 
@@ -384,49 +375,14 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             return;
           }
           
-          // ==========================================
-          // CĂUTARE ECHIPE
-          // Apelăm corect API-ul de pe server, așa cum e definit în sportController.js și sportRoutes.js
-          // ==========================================
-          const params = new URLSearchParams();
-          params.append('search', searchTerm.trim());
-          params.append('limit', '1000'); // Tragem o plajă mai mare de jucători pentru a găsi echipele
-          
-          // Solicităm jucătorii care corespund căutării, apoi extragem echipele unice.
-          // (Deoarece ruta specifică /teams/search nu e definită în sportRoutes.js din backend, folosim metoda de rezervă robustă.)
-          const response = await fetch(`${API_URL}/api/sport/players?${params.toString()}`);
+          // ACUM NE FOLOSIM DE RUTA PERFECTĂ DIN BACKEND TĂU!
+          const response = await fetch(`${API_URL}/api/sport/teams/search?q=${encodeURIComponent(searchTerm)}`);
           if (!response.ok) throw new Error(`Eroare server: ${response.status}`);
           const data = await response.json();
-          
-          if (Array.isArray(data)) {
-              const uniqueTeamsMap = new Map();
-              const target = searchTerm.toLowerCase().trim();
-
-              data.forEach(player => {
-                  const tName = player.team_name || player.team;
-                  if (tName) {
-                      const tNameLower = tName.toLowerCase();
-                      if (tNameLower.includes(target) && !uniqueTeamsMap.has(tNameLower)) {
-                          uniqueTeamsMap.set(tNameLower, {
-                              team_name: tName,
-                              team_logo: player.team_logo || "",
-                              league_id: player.league_id || 0
-                          });
-                      }
-                  }
-              });
-              
-              const filteredTeams = Array.from(uniqueTeamsMap.values());
-              filteredTeams.sort((a, b) => a.team_name.localeCompare(b.team_name));
-              
-              setTeams(filteredTeams);
-          } else {
-              setTeams([]);
-          }
+          setTeams(data);
           setPlayers([]);
 
         } else {
-          // Logică originală pentru jucători
           const params = new URLSearchParams();
           if (searchTerm.trim()) params.append('search', searchTerm.trim());
           if (positionFilter !== 'Toate') params.append('position', positionFilter);
@@ -565,43 +521,11 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     setLoadingRoster(true);
     setSelectedTeam(null);
     try {
-      const params = new URLSearchParams();
-      params.append('search', teamName.trim());
-      params.append('limit', '1000'); 
-      
-      const response = await fetch(`${API_URL}/api/sport/players?${params.toString()}`);
-      if (!response.ok) throw new Error("Eroare preluare lot");
-      
-      const playersList = await response.json();
-      
-      if (!Array.isArray(playersList) || playersList.length === 0) {
-           throw new Error("Echipa nu are jucători.");
-      }
-
-      const exactTeamPlayers = playersList.filter(p => {
-          const t1 = p.team_name?.toLowerCase() || "";
-          const t2 = p.team?.toLowerCase() || "";
-          const target = teamName.toLowerCase();
-          return t1.includes(target) || t2.includes(target) || target.includes(t1) || target.includes(t2);
-      });
-
-      if (exactTeamPlayers.length === 0) throw new Error("Jucători inexistenți.");
-
-      const rosterData = {
-          teamInfo: { name: teamName, logo: exactTeamPlayers[0].team_logo || "", totalPlayers: exactTeamPlayers.length },
-          squad: {
-              Goalkeepers: exactTeamPlayers.filter(p => (p.position || "").toLowerCase().includes('goalkeeper') || (p.position || "").toLowerCase().includes('portar')),
-              Defenders: exactTeamPlayers.filter(p => (p.position || "").toLowerCase().includes('defender') || (p.position || "").toLowerCase().includes('back')),
-              Midfielders: exactTeamPlayers.filter(p => (p.position || "").toLowerCase().includes('midfield') || (p.position || "").toLowerCase().includes('mijloca')),
-              Attackers: exactTeamPlayers.filter(p => (p.position || "").toLowerCase().includes('forward') || (p.position || "").toLowerCase().includes('striker') || (p.position || "").toLowerCase().includes('wing') || (p.position || "").toLowerCase().includes('attack')),
-              Unknown: exactTeamPlayers.filter(p => {
-                  const pos = (p.position || "").toLowerCase();
-                  return !pos || (!pos.includes('goalkeeper') && !pos.includes('portar') && !pos.includes('defender') && !pos.includes('back') && !pos.includes('midfield') && !pos.includes('mijloca') && !pos.includes('forward') && !pos.includes('striker') && !pos.includes('wing') && !pos.includes('attack'));
-              })
-          }
-      };
-
-      setSelectedTeam(rosterData);
+      // Revenim la ruta optimizată din server.js pentru descărcarea lotului
+      const res = await fetch(`${API_URL}/api/sport/teams/${encodeURIComponent(teamName)}/roster`);
+      if (!res.ok) throw new Error("Eroare preluare lot");
+      const data = await res.json();
+      setSelectedTeam(data);
     } catch (err) {
       console.error(err);
       toast.error("Nu am putut încărca lotul echipei.");
@@ -664,7 +588,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                             <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
                                 <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-8 h-8 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
                                 <div className="min-w-0 flex-1">
-                                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base break-words uppercase tracking-tight" title={p.name}>{p.name}</p>
+                                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base truncate uppercase tracking-tight" title={p.name}>{p.name}</p>
                                     <div className="flex gap-1.5 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase tracking-wider">
                                         {p.age && <span className="shrink-0">{p.age} ani</span>}
                                         {p.nationality && <span className="truncate">• {p.nationality}</span>}
