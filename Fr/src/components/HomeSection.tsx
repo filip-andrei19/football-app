@@ -312,9 +312,10 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
   const [greeting, setGreeting] = useState("Salut");
 
-  const API_URL = window.location.hostname === "localhost" 
+  const API_BASE = window.location.hostname === "localhost" 
       ? "http://localhost:3000" 
       : "https://football-backend-m2a4.onrender.com";
+  const API_URL = `${API_BASE}`;
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -414,7 +415,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         }
       } catch (err: any) {
         console.error("Eroare fetch:", err);
-        setError("Nu am putut încărca datele de pe server.");
+        setError("NU AM PUTUT ÎNCĂRCA DATELE DE PE SERVER.");
       } finally {
         setLoading(false);
       }
@@ -598,7 +599,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                             <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
                                 <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-8 h-8 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
                                 <div className="min-w-0 flex-1">
-                                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base truncate uppercase tracking-tight" title={p.name}>{p.name}</p>
+                                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base break-words uppercase tracking-tight" title={p.name}>{p.name}</p>
                                     <div className="flex gap-1.5 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase tracking-wider">
                                         {p.age && <span className="shrink-0">{p.age} ani</span>}
                                         {p.nationality && <span className="truncate">• {p.nationality}</span>}
@@ -904,7 +905,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     
                     <div className="px-2 sm:px-3 pb-2 sm:pb-3 w-full text-center flex-1 flex flex-col justify-between">
                       <div>
-                        <h3 className="text-[11px] sm:text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-0.5 sm:mb-1 truncate w-full" title={player.name}>
+                        <h3 className="text-[11px] sm:text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-0.5 sm:mb-1 break-words w-full" title={player.name}>
                           {player.name}
                         </h3>
                         
@@ -942,7 +943,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   <div className="w-16 h-16 sm:w-20 sm:h-20 sm:w-28 sm:h-28 mb-3 sm:mb-4 bg-slate-50 dark:bg-slate-800 rounded-xl sm:rounded-2xl p-2 sm:p-4 shadow-inner group-hover:scale-110 transition-transform">
                     <img src={team.team_logo} alt={team.team_name} className="w-full h-full object-contain drop-shadow-md" />
                   </div>
-                  <h4 className="font-black text-[11px] sm:text-sm sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight">{team.team_name}</h4>
+                  <h4 className="font-black text-[11px] sm:text-sm sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight break-words">{team.team_name}</h4>
                   <div className="mt-1.5 sm:mt-2 w-6 sm:w-8 h-1 bg-emerald-500 rounded-full group-hover:w-12 sm:group-hover:w-16 transition-all"></div>
                 </div>
               ))}
@@ -1047,7 +1048,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   <h2 className="text-xl sm:text-3xl md:text-5xl font-black uppercase tracking-tighter break-words whitespace-normal leading-tight sm:drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] line-clamp-2">{selectedPlayer.name}</h2>
                   <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 mt-1 sm:mt-2">
                     {selectedPlayer.team_logo && (
-                      <img src={selectedPlayer.team_logo} alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 sm:w-8 sm:h-8 bg-white roundedsm sm:rounded-md p-0.5 sm:p-1 object-contain" />
+                      <img src={selectedPlayer.team_logo} alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 sm:w-8 sm:h-8 bg-white rounded-md p-0.5 sm:p-1 object-contain" />
                     )}
                     <span className="font-bold text-xs sm:text-lg sm:text-xl text-emerald-400 uppercase tracking-widest truncate max-w-[200px]">{selectedPlayer.team_name || selectedPlayer.team}</span>
                   </div>
