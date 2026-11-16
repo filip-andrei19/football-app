@@ -290,6 +290,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   const [minGoalsFilter, setMinGoalsFilter] = useState<number>(0);
   const [minRatingFilter, setMinRatingFilter] = useState<string>("0");
   
+  // Noile filtre adăugate:
   const [nationalityFilter, setNationalityFilter] = useState("Toate");
   const [leagueFilter, setLeagueFilter] = useState("Toate");
 
@@ -381,12 +382,48 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             setLoading(false);
             return;
           }
-          const response = await fetch(`${API_URL}/api/sport/teams/search?q=${encodeURIComponent(searchTerm)}`);
+          // ==========================================
+          // SOLUȚIE FRONTEND PENTRU CĂUTARE ECHIPE
+          // Extragem echipele făcând search global pe Jucători, ocolind ruta 'teams/search'
+          // ==========================================
+          const params = new URLSearchParams();
+          params.append('search', searchTerm.trim());
+          params.append('limit', '500'); // Tragem mai mulți jucători ca să avem de unde extrage echipele
+          
+          const response = await fetch(`${API_URL}/api/sport/players?${params.toString()}`);
           if (!response.ok) throw new Error(`Eroare server: ${response.status}`);
           const data = await response.json();
-          setTeams(data);
+          
+          if (Array.isArray(data)) {
+              // Filtrăm și extragem echipe unice din lista de jucători
+              const uniqueTeamsMap = new Map();
+              data.forEach(player => {
+                  const tName = player.team_name || player.team;
+                  if (tName && !uniqueTeamsMap.has(tName.toLowerCase())) {
+                      uniqueTeamsMap.set(tName.toLowerCase(), {
+                          team_name: tName,
+                          team_logo: player.team_logo || "",
+                          league_id: player.league_id || 0
+                      });
+                  }
+              });
+              
+              // Căutăm explicit prin echipe pentru a ne asigura că se potrivesc cu termenul
+              const filteredTeams = Array.from(uniqueTeamsMap.values()).filter(t => 
+                  t.team_name.toLowerCase().includes(searchTerm.toLowerCase().trim())
+              );
+              
+              // Sortăm alfabetic
+              filteredTeams.sort((a, b) => a.team_name.localeCompare(b.team_name));
+              
+              setTeams(filteredTeams);
+          } else {
+              setTeams([]);
+          }
           setPlayers([]);
+
         } else {
+          // Logică originală pentru jucători
           const params = new URLSearchParams();
           if (searchTerm.trim()) params.append('search', searchTerm.trim());
           if (positionFilter !== 'Toate') params.append('position', positionFilter);
@@ -525,13 +562,44 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     setLoadingRoster(true);
     setSelectedTeam(null);
     try {
-      const res = await fetch(`${API_URL}/api/sport/teams/${encodeURIComponent(teamName)}/roster`);
-      if (!res.ok) throw new Error("Eroare preluare lot");
-      const data = await res.json();
-      setSelectedTeam(data);
+      // Re-utilizăm metoda sigură de frontend și pentru încărcarea echipei
+      const response = await fetch(`${API_URL}/api/sport/players?search=${encodeURIComponent(teamName)}&limit=1000`);
+      if (!response.ok) throw new Error("Eroare preluare lot");
+      
+      const playersList = await response.json();
+      
+      if (!Array.isArray(playersList) || playersList.length === 0) {
+           throw new Error("Echipa nu are jucători.");
+      }
+
+      // Filtrăm strict pentru a păstra doar jucătorii echipei căutate
+      const exactTeamPlayers = playersList.filter(p => {
+          const t1 = p.team_name?.toLowerCase() || "";
+          const t2 = p.team?.toLowerCase() || "";
+          const target = teamName.toLowerCase();
+          return t1.includes(target) || t2.includes(target) || target.includes(t1) || target.includes(t2);
+      });
+
+      if (exactTeamPlayers.length === 0) throw new Error("Jucători inexistenți.");
+
+      const rosterData = {
+          teamInfo: { name: teamName, logo: exactTeamPlayers[0].team_logo || "", totalPlayers: exactTeamPlayers.length },
+          squad: {
+              Goalkeepers: exactTeamPlayers.filter(p => (p.position || "").toLowerCase().includes('goalkeeper') || (p.position || "").toLowerCase().includes('portar')),
+              Defenders: exactTeamPlayers.filter(p => (p.position || "").toLowerCase().includes('defender') || (p.position || "").toLowerCase().includes('back')),
+              Midfielders: exactTeamPlayers.filter(p => (p.position || "").toLowerCase().includes('midfield') || (p.position || "").toLowerCase().includes('mijloca')),
+              Attackers: exactTeamPlayers.filter(p => (p.position || "").toLowerCase().includes('forward') || (p.position || "").toLowerCase().includes('striker') || (p.position || "").toLowerCase().includes('wing') || (p.position || "").toLowerCase().includes('attack')),
+              Unknown: exactTeamPlayers.filter(p => {
+                  const pos = (p.position || "").toLowerCase();
+                  return !pos || (!pos.includes('goalkeeper') && !pos.includes('portar') && !pos.includes('defender') && !pos.includes('back') && !pos.includes('midfield') && !pos.includes('mijloca') && !pos.includes('forward') && !pos.includes('striker') && !pos.includes('wing') && !pos.includes('attack'));
+              })
+          }
+      };
+
+      setSelectedTeam(rosterData);
     } catch (err) {
       console.error(err);
-      alert("Nu am putut încărca lotul echipei.");
+      toast.error("Nu am putut încărca lotul echipei.");
     } finally {
       setLoadingRoster(false);
     }
@@ -591,7 +659,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                             <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
                                 <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-8 h-8 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
                                 <div className="min-w-0 flex-1">
-                                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base truncate uppercase tracking-tight" title={p.name}>{p.name}</p>
+                                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base break-words uppercase tracking-tight" title={p.name}>{p.name}</p>
                                     <div className="flex gap-1.5 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase tracking-wider">
                                         {p.age && <span className="shrink-0">{p.age} ani</span>}
                                         {p.nationality && <span className="truncate">• {p.nationality}</span>}
@@ -624,8 +692,12 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
       <div className="relative z-10 space-y-6 sm:space-y-10">
         
+        {/* ================================================== */}
+        {/* VARIANT 2: INTERACTIVĂ & CENTRALĂ */}
+        {/* ================================================== */}
         <section className="text-center space-y-3 sm:space-y-5 px-3 max-w-4xl mx-auto">
           
+          {/* BADGE SUPERIOR */}
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm mx-auto">
             <UserIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 dark:text-slate-400" />
             <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
@@ -633,6 +705,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </span>
           </div>
 
+          {/* SALUTUL PRINCIPAL */}
           <h1 className="text-3xl sm:text-6xl font-black uppercase tracking-tighter text-slate-900 dark:text-white drop-shadow-sm flex items-center justify-center gap-2 sm:gap-3 px-2">
             <span className="truncate max-w-[200px] sm:max-w-none">{greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-600">{firstName}</span>!</span>
             <span className="text-2xl sm:text-5xl animate-wave origin-bottom-right shrink-0">👋</span>
@@ -642,8 +715,10 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             Baza de date este pregătită pentru analiză. Pe cine căutăm?
           </p>
 
+          {/* BARĂ DE CĂUTARE & TOGGLE */}
           <div className="relative z-10 w-full max-w-2xl mx-auto">
             
+            {/* Butoanele Jucători / Echipe lipite deasupra barei */}
             <div className="flex justify-center mb-2 sm:mb-3">
                <div className="bg-slate-200/50 dark:bg-slate-800/50 p-1 sm:p-1.5 rounded-lg sm:rounded-xl inline-flex border border-slate-300/50 dark:border-slate-700/50 backdrop-blur shadow-sm w-[90%] sm:w-auto">
                   <button
@@ -669,6 +744,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 </div>
             </div>
 
+            {/* Inputul Propriu-zis */}
             <div className="relative group mx-2 sm:mx-0">
               <div className="absolute -inset-1 bg-emerald-500/20 rounded-full blur group-hover:bg-emerald-500/30 transition duration-500 hidden sm:block"></div>
               <div className="relative bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl sm:rounded-full shadow-lg flex items-center overflow-hidden">
@@ -698,6 +774,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               </div>
             </div>
 
+            {/* Filtre Rapide & Watchlist sub bara de cautare */}
             {searchMode === 'players' && (
               <div className="flex flex-wrap items-center justify-center gap-2 mt-3 sm:mt-4 mx-2">
                 <button
@@ -732,6 +809,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             )}
           </div>
           
+          {/* Panoul Detaliat de Filtre */}
           {searchMode === 'players' && showProFilters && (
             <div className="mt-4 sm:mt-8 max-w-4xl mx-auto bg-slate-900 border-2 border-emerald-600/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl text-left animate-in fade-in duration-300 relative overflow-hidden">
               <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 pb-3 sm:pb-4 mb-4 sm:mb-5 border-b border-slate-700/50">
@@ -749,6 +827,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 </button>
               </div>
 
+              {/* GRILA FILTRELOR ACTUALIZATĂ - Responsiva pentru mobil */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 relative z-10">
                 {[
                   { label: "Poziție în Teren", value: positionFilter, set: setPositionFilter, opts: [["Toate", "Toate"], ["Portari", "Portari"], ["Fundași", "Fundași"], ["Mijlocași", "Mijlocași"], ["Atacanți", "Atacanți"]] },
@@ -777,6 +856,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
           )}
         </section>
+        {/* ================================================== */}
 
         <section className="px-2 sm:px-4 container mx-auto pb-10 sm:pb-24 relative z-10">
           
@@ -923,13 +1003,14 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   <div className="w-16 h-16 sm:w-20 sm:h-20 sm:w-28 sm:h-28 mb-3 sm:mb-4 bg-slate-50 dark:bg-slate-800 rounded-xl sm:rounded-2xl p-2 sm:p-4 shadow-inner group-hover:scale-110 transition-transform">
                     <img src={team.team_logo} alt={team.team_name} className="w-full h-full object-contain drop-shadow-md" />
                   </div>
-                  <h4 className="font-black text-[11px] sm:text-sm sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight">{team.team_name}</h4>
+                  <h4 className="font-black text-[11px] sm:text-sm sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight break-words">{team.team_name}</h4>
                   <div className="mt-1.5 sm:mt-2 w-6 sm:w-8 h-1 bg-emerald-500 rounded-full group-hover:w-12 sm:group-hover:w-16 transition-all"></div>
                 </div>
               ))}
             </div>
           )}
 
+          {/* EMPTY STATE ILUSTRAT CĂUTARE */}
           {showResults && !loading && ((searchMode === 'players' && displayedPlayers.length === 0) || (searchMode === 'teams' && teams.length === 0)) && (
             <div className="text-center py-12 sm:py-20 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-sm border-2 border-dashed border-slate-300 dark:border-slate-800 max-w-2xl mx-auto relative overflow-hidden mx-2">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.05),transparent_50%)]"></div>
