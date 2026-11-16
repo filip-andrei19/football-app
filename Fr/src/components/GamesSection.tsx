@@ -391,7 +391,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
     return (
         <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 relative">
             
-            {/* Header scor/meci - AICI APLICĂM CULORILE DINAMICE PE FUNDAL */}
+            {/* Header scor/meci */}
             <div className="bg-slate-950 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-slate-800 flex flex-col justify-between items-center gap-3 sm:gap-4 shadow-xl">
                 <div className="w-full flex justify-between items-center md:hidden mb-2">
                     <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[10px] uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
@@ -401,7 +401,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                     <div className="flex items-center justify-between sm:justify-center w-full sm:gap-4">
                         
                         {/* ECHIPA DIN STÂNGA (Acasă) */}
-                        <div className="flex-1 text-xs sm:text-3xl font-black uppercase tracking-tighter truncate text-center sm:text-right px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl shadow-md border-2 border-white/10"
+                        <div className="flex-1 text-[10px] sm:text-3xl font-black uppercase tracking-tighter text-center sm:text-right px-1.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl shadow-md border-2 border-white/10 break-words"
                             style={{ 
                                 backgroundColor: match.isHome !== false ? homeColor : awayColor,
                                 color: getContrastTextColor(match.isHome !== false ? homeColor : awayColor)
@@ -415,7 +415,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                         </div>
                         
                         {/* ECHIPA DIN DREAPTA (Deplasare) */}
-                        <div className="flex-1 text-xs sm:text-3xl font-black uppercase tracking-tighter truncate text-center sm:text-left px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl shadow-md border-2 border-white/10"
+                        <div className="flex-1 text-[10px] sm:text-3xl font-black uppercase tracking-tighter text-center sm:text-left px-1.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl shadow-md border-2 border-white/10 break-words"
                             style={{ 
                                 backgroundColor: match.isHome !== false ? awayColor : homeColor,
                                 color: getContrastTextColor(match.isHome !== false ? awayColor : homeColor)
@@ -514,22 +514,23 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 ) : <div className="flex-1 sm:flex-none sm:w-[120px]"></div>}
             </div>
 
-            {/* Modal Ghicire Jucător (Wordle Style) */}
+            {/* Modal Ghicire Jucător (Wordle Style) - ADAPTAT MOBIL / TASTATURA */}
             {activeSlot && !win && !gaveUp && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/95 sm:bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in">
                     <div className="bg-slate-900 w-full h-[100dvh] sm:h-auto sm:max-w-3xl sm:rounded-3xl sm:border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden max-h-[100dvh] sm:max-h-[90vh]">
-                        <div className="p-4 sm:p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 mt-safe-top">
+                        
+                        <div className="p-3 sm:p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 mt-safe-top">
                             <h3 className="font-black text-white uppercase tracking-widest text-[10px] sm:text-sm flex items-center gap-2">Ghicește Numele</h3>
                             <button onClick={() => {setActiveSlot(null); setSlotGuess("");}} className="text-slate-400 hover:text-rose-500 bg-slate-800 p-1.5 rounded-md"><X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" /></button>
                         </div>
                         
-                        <div className="p-3 sm:p-5 overflow-y-auto flex-1 flex flex-col items-center space-y-1.5 sm:space-y-2">
+                        <div className="p-2 sm:p-5 overflow-y-auto flex-1 flex flex-col items-center space-y-1.5 sm:space-y-2 pb-24 sm:pb-5">
                             {(slotGuessesHistory[activeSlot._id || activeSlot.id || activeSlot.dbId || ''] || []).map((guess, idx) => {
                                 const { chars, colors } = evaluateWordleGuess(guess, activeSlot.name);
                                 return (
-                                    <div key={idx} className="flex gap-0.5 sm:gap-1 flex-wrap justify-center">
+                                    <div key={idx} className="flex gap-0.5 sm:gap-1 flex-wrap justify-center w-full px-1">
                                         {chars.map((char, j) => (
-                                            <div key={j} className={`w-6 h-8 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded sm:rounded-md text-sm sm:text-xl border sm:border-2 border-transparent ${colors[j]}`}>
+                                            <div key={j} className={`w-5 h-7 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded sm:rounded-md text-[10px] sm:text-xl border sm:border-2 border-transparent ${colors[j]}`}>
                                                 {char}
                                             </div>
                                         ))}
@@ -538,17 +539,17 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                             })}
                             
                             {/* Spațiile goale pentru target */}
-                            <div className="flex gap-0.5 sm:gap-1 flex-wrap justify-center opacity-50 mt-2">
+                            <div className="flex gap-0.5 sm:gap-1 flex-wrap justify-center opacity-50 mt-2 w-full px-1">
                                 {removeDiacritics(activeSlot.name).toUpperCase().split('').map((char, j) => (
-                                    <div key={`empty-${j}`} className="w-6 h-8 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded sm:rounded-md text-sm sm:text-xl border sm:border-2 border-slate-700 bg-slate-800">
+                                    <div key={`empty-${j}`} className="w-5 h-7 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded sm:rounded-md text-[10px] sm:text-xl border border-slate-700 bg-slate-800">
                                         {char === ' ' ? ' ' : '_'}
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        <form onSubmit={handleSlotGuess} className="p-3 sm:p-5 bg-slate-950 border-t-2 border-slate-800 shrink-0 pb-safe-bottom">
-                            <div className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2 text-center">
+                        <form onSubmit={handleSlotGuess} className="p-2 sm:p-5 bg-slate-950 border-t-2 border-slate-800 shrink-0 pb-safe-bottom w-full absolute bottom-0 sm:relative left-0 z-50">
+                            <div className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2 text-center">
                                 Verde: Corect | Portocaliu: Există, altă poziție
                             </div>
                             <div className="flex gap-2">
@@ -556,7 +557,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                     type="text"
                                     autoFocus
                                     placeholder="SCRIE..."
-                                    className="flex-1 bg-slate-900 border-2 border-slate-700 p-3 sm:p-4 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors text-xs sm:text-base shrink-0"
+                                    className="flex-1 bg-slate-900 border-2 border-slate-700 p-2.5 sm:p-4 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors text-xs sm:text-base shrink-0"
                                     value={slotGuess}
                                     onChange={e => setSlotGuess(e.target.value)}
                                 />

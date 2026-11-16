@@ -1,6 +1,6 @@
-// Versiunea 2.76 - Update PWA cu notificare personalizată, Web Push & Fix Cache (Modern Arena)
+// Versiunea 2.77 - Update PWA cu notificare personalizată, Web Push & Fix Cache (Modern Arena)
 
-const CACHE_NAME = 'scoutpro-cache-v2.76'; // Nume nou pentru noul cache
+const CACHE_NAME = 'scoutpro-cache-v2.77'; // Nume nou pentru noul cache
 const urlsToCache = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
