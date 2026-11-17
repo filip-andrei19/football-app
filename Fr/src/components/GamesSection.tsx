@@ -247,10 +247,13 @@ export function GamesSection({ user }: GamesProps) {
 }
 
 // ============================================================================
-// GAME 3: STARTING XI (GHICEȘTE PRIMUL 11) - WORDLE STYLE
+// GAME 3: STARTING XI (GHICEȘTE PRIMUL 11) - WORDLE STYLE (CU PAGINARE)
 // ============================================================================
 function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: boolean }) {
+    const [allMatches, setAllMatches] = useState<StartingXIData[]>([]);
+    const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
     const [match, setMatch] = useState<StartingXIData | null>(null);
+    
     const [guessedIds, setGuessedIds] = useState<Set<string>>(new Set());
     const [gaveUp, setGaveUp] = useState(false);
     
@@ -268,8 +271,9 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 if (res.ok) {
                     const matches: StartingXIData[] = await res.json();
                     if (matches.length > 0) {
-                        const randomMatch = matches[Math.floor(Math.random() * matches.length)];
-                        setMatch(randomMatch);
+                        setAllMatches(matches);
+                        setMatch(matches[0]); // Pornește mereu cu prima echipă din array
+                        setCurrentMatchIndex(0);
                     }
                 }
             } catch (err) {
@@ -280,6 +284,26 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         };
         fetchMatches();
     }, []);
+
+    // Funcție pentru încărcarea meciului cu un anumit index (Resetare state)
+    const loadMatch = (index: number) => {
+        setCurrentMatchIndex(index);
+        setMatch(allMatches[index]);
+        setGuessedIds(new Set());
+        setGaveUp(false);
+        setWin(false);
+        setActiveSlot(null);
+        setSlotGuess("");
+        setSlotGuessesHistory({});
+    };
+
+    const handlePrevMatch = () => {
+        if (currentMatchIndex > 0) loadMatch(currentMatchIndex - 1);
+    };
+
+    const handleNextMatch = () => {
+        if (currentMatchIndex < allMatches.length - 1) loadMatch(currentMatchIndex + 1);
+    };
 
     const evaluateWordleGuess = (guess: string, target: string) => {
         const targetClean = removeDiacritics(target).toUpperCase();
@@ -402,7 +426,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
     return (
         <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 relative">
             
-            {/* Header scor/meci */}
+            {/* Header scor/meci + Paginare echipe */}
             <div className="bg-slate-950 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-slate-800 flex flex-col justify-between items-center gap-3 sm:gap-4 shadow-xl">
                 <div className="w-full flex justify-between items-center md:hidden mb-2">
                     <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[10px] uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
@@ -437,6 +461,29 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                     <div className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] mt-3 sm:mt-4">
                         {match.date} • FORMAȚIE: {match.formation}
                     </div>
+                    
+                    {/* PAGINARE MECIURI ADAUGATE PENTRU "PRIMUL 11" */}
+                    {allMatches.length > 1 && (
+                        <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4 sm:mt-6 w-full pt-4 border-t border-slate-800">
+                            <button 
+                                onClick={handlePrevMatch} 
+                                disabled={currentMatchIndex === 0}
+                                className="bg-slate-800 hover:bg-slate-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-xs transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-b-2 border-slate-900 hover:border-b-0 hover:translate-y-[2px]"
+                            >
+                                &laquo; Prev
+                            </button>
+                            <span className="text-[10px] sm:text-sm font-black text-slate-400 tracking-widest">
+                                {currentMatchIndex + 1} / {allMatches.length}
+                            </span>
+                            <button 
+                                onClick={handleNextMatch} 
+                                disabled={currentMatchIndex === allMatches.length - 1}
+                                className="bg-slate-800 hover:bg-slate-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-xs transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-b-2 border-slate-900 hover:border-b-0 hover:translate-y-[2px]"
+                            >
+                                Next &raquo;
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="hidden md:block absolute top-6 left-6">
@@ -525,10 +572,10 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 ) : <div className="flex-1 sm:flex-none sm:w-[120px]"></div>}
             </div>
 
-            {/* Modal Ghicire Jucător (Wordle Style) - ADAPTAT MOBIL / TASTATURA */}
+            {/* Modal Ghicire Jucător (Wordle Style) - ANCORAT JOS PENTRU TASTATURA MOBILĂ */}
             {activeSlot && !win && !gaveUp && (
-                <div className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center bg-slate-950/95 sm:bg-slate-950/90 backdrop-blur-md p-0 sm:p-4 animate-in fade-in">
-                    <div className="bg-slate-900 w-full max-h-[100dvh] sm:h-auto sm:max-w-3xl sm:rounded-t-3xl sm:rounded-3xl sm:border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden">
+                <div className="fixed inset-0 z-[100000] flex items-end justify-center bg-slate-950/95 sm:bg-slate-950/90 backdrop-blur-md p-0 sm:p-4 animate-in fade-in">
+                    <div className="bg-slate-900 w-full max-h-[90dvh] sm:h-auto sm:max-w-3xl sm:rounded-3xl sm:border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden rounded-t-3xl">
                         
                         <div className="p-3 sm:p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 pt-safe sm:pt-5">
                             <h3 className="font-black text-white uppercase tracking-widest text-[10px] sm:text-sm flex items-center gap-2">Ghicește Numele</h3>
@@ -549,7 +596,6 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                 );
                             })}
                             
-                            {/* Spațiile goale pentru target */}
                             <div className="flex gap-0.5 sm:gap-1 flex-wrap justify-center opacity-50 mt-2 w-full px-1">
                                 {removeDiacritics(activeSlot.name).toUpperCase().split('').map((char, j) => (
                                     <div key={`empty-${j}`} className="w-5 h-7 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded sm:rounded-md text-[10px] sm:text-xl border border-slate-700 bg-slate-800">
