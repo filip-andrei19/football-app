@@ -33,7 +33,9 @@ router.post('/coaches', auth, validate(createCoachSchema), sportController.addCo
 router.get('/coaches', sportController.getCoaches);
 
 router.post('/matches', auth, validate(createMatchSchema), sportController.addMatch);
-router.get('/matches', sportController.getMatches); 
+
+// ❌ OPRITĂ AICI ERA PROBLEMA: Această rută bloca sistemul de fixtures (meciuri live) din server.js!
+// router.get('/matches', sportController.getMatches); 
 
 // --- NOU: RUTE PENTRU STARTING XI (PRIMUL 11) ---
 router.post('/starting-xi', sportController.addStartingXI);
