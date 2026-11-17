@@ -340,7 +340,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         }
     }, [userEmail]);
 
-    const localDateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    // METODA SIGURĂ PENTRU A OBȚINE DATA ÎN FORMAT YYYY-MM-DD
+    const y = selectedDate.getFullYear();
+    const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const d = String(selectedDate.getDate()).padStart(2, '0');
+    const localDateStr = `${y}-${m}-${d}`;
 
     const { data: matches = [], isLoading: loading } = useQuery({
         queryKey: ['matches', localDateStr],
