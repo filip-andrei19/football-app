@@ -228,6 +228,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const queryClient = useQueryClient();
 
     const [dates, setDates] = useState<{ date: Date; label: string; isToday: boolean }[]>([]);
+    // Creăm starea pentru data selectată, ignorând la inițializare problema cu formatul
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [subFilter, setSubFilter] = useState<'all' | 'live' | 'finished' | 'favorites'>('all');
     
@@ -307,11 +308,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     useEffect(() => {
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
         const generatedDates = [];
         for (let i = -3; i <= 3; i++) {
-            const d = new Date(today);
+            const d = new Date();
             d.setDate(today.getDate() + i);
             let label = d.toLocaleDateString('ro-RO', { weekday: 'short', day: '2-digit', month: '2-digit' });
             if (i === 0) label = "AZI";
@@ -340,7 +339,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         }
     }, [userEmail]);
 
-    // METODA SIGURĂ PENTRU A OBȚINE DATA ÎN FORMAT YYYY-MM-DD
+    // METODA SIGURĂ PENTRU EXTRAGEREA LOCALĂ A DATELOR FĂRĂ PROBLEME DE FUS ORAR
     const y = selectedDate.getFullYear();
     const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
     const d = String(selectedDate.getDate()).padStart(2, '0');
@@ -359,7 +358,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     useEffect(() => {
         socket.on("live_match_update", (updatedMatch: Match) => {
-            queryClient.setQueriesData<Match[]>({ queryKey: ['matches'] }, (oldMatches) => {
+            queryClient.setQueriesData<Match[]>({ queryKey: ['matches', localDateStr] }, (oldMatches) => {
                 if (!oldMatches) return oldMatches;
                 const index = oldMatches.findIndex(m => m.fixture_id === updatedMatch.fixture_id);
                 
@@ -410,7 +409,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             setSelectedMatchDetails(prev => prev && prev.fixture_id === updatedMatch.fixture_id ? { ...prev, ...updatedMatch } : prev);
         });
         return () => { socket.off("live_match_update"); };
-    }, [favoriteMatches, favoriteTeams, queryClient]);
+    }, [favoriteMatches, favoriteTeams, queryClient, localDateStr]);
 
     const toggleNotifPref = (key: keyof NotificationPrefs) => { setNotifPrefs(prev => ({ ...prev, [key]: !prev[key] })); };
 
@@ -499,7 +498,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             });
 
             setSelectedMatchDetails(fullData);
-            queryClient.setQueriesData<Match[]>({ queryKey: ['matches'] }, (oldMatches) => {
+            queryClient.setQueriesData<Match[]>({ queryKey: ['matches', localDateStr] }, (oldMatches) => {
                 if (!oldMatches) return oldMatches;
                 return oldMatches.map(m => (m.fixture_id === fullData.fixture_id ? { ...m, ...fullData } : m));
             });
@@ -809,7 +808,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const singleTeamLineup = lineupViewMode === 'home' ? homeTeamLineup : awayTeamLineup;
     const singleTeamRows = buildExactCoachRows(singleTeamLineup?.startXI || [], singleTeamLineup?.formation, false);
 
-    // === ALGORITM CLASAMENT LIVE ===
     const liveStandings = useMemo(() => {
         if (!standingsData || standingsData.length === 0) return [];
         
@@ -1339,6 +1337,67 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     </div>
                 </div>,
                 document.body
+            )}
+            
+            {/* COMPONENTĂ DE ECHIPĂ ASCUNSĂ (PENTRU CÂND SE DĂ CLICK DIN MATCHES PE ECHIPĂ) */}
+            {selectedTeam && (
+                <div className="fixed inset-0 top-0 sm:top-16 z-[9999999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-opacity p-2 sm:p-4">
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 mt-10 sm:mt-0">
+                    
+                    <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-2 sm:border-b-4 border-slate-700 relative pt-safe">
+                        <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-10 sm:pr-0">
+                            <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                                <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" />
+                            </div>
+                            <div className="min-w-0 flex flex-col">
+                                <h2 className="text-lg sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{selectedTeam.teamInfo.name}</h2>
+                                <p className="text-[9px] sm:text-base text-emerald-400 font-bold uppercase tracking-widest mt-0.5 truncate">
+                                    ⚽ LOTUL OFICIAL • {selectedTeam.teamInfo.totalPlayers} Jucători
+                                </p>
+                            </div>
+                        </div>
+                        <div className="absolute top-3 right-3 sm:static flex items-center gap-2">
+                            <button onClick={() => setSelectedTeam(null)} className="p-1.5 sm:p-3 bg-white/10 hover:bg-rose-500 rounded-lg sm:rounded-full border border-white/20 hover:border-rose-600 transition-colors text-white shrink-0">
+                                <X className="w-4 h-4 sm:w-6 sm:h-6" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="overflow-y-auto p-2 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-4 sm:space-y-6 flex-1 pb-safe-bottom pb-20">
+                      {([
+                        { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-500 border-amber-500", bg: "bg-amber-500/10" },
+                        { title: "Fundași", data: selectedTeam.squad.Defenders, color: "text-blue-500 border-blue-500", bg: "bg-blue-500/10" },
+                        { title: "Mijlocași", data: selectedTeam.squad.Midfielders, color: "text-emerald-500 border-emerald-500", bg: "bg-emerald-500/10" },
+                        { title: "Atacanți", data: selectedTeam.squad.Attackers, color: "text-rose-500 border-rose-500", bg: "bg-rose-500/10" }
+                      ]).map((section, idx) => section.data.length > 0 && (
+                        <div key={idx} className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-md border-2 border-slate-200 dark:border-slate-800 overflow-hidden">
+                          <div className={`px-3 py-2 sm:px-4 sm:py-3 border-l-4 ${section.color} ${section.bg} border-b border-b-slate-100 dark:border-b-slate-800`}>
+                            <h3 className={`font-black uppercase tracking-wider text-xs sm:text-base ${section.color.split(' ')[0]}`}>{section.title}</h3>
+                          </div>
+                          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {section.data.map(p => {
+                              const isSelectedForCompare = compareList.some(item => item._id === p._id);
+                              return (
+                                <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between p-2 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition gap-2 cursor-pointer">
+                                    <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+                                        <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-8 h-8 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base break-words uppercase tracking-tight" title={p.name}>{p.name}</p>
+                                            <div className="flex gap-1.5 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase tracking-wider">
+                                                {p.age && <span className="shrink-0">{p.age} ani</span>}
+                                                {p.nationality && <span className="truncate">• {p.nationality}</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
             )}
         </div>
     );
