@@ -211,7 +211,7 @@ export function GamesSection({ user }: GamesProps) {
                             <Activity className="w-8 h-8 sm:w-12 sm:h-12 text-emerald-400 mb-4 sm:mb-6 relative z-10" />
                             <h3 className="text-lg sm:text-xl md:text-2xl font-black text-white uppercase tracking-tighter mb-1.5 sm:mb-2 relative z-10">Grila (X și 0)</h3>
                             <p className="text-slate-400 font-bold text-[10px] sm:text-xs md:text-sm mb-4 sm:mb-6 line-clamp-3 flex-1 relative z-10 pr-2">Joacă local sau online vs prieteni (Best of 5). Găsește jucătorul perfect care să bifeze intersecția.</p>
-                            <button className="flex items-center gap-1.5 sm:gap-2 bg-emerald-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-emerald-500 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-emerald-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
+                            <button className="flex items-center gap-1.5 sm:gap-2 bg-emerald-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-emerald-50 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-emerald-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
                                 <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> Joacă
                             </button>
                         </div>
@@ -221,7 +221,7 @@ export function GamesSection({ user }: GamesProps) {
                             <Swords className="w-8 h-8 sm:w-12 sm:h-12 text-blue-400 mb-4 sm:mb-6 relative z-10" />
                             <h3 className="text-lg sm:text-xl md:text-2xl font-black text-white uppercase tracking-tighter mb-1.5 sm:mb-2 relative z-10">Hi-Lo: Cotă</h3>
                             <p className="text-slate-400 font-bold text-[10px] sm:text-xs md:text-sm mb-4 sm:mb-6 line-clamp-3 flex-1 relative z-10 pr-2">Mai mare sau mai mică? Alege o categorie și ghicește care jucător stă mai bine în statistici.</p>
-                            <button className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-blue-500 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-blue-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
+                            <button className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-blue-50 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-blue-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
                                 <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> Joacă
                             </button>
                         </div>
@@ -313,12 +313,23 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         e.preventDefault();
         if (!activeSlot || !match || gaveUp || win) return;
         
-        const guessText = slotGuess.trim();
-        if (guessText.length === 0) return;
-
-        const pid = activeSlot._id || activeSlot.id || activeSlot.dbId;
         const targetClean = removeDiacritics(activeSlot.name).toUpperCase();
+        const guessText = slotGuess;
+        
+        if (guessText.length < targetClean.length) {
+            toast.error("Completează toate caracterele!");
+            playSound('wrong', isMuted);
+            return;
+        }
+
+        if (/\d/.test(guessText)) {
+            toast.error("Numele nu poate conține cifre!");
+            playSound('wrong', isMuted);
+            return;
+        }
+
         const userClean = removeDiacritics(guessText).toUpperCase();
+        const pid = activeSlot._id || activeSlot.id || activeSlot.dbId;
 
         setSlotGuessesHistory(prev => ({
             ...prev,
@@ -508,7 +519,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 </div>
 
                 {!win && !gaveUp ? (
-                    <button onClick={handleGiveUp} className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-500 text-white px-4 sm:px-6 py-2 sm:py-4 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-all border-b-2 sm:border-b-4 border-rose-800 hover:border-b-2 hover:translate-y-[2px]">
+                    <button onClick={handleGiveUp} className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-500 text-white px-4 sm:px-6 py-2 sm:px-4 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-all border-b-2 sm:border-b-4 border-rose-800 hover:border-b-2 hover:translate-y-[2px]">
                         Give Up
                     </button>
                 ) : <div className="flex-1 sm:flex-none sm:w-[120px]"></div>}
@@ -516,15 +527,15 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
             {/* Modal Ghicire Jucător (Wordle Style) - ADAPTAT MOBIL / TASTATURA */}
             {activeSlot && !win && !gaveUp && (
-                <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/95 sm:bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in">
-                    <div className="bg-slate-900 w-full h-[100dvh] sm:h-auto sm:max-w-3xl sm:rounded-3xl sm:border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden max-h-[100dvh] sm:max-h-[90vh]">
+                <div className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center bg-slate-950/95 sm:bg-slate-950/90 backdrop-blur-md p-0 sm:p-4 animate-in fade-in">
+                    <div className="bg-slate-900 w-full max-h-[100dvh] sm:h-auto sm:max-w-3xl sm:rounded-t-3xl sm:rounded-3xl sm:border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden">
                         
-                        <div className="p-3 sm:p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 mt-safe-top">
+                        <div className="p-3 sm:p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 pt-safe sm:pt-5">
                             <h3 className="font-black text-white uppercase tracking-widest text-[10px] sm:text-sm flex items-center gap-2">Ghicește Numele</h3>
                             <button onClick={() => {setActiveSlot(null); setSlotGuess("");}} className="text-slate-400 hover:text-rose-500 bg-slate-800 p-1.5 rounded-md"><X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" /></button>
                         </div>
                         
-                        <div className="p-2 sm:p-5 overflow-y-auto flex-1 flex flex-col items-center space-y-1.5 sm:space-y-2 pb-24 sm:pb-5">
+                        <div className="p-2 sm:p-5 overflow-y-auto flex-1 flex flex-col items-center space-y-1.5 sm:space-y-2 pb-6 sm:pb-5">
                             {(slotGuessesHistory[activeSlot._id || activeSlot.id || activeSlot.dbId || ''] || []).map((guess, idx) => {
                                 const { chars, colors } = evaluateWordleGuess(guess, activeSlot.name);
                                 return (
@@ -548,7 +559,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                             </div>
                         </div>
 
-                        <form onSubmit={handleSlotGuess} className="p-2 sm:p-5 bg-slate-950 border-t-2 border-slate-800 shrink-0 pb-safe-bottom w-full absolute bottom-0 sm:relative left-0 z-50">
+                        <form onSubmit={handleSlotGuess} className="p-2 sm:p-5 bg-slate-950 border-t-2 border-slate-800 shrink-0 pb-safe-bottom w-full">
                             <div className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2 text-center">
                                 Verde: Corect | Portocaliu: Există, altă poziție
                             </div>
@@ -556,10 +567,15 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                 <input 
                                     type="text"
                                     autoFocus
+                                    maxLength={activeSlot ? removeDiacritics(activeSlot.name).length : undefined}
                                     placeholder="SCRIE..."
                                     className="flex-1 bg-slate-900 border-2 border-slate-700 p-2.5 sm:p-4 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors text-xs sm:text-base shrink-0"
                                     value={slotGuess}
-                                    onChange={e => setSlotGuess(e.target.value)}
+                                    onChange={e => {
+                                        const val = e.target.value.toUpperCase();
+                                        if (/\d/.test(val)) return;
+                                        setSlotGuess(val);
+                                    }}
                                 />
                                 <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 sm:px-6 rounded-lg sm:rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-all border-b-2 sm:border-b-4 border-blue-800 hover:border-b-2 hover:translate-y-[2px]">
                                     Testează
@@ -1172,7 +1188,6 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
             {/* GRILA PROPRIU-ZISĂ */}
             {gridRows.length > 0 && (
                 <div className="max-w-3xl mx-auto p-2 sm:p-6 bg-white dark:bg-slate-900 rounded-xl sm:rounded-3xl border-2 sm:border-4 border-slate-200 dark:border-slate-800 shadow-2xl relative overflow-hidden">
-                    {/* Oferim scroll orizontal pe ecrane FOARTE mici dacă e nevoie, dar grila va incerca sa incapa flexibil */}
                     <div className="overflow-x-auto scrollbar-hide w-full pb-1">
                         {!isMyTurn && !winner && (
                             <div className="absolute inset-0 z-50 bg-transparent cursor-not-allowed" onClick={() => toast.error("Nu este rândul tău!")} title="Așteaptă mutarea adversarului"></div>
