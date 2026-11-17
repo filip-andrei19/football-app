@@ -941,7 +941,10 @@ const startServer = async () => {
                     (["1H", "HT", "2H", "ET", "P", "BT", "LIVE"].includes(m.status_short) && m.timestamp && m.timestamp < nowSec - (130 * 60))
                 );
 
-                if (hasOutdatedMatches && (Date.now() - lastAutoMatchSyncTime > 10 * 60 * 1000)) {
+                // --- MODIFICARE: FORȚEAZĂ SYNC ȘI DACĂ ESTE GOL (PAUZĂ DE MECIURI) ---
+                const shouldSync = hasOutdatedMatches || matches.length === 0;
+
+                if (shouldSync && (Date.now() - lastAutoMatchSyncTime > 10 * 60 * 1000)) {
                     lastAutoMatchSyncTime = Date.now();
                     sync7DaysWindow().catch(err => console.error("Eroare auto-sync meciuri:", err.message));
                 }

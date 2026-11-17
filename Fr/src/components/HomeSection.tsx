@@ -374,8 +374,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             setLoading(false);
             return;
           }
-          
-          // ACUM NE FOLOSIM DE RUTA PERFECTĂ DIN BACKEND TĂU!
           const response = await fetch(`${API_URL}/api/sport/teams/search?q=${encodeURIComponent(searchTerm)}`);
           if (!response.ok) throw new Error(`Eroare server: ${response.status}`);
           const data = await response.json();
@@ -521,7 +519,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     setLoadingRoster(true);
     setSelectedTeam(null);
     try {
-      // Revenim la ruta optimizată din server.js pentru descărcarea lotului
       const res = await fetch(`${API_URL}/api/sport/teams/${encodeURIComponent(teamName)}/roster`);
       if (!res.ok) throw new Error("Eroare preluare lot");
       const data = await res.json();
@@ -547,8 +544,11 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
       </div>
 
       {selectedTeam && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm transition-opacity">
-          <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300">
+        // Container principal pentru modalul de echipă. 
+        // Am adăugat z-[9999] și am folosit fixed inset-0 pentru acoperire completă.
+        <div className="fixed inset-0 top-0 sm:top-16 z-[9999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-opacity p-2 sm:p-4">
+          {/* Am înlocuit clasa h-[100dvh] cu h-full max-h-[95vh] pe mobil pentru a preveni coliziunea cu marginile de sus. */}
+          <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 mt-10 sm:mt-0">
             
             <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-2 sm:border-b-4 border-slate-700 relative pt-safe">
                 <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-10 sm:pr-0">
@@ -569,7 +569,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 </div>
             </div>
 
-            <div className="overflow-y-auto p-2 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-4 sm:space-y-6 flex-1 pb-safe-bottom">
+            <div className="overflow-y-auto p-2 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-4 sm:space-y-6 flex-1 pb-safe-bottom pb-20">
               {([
                 { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-500 border-amber-500", bg: "bg-amber-500/10" },
                 { title: "Fundași", data: selectedTeam.squad.Defenders, color: "text-blue-500 border-blue-500", bg: "bg-blue-500/10" },
@@ -588,7 +588,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                             <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
                                 <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-8 h-8 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
                                 <div className="min-w-0 flex-1">
-                                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base truncate uppercase tracking-tight" title={p.name}>{p.name}</p>
+                                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base break-words uppercase tracking-tight" title={p.name}>{p.name}</p>
                                     <div className="flex gap-1.5 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase tracking-wider">
                                         {p.age && <span className="shrink-0">{p.age} ani</span>}
                                         {p.nationality && <span className="truncate">• {p.nationality}</span>}
@@ -1255,6 +1255,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     </div>
                   </div>
 
+                  {/* RADARUL PE MOBIL MAI MIC */}
                   <div className="bg-slate-800 p-2 sm:p-6 rounded-2xl sm:rounded-3xl border sm:border-2 border-slate-700 flex flex-col items-center overflow-hidden">
                     <div className="flex items-center justify-center gap-2 sm:gap-6 text-[8px] sm:text-xs font-black uppercase tracking-widest mb-2 sm:mb-4 flex-wrap">
                       <span className="flex items-center gap-1 sm:gap-2 text-yellow-400 truncate max-w-[120px] sm:max-w-none">
