@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity, Globe, Users, Share2, Copy, Crown, Timer, Heart, Volume2, VolumeX, ListOrdered, Share, Shirt, Trash2, Plus, LayoutDashboard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client';
+import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, SortingState } from '@tanstack/react-table';
 
 // --- INTERFEȚE GENERALE ---
 interface Player {
@@ -242,6 +243,108 @@ export function GamesSection({ user }: GamesProps) {
             {activeGame === 'grid' && <GridGame players={allPlayers} onBack={() => setActiveGame('menu')} isMuted={isMuted} user={user} />}
             {activeGame === 'hilo' && <HiLoGame players={allPlayers} onBack={() => setActiveGame('menu')} user={user} isMuted={isMuted} />}
             {activeGame === 'xi' && <StartingXIGame onBack={() => setActiveGame('menu')} isMuted={isMuted} />}
+        </div>
+    );
+}
+
+// ============================================================================
+// COMPONENTA TANSTACK TABLE PENTRU LEADERBOARD (TOP 50 HI-LO)
+// ============================================================================
+function LeaderboardTable({ data, currentUserName }: { data: any[], currentUserName: string }) {
+    const [sorting, setSorting] = useState<SortingState>([]);
+
+    const tableData = useMemo(() => {
+        return data.map((entry, index) => ({
+            rank: index + 1,
+            name: entry.name,
+            score: entry.score
+        }));
+    }, [data]);
+
+    const columns = useMemo(() => [
+        {
+            accessorKey: 'rank',
+            header: 'Loc',
+            cell: (info: any) => {
+                const rank = info.getValue();
+                let colorClass = 'text-slate-600';
+                if (rank === 1) colorClass = 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]';
+                else if (rank === 2) colorClass = 'text-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.6)]';
+                else if (rank === 3) colorClass = 'text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.6)]';
+                
+                return <div className={`text-center font-black sm:text-xl ${colorClass}`}>#{rank}</div>;
+            }
+        },
+        {
+            accessorKey: 'name',
+            header: 'Nume Jucător',
+            cell: (info: any) => {
+                const name = info.getValue();
+                const isMe = name.toLowerCase() === currentUserName.toLowerCase();
+                return (
+                    <div className="flex items-center gap-2">
+                        <span className={`font-bold truncate max-w-[120px] sm:max-w-[300px] ${isMe ? 'text-emerald-400' : 'text-white'}`}>
+                            {name}
+                        </span>
+                        {isMe && <span className="bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ml-1">Tu</span>}
+                    </div>
+                );
+            }
+        },
+        {
+            accessorKey: 'score',
+            header: 'Scor',
+            cell: (info: any) => <div className="text-right font-black text-emerald-400 sm:text-lg">{info.getValue()} pct</div>
+        }
+    ], [currentUserName]);
+
+    const table = useReactTable({
+        data: tableData,
+        columns,
+        state: { sorting },
+        onSortingChange: setSorting,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+    });
+
+    return (
+        <div className="overflow-x-auto scrollbar-hide max-h-[60vh] sm:max-h-96 pr-1 sm:pr-2">
+            <table className="w-full text-xs sm:text-sm text-left">
+                <thead className="sticky top-0 bg-slate-900 text-slate-400 font-black tracking-widest text-[9px] sm:text-xs border-b-2 border-slate-800 uppercase z-10">
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <tr key={headerGroup.id}>
+                            {headerGroup.headers.map(header => (
+                                <th key={header.id} onClick={header.column.getToggleSortingHandler()} className="py-3 px-2 cursor-pointer select-none hover:text-white transition-colors">
+                                    <div className={`flex items-center gap-1 ${header.column.id === 'score' ? 'justify-end' : header.column.id === 'rank' ? 'justify-center' : 'justify-start'}`}>
+                                        {flexRender(header.column.columnDef.header, header.getContext())}
+                                        <span className="w-3 text-emerald-400">
+                                            {header.column.getIsSorted() === 'asc' ? ' 🔼' : header.column.getIsSorted() === 'desc' ? ' 🔽' : ''}
+                                        </span>
+                                    </div>
+                                </th>
+                            ))}
+                        </tr>
+                    ))}
+                </thead>
+                <tbody className="divide-y divide-slate-800/50 bg-slate-950">
+                    {table.getRowModel().rows.length === 0 ? (
+                        <tr><td colSpan={3} className="text-slate-500 text-center font-bold uppercase tracking-widest text-xs sm:text-sm py-10">Niciun scor înregistrat încă.</td></tr>
+                    ) : (
+                        table.getRowModel().rows.map(row => {
+                            const isMe = row.original.name.toLowerCase() === currentUserName.toLowerCase();
+                            return (
+                                <tr key={row.id} className={`transition-colors hover:bg-slate-900 ${isMe ? 'bg-emerald-950/20 border-l-2 border-emerald-500' : ''}`}>
+                                    {row.getVisibleCells().map(cell => (
+                                        <td key={cell.id} className={`py-3 px-2 ${cell.column.id === 'score' ? 'text-right' : ''}`}>
+                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                        </td>
+                                    ))}
+                                </tr>
+                            );
+                        })
+                    )}
+                </tbody>
+            </table>
         </div>
     );
 }
@@ -1523,21 +1626,8 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                         <h2 className="text-sm sm:text-xl font-black text-white uppercase tracking-widest flex items-center gap-1.5 sm:gap-2"><Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" /> Top Hi-Lo</h2>
                         <div className="w-10 sm:w-16"></div>
                     </div>
-                    <div className="space-y-2 max-h-[60vh] sm:max-h-96 overflow-y-auto pr-1 sm:pr-2">
-                        {leaderboard.length === 0 ? (
-                            <p className="text-slate-500 text-center font-bold uppercase tracking-widest text-xs sm:text-sm py-10">Niciun scor înregistrat încă.</p>
-                        ) : (
-                            leaderboard.map((entry: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-center bg-slate-950 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-slate-800">
-                                    <div className="flex items-center gap-2 sm:gap-4">
-                                        <span className={`text-base sm:text-xl font-black w-6 sm:w-8 text-center ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-slate-600'}`}>#{idx + 1}</span>
-                                        <span className="font-bold text-white text-xs sm:text-base truncate max-w-[120px] sm:max-w-[300px]">{entry.name}</span>
-                                    </div>
-                                    <span className="font-black text-emerald-400 text-sm sm:text-xl shrink-0">{entry.score} pct</span>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                    {/* IMPLEMENTARE NOUA CU TANSTACK TABLE AICI */}
+                    <LeaderboardTable data={leaderboard} currentUserName={playerName.trim()} />
                 </div>
             );
         }

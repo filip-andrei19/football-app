@@ -2,12 +2,14 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { io } from 'socket.io-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, SortingState } from '@tanstack/react-table';
 import {
     Calendar, Trophy, Activity, X, Globe, User as UserIcon, Star,
     MapPin, Users, BarChart2, ListOrdered, Clock, Scale, Bookmark,
     Check, TrendingUp, Swords, History, ArrowUp, ArrowDown, Minus,
     Heart, Bell, Settings
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 const socket = io("https://football-backend-m2a4.onrender.com");
@@ -95,6 +97,126 @@ interface NotificationPrefs {
     fullTime: boolean;
     redCards: boolean;
 }
+
+// ==========================================
+// COMPONENTA TANSTACK TABLE PENTRU CLASAMENT
+// ==========================================
+function StandingsTable({ data, selectedMatchDetails, handleTeamClick }: { data: any[], selectedMatchDetails: any, handleTeamClick: any }) {
+    const [sorting, setSorting] = useState<SortingState>([]);
+
+    const columns = useMemo(() => [
+        {
+            accessorKey: 'liveRank',
+            header: 'Loc',
+            cell: (info: any) => <div className="text-center font-black text-slate-500">{info.getValue()}</div>,
+        },
+        {
+            accessorKey: 'trend',
+            header: '+/-',
+            cell: (info: any) => {
+                const trend = info.getValue();
+                return (
+                    <div className="text-center flex justify-center">
+                        {trend === 'up' && <ArrowUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500" />}
+                        {trend === 'down' && <ArrowDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-rose-500" />}
+                        {trend === 'same' && <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-300 dark:text-slate-600" />}
+                    </div>
+                );
+            }
+        },
+        {
+            id: 'team',
+            accessorFn: (row: any) => row.team?.name,
+            header: 'Formație',
+            cell: (info: any) => {
+                const row = info.row.original;
+                const isCurrentTeam = row.team?.id === selectedMatchDetails.home_team_id || row.team?.id === selectedMatchDetails.away_team_id;
+                const isPlayingNow = row.isLivePlaying;
+                return (
+                    <div className="flex items-center gap-1.5 sm:gap-3">
+                        <img src={row.team?.logo} alt="logo" className="w-4 h-4 sm:w-6 sm:h-6 object-contain bg-white rounded p-0.5 shrink-0" />
+                        <span className={`font-black tracking-tight truncate max-w-[85px] sm:max-w-[200px] ${isCurrentTeam ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.team?.name}</span>
+                        {isPlayingNow && <span className="ml-0.5 sm:ml-1 px-1 sm:px-1.5 py-0.5 bg-rose-600 text-white text-[6px] sm:text-[8px] font-black rounded uppercase animate-pulse">Live</span>}
+                    </div>
+                );
+            }
+        },
+        {
+            accessorKey: 'livePlayed',
+            header: 'J',
+            cell: (info: any) => <div className="text-center font-bold text-slate-500 dark:text-slate-400">{info.getValue()}</div>,
+        },
+        {
+            id: 'goals',
+            accessorFn: (row: any) => row.liveGoalsFor - row.liveGoalsAgainst, // Sortare după golaveraj
+            header: 'G',
+            cell: (info: any) => {
+                const row = info.row.original;
+                return <div className="text-center font-bold text-slate-500 dark:text-slate-400 text-[9px] sm:text-[11px] whitespace-nowrap">{row.liveGoalsFor}:{row.liveGoalsAgainst}</div>;
+            }
+        },
+        {
+            accessorKey: 'livePoints',
+            header: 'PCT',
+            cell: (info: any) => {
+                 const points = info.getValue();
+                 const row = info.row.original;
+                 const isCurrentTeam = row.team?.id === selectedMatchDetails.home_team_id || row.team?.id === selectedMatchDetails.away_team_id;
+                 const isPlayingNow = row.isLivePlaying;
+                 return <div className={`text-center font-black text-xs sm:text-sm ${isPlayingNow ? 'text-amber-500' : isCurrentTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{points}</div>
+            }
+        }
+    ], [selectedMatchDetails]);
+
+    const table = useReactTable({
+        data,
+        columns,
+        state: { sorting },
+        onSortingChange: setSorting,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+    });
+
+    return (
+        <div className="overflow-x-auto scrollbar-hide">
+            <table className="w-full text-[10px] sm:text-sm text-left min-w-[300px]">
+                <thead className="bg-slate-900 text-slate-400 font-black tracking-widest text-[8px] sm:text-[9px] border-b sm:border-b-2 border-slate-700 uppercase">
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <tr key={headerGroup.id}>
+                            {headerGroup.headers.map(header => (
+                                <th key={header.id} onClick={header.column.getToggleSortingHandler()} className="py-2 sm:py-4 px-1 sm:px-3 cursor-pointer select-none hover:text-white transition-colors">
+                                    <div className="flex items-center justify-center gap-1">
+                                        {flexRender(header.column.columnDef.header, header.getContext())}
+                                        <span className="w-3 text-emerald-400">
+                                            {header.column.getIsSorted() === 'asc' ? ' 🔼' : header.column.getIsSorted() === 'desc' ? ' 🔽' : ''}
+                                        </span>
+                                    </div>
+                                </th>
+                            ))}
+                        </tr>
+                    ))}
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                    {table.getRowModel().rows.map(row => {
+                        const isCurrentTeam = row.original.team?.id === selectedMatchDetails.home_team_id || row.original.team?.id === selectedMatchDetails.away_team_id;
+                        const isPlayingNow = row.original.isLivePlaying;
+                        return (
+                            <tr key={row.id} onClick={(e) => handleTeamClick(e, row.original.team?.name)} className={`cursor-pointer transition-colors ${isPlayingNow ? 'bg-amber-50 dark:bg-amber-900/10' : isCurrentTeam ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-900'}`}>
+                                {row.getVisibleCells().map(cell => (
+                                    <td key={cell.id} className="py-2 sm:py-3.5 px-1 sm:px-3">
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </td>
+                                ))}
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+// ==========================================
+
 
 const urlB64ToUint8Array = (base64String: string) => {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -228,7 +350,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const queryClient = useQueryClient();
 
     const [dates, setDates] = useState<{ date: Date; label: string; isToday: boolean }[]>([]);
-    // Creăm starea pentru data selectată, ignorând la inițializare problema cu formatul
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [subFilter, setSubFilter] = useState<'all' | 'live' | 'finished' | 'favorites'>('all');
     
@@ -339,7 +460,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         }
     }, [userEmail]);
 
-    // METODA SIGURĂ PENTRU EXTRAGEREA LOCALĂ A DATELOR FĂRĂ PROBLEME DE FUS ORAR
     const y = selectedDate.getFullYear();
     const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
     const d = String(selectedDate.getDate()).padStart(2, '0');
@@ -415,7 +535,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const toggleFavoriteTeam = async (e: React.MouseEvent, teamName: string) => {
         e.stopPropagation();
-        if (!userEmail) { alert("Trebuie să ai legitimație (cont) pentru a salva echipe la favorite!"); return; }
+        if (!userEmail) { toast.error("Trebuie să ai legitimație (cont) pentru a salva echipe la favorite!"); return; }
         const isFav = favoriteTeams.includes(teamName);
         const newFavTeams = isFav ? favoriteTeams.filter(t => t !== teamName) : [...favoriteTeams, teamName];
         setFavoriteTeams(newFavTeams);
@@ -426,7 +546,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const toggleFavoriteMatch = async (e: React.MouseEvent, fixtureId: number) => {
         e.stopPropagation();
-        if (!userEmail) { alert("Trebuie să ai legitimație (cont) pentru a salva meciuri la favorite!"); return; }
+        if (!userEmail) { toast.error("Trebuie să ai legitimație (cont) pentru a salva meciuri la favorite!"); return; }
         try {
             const res = await fetch(`https://football-backend-m2a4.onrender.com/api/users/favorite-matches/toggle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: userEmail, fixtureId }) });
             const data = await res.json();
@@ -436,7 +556,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const toggleWatchlist = async (e: React.MouseEvent, player: Player) => {
         e.stopPropagation();
-        if (!userEmail) { alert("Conectează-te pentru a adăuga jucători în lista scurtă."); return; }
+        if (!userEmail) { toast.error("Conectează-te pentru a adăuga jucători în lista scurtă."); return; }
         const playerId = player._id;
         const exists = watchlistIds.includes(playerId);
         const updated = exists ? watchlistIds.filter(id => id !== playerId) : [...watchlistIds, playerId];
@@ -473,7 +593,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 staleTime: 60 * 60 * 1000, 
             });
             setSelectedTeam(data);
-        } catch (err: any) { alert(err.message); } finally { setLoadingRoster(false); }
+        } catch (err: any) { toast.error(err.message); } finally { setLoadingRoster(false); }
     };
 
     const handleMatchClick = async (match: Match) => {
@@ -529,7 +649,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             if (res.ok) {
                 const players = await res.json();
                 if (players && players.length > 0) { setSelectedPlayer(players[0]); } 
-                else { alert(`Dosarul pentru jucătorul ${playerName} nu se află încă în arhivă.`); }
+                else { toast.error(`Dosarul pentru jucătorul ${playerName} nu se află încă în arhivă.`); }
             }
         } catch (err) { console.error(err); }
     };
@@ -878,7 +998,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,#000_20px,#000_22px)]"></div>
             </div>
 
-            {/* HEADER & DATE SELECTOR BAR */}
             <div className="mb-6 sm:mb-8 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border-2 border-slate-800 p-4 rounded-2xl sm:rounded-3xl shadow-xl text-white">
                     <div className="flex items-center gap-3">
@@ -887,7 +1006,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         </div>
                         <div>
                             <h2 className="text-base sm:text-xl font-black uppercase tracking-tight">Program Meciuri</h2>
-                            <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">{matches.length} Meciuri azi</p>
+                            <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">{matches.length} Meciuri</p>
                         </div>
                     </div>
 
@@ -921,7 +1040,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     </div>
                 </div>
 
-                {/* SCROLLER ZILE - Orizontal pe mobil */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-2 px-2 sm:mx-0 sm:px-0">
                     {dates.map((item, idx) => {
                         const isSelected = item.date.toDateString() === selectedDate.toDateString();
@@ -945,7 +1063,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 </div>
             </div>
 
-            {/* LISTA DE MECIURI PE LIGI */}
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-16 sm:py-24">
                     <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3 sm:mb-4 shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
@@ -1092,7 +1209,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 {selectedMatchDetails.league_round && <span className="text-slate-500 hidden sm:inline">• {selectedMatchDetails.league_round}</span>}
                             </div>
                             
-                            {/* SCOREBOARD-ul COMPACTAT PENTRU MOBIL */}
                             <div className="flex items-center justify-between gap-1 sm:gap-6 max-w-2xl mx-auto relative z-10 px-1 sm:px-0">
                                 <div onClick={e => handleTeamClick(e, selectedMatchDetails.home_team_name)} className="flex-1 flex flex-col items-center text-center cursor-pointer group">
                                     <div className="w-12 h-12 sm:w-24 sm:h-24 bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-3 shadow-[0_0_15px_rgba(255,255,255,0.2)] mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
@@ -1115,7 +1231,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             </div>
                         </div>
 
-                        {/* TABS CULISANTE PE MOBIL */}
                         <div className="flex border-b-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shrink-0 overflow-x-auto scrollbar-hide snap-x">
                             {[
                                 { id: 'events', label: 'Evenimente', icon: Clock }, 
@@ -1339,8 +1454,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 document.body
             )}
             
-            {/* COMPONENTĂ DE ECHIPĂ ASCUNSĂ (PENTRU CÂND SE DĂ CLICK DIN MATCHES PE ECHIPĂ) */}
-            {selectedTeam && (
+            {/* MODAL ECHIPĂ / ROSTER - SE DESCHIDE CÂND DAI CLICK PE ECHIPĂ */}
+            {selectedTeam && createPortal(
                 <div className="fixed inset-0 top-0 sm:top-16 z-[9999999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-opacity p-2 sm:p-4">
                   <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 mt-10 sm:mt-0">
                     
@@ -1397,7 +1512,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                       ))}
                     </div>
                   </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
