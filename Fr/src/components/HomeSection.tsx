@@ -1,27 +1,17 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  Globe,
-  Shield,
-  Star,
-  Activity,
-  X,
-  Trophy,
-  MapPin,
-  User as UserIcon,
-  SlidersHorizontal,
-  Scale,
-  Bookmark,
-  TrendingUp,
-  RotateCcw,
-  Check,
-  AlertTriangle 
+  Globe, Shield, Star, Activity, X, Trophy, MapPin, 
+  User as UserIcon, SlidersHorizontal, Scale, Bookmark, 
+  TrendingUp, RotateCcw, Check, AlertTriangle 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useForm } from '@tanstack/react-form';
+// 1. Am adăugat importul obligatoriu pentru useStore-ul din TanStack Form
+import { useStore } from '@tanstack/react-form';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 const API_URL = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 
-// 1. INTERFAȚA PLAYER
 interface DetailedStat {
   competition: string;
   type: string;
@@ -57,7 +47,6 @@ interface Player {
   };
 }
 
-// 2. INTERFAȚE PENTRU ECHIPE ȘI LOT
 interface TeamResult {
   team_name: string;
   team_logo: string;
@@ -75,7 +64,6 @@ interface SquadData {
   };
 }
 
-// 3. INTERFAȚA PROPS
 interface HomeProps {
   user: { name: string; email: string };
   onNavigate: (section: any) => void;
@@ -87,7 +75,6 @@ const parseHeightCm = (heightStr?: string): number => {
   return isNaN(num) ? 0 : num;
 };
 
-// Calcul metrici avansate de Scouting (Per 90' & Radar - Percentile Style)
 const computeScoutingMetrics = (player: Player) => {
   const stats = player.statistics_summary || {
     total_goals: 0,
@@ -131,15 +118,7 @@ const computeScoutingMetrics = (player: Player) => {
   const impactScore = Math.min(99, Math.max(25, Math.round((formScore * 0.4) + (contributionsPer90 * 55) + 15)));
 
   return {
-    goals,
-    assists,
-    apps,
-    minutes,
-    rating,
-    goalsPer90,
-    assistsPer90,
-    contributionsPer90,
-    minsPerContribution,
+    goals, assists, apps, minutes, rating, goalsPer90, assistsPer90, contributionsPer90, minsPerContribution,
     radar: [
       { label: primaryLabel, value: primaryScore },
       { label: "Creație", value: creativityScore },
@@ -150,13 +129,7 @@ const computeScoutingMetrics = (player: Player) => {
   };
 };
 
-const PlayerRadarChart = ({
-  primaryPlayer,
-  secondaryPlayer
-}: {
-  primaryPlayer: Player;
-  secondaryPlayer?: Player | null;
-}) => {
+const PlayerRadarChart = ({ primaryPlayer, secondaryPlayer }: { primaryPlayer: Player; secondaryPlayer?: Player | null; }) => {
   const m1 = computeScoutingMetrics(primaryPlayer);
   const m2 = secondaryPlayer ? computeScoutingMetrics(secondaryPlayer) : null;
 
@@ -170,72 +143,37 @@ const PlayerRadarChart = ({
   const getCoordinates = (index: number, value: number) => {
     const angle = (Math.PI * 2 * index) / axes.length - Math.PI / 2;
     const r = (value / 100) * radius;
-    return {
-      x: center + r * Math.cos(angle),
-      y: center + r * Math.sin(angle)
-    };
+    return { x: center + r * Math.cos(angle), y: center + r * Math.sin(angle) };
   };
 
   const buildPolygonPoints = (radarData: { label: string; value: number }[]) =>
-    radarData
-      .map((item, idx) => {
+    radarData.map((item, idx) => {
         const { x, y } = getCoordinates(idx, item.value);
         return `${x},${y}`;
-      })
-      .join(" ");
+      }).join(" ");
 
   return (
     <div className="flex flex-col items-center">
       <svg width={size} height={size} className="overflow-visible drop-shadow-md">
         {[25, 50, 75, 100].map((level) => {
-          const pts = axes
-            .map((_, idx) => {
+          const pts = axes.map((_, idx) => {
               const { x, y } = getCoordinates(idx, level);
               return `${x},${y}`;
-            })
-            .join(" ");
+            }).join(" ");
           return (
-            <polygon
-              key={level}
-              points={pts}
-              fill="none"
-              stroke="rgba(16, 185, 129, 0.3)" 
-              strokeWidth="1"
-              strokeDasharray={level < 100 ? "3 3" : undefined}
-            />
+            <polygon key={level} points={pts} fill="none" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="1" strokeDasharray={level < 100 ? "3 3" : undefined} />
           );
         })}
 
         {axes.map((_, idx) => {
           const end = getCoordinates(idx, 100);
           return (
-            <line
-              key={idx}
-              x1={center}
-              y1={center}
-              x2={end.x}
-              y2={end.y}
-              stroke="rgba(16, 185, 129, 0.4)"
-              strokeWidth="1"
-            />
+            <line key={idx} x1={center} y1={center} x2={end.x} y2={end.y} stroke="rgba(16, 185, 129, 0.4)" strokeWidth="1" />
           );
         })}
 
-        {m2 && (
-          <polygon
-            points={buildPolygonPoints(m2.radar)}
-            fill="rgba(59, 130, 246, 0.4)" 
-            stroke="#2563eb"
-            strokeWidth="3"
-          />
-        )}
-
-        <polygon
-          points={buildPolygonPoints(m1.radar)}
-          fill="rgba(250, 204, 21, 0.4)" 
-          stroke="#facc15"
-          strokeWidth="3"
-        />
+        {m2 && <polygon points={buildPolygonPoints(m2.radar)} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth="3" />}
+        <polygon points={buildPolygonPoints(m1.radar)} fill="rgba(250, 204, 21, 0.4)" stroke="#facc15" strokeWidth="3" />
 
         {m1.radar.map((item, idx) => {
           const pt1 = getCoordinates(idx, item.value);
@@ -243,13 +181,7 @@ const PlayerRadarChart = ({
           return (
             <g key={idx}>
               <circle cx={pt1.x} cy={pt1.y} r={isMobile ? "3" : "4"} fill="#facc15" stroke="#fff" strokeWidth="1.5" />
-              <text
-                x={labelPos.x}
-                y={labelPos.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="text-[8px] sm:text-[10px] font-black fill-slate-700 dark:fill-slate-200 uppercase tracking-wider"
-              >
+              <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" className="text-[8px] sm:text-[10px] font-black fill-slate-700 dark:fill-slate-200 uppercase tracking-wider">
                 {item.label} ({item.value})
               </text>
             </g>
@@ -264,44 +196,45 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchMode, setSearchMode] = useState<'players' | 'teams'>('players');
-
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<TeamResult[]>([]);
 
   const [selectedTeam, setSelectedTeam] = useState<SquadData | null>(null);
   const [loadingRoster, setLoadingRoster] = useState(false);
-
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   const [showProFilters, setShowProFilters] = useState(false);
-  const [positionFilter, setPositionFilter] = useState("Toate");
-  const [maxAgeFilter, setMaxAgeFilter] = useState<string>("");
-  const [minHeightFilter, setMinHeightFilter] = useState<number>(0);
-  const [minMinutesFilter, setMinMinutesFilter] = useState<number>(0);
-  const [minGoalsFilter, setMinGoalsFilter] = useState<number>(0);
-  const [minRatingFilter, setMinRatingFilter] = useState<string>("0");
-  
-  const [nationalityFilter, setNationalityFilter] = useState("Toate");
-  const [leagueFilter, setLeagueFilter] = useState("Toate");
 
-  const [sortBy, setSortBy] = useState<'rating' | 'per90' | 'goals' | 'assists' | 'minutes'>('rating');
+  // 2. CONFIGURAREA FORMULARULUI TANSTACK
+  const filterForm = useForm({
+    defaultValues: {
+      searchTerm: "",
+      searchMode: 'players' as 'players' | 'teams',
+      positionFilter: "Toate",
+      maxAgeFilter: "",
+      minHeightFilter: "0", // Trebuie să fie string sau number consistently în select, le vom ține string
+      minMinutesFilter: "0",
+      minGoalsFilter: "0",
+      minRatingFilter: "0",
+      nationalityFilter: "Toate",
+      leagueFilter: "Toate",
+      sortBy: 'rating' as 'rating' | 'per90' | 'goals' | 'assists' | 'minutes',
+      onlyWatchlist: false
+    }
+  });
 
-  const [onlyWatchlist, setOnlyWatchlist] = useState(false);
+  // 3. APELUL CORECT CĂTRE USESTORE DIN TANSTACK
+  const formValues = useStore(filterForm.store, (state) => state.values);
+
   const [watchlistIds, setWatchlistIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('scout_watchlist_ids');
       return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    } catch { return []; }
   });
   const [watchedPlayersData, setWatchedPlayersData] = useState<Player[]>([]);
-
   const [compareList, setCompareList] = useState<Player[]>([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
-
   const [greeting, setGreeting] = useState("Salut");
 
   useEffect(() => {
@@ -325,23 +258,23 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             setWatchedPlayersData(data.watchedPlayers);
           }
         }
-      })
-      .catch(() => {});
+      }).catch(() => {});
   }, [user?.email]);
 
   const hasActiveProFilters =
-    positionFilter !== "Toate" ||
-    maxAgeFilter !== "" ||
-    minHeightFilter > 0 ||
-    minMinutesFilter > 0 ||
-    minGoalsFilter > 0 ||
-    nationalityFilter !== "Toate" ||
-    leagueFilter !== "Toate" ||
-    parseFloat(minRatingFilter) > 0;
+    formValues.positionFilter !== "Toate" ||
+    formValues.maxAgeFilter !== "" ||
+    parseInt(formValues.minHeightFilter) > 0 ||
+    parseInt(formValues.minMinutesFilter) > 0 ||
+    parseInt(formValues.minGoalsFilter) > 0 ||
+    formValues.nationalityFilter !== "Toate" ||
+    formValues.leagueFilter !== "Toate" ||
+    parseFloat(formValues.minRatingFilter) > 0;
 
+  // Auto-Fetch
   useEffect(() => {
     const fetchResults = async () => {
-      if (onlyWatchlist && searchMode === 'players') {
+      if (formValues.onlyWatchlist && formValues.searchMode === 'players') {
         if (user?.email) {
           setLoading(true);
           try {
@@ -350,16 +283,13 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             if (data.success && Array.isArray(data.watchedPlayers)) {
               setPlayers(data.watchedPlayers);
             }
-          } catch (e) {
-            console.error(e);
-          } finally {
-            setLoading(false);
-          }
+          } catch (e) { console.error(e); } 
+          finally { setLoading(false); }
         }
         return;
       }
 
-      if (!searchTerm.trim() && !hasActiveProFilters && !showProFilters) {
+      if (!formValues.searchTerm.trim() && !hasActiveProFilters && !showProFilters) {
         setPlayers([]);
         setTeams([]);
         return;
@@ -368,30 +298,29 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
       setLoading(true);
       setError(null);
       try {
-        if (searchMode === 'teams') {
-          if (!searchTerm.trim()) {
+        if (formValues.searchMode === 'teams') {
+          if (!formValues.searchTerm.trim()) {
             setTeams([]);
             setLoading(false);
             return;
           }
-          const response = await fetch(`${API_URL}/api/sport/teams/search?q=${encodeURIComponent(searchTerm)}`);
+          const response = await fetch(`${API_URL}/api/sport/teams/search?q=${encodeURIComponent(formValues.searchTerm)}`);
           if (!response.ok) throw new Error(`Eroare server: ${response.status}`);
           const data = await response.json();
           setTeams(data);
           setPlayers([]);
-
         } else {
           const params = new URLSearchParams();
-          if (searchTerm.trim()) params.append('search', searchTerm.trim());
-          if (positionFilter !== 'Toate') params.append('position', positionFilter);
-          if (maxAgeFilter) params.append('maxAge', maxAgeFilter);
-          if (minMinutesFilter > 0) params.append('minMinutes', String(minMinutesFilter));
-          if (minGoalsFilter > 0) params.append('minGoals', String(minGoalsFilter));
-          if (parseFloat(minRatingFilter) > 0) params.append('minRating', minRatingFilter);
+          if (formValues.searchTerm.trim()) params.append('search', formValues.searchTerm.trim());
+          if (formValues.positionFilter !== 'Toate') params.append('position', formValues.positionFilter);
+          if (formValues.maxAgeFilter) params.append('maxAge', formValues.maxAgeFilter);
           
-          if (nationalityFilter !== 'Toate') params.append('nationality', nationalityFilter);
-          if (leagueFilter !== 'Toate') params.append('league_id', leagueFilter);
-
+          if (parseInt(formValues.minMinutesFilter) > 0) params.append('minMinutes', formValues.minMinutesFilter);
+          if (parseInt(formValues.minGoalsFilter) > 0) params.append('minGoals', formValues.minGoalsFilter);
+          if (parseFloat(formValues.minRatingFilter) > 0) params.append('minRating', formValues.minRatingFilter);
+          
+          if (formValues.nationalityFilter !== 'Toate') params.append('nationality', formValues.nationalityFilter);
+          if (formValues.leagueFilter !== 'Toate') params.append('league_id', formValues.leagueFilter);
           params.append('limit', '250');
 
           const response = await fetch(`${API_URL}/api/sport/players?${params.toString()}`);
@@ -413,82 +342,64 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [
-    searchTerm, searchMode, positionFilter, maxAgeFilter,
-    minMinutesFilter, minGoalsFilter, minRatingFilter,
-    nationalityFilter, leagueFilter,
-    showProFilters, hasActiveProFilters, onlyWatchlist,
-    user?.email
-  ]);
+  }, [formValues, showProFilters, hasActiveProFilters, user?.email]);
 
   const displayedPlayers = useMemo(() => {
     return players
       .filter((p) => {
-        if (onlyWatchlist && !watchlistIds.includes(p._id)) return false;
+        if (formValues.onlyWatchlist && !watchlistIds.includes(p._id)) return false;
         
-        if (positionFilter !== "Toate") {
+        if (formValues.positionFilter !== "Toate") {
           const pos = (p.position || "").toLowerCase();
-          if (positionFilter === "Portari" && !(pos.includes("goalkeeper") || pos.includes("portar"))) return false;
-          if (positionFilter === "Fundași" && !(pos.includes("defender") || pos.includes("back") || pos.includes("funda"))) return false;
-          if (positionFilter === "Mijlocași" && !(pos.includes("midfield") || pos.includes("mijloca"))) return false;
-          if (positionFilter === "Atacanți" && !(pos.includes("forward") || pos.includes("striker") || pos.includes("wing") || pos.includes("ataca") || pos.includes("attack"))) return false;
+          if (formValues.positionFilter === "Portari" && !(pos.includes("goalkeeper") || pos.includes("portar"))) return false;
+          if (formValues.positionFilter === "Fundași" && !(pos.includes("defender") || pos.includes("back") || pos.includes("funda"))) return false;
+          if (formValues.positionFilter === "Mijlocași" && !(pos.includes("midfield") || pos.includes("mijloca"))) return false;
+          if (formValues.positionFilter === "Atacanți" && !(pos.includes("forward") || pos.includes("striker") || pos.includes("wing") || pos.includes("ataca") || pos.includes("attack"))) return false;
         }
         
-        if (nationalityFilter !== "Toate") {
+        if (formValues.nationalityFilter !== "Toate") {
           const nat = (p.nationality || "").toLowerCase();
-          if (!nat.includes(nationalityFilter.toLowerCase())) return false;
+          if (!nat.includes(formValues.nationalityFilter.toLowerCase())) return false;
         }
 
-        if (leagueFilter !== "Toate") {
+        if (formValues.leagueFilter !== "Toate") {
             const lId = p.league_id ? p.league_id.toString() : "";
-            if (lId !== leagueFilter) return false;
+            if (lId !== formValues.leagueFilter) return false;
         }
 
-        if (maxAgeFilter && p.age && p.age > Number(maxAgeFilter)) return false;
-        if (minHeightFilter > 0 && parseHeightCm(p.height) < minHeightFilter) return false;
-        if (minMinutesFilter > 0 && (p.statistics_summary?.minutes_played || 0) < minMinutesFilter) return false;
-        if (minGoalsFilter > 0 && (p.statistics_summary?.total_goals || 0) < minGoalsFilter) return false;
-        if (parseFloat(minRatingFilter) > 0 && parseFloat(p.statistics_summary?.rating || "0") < parseFloat(minRatingFilter)) return false;
+        if (formValues.maxAgeFilter && p.age && p.age > Number(formValues.maxAgeFilter)) return false;
+        if (parseInt(formValues.minHeightFilter) > 0 && parseHeightCm(p.height) < parseInt(formValues.minHeightFilter)) return false;
+        if (parseInt(formValues.minMinutesFilter) > 0 && (p.statistics_summary?.minutes_played || 0) < parseInt(formValues.minMinutesFilter)) return false;
+        if (parseInt(formValues.minGoalsFilter) > 0 && (p.statistics_summary?.total_goals || 0) < parseInt(formValues.minGoalsFilter)) return false;
+        if (parseFloat(formValues.minRatingFilter) > 0 && parseFloat(p.statistics_summary?.rating || "0") < parseFloat(formValues.minRatingFilter)) return false;
         return true;
       })
       .sort((a, b) => {
         const mA = computeScoutingMetrics(a);
         const mB = computeScoutingMetrics(b);
-        if (sortBy === 'per90') return mB.contributionsPer90 - mA.contributionsPer90 || mB.goals - mA.goals;
-        if (sortBy === 'goals') return mB.goals - mA.goals || mB.rating - mA.rating;
-        if (sortBy === 'assists') return mB.assists - mA.assists || mB.rating - mA.rating;
-        if (sortBy === 'minutes') return mB.minutes - mA.minutes;
+        if (formValues.sortBy === 'per90') return mB.contributionsPer90 - mA.contributionsPer90 || mB.goals - mA.goals;
+        if (formValues.sortBy === 'goals') return mB.goals - mA.goals || mB.rating - mA.rating;
+        if (formValues.sortBy === 'assists') return mB.assists - mA.assists || mB.rating - mA.rating;
+        if (formValues.sortBy === 'minutes') return mB.minutes - mA.minutes;
         return mB.rating - mA.rating || mB.goals - mA.goals;
       });
-  }, [players, onlyWatchlist, watchlistIds, positionFilter, nationalityFilter, leagueFilter, maxAgeFilter, minHeightFilter, minMinutesFilter, minGoalsFilter, minRatingFilter, sortBy]);
+  }, [players, watchlistIds, formValues]);
 
   const toggleWatchlist = async (e: React.MouseEvent, player: Player) => {
     e.stopPropagation();
     const playerId = player._id;
     const exists = watchlistIds.includes(playerId);
-    const updated = exists
-      ? watchlistIds.filter(id => id !== playerId)
-      : [...watchlistIds, playerId];
-
+    const updated = exists ? watchlistIds.filter(id => id !== playerId) : [...watchlistIds, playerId];
     setWatchlistIds(updated);
     localStorage.setItem('scout_watchlist_ids', JSON.stringify(updated));
 
-    if (!exists) {
-      setWatchedPlayersData(prev => [...prev.filter(p => p._id !== playerId), player]);
-    } else {
-      setWatchedPlayersData(prev => prev.filter(p => p._id !== playerId));
-    }
+    if (!exists) setWatchedPlayersData(prev => [...prev.filter(p => p._id !== playerId), player]);
+    else setWatchedPlayersData(prev => prev.filter(p => p._id !== playerId));
 
     if (user?.email) {
       try {
-        await fetch(`${API_URL}/api/users/watchlist/toggle`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: user.email, playerId })
-        });
-      } catch (err) {
-        console.error(err);
-      }
+        await fetch(`${API_URL}/api/users/watchlist/toggle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email, playerId }) });
+      } catch (err) { console.error(err); }
     }
   };
 
@@ -503,16 +414,16 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   };
 
   const resetProFilters = () => {
-    setPositionFilter("Toate");
-    setMaxAgeFilter("");
-    setMinHeightFilter(0);
-    setMinMinutesFilter(0);
-    setMinGoalsFilter(0);
-    setMinRatingFilter("0");
-    setNationalityFilter("Toate");
-    setLeagueFilter("Toate");
-    setSortBy("rating");
-    setOnlyWatchlist(false);
+    filterForm.setFieldValue('positionFilter', 'Toate');
+    filterForm.setFieldValue('maxAgeFilter', '');
+    filterForm.setFieldValue('minHeightFilter', "0");
+    filterForm.setFieldValue('minMinutesFilter', "0");
+    filterForm.setFieldValue('minGoalsFilter', "0");
+    filterForm.setFieldValue('minRatingFilter', '0');
+    filterForm.setFieldValue('nationalityFilter', 'Toate');
+    filterForm.setFieldValue('leagueFilter', 'Toate');
+    filterForm.setFieldValue('sortBy', 'rating');
+    filterForm.setFieldValue('onlyWatchlist', false);
   };
 
   const handleTeamClick = async (teamName: string) => {
@@ -531,7 +442,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     }
   };
 
-  const showResults = searchTerm.trim().length > 0 || hasActiveProFilters || showProFilters || onlyWatchlist;
+  const showResults = formValues.searchTerm.trim().length > 0 || hasActiveProFilters || showProFilters || formValues.onlyWatchlist;
   const firstName = user?.name ? user.name.split(' ')[0] : 'Scouter';
 
   return (
@@ -544,12 +455,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
       </div>
 
       {selectedTeam && (
-        // Container principal pentru modalul de echipă. 
-        // Am adăugat z-[9999] și am folosit fixed inset-0 pentru acoperire completă.
         <div className="fixed inset-0 top-0 sm:top-16 z-[9999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-opacity p-2 sm:p-4">
-          {/* Am înlocuit clasa h-[100dvh] cu h-full max-h-[95vh] pe mobil pentru a preveni coliziunea cu marginile de sus. */}
           <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 mt-10 sm:mt-0">
-            
             <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-2 sm:border-b-4 border-slate-700 relative pt-safe">
                 <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-10 sm:pr-0">
                     <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
@@ -644,9 +551,9 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             <div className="flex justify-center mb-2 sm:mb-3">
                <div className="bg-slate-200/50 dark:bg-slate-800/50 p-1 sm:p-1.5 rounded-lg sm:rounded-xl inline-flex border border-slate-300/50 dark:border-slate-700/50 backdrop-blur shadow-sm w-[90%] sm:w-auto">
                   <button
-                    onClick={() => { setSearchMode('players'); setSearchTerm(''); }}
+                    onClick={() => { filterForm.setFieldValue('searchMode', 'players'); filterForm.setFieldValue('searchTerm', ''); }}
                     className={`flex-1 sm:flex-none px-4 sm:px-6 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all ${
-                      searchMode === 'players' 
+                      formValues.searchMode === 'players' 
                       ? 'bg-emerald-600 text-white shadow-md' 
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
                     }`}
@@ -654,9 +561,9 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     Jucători
                   </button>
                   <button
-                    onClick={() => { setSearchMode('teams'); setSearchTerm(''); setOnlyWatchlist(false); setShowProFilters(false); }}
+                    onClick={() => { filterForm.setFieldValue('searchMode', 'teams'); filterForm.setFieldValue('searchTerm', ''); filterForm.setFieldValue('onlyWatchlist', false); setShowProFilters(false); }}
                     className={`flex-1 sm:flex-none px-4 sm:px-6 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all ${
-                      searchMode === 'teams' 
+                      formValues.searchMode === 'teams' 
                       ? 'bg-emerald-600 text-white shadow-md' 
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
                     }`}
@@ -676,17 +583,21 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   </svg>
                 </div>
                 
-                <input
-                  type="text"
-                  placeholder={searchMode === 'players' ? "Căutare..." : "Ex: FCSB, Rapid..."}
-                  className="w-full py-3 sm:py-4 text-xs sm:text-lg font-bold tracking-wide border-0 bg-transparent focus:ring-0 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                <filterForm.Field name="searchTerm">
+                  {(field) => (
+                    <input
+                      type="text"
+                      placeholder={formValues.searchMode === 'players' ? "Căutare..." : "Ex: FCSB, Rapid..."}
+                      className="w-full py-3 sm:py-4 text-xs sm:text-lg font-bold tracking-wide border-0 bg-transparent focus:ring-0 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    />
+                  )}
+                </filterForm.Field>
                 
-                {searchTerm && (
+                {formValues.searchTerm && (
                   <button
-                    onClick={() => setSearchTerm("")}
+                    onClick={() => filterForm.setFieldValue('searchTerm', '')}
                     className="p-1.5 sm:p-2 mr-2 sm:mr-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-rose-500 hover:text-white transition-colors"
                   >
                     <X className="w-3 h-3 sm:w-4 sm:h-4 font-bold" />
@@ -695,12 +606,12 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               </div>
             </div>
 
-            {searchMode === 'players' && (
+            {formValues.searchMode === 'players' && (
               <div className="flex flex-wrap items-center justify-center gap-2 mt-3 sm:mt-4 mx-2">
                 <button
                     onClick={() => {
                       setShowProFilters(!showProFilters);
-                      if (onlyWatchlist) setOnlyWatchlist(false);
+                      if (formValues.onlyWatchlist) filterForm.setFieldValue('onlyWatchlist', false);
                     }}
                     className={`flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg sm:rounded-full text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all border ${
                       showProFilters || hasActiveProFilters
@@ -713,23 +624,23 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
                   <button
                     onClick={() => {
-                      setOnlyWatchlist(!onlyWatchlist);
-                      setSearchMode('players');
+                      filterForm.setFieldValue('onlyWatchlist', !formValues.onlyWatchlist);
+                      filterForm.setFieldValue('searchMode', 'players');
                     }}
                     className={`flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg sm:rounded-full text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all border flex items-center gap-1.5 ${
-                      onlyWatchlist
+                      formValues.onlyWatchlist
                         ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 border-amber-500'
                         : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-amber-500'
                     }`}
                   >
-                    <Bookmark className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${onlyWatchlist ? 'fill-amber-600' : ''}`} />
+                    <Bookmark className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${formValues.onlyWatchlist ? 'fill-amber-600' : ''}`} />
                     Lista({watchlistIds.length})
                   </button>
               </div>
             )}
           </div>
           
-          {searchMode === 'players' && showProFilters && (
+          {formValues.searchMode === 'players' && showProFilters && (
             <div className="mt-4 sm:mt-8 max-w-4xl mx-auto bg-slate-900 border-2 border-emerald-600/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl text-left animate-in fade-in duration-300 relative overflow-hidden">
               <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 pb-3 sm:pb-4 mb-4 sm:mb-5 border-b border-slate-700/50">
                 <div className="flex items-center gap-1.5 sm:gap-2">
@@ -748,27 +659,31 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 relative z-10">
                 {[
-                  { label: "Poziție în Teren", value: positionFilter, set: setPositionFilter, opts: [["Toate", "Toate"], ["Portari", "Portari"], ["Fundași", "Fundași"], ["Mijlocași", "Mijlocași"], ["Atacanți", "Atacanți"]] },
-                  { label: "Naționalitate", value: nationalityFilter, set: setNationalityFilter, opts: [["Toate", "Oricare"], ["Romania", "România 🇷🇴"], ["England", "Anglia 🏴󠁧󠁢󠁥󠁮󠁧󠁿"], ["Spain", "Spania 🇪🇸"], ["Italy", "Italia 🇮🇹"], ["Germany", "Germania 🇩🇪"], ["France", "Franța 🇫🇷"], ["Brazil", "Brazilia 🇧🇷"], ["Argentina", "Argentina 🇦🇷"]] },
-                  { label: "Campionat", value: leagueFilter, set: setLeagueFilter, opts: [["Toate", "Oricare"], ["283", "Superliga RO 🇷🇴"], ["39", "Premier L. 🏴󠁧󠁢󠁥󠁮󠁧󠁿"], ["140", "La Liga 🇪🇸"], ["135", "Serie A 🇮🇹"], ["78", "Bundesliga 🇩🇪"], ["61", "Ligue 1 🇫🇷"]] },
-                  { label: "Vârstă Max", value: maxAgeFilter, set: setMaxAgeFilter, opts: [["", "Oricare"], ["19", "Sub 19 ani"], ["21", "Sub 21 ani"], ["23", "Sub 23 ani"], ["26", "Sub 26 ani"], ["30", "Sub 30 ani"]] },
-                  { label: "Minutaj Min", value: minMinutesFilter, set: (v:any)=>setMinMinutesFilter(Number(v)), opts: [[0, "Oricare"], [180, "180'"], [450, "450'"], [900, "900'"], [1500, "1500'"]] },
-                  { label: "Rating Sofa", value: minRatingFilter, set: setMinRatingFilter, opts: [["0", "Oricare"], ["6.5", "> 6.50"], ["6.8", "> 6.80"], ["7.0", "> 7.00"], ["7.3", "> 7.30"]] },
-                  { label: "Înălțime Min", value: minHeightFilter, set: (v:any)=>setMinHeightFilter(Number(v)), opts: [[0, "Oricare"], [175, "175 cm"], [180, "180 cm"], [185, "185 cm"], [190, "190 cm"]] },
-                  { label: "Ordonează", value: sortBy, set: setSortBy, opts: [["rating", "⭐ Rating"], ["per90", "⚡ G+A/90'"], ["goals", "⚽ Goluri"], ["assists", "🎯 Pase"], ["minutes", "⏱️ Minute"]] }
+                  { name: "positionFilter", label: "Poziție în Teren", opts: [["Toate", "Toate"], ["Portari", "Portari"], ["Fundași", "Fundași"], ["Mijlocași", "Mijlocași"], ["Atacanți", "Atacanți"]] },
+                  { name: "nationalityFilter", label: "Naționalitate", opts: [["Toate", "Oricare"], ["Romania", "România 🇷🇴"], ["England", "Anglia 🏴󠁧󠁢󠁥󠁮󠁧󠁿"], ["Spain", "Spania 🇪🇸"], ["Italy", "Italia 🇮🇹"], ["Germany", "Germania 🇩🇪"], ["France", "Franța 🇫🇷"], ["Brazil", "Brazilia 🇧🇷"], ["Argentina", "Argentina 🇦🇷"]] },
+                  { name: "leagueFilter", label: "Campionat", opts: [["Toate", "Oricare"], ["283", "Superliga RO 🇷🇴"], ["39", "Premier L. 🏴󠁧󠁢󠁥󠁮󠁧󠁿"], ["140", "La Liga 🇪🇸"], ["135", "Serie A 🇮🇹"], ["78", "Bundesliga 🇩🇪"], ["61", "Ligue 1 🇫🇷"]] },
+                  { name: "maxAgeFilter", label: "Vârstă Max", opts: [["", "Oricare"], ["19", "Sub 19 ani"], ["21", "Sub 21 ani"], ["23", "Sub 23 ani"], ["26", "Sub 26 ani"], ["30", "Sub 30 ani"]] },
+                  { name: "minMinutesFilter", label: "Minutaj Min", opts: [["0", "Oricare"], ["180", "180'"], ["450", "450'"], ["900", "900'"], ["1500", "1500'"]] },
+                  { name: "minRatingFilter", label: "Rating Sofa", opts: [["0", "Oricare"], ["6.5", "> 6.50"], ["6.8", "> 6.80"], ["7.0", "> 7.00"], ["7.3", "> 7.30"]] },
+                  { name: "minHeightFilter", label: "Înălțime Min", opts: [["0", "Oricare"], ["175", "175 cm"], ["180", "180 cm"], ["185", "185 cm"], ["190", "190 cm"]] },
+                  { name: "sortBy", label: "Ordonează", opts: [["rating", "⭐ Rating"], ["per90", "⚡ G+A/90'"], ["goals", "⚽ Goluri"], ["assists", "🎯 Pase"], ["minutes", "⏱️ Minute"]] }
                 ].map((field, i) => (
-                  <div key={i} className="bg-slate-800 p-2 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-700 focus-within:border-emerald-500 transition-colors">
-                    <label className="block text-[8px] sm:text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 sm:mb-1.5 pl-1 truncate">{field.label}</label>
-                    <select
-                      value={field.value as string|number}
-                      onChange={(e) => field.set(e.target.value)}
-                      className="w-full bg-slate-900 rounded-md sm:rounded-lg px-1.5 sm:px-2.5 py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold text-white outline-none cursor-pointer border border-transparent focus:border-slate-600 truncate"
-                    >
-                      {field.opts.map(([val, text]) => (
-                        <option key={String(val)} value={val}>{text}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <filterForm.Field key={i} name={field.name as any}>
+                     {(api) => (
+                        <div className="bg-slate-800 p-2 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-700 focus-within:border-emerald-500 transition-colors">
+                          <label className="block text-[8px] sm:text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 sm:mb-1.5 pl-1 truncate">{field.label}</label>
+                          <select
+                            value={String(api.state.value)}
+                            onChange={(e) => api.handleChange(e.target.value as any)}
+                            className="w-full bg-slate-900 rounded-md sm:rounded-lg px-1.5 sm:px-2.5 py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold text-white outline-none cursor-pointer border border-transparent focus:border-slate-600 truncate"
+                          >
+                            {field.opts.map(([val, text]) => (
+                              <option key={String(val)} value={String(val)}>{text}</option>
+                            ))}
+                          </select>
+                        </div>
+                     )}
+                  </filterForm.Field>
                 ))}
               </div>
             </div>
@@ -777,7 +692,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
         <section className="px-2 sm:px-4 container mx-auto pb-10 sm:pb-24 relative z-10">
           
-          {loading && searchMode === 'players' && (
+          {loading && formValues.searchMode === 'players' && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
               {[...Array(10)].map((_, i) => (
                 <div key={i} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col items-center animate-pulse h-[200px] sm:h-[260px]">
@@ -794,7 +709,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
           )}
 
-          {loading && searchMode === 'teams' && (
+          {loading && formValues.searchMode === 'teams' && (
             <div className="flex justify-center items-center py-20">
               <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-t-4 border-b-4 border-emerald-500"></div>
             </div>
@@ -818,12 +733,12 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               </div>
               <h3 className="text-lg sm:text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 mb-1 sm:mb-2">Așteptăm Startul...</h3>
               <p className="text-slate-500 font-bold uppercase text-[10px] sm:text-sm">
-                Caută {searchMode === 'players' ? 'un jucător' : 'o echipă'} sau setează o tactică din Filtre.
+                Caută {formValues.searchMode === 'players' ? 'un jucător' : 'o echipă'} sau setează o tactică din Filtre.
               </p>
             </div>
           )}
 
-          {showResults && !loading && searchMode === 'players' && displayedPlayers.length > 0 && (
+          {showResults && !loading && formValues.searchMode === 'players' && displayedPlayers.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 animate-in slide-in-from-bottom-8 duration-700">
               {displayedPlayers.map((player) => {
                 const teamNameStr = player.team_name || player.team || "Club Necunoscut";
@@ -913,7 +828,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
           )}
 
-          {showResults && !loading && searchMode === 'teams' && teams.length > 0 && (
+          {showResults && !loading && formValues.searchMode === 'teams' && teams.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
               {teams.map((team, idx) => (
                 <div key={idx} onClick={() => handleTeamClick(team.team_name)} className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-md sm:shadow-lg hover:shadow-2xl border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all cursor-pointer group flex flex-col items-center text-center">
@@ -928,13 +843,13 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           )}
 
           {/* EMPTY STATE ILUSTRAT CĂUTARE */}
-          {showResults && !loading && ((searchMode === 'players' && displayedPlayers.length === 0) || (searchMode === 'teams' && teams.length === 0)) && (
+          {showResults && !loading && ((formValues.searchMode === 'players' && displayedPlayers.length === 0) || (formValues.searchMode === 'teams' && teams.length === 0)) && (
             <div className="text-center py-12 sm:py-20 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-sm border-2 border-dashed border-slate-300 dark:border-slate-800 max-w-2xl mx-auto relative overflow-hidden mx-2">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.05),transparent_50%)]"></div>
               
               <div className="relative z-10 flex justify-center items-center mb-4 sm:mb-6">
                 <div className="w-16 h-16 sm:w-24 sm:h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center relative shadow-inner border-4 border-white dark:border-slate-900 z-10">
-                  {searchMode === 'players' ? <UserIcon className="w-6 h-6 sm:w-10 sm:h-10 text-slate-400" /> : <Shield className="w-6 h-6 sm:w-10 sm:h-10 text-slate-400" />}
+                  {formValues.searchMode === 'players' ? <UserIcon className="w-6 h-6 sm:w-10 sm:h-10 text-slate-400" /> : <Shield className="w-6 h-6 sm:w-10 sm:h-10 text-slate-400" />}
                 </div>
                 <div className="absolute w-24 h-24 sm:w-32 sm:h-32 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-full animate-[spin_10s_linear_infinite]"></div>
                 <div className="absolute w-6 h-6 sm:w-10 sm:h-10 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center -right-1 sm:-right-2 top-0 z-20">
@@ -943,7 +858,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               </div>
               
               <h3 className="text-lg sm:text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-1 sm:mb-2 relative z-10">
-                {searchMode === 'players' ? 'Niciun Jucător' : 'Nicio Echipă'}
+                {formValues.searchMode === 'players' ? 'Niciun Jucător' : 'Nicio Echipă'}
               </h3>
               <p className="text-slate-500 font-bold text-[10px] sm:text-xs max-w-xs sm:max-w-sm mx-auto relative z-10">
                 Resetează filtrele din tabla tactică sau verifică dacă numele este scris corect.

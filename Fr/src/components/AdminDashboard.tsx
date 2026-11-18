@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Users, Newspaper, Ban, CheckCircle, Search, Loader2, Plus, Trash2, ShoppingBag, X, Save, FileText, Edit, Flag, AlertTriangle, Shirt, LayoutDashboard } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useForm, useStore } from '@tanstack/react-form';
 
 interface UserData { _id: string; name: string; email: string; role: string; isBanned: boolean; avatar?: string; strikes?: number; }
 interface ListingData { _id: string; title: string; category: string; price: string; seller: string; sellerEmail: string; images: string[]; posted: string; reportedBy?: string[]; }
@@ -76,7 +77,46 @@ export function AdminDashboard({ user }: { user: any }) {
 
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [newStory, setNewStory] = useState({ title: '', role: '', organization: '', excerpt: '', content: '', date: '' });
+
+  // === TANSTACK FORM PENTRU STORY ===
+  const storyForm = useForm({
+    defaultValues: {
+        title: '',
+        role: '',
+        organization: '',
+        excerpt: '',
+        content: '',
+        date: ''
+    },
+    onSubmit: async ({ value }) => {
+        try {
+            let res;
+            if (editingId) {
+                res = await fetch(`${API_URL}/admin/stories/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+            } else {
+                res = await fetch(`${API_URL}/admin/stories`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+            }
+
+            if(res.ok) {
+                const savedStory = await res.json();
+                if (editingId) {
+                    setStories(prev => prev.map(s => s._id === editingId ? savedStory : s));
+                    toast.success("Erou actualizat!");
+                } else {
+                    setStories([savedStory, ...stories]);
+                    toast.success("Erou adăugat!");
+                }
+                setShowStoryModal(false);
+            } else {
+                toast.error("A apărut o problemă la salvarea datelor.");
+            }
+        } catch(err) { toast.error("Eroare de conexiune la salvare."); }
+    }
+  });
+
+  // Citim starea de isSubmitting și canSubmit din storyForm 
+  const isSubmitting = useStore(storyForm.store, (state) => state.isSubmitting);
+  const canSubmit = useStore(storyForm.store, (state) => state.canSubmit);
 
   useEffect(() => { fetchInitialData(); }, []);
 
@@ -182,38 +222,19 @@ export function AdminDashboard({ user }: { user: any }) {
 
   const openAddModal = () => {
       setEditingId(null);
-      setNewStory({ title: '', role: '', organization: '', excerpt: '', content: '', date: '' });
+      storyForm.reset();
       setShowStoryModal(true);
   };
 
   const openEditModal = (story: StoryData) => {
       setEditingId(story._id);
-      setNewStory({ title: story.title, role: story.role, organization: story.organization, excerpt: story.excerpt, content: story.content, date: story.date });
+      storyForm.setFieldValue('title', story.title);
+      storyForm.setFieldValue('role', story.role);
+      storyForm.setFieldValue('organization', story.organization);
+      storyForm.setFieldValue('excerpt', story.excerpt);
+      storyForm.setFieldValue('content', story.content);
+      storyForm.setFieldValue('date', story.date);
       setShowStoryModal(true);
-  };
-
-  const handleSaveStory = async () => {
-      if(!newStory.title || !newStory.excerpt) return toast.error("Completează datele esențiale!");
-      try {
-          let res;
-          if (editingId) {
-              res = await fetch(`${API_URL}/admin/stories/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newStory) });
-          } else {
-              res = await fetch(`${API_URL}/admin/stories`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newStory) });
-          }
-
-          if(res.ok) {
-              const savedStory = await res.json();
-              if (editingId) {
-                  setStories(prev => prev.map(s => s._id === editingId ? savedStory : s));
-                  toast.success("Erou actualizat!");
-              } else {
-                  setStories([savedStory, ...stories]);
-                  toast.success("Erou adăugat!");
-              }
-              setShowStoryModal(false);
-          }
-      } catch(err) { toast.error("Eroare la transfer."); }
   };
 
   const handleDeleteStory = async (id: string) => {
@@ -856,7 +877,7 @@ export function AdminDashboard({ user }: { user: any }) {
             )}
         </div>
 
-        {/* MODAL ȘTIRE PĂSTRAT PENTRU REFERINȚĂ */}
+        {/* MODAL ȘTIRE PĂSTRAT PENTRU REFERINȚĂ, ACUM CU TANSTACK FORM */}
         {showStoryModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] border-2 sm:border-4 border-emerald-600/30">
@@ -867,20 +888,86 @@ export function AdminDashboard({ user }: { user: any }) {
                         <button onClick={() => setShowStoryModal(false)} className="bg-slate-800 p-1.5 sm:p-2 rounded-full border border-slate-700"><X className="w-4 h-4 sm:w-5 sm:h-5"/></button>
                     </div>
                     
-                    <div className="p-4 sm:p-6 overflow-y-auto space-y-3 sm:space-y-5 bg-slate-50 dark:bg-slate-950">
-                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.title} onChange={e => setNewStory({...newStory, title: e.target.value})} placeholder="NUME EROU" />
-                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.date} onChange={e => setNewStory({...newStory, date: e.target.value})} placeholder="ANUL/PERIOADA" />
-                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.role} onChange={e => setNewStory({...newStory, role: e.target.value})} placeholder="ROL (EX: Maseur)" />
-                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" value={newStory.organization} onChange={e => setNewStory({...newStory, organization: e.target.value})} placeholder="CLUB/TEREN" />
-                         <input className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold text-white" value={newStory.excerpt} onChange={e => setNewStory({...newStory, excerpt: e.target.value})} placeholder="Prezentare scurtă..." />
-                         <textarea className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-medium text-white min-h-[100px]" value={newStory.content} onChange={e => setNewStory({...newStory, content: e.target.value})} placeholder="Povestea completă..."></textarea>
-                    </div>
-                    
-                    <div className="p-3 sm:p-4 border-t-2 border-slate-800 bg-slate-900">
-                        <button onClick={handleSaveStory} className="w-full bg-emerald-600 text-white font-black uppercase text-xs sm:text-sm py-3 rounded-xl border-b-4 border-emerald-800">
-                            Salvează
-                        </button>
-                    </div>
+                    <form
+                      onSubmit={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          storyForm.handleSubmit();
+                      }}
+                    >
+                        <div className="p-4 sm:p-6 overflow-y-auto space-y-3 sm:space-y-5 bg-slate-50 dark:bg-slate-950 max-h-[60vh]">
+                            <storyForm.Field name="title">
+                                {(field) => (
+                                    <input 
+                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" 
+                                        value={field.state.value} 
+                                        onChange={e => field.handleChange(e.target.value)} 
+                                        placeholder="NUME EROU" 
+                                    />
+                                )}
+                            </storyForm.Field>
+                            <storyForm.Field name="date">
+                                {(field) => (
+                                    <input 
+                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" 
+                                        value={field.state.value} 
+                                        onChange={e => field.handleChange(e.target.value)} 
+                                        placeholder="ANUL/PERIOADA" 
+                                    />
+                                )}
+                            </storyForm.Field>
+                            <storyForm.Field name="role">
+                                {(field) => (
+                                    <input 
+                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" 
+                                        value={field.state.value} 
+                                        onChange={e => field.handleChange(e.target.value)} 
+                                        placeholder="ROL (EX: Maseur)" 
+                                    />
+                                )}
+                            </storyForm.Field>
+                            <storyForm.Field name="organization">
+                                {(field) => (
+                                    <input 
+                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" 
+                                        value={field.state.value} 
+                                        onChange={e => field.handleChange(e.target.value)} 
+                                        placeholder="CLUB/TEREN" 
+                                    />
+                                )}
+                            </storyForm.Field>
+                            <storyForm.Field name="excerpt">
+                                {(field) => (
+                                    <input 
+                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold text-white" 
+                                        value={field.state.value} 
+                                        onChange={e => field.handleChange(e.target.value)} 
+                                        placeholder="Prezentare scurtă..." 
+                                    />
+                                )}
+                            </storyForm.Field>
+                            <storyForm.Field name="content">
+                                {(field) => (
+                                    <textarea 
+                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-medium text-white min-h-[100px]" 
+                                        value={field.state.value} 
+                                        onChange={e => field.handleChange(e.target.value)} 
+                                        placeholder="Povestea completă..."
+                                    ></textarea>
+                                )}
+                            </storyForm.Field>
+                        </div>
+                        
+                        <div className="p-3 sm:p-4 border-t-2 border-slate-800 bg-slate-900">
+                            <button 
+                                type="submit"
+                                disabled={!canSubmit || isSubmitting}
+                                className="w-full bg-emerald-600 text-white font-black uppercase text-xs sm:text-sm py-3 rounded-xl border-b-4 border-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isSubmitting ? 'Se salvează...' : 'Salvează'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         )}
