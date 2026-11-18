@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { ShieldCheck, Users, Newspaper, Ban, CheckCircle, Search, Loader2, Plus, Trash2, ShoppingBag, X, Save, FileText, Edit, Flag, AlertTriangle, Shirt, LayoutDashboard } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useForm, useStore } from '@tanstack/react-form';
+import { useForm } from '@tanstack/react-form';
 
 interface UserData { _id: string; name: string; email: string; role: string; isBanned: boolean; avatar?: string; strikes?: number; }
 interface ListingData { _id: string; title: string; category: string; price: string; seller: string; sellerEmail: string; images: string[]; posted: string; reportedBy?: string[]; }
@@ -107,6 +107,7 @@ export function AdminDashboard({ user }: { user: any }) {
                     toast.success("Erou adăugat!");
                 }
                 setShowStoryModal(false);
+                storyForm.reset();
             } else {
                 toast.error("A apărut o problemă la salvarea datelor.");
             }
@@ -114,9 +115,8 @@ export function AdminDashboard({ user }: { user: any }) {
     }
   });
 
-  // Citim starea de isSubmitting și canSubmit din storyForm 
-  const isSubmitting = useStore(storyForm.store, (state) => state.isSubmitting);
-  const canSubmit = useStore(storyForm.store, (state) => state.canSubmit);
+  // Citim starea formulariului direct, fara useStore 
+  const { isSubmitting, canSubmit } = storyForm.state;
 
   useEffect(() => { fetchInitialData(); }, []);
 
