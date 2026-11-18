@@ -1,6 +1,6 @@
-// Versiunea 2.92 - Update PWA cu notificare personalizată, Web Push & Fix Cache (Modern Arena)
+// Versiunea 2.93 - Update PWA cu notificare personalizată, Web Push & Fix Cache (Modern Arena)
 
-const CACHE_NAME = 'scoutpro-cache-v2.92'; // Nume nou pentru noul cache
+const CACHE_NAME = 'scoutpro-cache-v2.93'; // Nume nou pentru noul cache
 const urlsToCache = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
@@ -41,20 +41,37 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // 1. Ignoră toate cererile care NU sunt de tip GET (ex: POST, PUT, DELETE)
-    if (event.request.method !== 'GET') {
-        return; // Lasă browserul să le trimită direct pe internet, fără să intervină Service Worker-ul
-    }
-
-    // 2. Ignoră cererile către Sentry, extensii Chrome sau API-ul de backend
+    // 1. Ignoră cererile care NU sunt GET sau sunt către API / Sentry / Extensii
     if (
+        event.request.method !== 'GET' ||
         url.hostname.includes('sentry.io') || 
         url.pathname.includes('/api/') || 
         url.protocol === 'chrome-extension:'
     ) {
-        return; // Bypass la cache
+        return; 
     }
 
+    // 2. Pentru pagini HTML sau scripturi principale, folosim "Network First"
+    // Forțăm browserul să aducă fișierul nou de pe Render. Dacă nu există internet, abia atunci dă cache-ul.
+    if (url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.includes('/assets/')) {
+        event.respondWith(
+            fetch(event.request)
+                .then((networkResponse) => {
+                    // Dacă am primit răspuns bun de pe rețea, actualizăm și cache-ul în fundal
+                    return caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, networkResponse.clone());
+                        return networkResponse;
+                    });
+                })
+                .catch(() => {
+                    // Dacă utilizatorul nu are internet, returnăm ce avem în cache
+                    return caches.match(event.request);
+                })
+        );
+        return;
+    }
+
+    // Pentru restul resurselor (imagini, fonturi etc.), lăsăm comportamentul clasic
     event.respondWith(
         caches.match(event.request).then((response) => response || fetch(event.request))
     );
