@@ -590,10 +590,10 @@ export default function App() {
           </ErrorBoundary>
         </main>
 
-        {/* BARA DE NAVIGARE JOS PENTRU MOBIL */}
+        {/* BARA DE NAVIGARE JOS PENTRU MOBIL - TOATE CELE 6 PAGINI PRINCIPALE */}
         {!hideFloatingBars && (
-          <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t-2 border-slate-200 dark:border-slate-800 px-2 py-1.5 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
-            {navigation.slice(0, 5).map((item) => {
+          <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t-2 border-slate-200 dark:border-slate-800 px-1 py-1.5 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
+            {navigation.map((item) => {
               const isActive = activeSection === item.id;
               return (
                 <button
@@ -603,14 +603,16 @@ export default function App() {
                     setActiveSection(item.id);
                     setMobileMenuOpen(false);
                   }}
-                  className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+                  className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all ${
                     isActive
                       ? 'text-emerald-600 dark:text-emerald-400 scale-105'
                       : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
                 >
-                  <item.icon className={`w-5 h-5 mb-0.5 ${isActive ? 'stroke-[2.5]' : ''}`} />
-                  <span className="text-[9px] font-black uppercase tracking-wider">{item.label}</span>
+                  <item.icon className={`w-4 h-4 sm:w-5 sm:h-5 mb-0.5 shrink-0 ${isActive ? 'stroke-[2.5]' : ''}`} />
+                  <span className="text-[8px] font-black uppercase tracking-tight truncate max-w-full">
+                    {item.label}
+                  </span>
                 </button>
               );
             })}
