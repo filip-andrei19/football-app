@@ -1,7 +1,9 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { Home, Star, Heart, ShoppingBag, Menu, X, LogOut, Settings, ShieldAlert, Moon, Sun, Calendar, AlertTriangle, Gamepad2 } from 'lucide-react';
+import React, { useState, useEffect, Suspense, lazy, Component, ErrorInfo, ReactNode } from 'react';
+import { Home, Star, Heart, ShoppingBag, Menu, X, LogOut, Settings, ShieldAlert, Moon, Sun, Calendar, AlertTriangle, Gamepad2, RotateCcw } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { io } from 'socket.io-client';
 
 import { HomeSection } from './components/HomeSection';
 import { AuthPage } from './components/AuthPage';
@@ -39,6 +41,8 @@ const LazyReactQueryDevtools = (import.meta as any).env?.DEV
     )
   : null;
 
+const BACKEND_BASE = (import.meta as any).env?.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -49,6 +53,61 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// --- ERROR BOUNDARY GLOBAL ---
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  resetKey?: string;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = {
+    hasError: false,
+  };
+
+  public static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  public componentDidUpdate(prevProps: ErrorBoundaryProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Eroare prinsă de ErrorBoundary:', error, errorInfo);
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <div className="max-w-lg mx-auto my-12 p-6 sm:p-8 bg-slate-900 border-4 border-rose-600/50 rounded-3xl text-center shadow-2xl space-y-4">
+          <AlertTriangle className="w-14 h-14 text-rose-500 mx-auto" />
+          <h3 className="text-xl font-black uppercase tracking-widest text-white">
+            Fază întreruptă de VAR
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-400 font-bold">
+            A apărut o eroare neașteptată în această secțiune. Restul platformei funcționează normal.
+          </p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false })}
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs border-b-4 border-emerald-800 cursor-pointer"
+          >
+            <RotateCcw className="w-4 h-4" /> Reîncarcă Secțiunea
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const Button = ({ children, onClick, variant, className, disabled, title }: any) => {
   const baseStyle =
@@ -63,6 +122,7 @@ const Button = ({ children, onClick, variant, className, disabled, title }: any)
   };
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       title={title}
@@ -144,6 +204,30 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    if (!user?.email) return;
+    const notifSocket = io(BACKEND_BASE, {
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+    });
+
+    notifSocket.emit('register_user', user.email);
+
+    notifSocket.on('new_private_message', (data: { from?: string; isListing?: boolean; listingTitle?: string }) => {
+      toast(
+        data.isListing
+          ? `Ofertă nouă în Fanshop de la ${data.from || 'un coechipier'}!`
+          : `Mesaj nou de la ${data.from || 'un coechipier'}`,
+        { icon: '💬' }
+      );
+    });
+
+    return () => {
+      notifSocket.disconnect();
+    };
+  }, [user?.email]);
+
+  useEffect(() => {
     const handleUpdate = (e: any) => {
       setUpdateRegistration(e.detail);
     };
@@ -166,14 +250,14 @@ export default function App() {
 
     if (user?.email) {
       localStorage.setItem(`warning_ack_${user.email}`, 'true');
+      const token = localStorage.getItem('footballAppToken');
 
-      const backendUrl = (import.meta as any).env?.VITE_API_URL
-        ? `${(import.meta as any).env.VITE_API_URL}/api`
-        : 'https://football-backend-m2a4.onrender.com/api';
-
-      fetch(`${backendUrl}/users/clear-warning`, {
+      fetch(`${BACKEND_BASE}/api/users/clear-warning`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ email: user.email }),
       }).catch((err) => console.error("Eroare la curățarea avertismentului din DB:", err));
     }
@@ -201,6 +285,7 @@ export default function App() {
     setUser(null);
     setActiveSection('home');
     localStorage.removeItem('footballAppUser');
+    localStorage.removeItem('footballAppToken');
   };
 
   const handleOpenChat = (roomId: string, partner: { name: string; avatar?: string }) => {
@@ -335,6 +420,7 @@ export default function App() {
                   const isActive = activeSection === item.id;
                   return (
                     <button
+                      type="button"
                       key={item.id}
                       onClick={() => setActiveSection(item.id)}
                       className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] xl:text-xs font-black uppercase tracking-widest transition-all duration-200 border-b-4 ${
@@ -352,6 +438,7 @@ export default function App() {
 
               <div className="flex items-center gap-3">
                 <button
+                  type="button"
                   onClick={toggleTheme}
                   className="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-400 hover:text-emerald-500 hover:border-emerald-500 transition-colors"
                 >
@@ -375,7 +462,7 @@ export default function App() {
                   >
                     <div className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-xs font-black text-emerald-600 dark:text-emerald-400 overflow-hidden border border-emerald-200 dark:border-emerald-800">
                       {user.avatar ? (
-                        <img src={user.avatar} className="w-full h-full object-cover" />
+                        <img src={user.avatar} alt="" className="w-full h-full object-cover" />
                       ) : (
                         user.name.charAt(0)
                       )}
@@ -467,11 +554,38 @@ export default function App() {
           )}
         </header>
 
-        <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 relative z-10">
-          <Suspense fallback={<SectionLoader />}>
-            {renderSection()}
-          </Suspense>
+        <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 pb-24 lg:pb-8 relative z-10">
+          <ErrorBoundary resetKey={activeSection}>
+            <Suspense fallback={<SectionLoader />}>
+              {renderSection()}
+            </Suspense>
+          </ErrorBoundary>
         </main>
+
+        {/* BARA DE NAVIGARE JOS PENTRU MOBIL */}
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t-2 border-slate-200 dark:border-slate-800 px-2 py-1.5 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
+          {navigation.slice(0, 5).map((item) => {
+            const isActive = activeSection === item.id;
+            return (
+              <button
+                type="button"
+                key={item.id}
+                onClick={() => {
+                  setActiveSection(item.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+                  isActive
+                    ? 'text-emerald-600 dark:text-emerald-400 scale-105'
+                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+              >
+                <item.icon className={`w-5 h-5 mb-0.5 ${isActive ? 'stroke-[2.5]' : ''}`} />
+                <span className="text-[9px] font-black uppercase tracking-wider">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
 
         {showWarning && (
           <div className="fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border-4 border-rose-600 rounded-3xl p-5 shadow-[0_20px_50px_rgba(225,29,72,0.5)] z-[9999] w-[92%] max-w-md flex items-start gap-4 animate-in slide-in-from-bottom-5">
@@ -489,6 +603,7 @@ export default function App() {
             </div>
 
             <button
+              type="button"
               onClick={handleDismissWarning}
               className="text-slate-400 hover:text-white hover:bg-rose-600 p-2 bg-slate-800 border-2 border-slate-700 hover:border-rose-500 rounded-xl transition-all shrink-0"
             >
@@ -520,6 +635,7 @@ export default function App() {
               </p>
 
               <button
+                type="button"
                 onClick={() => {
                   if (updateRegistration?.waiting) {
                     updateRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });

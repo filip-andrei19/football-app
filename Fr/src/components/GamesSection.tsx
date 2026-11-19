@@ -89,6 +89,14 @@ const setCachedPlayers = (data: Player[]) => {
     } catch {}
 };
 
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('footballAppToken');
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+};
+
 // --- FUNCȚIE CONTRAST CULORI ---
 const getContrastTextColor = (hexColor: string) => {
     if (!hexColor) return '#ffffff';
@@ -159,7 +167,7 @@ const getFlagEmoji = (country: string) => {
         'Nigeria': '🇳🇬', 'Senegal': '🇸🇳', 'Morocco': '🇲🇦', 'USA': '🇺🇸',
         'Uruguay': '🇺🇾', 'Colombia': '🇨🇴', 'Switzerland': '🇨🇭', 'Denmark': '🇩🇰',
         'Serbia': '🇷🇸', 'Poland': '🇵🇱', 'Sweden': '🇸🇪', 'Norway': '🇳🇴',
-        'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Ivory Coast': '🇨🇮', 'Cameroon': '🇨🇲',
+        'Scotland': '🏴', 'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Ivory Coast': '🇨🇮', 'Cameroon': '🇨🇲',
         'Ghana': '🇬🇭', 'Egypt': '🇪🇬', 'Algeria': '🇩🇿', 'Mali': '🇲🇱',
         'Japan': '🇯🇵', 'South Korea': '🇰🇷', 'Australia': '🇦🇺', 'Mexico': '🇲🇽',
         'Canada': '🇨🇦', 'Chile': '🇨🇱', 'Ecuador': '🇪🇨', 'Peru': '🇵🇪',
@@ -787,9 +795,11 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     const gridRowsRef = useRef(gridRows);
     const gridColsRef = useRef(gridCols);
     const turnRef = useRef(turn);
+    const roomCodeRef = useRef(roomCode);
 
     useEffect(() => { gridRowsRef.current = gridRows; gridColsRef.current = gridCols; }, [gridRows, gridCols]);
     useEffect(() => { turnRef.current = turn; }, [turn]);
+    useEffect(() => { roomCodeRef.current = roomCode; }, [roomCode]);
 
     const checkMatch = (p: Player, criteria: GridCriteria) => {
         const val = removeDiacritics(criteria.value.toLowerCase().trim());
@@ -839,6 +849,16 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     useEffect(() => {
         if (!socketRef.current) return;
         const socket = socketRef.current;
+
+        const handleConnect = () => {
+            if (roomCodeRef.current) {
+                socket.emit("join_room", roomCodeRef.current);
+            }
+        };
+
+        const handleDisconnect = () => {
+            toast("Conexiune instabilă, se reconectează...", { icon: '📡', id: 'grid-socket-status' });
+        };
 
         const handleSocketMessage = (data: any) => {
             try {
@@ -896,9 +916,29 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
             } catch {}
         };
 
+        socket.on("connect", handleConnect);
+        socket.on("disconnect", handleDisconnect);
         socket.on("receive_message", handleSocketMessage);
-        return () => { socket.off("receive_message", handleSocketMessage); };
+        return () => {
+            socket.off("connect", handleConnect);
+            socket.off("disconnect", handleDisconnect);
+            socket.off("receive_message", handleSocketMessage);
+        };
     }, [myRole, roomCode, isMuted, playerName]);
+
+    const createGridSocket = (code: string) => {
+        if (socketRef.current) {
+            socketRef.current.disconnect();
+        }
+        const sock = io(API_URL, {
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000,
+        });
+        sock.emit("join_room", code);
+        socketRef.current = sock;
+        return sock;
+    };
 
     const startLocal = () => {
         if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca!"); return; }
@@ -917,8 +957,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
         setSeriesWinner(null);
         setMode('online_setup');
 
-        socketRef.current = io(API_URL);
-        socketRef.current.emit("join_room", code);
+        createGridSocket(code);
         generateValidGrid();
     };
 
@@ -931,9 +970,8 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
         setSeriesWinner(null);
         setMode('online_setup');
 
-        socketRef.current = io(API_URL);
-        socketRef.current.emit("join_room", code);
-        socketRef.current.emit("send_message", { room: code, message: JSON.stringify({ action: 'JOINED', name: playerName || 'Jucător Oaspete' }) });
+        const sock = createGridSocket(code);
+        sock.emit("send_message", { room: code, message: JSON.stringify({ action: 'JOINED', name: playerName || 'Jucător Oaspete' }) });
     };
 
     const quitGame = () => {
@@ -1488,7 +1526,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
             const finalName = playerName.trim() || 'Jucător Anonim';
             await fetch(`${API_URL}/api/sport/leaderboard`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ name: finalName, score: finalScore })
             });
         } catch {}

@@ -18,7 +18,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
-// --- IMPORTURI SENTRY (NOU) ---
+// --- IMPORTURI SENTRY ---
 const Sentry = require("@sentry/node");
 const { nodeProfilingIntegration } = require("@sentry/profiling-node");
 
@@ -27,17 +27,17 @@ const { hardResetAndLoad } = require('./services/initialLoad');
 const { runDailySmartSync, runNationalTeamSync } = require('./services/smartSync');
 const { sync7DaysWindow, syncLiveMatches, getFixtureDetailsOnDemand, getLeagueStandingsOnDemand } = require('./services/matchSync');
 
-// --- IMPORT RUTE SPORT (NOU PENTRU STARTING XI) ---
+// --- IMPORT RUTE SPORT ---
 const sportRoutes = require('./routes/sportRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
 
 // ==========================================
-// INIȚIALIZARE SENTRY (TREBUIE SĂ FIE AICI, ÎNAINTE DE RUTE/MIDDLEWARE)
+// INIȚIALIZARE SENTRY (ÎNAINTE DE RUTE/MIDDLEWARE)
 // ==========================================
 Sentry.init({
-  dsn: "https://1cd760c47aa5288d63b8307df25fb8f4@o4512306562596864.ingest.de.sentry.io/4512306687705168", 
+  dsn: "https://1cd760c47aa5288d63b8307df25fb8f4@o4512306562596864.ingest.de.sentry.io/4512306687705168",
   integrations: [
     nodeProfilingIntegration(),
   ],
@@ -49,6 +49,17 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 const TOKEN_SECRET = process.env.JWT_SECRET || 'cheie_secreta_foarte_lunga_si_sigura';
 
+// ==========================================
+// RUTE HEALTH CHECK (PENTRU UPTIMEROBOT / RENDER)
+// ==========================================
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: Date.now() });
+});
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: Date.now() });
+});
+
 // CONFIGURARE CLOUDINARY
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_NAME,
@@ -56,7 +67,7 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_SECRET
 });
 
-// CONFIGURARE WEB PUSH (REPARAT - EVITĂ CRASH DACĂ LIPSESC CHEILE)
+// CONFIGURARE WEB PUSH
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
     webpush.setVapidDetails(
         process.env.VAPID_SUBJECT || 'mailto:contact@scout.ro',
@@ -78,14 +89,13 @@ const io = new Server(server, {
 // ==========================================
 // CONFIGURĂRI MIDDLEWARE
 // ==========================================
-
 app.use(helmet());
 app.use(compression());
 app.use(cors());
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 1000, 
+    max: 1000,
     message: "Prea multe cereri. Încearcă mai târziu."
 });
 app.use(limiter);
@@ -98,14 +108,35 @@ app.use((req, res, next) => {
     next();
 });
 
+const extractToken = (req) => {
+    const authHeader = req.header('authorization') || req.header('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        return authHeader.split(' ')[1];
+    }
+    return req.header('auth-token') || null;
+};
+
 const verifyToken = (req, res, next) => {
-    const token = req.header('auth-token');
+    const token = extractToken(req);
     if (!token) return res.status(401).json({ error: 'Acces interzis. Lipsă Token.' });
     try {
         const verified = jwt.verify(token, TOKEN_SECRET);
         req.user = verified;
         next();
-    } catch (err) { res.status(400).json({ error: 'Token Invalid' }); }
+    } catch (err) {
+        return res.status(401).json({ error: 'Token Invalid sau expirat.' });
+    }
+};
+
+// Middleware opțional: atașează req.user dacă există un token valid, dar nu blochează cererile fără token
+const optionalAuth = (req, res, next) => {
+    const token = extractToken(req);
+    if (token) {
+        try {
+            req.user = jwt.verify(token, TOKEN_SECRET);
+        } catch {}
+    }
+    next();
 };
 
 const transporter = nodemailer.createTransport({
@@ -134,7 +165,6 @@ const listingValidationSchema = Joi.object({
 // ==========================================
 // 1. MODELE BAZA DE DATE
 // ==========================================
-
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -145,27 +175,31 @@ const userSchema = new mongoose.Schema({
     scoutWatchlist: { type: [String], default: [] },
     favoriteMatches: { type: [Number], default: [] },
     isBanned: { type: Boolean, default: false },
-    hasAdminDeletedMessages: { type: Boolean, default: false }, 
-    strikes: { type: Number, default: 0 }, 
+    hasAdminDeletedMessages: { type: Boolean, default: false },
+    strikes: { type: Number, default: 0 },
     pushSubscriptions: { type: Array, default: [] },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
     createdAt: { type: Date, default: Date.now }
 });
+
 userSchema.pre('save', async function(next) {
     if (!this.isModified('password')) return next();
     try {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
         next();
-    } catch (err) { next(err); }
+    } catch (err) {
+        next(err);
+    }
 });
+
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 const messageSchema = new mongoose.Schema({
     room: String,
     author: String,
-    authorRole: { type: String, default: 'user' }, 
+    authorRole: { type: String, default: 'user' },
     message: String,
     imageUrl: { type: String, default: "" },
     time: String,
@@ -192,14 +226,20 @@ const listingSchema = new mongoose.Schema({
     sellerEmail: { type: String, required: true },
     sellerPhone: { type: String },
     sellerAvatar: { type: String, default: '' },
-    reportedBy: { type: [String], default: [] }, 
+    reportedBy: { type: [String], default: [] },
     posted: { type: Date, default: Date.now }
 });
 listingSchema.index({ title: 'text', description: 'text' });
 const Listing = mongoose.models.Listing || mongoose.model('Listing', listingSchema);
 
 const storySchema = new mongoose.Schema({
-    title: String, role: String, organization: String, excerpt: String, content: String, date: String, postedAt: { type: Date, default: Date.now }
+    title: String,
+    role: String,
+    organization: String,
+    excerpt: String,
+    content: String,
+    date: String,
+    postedAt: { type: Date, default: Date.now }
 });
 const Story = mongoose.models.Story || mongoose.model('Story', storySchema);
 
@@ -244,9 +284,14 @@ const Standing = mongoose.models.Standing || mongoose.model('Standing', standing
 const uploadImage = async (base64Str) => {
     try {
         if (!base64Str || !base64Str.startsWith('data:image')) return base64Str;
-        const uploadResponse = await cloudinary.uploader.upload(base64Str, { upload_preset: 'scout_app', folder: 'football_market' });
+        const uploadResponse = await cloudinary.uploader.upload(base64Str, {
+            upload_preset: 'scout_app',
+            folder: 'football_market'
+        });
         return uploadResponse.secure_url;
-    } catch (err) { return null; }
+    } catch (err) {
+        return null;
+    }
 };
 
 const deleteFromCloudinary = async (imageUrl) => {
@@ -259,30 +304,48 @@ const deleteFromCloudinary = async (imageUrl) => {
         const publicIdWithExt = partsToKeep.join('/');
         const publicId = publicIdWithExt.split('.')[0];
         await cloudinary.uploader.destroy(publicId);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+        console.error(err);
+    }
 };
 
+const onlineUsersMap = new Map();
+
 io.on("connection", (socket) => {
+    socket.on("register_user", (email) => {
+        if (email) {
+            onlineUsersMap.set(email.toLowerCase().trim(), socket.id);
+        }
+    });
+
     socket.on("join_room", async (data) => {
         socket.join(data);
         try {
             const history = await Message.find({ room: data }).sort({ timestamp: 1 }).limit(100);
             socket.emit("load_history", history);
-        } catch(e) {}
+        } catch (e) {}
     });
+
     socket.on("send_message", async (data) => {
         try {
             const newMessage = new Message(data);
             await newMessage.save();
             io.in(data.room).emit("receive_message", newMessage);
-        } catch(e) {}
+        } catch (e) {}
     });
-    socket.on("disconnect", () => {});
+
+    socket.on("disconnect", () => {
+        for (const [email, sockId] of onlineUsersMap.entries()) {
+            if (sockId === socket.id) {
+                onlineUsersMap.delete(email);
+            }
+        }
+    });
+
     socket.on("typing", (room) => { socket.to(room).emit("display_typing", { isTyping: true }); });
     socket.on("stop_typing", (room) => { socket.to(room).emit("display_typing", { isTyping: false }); });
 });
 
-// Cooldown pentru sincronizarea automată a meciurilor rămase în urmă
 let lastAutoMatchSyncTime = 0;
 
 const startServer = async () => {
@@ -292,27 +355,23 @@ const startServer = async () => {
 
         const storyCount = await Story.countDocuments();
         if (storyCount === 0) {
-             await Story.insertMany([
+            await Story.insertMany([
                 { title: 'Gheorghe "Gică" Popescu', role: 'Șef', organization: 'Academia', excerpt: '...', content: `REP...`, date: 'Dec 2025' }
-             ]);
+            ]);
         }
 
         app.get("/debug-sentry", function mainHandler(req, res) {
             throw new Error("My first Sentry error!");
         });
 
-        // ==========================================
-        // MONTARE RUTE SPORT (PENTRU PRIMUL 11 & LEADERBOARD)
-        // ==========================================
         app.use('/api/sport', sportRoutes);
 
         app.post('/api/notifications/subscribe', async (req, res) => {
             const { email, subscription } = req.body;
-            
             try {
                 await User.findOneAndUpdate(
                     { email: email },
-                    { $addToSet: { pushSubscriptions: subscription } } 
+                    { $addToSet: { pushSubscriptions: subscription } }
                 );
                 res.status(201).json({ success: true, message: 'Abonament Push salvat.' });
             } catch (err) {
@@ -329,7 +388,7 @@ const startServer = async () => {
                 const role = email === 'admin.nou@scout.ro' ? 'admin' : 'user';
                 const newUser = new User({ name, email, password, role });
                 await newUser.save();
-                const token = jwt.sign({ _id: newUser._id, role: newUser.role }, TOKEN_SECRET);
+                const token = jwt.sign({ _id: newUser._id, email: newUser.email, role: newUser.role }, TOKEN_SECRET, { expiresIn: '7d' });
                 res.status(201).json({
                     success: true,
                     token,
@@ -344,7 +403,9 @@ const startServer = async () => {
                         strikes: newUser.strikes || 0
                     }
                 });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.post('/api/users/login', async (req, res) => {
@@ -355,7 +416,7 @@ const startServer = async () => {
                 if (user.isBanned) return res.status(403).json({ success: false, message: "Cont blocat." });
                 const isMatch = await bcrypt.compare(password, user.password);
                 if (!isMatch) return res.status(401).json({ success: false, message: "Parolă incorectă." });
-                const token = jwt.sign({ _id: user._id, role: user.role }, TOKEN_SECRET);
+                const token = jwt.sign({ _id: user._id, email: user.email, role: user.role }, TOKEN_SECRET, { expiresIn: '7d' });
                 res.json({
                     success: true,
                     token,
@@ -371,72 +432,89 @@ const startServer = async () => {
                         strikes: user.strikes || 0
                     }
                 });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.post('/api/users/refresh', async (req, res) => {
             const user = await User.findOne({ email: req.body.email });
-            if(user) res.json({
-                success: true,
-                user: {
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    avatar: user.avatar,
-                    favorites: user.favorites,
-                    scoutWatchlist: user.scoutWatchlist || [],
-                    favoriteMatches: user.favoriteMatches || [],
-                    hasAdminDeletedMessages: user.hasAdminDeletedMessages || false,
-                    strikes: user.strikes || 0
-                }
-            });
+            if (user) {
+                res.json({
+                    success: true,
+                    user: {
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                        avatar: user.avatar,
+                        favorites: user.favorites,
+                        scoutWatchlist: user.scoutWatchlist || [],
+                        favoriteMatches: user.favoriteMatches || [],
+                        hasAdminDeletedMessages: user.hasAdminDeletedMessages || false,
+                        strikes: user.strikes || 0
+                    }
+                });
+            }
         });
 
-        app.post('/api/users/clear-warning', async (req, res) => {
+        app.post('/api/users/clear-warning', optionalAuth, async (req, res) => {
             try {
-                await User.updateOne({ email: req.body.email }, { $set: { hasAdminDeletedMessages: false } });
+                const targetEmail = req.user?.email || req.body.email;
+                if (!targetEmail) return res.status(400).json({ error: "Email lipsă." });
+                await User.updateOne({ email: targetEmail }, { $set: { hasAdminDeletedMessages: false } });
                 res.json({ success: true });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.post('/api/users/forgot-password', async (req, res) => {
-             try {
-                 const user = await User.findOne({ email: req.body.email });
-                 if (!user) return res.status(404).json({ message: "Email necunoscut." });
-                 const token = crypto.randomBytes(20).toString('hex');
-                 user.resetPasswordToken = token;
-                 user.resetPasswordExpires = Date.now() + 3600000;
-                 await user.save();
-                 res.json({ success: true, message: "Link trimis." });
-             } catch(err) { res.status(500).json({error: "Eroare"}); }
+            try {
+                const user = await User.findOne({ email: req.body.email });
+                if (!user) return res.status(404).json({ message: "Email necunoscut." });
+                const token = crypto.randomBytes(20).toString('hex');
+                user.resetPasswordToken = token;
+                user.resetPasswordExpires = Date.now() + 3600000;
+                await user.save();
+                res.json({ success: true, message: "Link trimis." });
+            } catch (err) {
+                res.status(500).json({ error: "Eroare" });
+            }
         });
 
         app.post('/api/users/reset-password/:token', async (req, res) => {
-             try {
-                 const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
-                 if (!user) return res.status(400).json({ message: "Token invalid." });
-                 user.password = req.body.password;
-                 user.resetPasswordToken = undefined;
-                 user.resetPasswordExpires = undefined;
-                 await user.save();
-                 res.json({ success: true, message: "Parolă schimbată!" });
-             } catch(err) { res.status(500).json({error: "Eroare"}); }
+            try {
+                const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
+                if (!user) return res.status(400).json({ message: "Token invalid." });
+                user.password = req.body.password;
+                user.resetPasswordToken = undefined;
+                user.resetPasswordExpires = undefined;
+                await user.save();
+                res.json({ success: true, message: "Parolă schimbată!" });
+            } catch (err) {
+                res.status(500).json({ error: "Eroare" });
+            }
         });
 
-        app.put('/api/users/profile', async (req, res) => {
+        app.put('/api/users/profile', optionalAuth, async (req, res) => {
             try {
-                const { email, name, avatar } = req.body;
+                const email = req.user?.email || req.body.email;
+                const { name, avatar } = req.body;
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
                 let newAvatarUrl = user.avatar;
                 if (avatar && avatar.startsWith('data:image')) {
-                    if (user.avatar && user.avatar.includes('cloudinary.com')) { await deleteFromCloudinary(user.avatar); }
+                    if (user.avatar && user.avatar.includes('cloudinary.com')) {
+                        await deleteFromCloudinary(user.avatar);
+                    }
                     newAvatarUrl = await uploadImage(avatar);
                 }
-                let updates = {};
+                const updates = {};
                 if (name && name !== user.name) updates.seller = name;
                 if (newAvatarUrl && newAvatarUrl !== user.avatar) updates.sellerAvatar = newAvatarUrl;
-                if (Object.keys(updates).length > 0) { await Listing.updateMany({ sellerEmail: email }, { $set: updates }); }
+                if (Object.keys(updates).length > 0) {
+                    await Listing.updateMany({ sellerEmail: email }, { $set: updates });
+                }
                 user.name = name || user.name;
                 user.avatar = newAvatarUrl || user.avatar;
                 await user.save();
@@ -454,7 +532,9 @@ const startServer = async () => {
                         strikes: user.strikes || 0
                     }
                 });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.put('/api/users/change-password', async (req, res) => {
@@ -467,19 +547,28 @@ const startServer = async () => {
                 user.password = newPassword;
                 await user.save();
                 res.json({ success: true, message: "Parolă schimbată." });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
-        app.post('/api/users/favorites/toggle', async (req, res) => {
+        app.post('/api/users/favorites/toggle', optionalAuth, async (req, res) => {
             try {
-                const { email, listingId } = req.body;
+                const email = req.user?.email || req.body.email;
+                const { listingId } = req.body;
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
                 const index = user.favorites.indexOf(listingId);
-                if (index === -1) { user.favorites.push(listingId); } else { user.favorites.splice(index, 1); }
+                if (index === -1) {
+                    user.favorites.push(listingId);
+                } else {
+                    user.favorites.splice(index, 1);
+                }
                 await user.save();
                 res.json({ success: true, favorites: user.favorites });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.get('/api/users/favorites/:email', async (req, res) => {
@@ -488,12 +577,15 @@ const startServer = async () => {
                 if (!user) return res.status(404).json({ error: "User not found" });
                 const favoriteListings = await Listing.find({ _id: { $in: user.favorites } }).sort({ posted: -1 });
                 res.json({ success: true, favorites: user.favorites, favoriteListings });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
-        app.post('/api/users/watchlist/toggle', async (req, res) => {
+        app.post('/api/users/watchlist/toggle', optionalAuth, async (req, res) => {
             try {
-                const { email, playerId } = req.body;
+                const email = req.user?.email || req.body.email;
+                const { playerId } = req.body;
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
                 if (!user.scoutWatchlist) user.scoutWatchlist = [];
@@ -505,7 +597,9 @@ const startServer = async () => {
                 }
                 await user.save();
                 res.json({ success: true, scoutWatchlist: user.scoutWatchlist });
-            } catch (err) { res.status(500).json({ error: "Eroare la actualizarea watchlist-ului." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la actualizarea watchlist-ului." });
+            }
         });
 
         app.get('/api/users/watchlist/:email', async (req, res) => {
@@ -515,12 +609,15 @@ const startServer = async () => {
                 const watchlistIds = user.scoutWatchlist || [];
                 const watchedPlayers = await Player.find({ _id: { $in: watchlistIds } });
                 res.json({ success: true, scoutWatchlist: watchlistIds, watchedPlayers });
-            } catch (err) { res.status(500).json({ error: "Eroare la preluarea watchlist-ului." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la preluarea watchlist-ului." });
+            }
         });
 
-        app.post('/api/users/favorite-matches/toggle', async (req, res) => {
+        app.post('/api/users/favorite-matches/toggle', optionalAuth, async (req, res) => {
             try {
-                const { email, fixtureId } = req.body;
+                const email = req.user?.email || req.body.email;
+                const { fixtureId } = req.body;
                 const user = await User.findOne({ email });
                 if (!user) return res.status(404).json({ error: "User not found" });
                 if (!user.favoriteMatches) user.favoriteMatches = [];
@@ -533,7 +630,9 @@ const startServer = async () => {
                 }
                 await user.save();
                 res.json({ success: true, favoriteMatches: user.favoriteMatches });
-            } catch (err) { res.status(500).json({ error: "Eroare la actualizarea meciurilor favorite." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la actualizarea meciurilor favorite." });
+            }
         });
 
         app.post('/api/messages/conversations', async (req, res) => {
@@ -552,13 +651,22 @@ const startServer = async () => {
                     if (listing) {
                         const lastMsg = await Message.findOne({ room }).sort({ timestamp: -1 });
                         if (lastMsg) {
-                            conversations.push({ roomId: room, title: listing.title, image: listing.images[0] || '', lastMessage: lastMsg.imageUrl ? 'Imagine' : lastMsg.message, timestamp: lastMsg.timestamp, isMyListing: listing.sellerEmail === email });
+                            conversations.push({
+                                roomId: room,
+                                title: listing.title,
+                                image: listing.images[0] || '',
+                                lastMessage: lastMsg.imageUrl ? 'Imagine' : lastMsg.message,
+                                timestamp: lastMsg.timestamp,
+                                isMyListing: listing.sellerEmail === email
+                            });
                         }
                     }
                 }
                 conversations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 res.json(conversations);
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.post('/api/messages/send', async (req, res) => {
@@ -566,58 +674,77 @@ const startServer = async () => {
                 const { room, author, authorRole, message, time, imageUrl, imageBase64, replyTo } = req.body;
                 let finalImageUrl = "";
                 const rawImage = imageBase64 || imageUrl;
-                if (rawImage && rawImage.startsWith('data:image')) { finalImageUrl = await uploadImage(rawImage); }
-                const newMessage = new Message({ 
-                    room, 
-                    author, 
-                    authorRole: authorRole || 'user', 
-                    message: message || "", 
-                    time, 
-                    imageUrl: finalImageUrl, 
-                    replyTo: replyTo || null, 
-                    timestamp: new Date() 
+                if (rawImage && rawImage.startsWith('data:image')) {
+                    finalImageUrl = await uploadImage(rawImage);
+                }
+                const newMessage = new Message({
+                    room,
+                    author,
+                    authorRole: authorRole || 'user',
+                    message: message || "",
+                    time,
+                    imageUrl: finalImageUrl,
+                    replyTo: replyTo || null,
+                    timestamp: new Date()
                 });
                 await newMessage.save();
                 io.in(room).emit("receive_message", newMessage);
+
+                if (room && room.startsWith('listing_')) {
+                    const listingId = room.split('_')[1];
+                    const listing = await Listing.findById(listingId);
+                    if (listing && listing.sellerEmail && listing.sellerEmail.toLowerCase() !== (author || '').toLowerCase()) {
+                        const targetSockId = onlineUsersMap.get(listing.sellerEmail.toLowerCase().trim());
+                        if (targetSockId) {
+                            io.to(targetSockId).emit("new_private_message", {
+                                from: author,
+                                text: message,
+                                isListing: true,
+                                listingTitle: listing.title
+                            });
+                        }
+                    }
+                }
+
                 res.json({ success: true, message: "Mesaj trimis!" });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
-        app.delete('/api/messages/:id', async (req, res) => {
+        app.delete('/api/messages/:id', optionalAuth, async (req, res) => {
             try {
                 const { user, userRole, email } = req.body;
-                const isAdmin = userRole === 'admin' || email === 'admin.nou@scout.ro';
+                const effectiveEmail = req.user?.email || email;
+                const effectiveRole = req.user?.role || userRole;
+                const isAdmin = effectiveRole === 'admin' || effectiveEmail === 'admin.nou@scout.ro';
 
                 const msg = await Message.findById(req.params.id);
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
 
                 if (isAdmin) {
-                    if (msg.imageUrl && msg.imageUrl.includes('cloudinary.com')) { 
-                        await deleteFromCloudinary(msg.imageUrl); 
+                    if (msg.imageUrl && msg.imageUrl.includes('cloudinary.com')) {
+                        await deleteFromCloudinary(msg.imageUrl);
                     }
                     await Message.findByIdAndDelete(req.params.id);
-                    
                     await User.updateOne({ name: msg.author }, { $set: { hasAdminDeletedMessages: true } });
-                    
-                    io.in(msg.room).emit("message_hard_deleted", { 
-                        id: req.params.id, 
-                        author: msg.author 
-                    });
+                    io.in(msg.room).emit("message_hard_deleted", { id: req.params.id, author: msg.author });
                     return res.json({ success: true });
                 } else {
                     if (msg.author !== user) return res.status(403).json({ error: "Interzis." });
-                    
-                    if (msg.imageUrl && msg.imageUrl.includes('cloudinary.com')) { 
-                        await deleteFromCloudinary(msg.imageUrl); 
+                    if (msg.imageUrl && msg.imageUrl.includes('cloudinary.com')) {
+                        await deleteFromCloudinary(msg.imageUrl);
                     }
-                    msg.isDeleted = true; msg.message = ""; msg.imageUrl = ""; msg.replyTo = null;
+                    msg.isDeleted = true;
+                    msg.message = "";
+                    msg.imageUrl = "";
+                    msg.replyTo = null;
                     await msg.save();
-                    
                     io.in(msg.room).emit("message_updated", msg);
                     return res.json({ success: true });
                 }
-            } catch (err) { 
-                res.status(500).json({ error: "Eroare." }); 
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
             }
         });
 
@@ -628,14 +755,24 @@ const startServer = async () => {
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
                 const currentReactions = msg.reactions || {};
                 let usersWhoReacted = currentReactions[emoji] || [];
-                if (usersWhoReacted.includes(user)) { usersWhoReacted = usersWhoReacted.filter(u => u !== user); } else { usersWhoReacted.push(user); }
-                if (usersWhoReacted.length === 0) { delete currentReactions[emoji]; } else { currentReactions[emoji] = usersWhoReacted; }
+                if (usersWhoReacted.includes(user)) {
+                    usersWhoReacted = usersWhoReacted.filter(u => u !== user);
+                } else {
+                    usersWhoReacted.push(user);
+                }
+                if (usersWhoReacted.length === 0) {
+                    delete currentReactions[emoji];
+                } else {
+                    currentReactions[emoji] = usersWhoReacted;
+                }
                 msg.reactions = currentReactions;
                 msg.markModified('reactions');
                 await msg.save();
                 io.in(msg.room).emit("message_updated", msg);
                 res.json({ success: true });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.post('/api/messages/:id/pin', async (req, res) => {
@@ -646,116 +783,132 @@ const startServer = async () => {
                 await msg.save();
                 io.in(msg.room).emit("message_updated", msg);
                 res.json({ success: true, isPinned: msg.isPinned });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.post('/api/messages/:id/report', async (req, res) => {
             try {
-                const { user } = req.body; 
+                const { user } = req.body;
                 const msg = await Message.findById(req.params.id);
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
-
                 if (!msg.reportedBy.includes(user)) {
                     msg.reportedBy.push(user);
                     await msg.save();
                 }
                 res.json({ success: true });
-            } catch (err) { res.status(500).json({ error: "Eroare la raportare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la raportare." });
+            }
         });
 
         app.get('/api/admin/reported-messages', async (req, res) => {
             try {
-                const reportedMessages = await Message.find({ 
+                const reportedMessages = await Message.find({
                     'reportedBy.0': { $exists: true },
-                    isDeleted: false 
+                    isDeleted: false
                 }).sort({ timestamp: -1 });
                 res.json(reportedMessages);
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.post('/api/messages/:id/dismiss-report', async (req, res) => {
             try {
                 const msg = await Message.findById(req.params.id);
                 if (!msg) return res.status(404).json({ error: "Mesaj inexistent." });
-                
-                msg.reportedBy = []; 
+                msg.reportedBy = [];
                 await msg.save();
                 res.json({ success: true });
-            } catch (err) { res.status(500).json({ error: "Eroare la ignorare raport." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la ignorare raport." });
+            }
         });
 
         app.post('/api/listings', async (req, res) => {
             try {
                 const { error } = listingValidationSchema.validate(req.body);
                 if (error) return res.status(400).json({ error: error.details[0].message });
-                const imagePromises = req.body.images.map(img => uploadImage(img));
+                const imagePromises = (req.body.images || []).map(img => uploadImage(img));
                 const uploadedImages = await Promise.all(imagePromises);
                 const validImages = uploadedImages.filter(img => img !== null);
                 const newListing = new Listing({ ...req.body, images: validImages });
                 await newListing.save();
                 res.status(201).json(newListing);
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.get('/api/listings', async (req, res) => {
             const { page = 1, limit = 50, search, category } = req.query;
-            let query = {};
-            if (search) query.$or = [{ title: { $regex: search,$options: 'i' } }, { description: { $regex: search,$options: 'i' } }];
+            const query = {};
+            if (search) query.$or = [{ title: { $regex: search, $options: 'i' } }, { description: { $regex: search, $options: 'i' } }];
             if (category && category !== 'Toate') query.category = category;
             const listings = await Listing.find(query).sort({ posted: -1 }).limit(limit * 1).skip((page - 1) * limit);
             res.json(listings);
         });
 
-        app.delete('/api/listings/:id', async (req, res) => {
+        app.delete('/api/listings/:id', optionalAuth, async (req, res) => {
             try {
-                const { email } = req.body;
+                const email = req.user?.email || req.body.email;
                 const user = await User.findOne({ email });
                 const listing = await Listing.findById(req.params.id);
                 if (!listing) return res.status(404).json({ error: "Produsul nu există" });
                 const isOwner = listing.sellerEmail === email;
-                const isAdmin = (user && user.role === 'admin') || email === 'admin.nou@scout.ro';
+                const isAdmin = (req.user && req.user.role === 'admin') || (user && user.role === 'admin') || email === 'admin.nou@scout.ro';
                 if (!isOwner && !isAdmin) return res.status(403).json({ error: "Interzis." });
                 if (listing.images && listing.images.length > 0) {
-                    for (const imgUrl of listing.images) { await deleteFromCloudinary(imgUrl); }
+                    for (const imgUrl of listing.images) {
+                        await deleteFromCloudinary(imgUrl);
+                    }
                 }
                 await Listing.findByIdAndDelete(req.params.id);
                 await User.updateMany({ favorites: req.params.id }, { $pull: { favorites: req.params.id } });
                 res.json({ success: true, message: "Șters." });
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.post('/api/listings/:id/report', async (req, res) => {
             try {
-                const { user } = req.body; 
+                const { user } = req.body;
                 const listing = await Listing.findById(req.params.id);
                 if (!listing) return res.status(404).json({ error: "Anunț inexistent." });
-
                 if (!listing.reportedBy.includes(user)) {
                     listing.reportedBy.push(user);
                     await listing.save();
                 }
                 res.json({ success: true });
-            } catch (err) { res.status(500).json({ error: "Eroare la raportare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la raportare." });
+            }
         });
 
         app.get('/api/admin/reported-listings', async (req, res) => {
             try {
-                const reportedListings = await Listing.find({ 
-                    'reportedBy.0': { $exists: true } 
+                const reportedListings = await Listing.find({
+                    'reportedBy.0': { $exists: true }
                 }).sort({ posted: -1 });
                 res.json(reportedListings);
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.post('/api/listings/:id/dismiss-report', async (req, res) => {
             try {
                 const listing = await Listing.findById(req.params.id);
                 if (!listing) return res.status(404).json({ error: "Anunț inexistent." });
-                
-                listing.reportedBy = []; 
+                listing.reportedBy = [];
                 await listing.save();
                 res.json({ success: true });
-            } catch (err) { res.status(500).json({ error: "Eroare la ignorare raport." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la ignorare raport." });
+            }
         });
 
         app.get('/api/sport/players', async (req, res) => {
@@ -765,20 +918,20 @@ const startServer = async () => {
                     minMinutes, minGoals, minRating, leagueId, nationality, team, limit
                 } = req.query;
 
-                let conditions = [];
+                const conditions = [];
 
                 if (diaspora === 'true') {
                     conditions.push({
                         $or: [
-                            { nationality: { $regex: /romania|românia/i }, league_id: { $nin: [283, 284] } }, 
-                            { team_name: {$regex: /romania|românia/i } }
+                            { nationality: { $regex: /romania|românia/i }, league_id: { $nin: [283, 284] } },
+                            { team_name: { $regex: /romania|românia/i } }
                         ]
                     });
                 } else if (u21 === 'true') {
                     conditions.push({
                         $or: [
-                            { age: { $gt: 0, $lte: 21 } }, 
-                            { birth_date: {$regex: /^(2005|2006|2007|2008|2009|2010|2011)/ } }
+                            { age: { $gt: 0, $lte: 21 } },
+                            { birth_date: { $regex: /^(2005|2006|2007|2008|2009|2010|2011)/ } }
                         ]
                     });
                 }
@@ -786,11 +939,11 @@ const startServer = async () => {
                 if (search) {
                     conditions.push({
                         $or: [
-                            { name: { $regex: search,$options: 'i' } },
-                            { firstname: { $regex: search,$options: 'i' } },
-                            { lastname: { $regex: search,$options: 'i' } },
-                            { team_name: { $regex: search,$options: 'i' } },
-                            { team: { $regex: search,$options: 'i' } }
+                            { name: { $regex: search, $options: 'i' } },
+                            { firstname: { $regex: search, $options: 'i' } },
+                            { lastname: { $regex: search, $options: 'i' } },
+                            { team_name: { $regex: search, $options: 'i' } },
+                            { team: { $regex: search, $options: 'i' } }
                         ]
                     });
                 }
@@ -806,7 +959,7 @@ const startServer = async () => {
                     } else if (posLower.includes('ataca') || posLower.includes('attack') || posLower.includes('forward')) {
                         conditions.push({ position: { $regex: /attacker|forward|striker|wing|ataca/i } });
                     } else {
-                        conditions.push({ position: { $regex: position,$options: 'i' } });
+                        conditions.push({ position: { $regex: position, $options: 'i' } });
                     }
                 }
 
@@ -820,24 +973,22 @@ const startServer = async () => {
                 if (minMinutes) conditions.push({ 'statistics_summary.minutes_played': { $gte: Number(minMinutes) } });
                 if (minGoals) conditions.push({ 'statistics_summary.total_goals': { $gte: Number(minGoals) } });
                 if (leagueId) conditions.push({ league_id: Number(leagueId) });
-                if (nationality) conditions.push({ nationality: { $regex: nationality,$options: 'i' } });
+                if (nationality) conditions.push({ nationality: { $regex: nationality, $options: 'i' } });
                 if (team) {
                     conditions.push({
                         $or: [
-                            { team_name: { $regex: team,$options: 'i' } },
-                            { team: { $regex: team,$options: 'i' } }
+                            { team_name: { $regex: team, $options: 'i' } },
+                            { team: { $regex: team, $options: 'i' } }
                         ]
                     });
                 }
 
                 const finalQuery = conditions.length > 0 ? { $and: conditions } : {};
-                
                 const page = parseInt(req.query.page) || 1;
                 const limitValue = limit ? parseInt(limit) : (diaspora === 'true' || u21 === 'true' ? 12 : 300);
                 const skipValue = (page - 1) * limitValue;
 
-                let playersQuery = Player.find(finalQuery).sort({ _id: -1 }).skip(skipValue).limit(limitValue);
-
+                const playersQuery = Player.find(finalQuery).sort({ _id: -1 }).skip(skipValue).limit(limitValue);
                 let players = await playersQuery;
 
                 if (minRating) {
@@ -848,7 +999,9 @@ const startServer = async () => {
                 }
 
                 res.json(players);
-            } catch (err) { res.status(500).json({ error: "Eroare la preluarea jucătorilor." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la preluarea jucătorilor." });
+            }
         });
 
         app.get('/api/sport/players/compare', async (req, res) => {
@@ -858,9 +1011,11 @@ const startServer = async () => {
                 const idList = String(ids).split(',').map(id => id.trim()).filter(Boolean);
                 const players = await Player.find({ _id: { $in: idList } });
                 res.json(players);
-            } catch (err) { res.status(500).json({ error: "Eroare la compararea jucătorilor." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la compararea jucătorilor." });
+            }
         });
-        
+
         app.get('/api/sport/teams/search', async (req, res) => {
             try {
                 const { q } = req.query;
@@ -868,20 +1023,23 @@ const startServer = async () => {
                 if (q) {
                     matchQuery = {
                         $or: [
-                            { team_name: { $regex: q,$options: 'i' } },
-                            { team: { $regex: q,$options: 'i' } }
+                            { team_name: { $regex: q, $options: 'i' } },
+                            { team: { $regex: q, $options: 'i' } }
                         ]
                     };
                 }
                 const teams = await Player.aggregate([
                     { $match: matchQuery },
-                    { $group: { _id: {$ifNull: ["$team_name", "$team"] }, team_logo: { $first: "$team_logo" } } },
-                    { $match: { _id: {$ne: null } } },
+                    { $group: { _id: { $ifNull: ["$team_name", "$team"] }, team_logo: { $first: "$team_logo" } } },
+                    { $match: { _id: { $ne: null } } },
                     { $project: { _id: 0, team_name: "$_id", team_logo: 1 } },
-                    { $sort: { team_name: 1 } }, {$limit: 200 }
+                    { $sort: { team_name: 1 } },
+                    { $limit: 200 }
                 ]);
                 res.json(teams);
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.get('/api/sport/teams/:teamName/roster', async (req, res) => {
@@ -893,9 +1051,9 @@ const startServer = async () => {
                         { team: teamNameRegex }
                     ]
                 }).sort({ name: 1 });
-                
+
                 if (!players || players.length === 0) return res.status(404).json({ message: "Nu sunt jucători." });
-                
+
                 const roster = {
                     teamInfo: { name: req.params.teamName, logo: players[0].team_logo || "", totalPlayers: players.length },
                     squad: {
@@ -922,18 +1080,20 @@ const startServer = async () => {
                     }
                 };
                 res.json(roster);
-            } catch (err) { res.status(500).json({ error: "Eroare." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare." });
+            }
         });
 
         app.get('/api/sport/matches', async (req, res) => {
             try {
-                const { date } = req.query; 
+                const { date } = req.query;
                 if (!date) return res.status(400).json({ error: "Parametrul date este obligatoriu" });
 
                 const startDate = new Date(`${date}T00:00:00.000Z`);
                 const endDate = new Date(`${date}T23:59:59.999Z`);
 
-                const matches = await Fixture.find({ date: { $gte: startDate,$lte: endDate } }).sort({ league_id: 1, timestamp: 1 });
+                const matches = await Fixture.find({ date: { $gte: startDate, $lte: endDate } }).sort({ league_id: 1, timestamp: 1 });
 
                 const nowSec = Math.floor(Date.now() / 1000);
                 const hasOutdatedMatches = matches.some(m =>
@@ -941,7 +1101,6 @@ const startServer = async () => {
                     (["1H", "HT", "2H", "ET", "P", "BT", "LIVE"].includes(m.status_short) && m.timestamp && m.timestamp < nowSec - (130 * 60))
                 );
 
-                // --- MODIFICARE: FORȚEAZĂ SYNC ȘI DACĂ ESTE GOL (PAUZĂ DE MECIURI) ---
                 const shouldSync = hasOutdatedMatches || matches.length === 0;
 
                 if (shouldSync && (Date.now() - lastAutoMatchSyncTime > 10 * 60 * 1000)) {
@@ -950,42 +1109,20 @@ const startServer = async () => {
                 }
 
                 res.json(matches);
-            } catch (err) { res.status(500).json({ error: "Eroare la preluarea meciurilor." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la preluarea meciurilor." });
+            }
         });
-        
+
         app.get('/api/sport/matches/:fixtureId/details', async (req, res) => {
             try {
                 const matchDetails = await getFixtureDetailsOnDemand(req.params.fixtureId);
                 if (!matchDetails) return res.status(404).json({ error: "Meciul nu a fost găsit." });
                 io.emit("live_match_update", matchDetails);
-
-                async function sendPushToUser(email, payload) {
-                    try {
-                        const user = await User.findOne({ email });
-                        if (!user || !user.pushSubscriptions || user.pushSubscriptions.length === 0) return;
-                
-                        const pushPayload = JSON.stringify({
-                            title: payload.title,
-                            body: payload.body,
-                            icon: payload.icon || '/icon-192.png',
-                            data: payload.data
-                        });
-                
-                        const promises = user.pushSubscriptions.map(sub => 
-                            webpush.sendNotification(sub, pushPayload).catch(err => {
-                                if (err.statusCode === 404 || err.statusCode === 410) {
-                                    return User.updateOne({ email }, { $pull: { pushSubscriptions: sub } });
-                                }
-                            })
-                        );
-                        
-                        await Promise.all(promises);
-                    } catch (err) {
-                        console.error('Eroare trimitere Push:', err);
-                    }
-                }
                 res.json(matchDetails);
-            } catch (err) { res.status(500).json({ error: "Eroare la preluarea detaliilor meciului." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la preluarea detaliilor meciului." });
+            }
         });
 
         app.get('/api/sport/standings/:leagueId', async (req, res) => {
@@ -993,7 +1130,9 @@ const startServer = async () => {
                 const standings = await getLeagueStandingsOnDemand(req.params.leagueId);
                 if (!standings) return res.status(404).json({ error: "Clasamentul nu este disponibil." });
                 res.json(standings);
-            } catch (err) { res.status(500).json({ error: "Eroare la preluarea clasamentului." }); }
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la preluarea clasamentului." });
+            }
         });
 
         app.post('/api/admin/users/strike', async (req, res) => {
@@ -1004,7 +1143,6 @@ const startServer = async () => {
                     { $inc: { strikes: 1 } },
                     { new: true }
                 );
-                
                 if (!user) return res.status(404).json({ error: 'User not found' });
                 res.json({ success: true, strikes: user.strikes });
             } catch (err) {
@@ -1012,18 +1150,38 @@ const startServer = async () => {
             }
         });
 
-        app.get('/api/admin/users', async (req, res) => { const users = await User.find(); res.json(users); });
+        app.get('/api/admin/users', async (req, res) => {
+            const users = await User.find();
+            res.json(users);
+        });
+
         app.put('/api/admin/users/:id/ban', async (req, res) => {
             const user = await User.findById(req.params.id);
             user.isBanned = !user.isBanned;
             await user.save();
-            res.json({success: true});
+            res.json({ success: true });
         });
 
-        app.get('/api/stories', async (req, res) => { const stories = await Story.find().sort({postedAt: -1}); res.json(stories); });
-        app.post('/api/admin/stories', async (req, res) => { const s = new Story(req.body); await s.save(); res.json(s); });
-        app.put('/api/admin/stories/:id', async (req, res) => { const s = await Story.findByIdAndUpdate(req.params.id, req.body); res.json(s); });
-        app.delete('/api/admin/stories/:id', async (req, res) => { await Story.findByIdAndDelete(req.params.id); res.json({success: true}); });
+        app.get('/api/stories', async (req, res) => {
+            const stories = await Story.find().sort({ postedAt: -1 });
+            res.json(stories);
+        });
+
+        app.post('/api/admin/stories', async (req, res) => {
+            const s = new Story(req.body);
+            await s.save();
+            res.json(s);
+        });
+
+        app.put('/api/admin/stories/:id', async (req, res) => {
+            const s = await Story.findByIdAndUpdate(req.params.id, req.body);
+            res.json(s);
+        });
+
+        app.delete('/api/admin/stories/:id', async (req, res) => {
+            await Story.findByIdAndDelete(req.params.id);
+            res.json({ success: true });
+        });
 
         app.get('/api/admin/hard-reset', async (req, res) => { hardResetAndLoad(); res.send("Reset."); });
         app.get('/api/admin/force-sync', async (req, res) => { runDailySmartSync(); res.send("Sync."); });
@@ -1050,7 +1208,7 @@ const startServer = async () => {
         const stuckMatches = await Fixture.countDocuments({
             $or: [
                 { status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] }, timestamp: { $lt: nowTimestamp - (130 * 60) } },
-                { status_short: "NS", timestamp: { $lt: nowTimestamp - (15 * 60),$gt: nowTimestamp - (3 * 86400) } }
+                { status_short: "NS", timestamp: { $lt: nowTimestamp - (15 * 60), $gt: nowTimestamp - (3 * 86400) } }
             ]
         });
         if (stuckMatches > 0) sync7DaysWindow();
@@ -1058,20 +1216,24 @@ const startServer = async () => {
         setInterval(async () => {
             try {
                 const currentTimestamp = Math.floor(Date.now() / 1000);
-                const startWindow = currentTimestamp + (5 * 60); 
-                const endWindow = currentTimestamp - (180 * 60); 
+                const startWindow = currentTimestamp + (5 * 60);
+                const endWindow = currentTimestamp - (180 * 60);
                 const liveMatchesCount = await Fixture.countDocuments({
                     $or: [
-                        { timestamp: { $lte: startWindow,$gte: endWindow }, status_short: { $nin: ["FT", "AET", "PEN", "PST", "CANC", "ABD"] } },
+                        { timestamp: { $lte: startWindow, $gte: endWindow }, status_short: { $nin: ["FT", "AET", "PEN", "PST", "CANC", "ABD"] } },
                         { status_short: { $in: ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"] }, timestamp: { $gte: currentTimestamp - (6 * 3600) } }
                     ]
                 });
                 if (liveMatchesCount > 0) syncLiveMatches(io);
-            } catch (err) { console.log("Eroare verificare live local:", err.message); }
+            } catch (err) {
+                console.log("Eroare verificare live local:", err.message);
+            }
         }, 30 * 1000);
 
         server.listen(PORT, () => console.log(`Server pornit pe port ${PORT}`));
-    } catch (error) { console.error("Eroare:", error.message); }
+    } catch (error) {
+        console.error("Eroare:", error.message);
+    }
 };
 
 startServer();
