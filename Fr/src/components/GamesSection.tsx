@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity, Globe, Users, Share2, Copy, Crown, Timer, Heart, Volume2, VolumeX, ListOrdered, Share, Shirt, Trash2, Plus, LayoutDashboard } from 'lucide-react';
+import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity, Globe, Users, Share2, Copy, Crown, Timer, Heart, Volume2, VolumeX, ListOrdered, Share, Shirt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client';
+import { useQuery } from '@tanstack/react-query';
 import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, SortingState } from '@tanstack/react-table';
 
 // --- INTERFEȚE GENERALE ---
@@ -17,10 +18,10 @@ interface Player {
     team?: string;
     team_logo?: string;
     league_name?: string;
-    league_id?: number | string; 
+    league_id?: number | string;
     league_logo?: string;
     past_teams?: string[];
-    market_value?: number; 
+    market_value?: number;
     statistics_summary?: {
         rating?: string;
     };
@@ -44,29 +45,49 @@ interface AnswerDetails {
 
 // --- INTERFEȚE STARTING XI ---
 interface XIPlayer {
-    _id: string; 
+    _id: string;
     id?: string;
-    dbId?: string; 
+    dbId?: string;
     name: string;
-    gridRow: number; 
+    gridRow: number;
 }
 
 interface StartingXIData {
-    _id?: string; 
+    _id?: string;
     id?: string;
     teamName: string;
     opponent: string;
     date: string;
     score: string;
-    formation: string; 
-    teamColor?: string;     
-    opponentColor?: string; 
-    isHome?: boolean;       
+    formation: string;
+    teamColor?: string;
+    opponentColor?: string;
+    isHome?: boolean;
     players: XIPlayer[];
 }
 
-const API_URL = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
+const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
+const PLAYERS_CACHE_KEY = 'scoutpro_players_cache_v1';
+const PLAYERS_CACHE_TTL = 1000 * 60 * 15; // 15 minute
+
+const getCachedPlayers = (): Player[] | undefined => {
+    try {
+        const raw = localStorage.getItem(PLAYERS_CACHE_KEY);
+        if (!raw) return undefined;
+        const parsed = JSON.parse(raw);
+        if (parsed?.timestamp && Date.now() - parsed.timestamp < PLAYERS_CACHE_TTL && Array.isArray(parsed.data)) {
+            return parsed.data;
+        }
+    } catch {}
+    return undefined;
+};
+
+const setCachedPlayers = (data: Player[]) => {
+    try {
+        localStorage.setItem(PLAYERS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data }));
+    } catch {}
+};
 
 // --- FUNCȚIE CONTRAST CULORI ---
 const getContrastTextColor = (hexColor: string) => {
@@ -76,43 +97,44 @@ const getContrastTextColor = (hexColor: string) => {
     const g = parseInt(hex.substring(2, 4), 16) || 0;
     const b = parseInt(hex.substring(4, 6), 16) || 0;
     const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-    return yiq >= 128 ? '#0f172a' : '#ffffff'; 
+    return yiq >= 128 ? '#0f172a' : '#ffffff';
 };
 
 // --- SOUND ENGINE (Web Audio API) ---
 const playTone = (frequency: number, type: OscillatorType, duration: number) => {
     try {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        const audioCtx = new AudioCtx();
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         oscillator.type = type;
         oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + duration);
-    } catch (e) {}
+    } catch {}
 };
 
 const playSound = (type: 'correct' | 'wrong' | 'timeout' | 'win', isMuted: boolean = false) => {
     if (isMuted) return;
-    if (type === 'correct') { 
-        playTone(600, 'sine', 0.1); 
-        setTimeout(() => playTone(800, 'sine', 0.2), 100); 
+    if (type === 'correct') {
+        playTone(600, 'sine', 0.1);
+        setTimeout(() => playTone(800, 'sine', 0.2), 100);
     }
-    if (type === 'wrong') { 
-        playTone(300, 'sawtooth', 0.4); 
+    if (type === 'wrong') {
+        playTone(300, 'sawtooth', 0.4);
     }
-    if (type === 'timeout') { 
-        playTone(400, 'square', 0.2); 
-        setTimeout(() => playTone(400, 'square', 0.5), 300); 
+    if (type === 'timeout') {
+        playTone(400, 'square', 0.2);
+        setTimeout(() => playTone(400, 'square', 0.5), 300);
     }
-    if (type === 'win') { 
-        playTone(500, 'sine', 0.2); 
-        setTimeout(() => playTone(650, 'sine', 0.2), 200); 
-        setTimeout(() => playTone(800, 'sine', 0.4), 400); 
+    if (type === 'win') {
+        playTone(500, 'sine', 0.2);
+        setTimeout(() => playTone(650, 'sine', 0.2), 200);
+        setTimeout(() => playTone(800, 'sine', 0.4), 400);
     }
 };
 
@@ -150,28 +172,34 @@ const getFlagEmoji = (country: string) => {
 
 export function GamesSection({ user }: GamesProps) {
     const [activeGame, setActiveGame] = useState<'menu' | 'grid' | 'hilo' | 'xi'>('menu');
-    const [allPlayers, setAllPlayers] = useState<Player[]>([]);
-    const [loading, setLoading] = useState(true);
     const [isMuted, setIsMuted] = useState(false);
 
-    useEffect(() => {
-        const fetchPlayers = async () => {
-            try {
-                const res = await fetch(`${API_URL}/api/sport/players?limit=10000`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setAllPlayers(data);
-                }
-            } catch (err) {
-                toast.error("Eroare la conectarea cu baza de date sportivă.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchPlayers();
-    }, []);
+    const initialCached = useMemo(() => getCachedPlayers(), []);
 
-    if (loading) {
+    const { data: allPlayers = [], isLoading, isError } = useQuery<Player[]>({
+        queryKey: ['sport-players-games'],
+        initialData: initialCached,
+        staleTime: 1000 * 60 * 10, // 10 minute fără re-fetch inutil
+        gcTime: 1000 * 60 * 30,    // păstrează 30 minute în memorie
+        refetchOnWindowFocus: false,
+        queryFn: async () => {
+            const res = await fetch(`${API_URL}/api/sport/players?limit=10000`);
+            if (!res.ok) {
+                throw new Error('Eroare la conectarea cu baza de date sportivă.');
+            }
+            const data: Player[] = await res.json();
+            setCachedPlayers(data);
+            return data;
+        },
+    });
+
+    useEffect(() => {
+        if (isError && allPlayers.length === 0) {
+            toast.error("Eroare la conectarea cu baza de date sportivă.");
+        }
+    }, [isError, allPlayers.length]);
+
+    if (isLoading && allPlayers.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
@@ -182,9 +210,9 @@ export function GamesSection({ user }: GamesProps) {
 
     return (
         <div className="w-full max-w-5xl mx-auto py-6 sm:py-8 px-2 sm:px-4 min-h-[80vh] relative z-0 animate-in fade-in duration-500 pb-24 sm:pb-20 mt-4 sm:mt-0">
-             {activeGame !== 'menu' && (
-                <button 
-                    onClick={() => setIsMuted(!isMuted)} 
+            {activeGame !== 'menu' && (
+                <button
+                    onClick={() => setIsMuted(!isMuted)}
                     className="absolute top-2 right-2 sm:top-0 sm:right-6 z-50 bg-slate-800 p-2 rounded-full border border-slate-700 text-slate-400 hover:text-white transition-colors shadow-lg"
                     title={isMuted ? "Activează Sunetul" : "Dezactivează Sunetul"}
                 >
@@ -212,7 +240,7 @@ export function GamesSection({ user }: GamesProps) {
                             <Activity className="w-8 h-8 sm:w-12 sm:h-12 text-emerald-400 mb-4 sm:mb-6 relative z-10" />
                             <h3 className="text-lg sm:text-xl md:text-2xl font-black text-white uppercase tracking-tighter mb-1.5 sm:mb-2 relative z-10">Grila (X și 0)</h3>
                             <p className="text-slate-400 font-bold text-[10px] sm:text-xs md:text-sm mb-4 sm:mb-6 line-clamp-3 flex-1 relative z-10 pr-2">Joacă local sau online vs prieteni (Best of 5). Găsește jucătorul perfect care să bifeze intersecția.</p>
-                            <button className="flex items-center gap-1.5 sm:gap-2 bg-emerald-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-emerald-50 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-emerald-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
+                            <button className="flex items-center gap-1.5 sm:gap-2 bg-emerald-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-emerald-500 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-emerald-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
                                 <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> Joacă
                             </button>
                         </div>
@@ -222,7 +250,7 @@ export function GamesSection({ user }: GamesProps) {
                             <Swords className="w-8 h-8 sm:w-12 sm:h-12 text-blue-400 mb-4 sm:mb-6 relative z-10" />
                             <h3 className="text-lg sm:text-xl md:text-2xl font-black text-white uppercase tracking-tighter mb-1.5 sm:mb-2 relative z-10">Hi-Lo: Cotă</h3>
                             <p className="text-slate-400 font-bold text-[10px] sm:text-xs md:text-sm mb-4 sm:mb-6 line-clamp-3 flex-1 relative z-10 pr-2">Mai mare sau mai mică? Alege o categorie și ghicește care jucător stă mai bine în statistici.</p>
-                            <button className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-blue-50 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-blue-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
+                            <button className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-blue-500 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-blue-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
                                 <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> Joacă
                             </button>
                         </div>
@@ -271,7 +299,7 @@ function LeaderboardTable({ data, currentUserName }: { data: any[], currentUserN
                 if (rank === 1) colorClass = 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]';
                 else if (rank === 2) colorClass = 'text-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.6)]';
                 else if (rank === 3) colorClass = 'text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.6)]';
-                
+
                 return <div className={`text-center font-black sm:text-xl ${colorClass}`}>#{rank}</div>;
             }
         },
@@ -356,14 +384,14 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
     const [allMatches, setAllMatches] = useState<StartingXIData[]>([]);
     const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
     const [match, setMatch] = useState<StartingXIData | null>(null);
-    
+
     const [guessedIds, setGuessedIds] = useState<Set<string>>(new Set());
     const [gaveUp, setGaveUp] = useState(false);
-    
+
     const [activeSlot, setActiveSlot] = useState<XIPlayer | null>(null);
     const [slotGuess, setSlotGuess] = useState("");
     const [slotGuessesHistory, setSlotGuessesHistory] = useState<Record<string, string[]>>({});
-    
+
     const [win, setWin] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -375,11 +403,11 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                     const matches: StartingXIData[] = await res.json();
                     if (matches.length > 0) {
                         setAllMatches(matches);
-                        setMatch(matches[0]); // Pornește mereu cu prima echipă din array
+                        setMatch(matches[0]);
                         setCurrentMatchIndex(0);
                     }
                 }
-            } catch (err) {
+            } catch {
                 toast.error("Eroare la preluarea meciurilor.");
             } finally {
                 setIsLoading(false);
@@ -388,7 +416,6 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         fetchMatches();
     }, []);
 
-    // Funcție pentru încărcarea meciului cu un anumit index (Resetare state)
     const loadMatch = (index: number) => {
         setCurrentMatchIndex(index);
         setMatch(allMatches[index]);
@@ -411,10 +438,10 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
     const evaluateWordleGuess = (guess: string, target: string) => {
         const targetClean = removeDiacritics(target).toUpperCase();
         const guessClean = removeDiacritics(guess).toUpperCase().padEnd(targetClean.length, ' ').slice(0, targetClean.length);
-        
-        const colors = new Array(targetClean.length).fill('bg-slate-600'); 
+
+        const colors = new Array(targetClean.length).fill('bg-slate-600');
         const targetCounts: Record<string, number> = {};
-        
+
         for (const char of targetClean) {
             targetCounts[char] = (targetCounts[char] || 0) + 1;
         }
@@ -439,10 +466,10 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
     const handleSlotGuess = (e: React.FormEvent) => {
         e.preventDefault();
         if (!activeSlot || !match || gaveUp || win) return;
-        
+
         const targetClean = removeDiacritics(activeSlot.name).toUpperCase();
         const guessText = slotGuess;
-        
+
         if (guessText.length < targetClean.length) {
             toast.error("Completează toate caracterele!");
             playSound('wrong', isMuted);
@@ -465,11 +492,11 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
         if (userClean === targetClean) {
             playSound('correct', isMuted);
-            
+
             setGuessedIds(prev => {
                 const noile = new Set(prev);
                 if (pid) noile.add(pid);
-                
+
                 if (noile.size === match.players.length) {
                     setWin(true);
                     playSound('win', isMuted);
@@ -477,11 +504,11 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 }
                 return noile;
             });
-            
+
             setTimeout(() => {
                 setActiveSlot(null);
                 setSlotGuess("");
-            }, 800); 
+            }, 800);
         } else {
             playSound('wrong', isMuted);
             setSlotGuess("");
@@ -516,9 +543,9 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         );
     }
 
-    const lines = [1, ...match.formation.split('-').map(Number)]; 
+    const lines = [1, ...match.formation.split('-').map(Number)];
     const rows: XIPlayer[][] = [];
-    
+
     lines.forEach((_, rowIndex) => {
         rows.push(match.players.filter(p => p.gridRow === rowIndex));
     });
@@ -528,8 +555,6 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
     return (
         <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 relative">
-            
-            {/* Header scor/meci + Paginare echipe */}
             <div className="bg-slate-950 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-slate-800 flex flex-col justify-between items-center gap-3 sm:gap-4 shadow-xl">
                 <div className="w-full flex justify-between items-center md:hidden mb-2">
                     <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[10px] uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
@@ -537,24 +562,20 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
                 <div className="flex-1 text-center flex flex-col items-center w-full">
                     <div className="flex items-center justify-between sm:justify-center w-full sm:gap-4">
-                        
-                        {/* ECHIPA DIN STÂNGA (Acasă) */}
                         <div className="flex-1 text-[10px] sm:text-3xl font-black uppercase tracking-tighter text-center sm:text-right px-1.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl shadow-md border-2 border-white/10 break-words"
-                            style={{ 
+                            style={{
                                 backgroundColor: match.isHome !== false ? homeColor : awayColor,
                                 color: getContrastTextColor(match.isHome !== false ? homeColor : awayColor)
                             }}>
                             {match.isHome !== false ? match.teamName : match.opponent}
                         </div>
-                        
-                        {/* SCORUL */}
+
                         <div className="shrink-0 bg-slate-800 px-3 py-1 sm:px-6 sm:py-2 rounded-lg sm:rounded-2xl border-2 border-slate-700 font-black text-emerald-400 text-lg sm:text-3xl tracking-[0.2em] shadow-lg mx-1 sm:mx-2 z-10">
                             {match.score}
                         </div>
-                        
-                        {/* ECHIPA DIN DREAPTA (Deplasare) */}
+
                         <div className="flex-1 text-[10px] sm:text-3xl font-black uppercase tracking-tighter text-center sm:text-left px-1.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl shadow-md border-2 border-white/10 break-words"
-                            style={{ 
+                            style={{
                                 backgroundColor: match.isHome !== false ? awayColor : homeColor,
                                 color: getContrastTextColor(match.isHome !== false ? awayColor : homeColor)
                             }}>
@@ -564,12 +585,11 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                     <div className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] mt-3 sm:mt-4">
                         {match.date} • FORMAȚIE: {match.formation}
                     </div>
-                    
-                    {/* PAGINARE MECIURI ADAUGATE PENTRU "PRIMUL 11" */}
+
                     {allMatches.length > 1 && (
                         <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4 sm:mt-6 w-full pt-4 border-t border-slate-800">
-                            <button 
-                                onClick={handlePrevMatch} 
+                            <button
+                                onClick={handlePrevMatch}
                                 disabled={currentMatchIndex === 0}
                                 className="bg-slate-800 hover:bg-slate-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-xs transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-b-2 border-slate-900 hover:border-b-0 hover:translate-y-[2px]"
                             >
@@ -578,8 +598,8 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                             <span className="text-[10px] sm:text-sm font-black text-slate-400 tracking-widest">
                                 {currentMatchIndex + 1} / {allMatches.length}
                             </span>
-                            <button 
-                                onClick={handleNextMatch} 
+                            <button
+                                onClick={handleNextMatch}
                                 disabled={currentMatchIndex === allMatches.length - 1}
                                 className="bg-slate-800 hover:bg-slate-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-xs transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-b-2 border-slate-900 hover:border-b-0 hover:translate-y-[2px]"
                             >
@@ -594,13 +614,11 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 </div>
             </div>
 
-            {/* TERENUL DE JOC */}
             <div className="bg-[#4ade80] rounded-2xl sm:rounded-3xl border-4 sm:border-8 border-white py-6 px-2 sm:p-8 min-h-[450px] sm:min-h-[600px] relative shadow-2xl overflow-hidden flex flex-col-reverse justify-around gap-2 sm:gap-6 mx-1 sm:mx-0">
-                {/* Liniile terenului */}
                 <div className="absolute inset-0 border-4 sm:border-[6px] border-white/40 m-2 sm:m-4 rounded-lg sm:rounded-xl pointer-events-none"></div>
                 <div className="absolute top-1/2 left-0 w-full h-[4px] sm:h-[6px] bg-white/40 -translate-y-1/2 pointer-events-none"></div>
                 <div className="absolute top-1/2 left-1/2 w-20 h-20 sm:w-32 sm:h-32 border-4 sm:border-[6px] border-white/40 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-                
+
                 {rows.map((rowPlayers, rowIndex) => (
                     <div key={rowIndex} className="relative z-10 flex justify-center gap-2 sm:gap-12 w-full px-1">
                         {rowPlayers.map((player, idx) => {
@@ -608,10 +626,10 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                             const isGuessed = pid ? guessedIds.has(pid) : false;
                             const showRed = gaveUp && !isGuessed;
                             const isClickable = !isGuessed && !showRed && !win;
-                            
+
                             return (
-                                <div 
-                                    key={idx} 
+                                <div
+                                    key={idx}
                                     className={`flex flex-col items-center w-[18%] sm:w-auto ${isClickable ? 'cursor-pointer hover:scale-110 transition-transform' : ''}`}
                                     onClick={() => {
                                         if (isClickable) {
@@ -620,14 +638,14 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                         }
                                     }}
                                 >
-                                    <div className={`w-8 h-8 sm:w-16 sm:h-16 relative flex items-center justify-center mb-1`}>
-                                        <Shirt 
-                                            className={`w-full h-full drop-shadow-md sm:drop-shadow-lg ${showRed ? 'opacity-50' : ''}`} 
-                                            style={{ 
-                                                fill: rowIndex === 0 ? '#fbbf24' : (match.teamColor || '#ffffff'), 
-                                                stroke: rowIndex === 0 ? '#b45309' : 'rgba(0,0,0,0.3)',             
+                                    <div className="w-8 h-8 sm:w-16 sm:h-16 relative flex items-center justify-center mb-1">
+                                        <Shirt
+                                            className={`w-full h-full drop-shadow-md sm:drop-shadow-lg ${showRed ? 'opacity-50' : ''}`}
+                                            style={{
+                                                fill: rowIndex === 0 ? '#fbbf24' : (match.teamColor || '#ffffff'),
+                                                stroke: rowIndex === 0 ? '#b45309' : 'rgba(0,0,0,0.3)',
                                                 strokeWidth: 1.5
-                                            }} 
+                                            }}
                                         />
                                         {(isGuessed || showRed) && (
                                             <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-slate-900 rounded-full w-4 h-4 sm:w-6 sm:h-6 flex items-center justify-center border sm:border-2 border-white shadow-sm sm:shadow-md">
@@ -658,12 +676,11 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 ))}
             </div>
 
-            {/* Bara de scor și butoane - Responsiva */}
             <div className="bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-slate-800 shadow-xl flex flex-wrap sm:flex-nowrap justify-between items-center gap-3 sm:gap-6 mx-1 sm:mx-0">
                 <div className="text-xl sm:text-3xl font-black text-white tracking-widest bg-slate-950 px-4 sm:px-6 py-2 sm:py-3 rounded-xl sm:rounded-2xl border border-slate-800 text-center flex-1 sm:flex-none">
                     <span className="text-emerald-400">{guessedIds.size}</span><span className="text-slate-600">/11</span>
                 </div>
-                
+
                 <div className="w-full sm:flex-1 text-center font-black text-white uppercase tracking-widest text-[10px] sm:text-lg order-last sm:order-none">
                     {win ? "🏆 Ai câștigat!" : gaveUp ? "Ai renunțat!" : "Apasă pe un tricou!"}
                 </div>
@@ -675,16 +692,14 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 ) : <div className="flex-1 sm:flex-none sm:w-[120px]"></div>}
             </div>
 
-            {/* Modal Ghicire Jucător (Wordle Style) - ANCORAT JOS PENTRU TASTATURA MOBILĂ */}
             {activeSlot && !win && !gaveUp && (
                 <div className="fixed inset-0 z-[100000] flex items-end justify-center bg-slate-950/95 sm:bg-slate-950/90 backdrop-blur-md p-0 sm:p-4 animate-in fade-in">
                     <div className="bg-slate-900 w-full max-h-[90dvh] sm:h-auto sm:max-w-3xl sm:rounded-3xl sm:border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden rounded-t-3xl">
-                        
                         <div className="p-3 sm:p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 pt-safe sm:pt-5">
                             <h3 className="font-black text-white uppercase tracking-widest text-[10px] sm:text-sm flex items-center gap-2">Ghicește Numele</h3>
                             <button onClick={() => {setActiveSlot(null); setSlotGuess("");}} className="text-slate-400 hover:text-rose-500 bg-slate-800 p-1.5 rounded-md"><X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" /></button>
                         </div>
-                        
+
                         <div className="p-2 sm:p-5 overflow-y-auto flex-1 flex flex-col items-center space-y-1.5 sm:space-y-2 pb-6 sm:pb-5">
                             {(slotGuessesHistory[activeSlot._id || activeSlot.id || activeSlot.dbId || ''] || []).map((guess, idx) => {
                                 const { chars, colors } = evaluateWordleGuess(guess, activeSlot.name);
@@ -698,7 +713,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                     </div>
                                 );
                             })}
-                            
+
                             <div className="flex gap-0.5 sm:gap-1 flex-wrap justify-center opacity-50 mt-2 w-full px-1">
                                 {removeDiacritics(activeSlot.name).toUpperCase().split('').map((char, j) => (
                                     <div key={`empty-${j}`} className="w-5 h-7 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded sm:rounded-md text-[10px] sm:text-xl border border-slate-700 bg-slate-800">
@@ -713,7 +728,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                 Verde: Corect | Portocaliu: Există, altă poziție
                             </div>
                             <div className="flex gap-2">
-                                <input 
+                                <input
                                     type="text"
                                     autoFocus
                                     maxLength={activeSlot ? removeDiacritics(activeSlot.name).length : undefined}
@@ -743,9 +758,10 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 // ============================================================================
 type GridMode = 'menu' | 'local' | 'online_menu' | 'online_setup' | 'online_playing';
 
+const TOP_5_LEAGUES = [39, 140, 135, 78, 61];
+
 function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBack: () => void, isMuted: boolean, user: any }) {
-    const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
-    const top5Players = React.useMemo(() => {
+    const top5Players = useMemo(() => {
         return players.filter((p: Player) => p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
     }, [players]);
 
@@ -767,11 +783,11 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     const [seriesWinner, setSeriesWinner] = useState<'X' | 'O' | null>(null);
     const [skipVotes, setSkipVotes] = useState({ X: false, O: false });
     const socketRef = useRef<Socket | null>(null);
-    
+
     const gridRowsRef = useRef(gridRows);
     const gridColsRef = useRef(gridCols);
     const turnRef = useRef(turn);
-    
+
     useEffect(() => { gridRowsRef.current = gridRows; gridColsRef.current = gridCols; }, [gridRows, gridCols]);
     useEffect(() => { turnRef.current = turn; }, [turn]);
 
@@ -788,7 +804,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     };
 
     useEffect(() => {
-        setTimeLeft(60); 
+        setTimeLeft(60);
         if (winner || mode === 'menu' || mode === 'online_menu' || mode === 'online_setup') return;
 
         const interval = setInterval(() => {
@@ -798,7 +814,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     playSound('timeout', isMuted);
                     const currentTurn = turnRef.current;
                     const canEmit = mode === 'local' || (mode === 'online_playing' && currentTurn === myRole);
-                    
+
                     if (canEmit) {
                         if (mode === 'online_playing' && socketRef.current) {
                             socketRef.current.emit("send_message", {
@@ -834,8 +850,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     });
                     setMode('online_playing');
                     toast.success(`${payload.name || 'Adversarul'} s-a conectat! Începe meciul.`, { icon: '🎮' });
-                } 
-                else if (payload.action === 'SYNC_GRID') {
+                } else if (payload.action === 'SYNC_GRID') {
                     setGridRows(payload.gridRows);
                     setGridCols(payload.gridCols);
                     setAnswers({});
@@ -844,13 +859,11 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     setMode('online_playing');
                     setSkipVotes({ X: false, O: false });
                     if (myRole === 'O') toast.success(`Te-ai conectat la meciul lui ${payload.hostName}!`, { icon: '✅' });
-                } 
-                else if (payload.action === 'MOVE') {
+                } else if (payload.action === 'MOVE') {
                     if (payload.markedBy !== myRole) {
                         applyMove(payload.r, payload.c, payload.player, payload.markedBy, true);
                     }
-                } 
-                else if (payload.action === 'SWITCH_TURN') {
+                } else if (payload.action === 'SWITCH_TURN') {
                     setTurn(payload.nextTurn);
                     setActiveCell(null);
                     setSearchTerm("");
@@ -859,20 +872,18 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     } else if (payload.reason === 'wrong') {
                         playSound('wrong', isMuted);
                     }
-                }
-                else if (payload.action === 'SKIP_VOTE') {
+                } else if (payload.action === 'SKIP_VOTE') {
                     setSkipVotes(prev => {
                         const newVotes = { ...prev, [payload.role]: true };
                         if (newVotes.X && newVotes.O) {
                             toast("Ambii au renunțat! Se generează altă grilă...", { icon: '🔄' });
                             if (myRole === 'X') setTimeout(() => generateValidGrid(true), 1000);
                         } else {
-                            toast(`Adversarul a votat să schimbe grila (1/2)`, { icon: '👀' });
+                            toast("Adversarul a votat să schimbe grila (1/2)", { icon: '👀' });
                         }
                         return newVotes;
                     });
-                }
-                else if (payload.action === 'NEXT_MATCH') {
+                } else if (payload.action === 'NEXT_MATCH') {
                     setGridRows(payload.gridRows);
                     setGridCols(payload.gridCols);
                     setAnswers({});
@@ -882,7 +893,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     setSkipVotes({ X: false, O: false });
                     toast("S-a generat o nouă grilă!", { icon: '🔥' });
                 }
-            } catch (err) {}
+            } catch {}
         };
 
         socket.on("receive_message", handleSocketMessage);
@@ -905,10 +916,10 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
         setMatchScore({ X: 0, O: 0 });
         setSeriesWinner(null);
         setMode('online_setup');
-        
+
         socketRef.current = io(API_URL);
         socketRef.current.emit("join_room", code);
-        generateValidGrid(); 
+        generateValidGrid();
     };
 
     const joinOnlineRoom = () => {
@@ -919,7 +930,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
         setMatchScore({ X: 0, O: 0 });
         setSeriesWinner(null);
         setMode('online_setup');
-        
+
         socketRef.current = io(API_URL);
         socketRef.current.emit("join_room", code);
         socketRef.current.emit("send_message", { room: code, message: JSON.stringify({ action: 'JOINED', name: playerName || 'Jucător Oaspete' }) });
@@ -935,7 +946,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
             generateValidGrid(true);
             return;
         }
-        
+
         if (mode === 'online_playing' && myRole) {
             setSkipVotes(prev => {
                 const newVotes = { ...prev, [myRole]: true };
@@ -955,7 +966,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
     const generateValidGrid = (isNextMatch = false) => {
         setSkipVotes({ X: false, O: false });
-        const tagToPlayers = new Map<string, Set<string>>(); 
+        const tagToPlayers = new Map<string, Set<string>>();
         const tagToMeta = new Map<string, GridCriteria>();
         const knownTeamLogos = new Map<string, string>();
         const top5Teams = new Set<string>();
@@ -972,7 +983,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
         top5Players.forEach((p: Player) => {
             const tags: GridCriteria[] = [];
             const currentTeam = (p.team_name || p.team)?.toLowerCase().trim();
-            
+
             if (currentTeam && top5Teams.has(currentTeam)) {
                 tags.push({ type: 'team', value: p.team_name || p.team || "", image: p.team_logo || knownTeamLogos.get(currentTeam) || "" });
             }
@@ -1010,14 +1021,14 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
             attempts++;
             const shuffledTags = shuffleArray(validTagIds);
             const candidateRows = shuffledTags.slice(0, 3);
-            
+
             const candidateCols = shuffledTags.filter((colTag: string) => {
                 if (candidateRows.includes(colTag)) return false;
                 const colSet = tagToPlayers.get(colTag)!;
                 const colType = colTag.split(':')[0];
                 return candidateRows.every((rowTag: string) => {
                     const rowType = rowTag.split(':')[0];
-                    if (rowType === colType && rowType !== 'team') return false; 
+                    if (rowType === colType && rowType !== 'team') return false;
                     const rowSet = tagToPlayers.get(rowTag)!;
                     for (const playerId of rowSet) { if (colSet.has(playerId)) return true; }
                     return false;
@@ -1048,14 +1059,14 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
     const checkWinCondition = (currentAnswers: Record<string, AnswerDetails>) => {
         const lines = [
-            ['0-0', '0-1', '0-2'], ['1-0', '1-1', '1-2'], ['2-0', '2-1', '2-2'], 
-            ['0-0', '1-0', '2-0'], ['0-1', '1-1', '2-1'], ['0-2', '1-2', '2-2'], 
-            ['0-0', '1-1', '2-2'], ['0-2', '1-1', '2-0']                         
+            ['0-0', '0-1', '0-2'], ['1-0', '1-1', '1-2'], ['2-0', '2-1', '2-2'],
+            ['0-0', '1-0', '2-0'], ['0-1', '1-1', '2-1'], ['0-2', '1-2', '2-2'],
+            ['0-0', '1-1', '2-2'], ['0-2', '1-1', '2-0']
         ];
-        
+
         let won = false;
         let winMark: 'X' | 'O' | null = null;
-        for (let line of lines) {
+        for (const line of lines) {
             const [a, b, c] = line;
             if (currentAnswers[a] && currentAnswers[b] && currentAnswers[c] &&
                 currentAnswers[a].markedBy === currentAnswers[b].markedBy &&
@@ -1065,7 +1076,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                 break;
             }
         }
-        
+
         if (won && winMark) {
             setWinner(winMark);
             playSound('win', isMuted);
@@ -1073,8 +1084,8 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
             setMatchScore(prev => {
                 const newScore = { ...prev, [winMark!]: prev[winMark!] + 1 };
                 if (newScore[winMark!] >= 3) {
-                     setSeriesWinner(winMark);
-                     playSound('win', isMuted);
+                    setSeriesWinner(winMark);
+                    playSound('win', isMuted);
                 }
                 return newScore;
             });
@@ -1096,7 +1107,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
     const handleSelectPlayer = (player: Player) => {
         if (!activeCell || winner) return;
-        if (mode === 'online_playing' && turn !== myRole) { toast.error(`Nu e rândul tău!`); return; }
+        if (mode === 'online_playing' && turn !== myRole) { toast.error("Nu e rândul tău!"); return; }
 
         const { r, c } = activeCell;
         const rowCriteria = gridRows[r];
@@ -1155,7 +1166,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     );
 
     const normalizedSearch = removeDiacritics(searchTerm.toLowerCase());
-    const searchResults: Player[] = searchTerm.trim().length > 1 
+    const searchResults: Player[] = searchTerm.trim().length > 1
         ? top5Players.filter((p: Player) => removeDiacritics(p.name.toLowerCase()).includes(normalizedSearch)).slice(0, 10)
         : [];
 
@@ -1170,15 +1181,15 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
                 <div className="mb-6 sm:mb-8 space-y-2 max-w-sm mx-auto">
                     <label className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs">Numele tău în joc:</label>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         value={playerName}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlayerName(e.target.value)}
                         className="w-full bg-slate-950 border-2 border-slate-700 p-2.5 sm:p-3 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-emerald-500 transition-colors text-xs sm:text-base"
                         placeholder="Cum te numești?"
                     />
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <button onClick={startLocal} className="p-4 sm:p-8 rounded-xl sm:rounded-2xl border-2 sm:border-4 border-slate-800 hover:border-emerald-500 bg-slate-950 flex flex-col items-center gap-2 sm:gap-4 transition-all group">
                         <Users className="w-8 h-8 sm:w-12 sm:h-12 text-slate-400 group-hover:text-emerald-400 transition-colors" />
@@ -1205,7 +1216,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     if (mode === 'online_menu') {
         return (
             <div className="max-w-md mx-auto bg-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 border-2 sm:border-4 border-slate-800 shadow-2xl text-center mt-6 sm:mt-10 space-y-4 sm:space-y-6">
-                 <div className="flex justify-between items-center border-b-2 border-slate-800 pb-3 sm:pb-4">
+                <div className="flex justify-between items-center border-b-2 border-slate-800 pb-3 sm:pb-4">
                     <button onClick={() => setMode('menu')} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[10px] sm:text-xs uppercase tracking-widest"><X className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> Înapoi</button>
                     <h2 className="text-sm sm:text-xl font-black text-white uppercase tracking-widest">Multiplayer</h2>
                     <div className="w-10 sm:w-16"></div>
@@ -1222,9 +1233,9 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                 </div>
 
                 <div className="bg-slate-950 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-800 space-y-2 sm:space-y-3">
-                    <input 
-                        type="text" 
-                        placeholder="Ex: A7B9K" 
+                    <input
+                        type="text"
+                        placeholder="Ex: A7B9K"
                         value={joinInput}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setJoinInput(e.target.value)}
                         className="w-full bg-slate-900 border-2 border-slate-700 p-2.5 sm:p-3 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] outline-none focus:border-emerald-500 transition-colors text-xs sm:text-base"
@@ -1240,7 +1251,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     if (mode === 'online_setup') {
         return (
             <div className="relative max-w-md mx-auto bg-slate-900 rounded-2xl sm:rounded-3xl p-6 sm:p-8 border-2 sm:border-4 border-slate-800 shadow-2xl text-center mt-6 sm:mt-10 space-y-4 sm:space-y-6">
-                <button 
+                <button
                     onClick={() => {
                         if (socketRef.current) socketRef.current.disconnect();
                         setMode('online_menu');
@@ -1252,7 +1263,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
                 <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3 sm:mb-4 mt-2"></div>
                 <h3 className="text-lg sm:text-2xl font-black text-white uppercase tracking-tighter">Așteptăm jucătorul...</h3>
-                
+
                 {myRole === 'X' && (
                     <div className="bg-slate-950 p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 border-slate-800 space-y-3 sm:space-y-4">
                         <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px] sm:text-xs">Trimite acest cod:</p>
@@ -1273,14 +1284,13 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     <Crown className="w-24 h-24 sm:w-32 sm:h-32 text-yellow-400 animate-bounce mb-4 sm:mb-6 drop-shadow-[0_0_30px_rgba(250,204,21,0.5)]" />
                     <h2 className="text-4xl sm:text-7xl font-black uppercase tracking-tighter text-white mb-2 text-center">Câștigător!</h2>
                     <p className="text-lg sm:text-2xl text-slate-300 font-black uppercase tracking-widest mb-8 sm:mb-10 text-center">Seria: {seriesWinner === 'X' ? '❌' : '⚽'}</p>
-                    
+
                     <button onClick={quitGame} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 sm:px-10 sm:py-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest transition-all shadow-2xl border-b-2 sm:border-b-4 border-blue-800 text-xs sm:text-base">
                         Ieși din Joc
                     </button>
                 </div>
             )}
 
-            {/* BARA SCOR (TOP) */}
             {(mode === 'online_playing' || mode === 'local') && (
                 <div className="max-w-3xl mx-auto flex justify-between items-center bg-slate-900 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-800 shadow-xl">
                     <div className="flex flex-col">
@@ -1295,10 +1305,9 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                 </div>
             )}
 
-            {/* BARA CONTROALE (STATUS RUNDA) */}
             <div className="flex flex-wrap sm:flex-nowrap items-center justify-between bg-slate-900 p-3 sm:p-4 rounded-xl sm:rounded-3xl border-2 border-slate-800 shadow-xl gap-2 sm:gap-0">
                 <button onClick={quitGame} className="text-slate-400 hover:text-rose-500 flex items-center gap-1 font-bold text-[9px] sm:text-xs uppercase tracking-widest"><X className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> Ieșire</button>
-                
+
                 <div className="flex flex-col items-center w-full sm:w-auto order-last sm:order-none mt-2 sm:mt-0">
                     {winner ? (
                         <div className="text-emerald-400 font-black uppercase tracking-widest text-[10px] sm:text-sm animate-pulse text-center">
@@ -1312,8 +1321,8 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                             <div className={`flex items-center gap-1 sm:gap-1.5 text-sm sm:text-xl font-black tabular-nums tracking-widest px-2 sm:px-3 py-0.5 rounded-md sm:rounded-lg border-2 transition-colors ${timeLeft <= 10 ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-950 border-slate-800 text-white'}`}>
                                 <Timer className="w-3 h-3 sm:w-4 sm:h-4" /> 00:{timeLeft.toString().padStart(2, '0')}
                             </div>
-                            <button 
-                                onClick={handleSkipVote} 
+                            <button
+                                onClick={handleSkipVote}
                                 disabled={mode === 'online_playing' && myRole ? skipVotes[myRole] : false}
                                 className="text-[8px] sm:text-[10px] uppercase font-bold tracking-widest bg-slate-800 hover:bg-slate-700 px-2 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-slate-300 transition-colors disabled:opacity-50 border border-slate-700 whitespace-nowrap"
                             >
@@ -1334,7 +1343,6 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                 )}
             </div>
 
-            {/* GRILA PROPRIU-ZISĂ */}
             {gridRows.length > 0 && (
                 <div className="max-w-3xl mx-auto p-2 sm:p-6 bg-white dark:bg-slate-900 rounded-xl sm:rounded-3xl border-2 sm:border-4 border-slate-200 dark:border-slate-800 shadow-2xl relative overflow-hidden">
                     <div className="overflow-x-auto scrollbar-hide w-full pb-1">
@@ -1346,7 +1354,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                             <div className="flex items-center justify-center p-1 sm:p-2">
                                 <Trophy className="w-6 h-6 sm:w-10 sm:h-10 text-slate-200 dark:text-slate-800" />
                             </div>
-                            
+
                             {gridCols.map((col: GridCriteria, idx: number) => (
                                 <div key={`col-${idx}`}>{renderHeader(col)}</div>
                             ))}
@@ -1357,8 +1365,8 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                                     {[0, 1, 2].map((cIdx: number) => {
                                         const ans = answers[`${rIdx}-${cIdx}`];
                                         return (
-                                            <div 
-                                                key={`cell-${rIdx}-${cIdx}`} 
+                                            <div
+                                                key={`cell-${rIdx}-${cIdx}`}
                                                 onClick={() => {
                                                     if (winner) return;
                                                     if (!isMyTurn) {
@@ -1368,8 +1376,8 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                                                     if (!ans) setActiveCell({ r: rIdx, c: cIdx });
                                                 }}
                                                 className={`aspect-square rounded-lg sm:rounded-2xl border-2 sm:border-4 flex flex-col items-center justify-center transition-all p-0.5 sm:p-1 ${
-                                                    ans 
-                                                    ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' 
+                                                    ans
+                                                    ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                                                     : 'bg-white dark:bg-slate-950 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'
                                                 } ${winner || (!isMyTurn && !ans) ? 'cursor-not-allowed' : 'cursor-pointer'} ${winner && !ans ? 'opacity-50' : ''}`}
                                             >
@@ -1395,7 +1403,6 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                 </div>
             )}
 
-            {/* MODAL SEARCH JUCATOR GRILA */}
             {activeCell && !winner && isMyTurn && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in">
                     <div className="bg-slate-900 w-full h-[100dvh] sm:h-auto sm:max-w-lg sm:rounded-3xl sm:border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden max-h-[100dvh]">
@@ -1414,7 +1421,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                                     {timeLeft}s
                                 </div>
                             </div>
-                            <input 
+                            <input
                                 type="text"
                                 autoFocus
                                 placeholder="Caută (ex: Mbappe)..."
@@ -1424,7 +1431,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                             />
                             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
                                 {searchResults.map((p: Player) => (
-                                    <button 
+                                    <button
                                         key={p._id}
                                         onClick={() => handleSelectPlayer(p)}
                                         className="w-full flex items-center justify-center p-3 sm:p-4 rounded-lg sm:rounded-xl transition-colors border border-slate-700 hover:border-blue-500 bg-slate-800 hover:bg-blue-600 group"
@@ -1450,16 +1457,16 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBack: () => void, user: any, isMuted: boolean }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
     const [category, setCategory] = useState<'age' | 'height' | 'market_value' | 'rating'>('market_value');
-    
+
     const [playerName, setPlayerName] = useState(user?.name || "");
-    const [sessionName, setSessionName] = useState(""); 
+    const [sessionName, setSessionName] = useState("");
 
     const [score, setScore] = useState(0);
     const [lives, setLives] = useState(3);
     const [playerA, setPlayerA] = useState<Player | null>(null);
     const [playerB, setPlayerB] = useState<Player | null>(null);
     const [revealResult, setRevealResult] = useState<'correct' | 'wrong' | null>(null);
-    
+
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [leaderboard, setLeaderboard] = useState<{name: string, score: number, date: string}[]>([]);
 
@@ -1467,10 +1474,10 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
         const fetchLeaderboard = async () => {
             try {
                 const res = await fetch(`${API_URL}/api/sport/leaderboard`);
-                if(res.ok) {
+                if (res.ok) {
                     setLeaderboard(await res.json());
                 }
-            } catch (e) {}
+            } catch {}
         };
         fetchLeaderboard();
     }, [gameState]);
@@ -1484,10 +1491,8 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: finalName, score: finalScore })
             });
-        } catch (e) {}
+        } catch {}
     };
-
-    const TOP_5_LEAGUES = [39, 140, 135, 78, 61]; 
 
     const getStatValue = (p: Player, cat: string) => {
         if (cat === 'age') return p.age || 0;
@@ -1496,50 +1501,54 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
         if (cat === 'market_value') {
             if (p.market_value) return p.market_value;
             const rating = parseFloat(p.statistics_summary?.rating || "6.0");
-            const age = p.age || 27; 
+            const age = p.age || 27;
             const currentTeam = (p.team_name || p.team || "").toLowerCase();
             const leagueId = Number(p.league_id);
             const position = (p.position || "").toLowerCase();
-    
-            let baseValue = 2_000_000; 
-            if (age <= 18) baseValue *= 5.5;      
-            else if (age <= 21) baseValue *= 4.0; 
-            else if (age <= 23) baseValue *= 2.8; 
-            else if (age <= 26) baseValue *= 1.8; 
-            else if (age <= 29) baseValue *= 1.4; 
-            else if (age <= 31) baseValue *= 0.8; 
-            else if (age <= 34) baseValue *= 0.4; 
-            else baseValue *= 0.1;                
-    
-            if (rating >= 8.5) baseValue *= 15;     
-            else if (rating >= 8.0) baseValue *= 8; 
-            else if (rating >= 7.5) baseValue *= 4; 
-            else if (rating >= 7.0) baseValue *= 2; 
-            else if (rating >= 6.5) baseValue *= 1.3; 
-            else if (rating < 6.0) baseValue *= 0.5; 
-    
-            if (leagueId === 39) baseValue *= 2.0; 
-            else if (leagueId === 140) baseValue *= 1.5; 
-            else if (leagueId === 135 || leagueId === 78) baseValue *= 1.3; 
-            
+
+            let baseValue = 2_000_000;
+            if (age <= 18) baseValue *= 5.5;
+            else if (age <= 21) baseValue *= 4.0;
+            else if (age <= 23) baseValue *= 2.8;
+            else if (age <= 26) baseValue *= 1.8;
+            else if (age <= 29) baseValue *= 1.4;
+            else if (age <= 31) baseValue *= 0.8;
+            else if (age <= 34) baseValue *= 0.4;
+            else baseValue *= 0.1;
+
+            if (rating >= 8.5) baseValue *= 15;
+            else if (rating >= 8.0) baseValue *= 8;
+            else if (rating >= 7.5) baseValue *= 4;
+            else if (rating >= 7.0) baseValue *= 2;
+            else if (rating >= 6.5) baseValue *= 1.3;
+            else if (rating < 6.0) baseValue *= 0.5;
+
+            if (leagueId === 39) baseValue *= 2.0;
+            else if (leagueId === 140) baseValue *= 1.5;
+            else if (leagueId === 135 || leagueId === 78) baseValue *= 1.3;
+
             const giantClubs = ['real madrid', 'manchester city', 'arsenal', 'bayern', 'paris saint germain', 'liverpool', 'barcelona', 'chelsea'];
             const bigClubs = ['juventus', 'inter', 'ac milan', 'manchester united', 'tottenham', 'atletico madrid', 'borussia dortmund', 'napoli'];
             if (giantClubs.some(club => currentTeam.includes(club))) baseValue *= 2.2;
             else if (bigClubs.some(club => currentTeam.includes(club))) baseValue *= 1.5;
-            
+
             if (position.includes('attacker') || position.includes('forward') || position.includes('wing') || position.includes('striker')) baseValue *= 1.3;
             else if (position.includes('midfield')) baseValue *= 1.1;
-            else if (position.includes('goalkeeper') || position.includes('portar')) baseValue *= 0.7; 
-    
+            else if (position.includes('goalkeeper') || position.includes('portar')) baseValue *= 0.7;
+
             if (giantClubs.some(club => currentTeam.includes(club))) {
-                if (age <= 23 && rating >= 6.8) baseValue = Math.max(baseValue, 45_000_000); 
-                else if (age <= 29 && rating >= 6.5) baseValue = Math.max(baseValue, 60_000_000); 
+                if (age <= 23 && rating >= 6.8) baseValue = Math.max(baseValue, 45_000_000);
+                else if (age <= 29 && rating >= 6.5) baseValue = Math.max(baseValue, 60_000_000);
             }
             baseValue = Math.min(Math.max(baseValue, 1_000_000), 200_000_000);
             return baseValue > 10_000_000 ? Math.round(baseValue / 1_000_000) * 1_000_000 : Math.round(baseValue / 500_000) * 500_000;
         }
         return 0;
     };
+
+    const validPool = useMemo(() => {
+        return players.filter((p: Player) => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
+    }, [players, category]);
 
     const getStatFormat = (val: number, cat: string) => {
         if (cat === 'age') return `${val} Ani`;
@@ -1551,9 +1560,9 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
 
     const startGame = () => {
         const finalName = playerName.trim();
-        if (finalName.length < 2) { 
-            toast.error("Te rog să introduci un nume de minim 2 caractere."); 
-            return; 
+        if (finalName.length < 2) {
+            toast.error("Te rog să introduci un nume de minim 2 caractere.");
+            return;
         }
 
         if (finalName.toLowerCase() !== sessionName.toLowerCase()) {
@@ -1563,17 +1572,21 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                 return;
             }
         }
-        
+
         setSessionName(finalName);
 
-        const validPlayers = players.filter((p: Player) => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
-        if (validPlayers.length < 10) { toast.error("Nu sunt suficienți jucători pentru această categorie."); return; }
-        const shuffled = shuffleArray(validPlayers);
+        if (validPool.length < 10) { toast.error("Nu sunt suficienți jucători pentru această categorie."); return; }
+        const shuffled = shuffleArray(validPool);
         setPlayerA(shuffled[0]); setPlayerB(shuffled[1]); setScore(0); setLives(3); setRevealResult(null); setGameState('playing');
     };
 
+    const pickNextOpponent = (currentB: Player) => {
+        const shuffled = shuffleArray(validPool);
+        return shuffled.find((p: Player) => p._id !== currentB._id && getStatValue(p, category) !== getStatValue(currentB, category)) || shuffled[0];
+    };
+
     const handleGuess = (guess: 'higher' | 'lower') => {
-        if (!playerA || !playerB || revealResult) return; 
+        if (!playerA || !playerB || revealResult) return;
 
         const valA = getStatValue(playerA, category);
         const valB = getStatValue(playerB, category);
@@ -1586,29 +1599,23 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
             if (isCorrect) {
                 setScore(prev => prev + 1);
                 setPlayerA(playerB);
-                const validPlayers = players.filter((p: Player) => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
-                const shuffled = shuffleArray(validPlayers);
-                const nextPB = shuffled.find((p: Player) => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
-                setPlayerB(nextPB);
-                setRevealResult(null); 
+                setPlayerB(pickNextOpponent(playerB));
+                setRevealResult(null);
             } else {
                 if (lives > 1) {
                     setLives(prev => prev - 1);
                     toast.error("Răspuns greșit! Ai pierdut o viață.");
                     setPlayerA(playerB);
-                    const validPlayers = players.filter((p: Player) => getStatValue(p, category) > 0 && p.league_id && TOP_5_LEAGUES.includes(Number(p.league_id)));
-                    const shuffled = shuffleArray(validPlayers);
-                    const nextPB = shuffled.find((p: Player) => p._id !== playerB._id && getStatValue(p, category) !== getStatValue(playerB, category)) || shuffled[0];
-                    setPlayerB(nextPB);
+                    setPlayerB(pickNextOpponent(playerB));
                     setRevealResult(null);
                 } else {
                     setLives(0);
                     saveScore(score);
                     setGameState('gameover');
-                    setRevealResult(null); 
+                    setRevealResult(null);
                 }
             }
-        }, 1200); 
+        }, 1200);
     };
 
     const shareScore = () => {
@@ -1626,7 +1633,6 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                         <h2 className="text-sm sm:text-xl font-black text-white uppercase tracking-widest flex items-center gap-1.5 sm:gap-2"><Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" /> Top Hi-Lo</h2>
                         <div className="w-10 sm:w-16"></div>
                     </div>
-                    {/* IMPLEMENTARE NOUA CU TANSTACK TABLE AICI */}
                     <LeaderboardTable data={leaderboard} currentUserName={playerName.trim()} />
                 </div>
             );
@@ -1642,8 +1648,8 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
 
                 <div className="mb-6 sm:mb-8 space-y-2 max-w-sm mx-auto">
                     <label className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs">Nume Jucător (Clasament):</label>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         value={playerName}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlayerName(e.target.value)}
                         className="w-full bg-slate-950 border-2 border-slate-700 p-2.5 sm:p-3 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors text-xs sm:text-base"
@@ -1680,7 +1686,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                     <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2">Scorul Tău Final</p>
                     <p className="text-4xl sm:text-6xl font-black text-blue-500 drop-shadow-md">{score}</p>
                 </div>
-                
+
                 <button onClick={shareScore} className="w-full bg-[#1DA1F2] hover:bg-[#1a91da] text-white p-3 sm:p-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-colors border-b-4 border-[#147bba] hover:border-b-2 hover:translate-y-[2px] flex items-center justify-center gap-2">
                     <Share className="w-4 h-4 sm:w-5 sm:h-5" /> Trimite Rezultatul
                 </button>
@@ -1698,9 +1704,8 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
 
     return (
         <div className="space-y-4 sm:space-y-6">
-            {/* Header-ul Jocului */}
             <div className="flex items-center justify-between bg-slate-900 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border-2 border-slate-800 shadow-lg mx-1 sm:mx-0">
-                <button onClick={() => {saveScore(score); setGameState('setup')}} className="text-slate-400 hover:text-rose-500 flex items-center gap-1 font-bold text-[9px] sm:text-xs uppercase tracking-widest"><X className="w-3.5 h-3.5 sm:w-4 h-4"/> Renunță</button>
+                <button onClick={() => {saveScore(score); setGameState('setup')}} className="text-slate-400 hover:text-rose-500 flex items-center gap-1 font-bold text-[9px] sm:text-xs uppercase tracking-widest"><X className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> Renunță</button>
                 <div className="flex items-center gap-2 sm:gap-4">
                     <div className="text-white font-black uppercase tracking-widest text-xs sm:text-sm hidden sm:flex items-center gap-2">
                         Jucător: <span className="text-blue-400">{playerName.trim() || 'Anonim'}</span>
@@ -1716,10 +1721,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                 </div>
             </div>
 
-            {/* Split Screen Jucători (Vertical pe mobil, orizontal pe desktop) */}
             <div className="flex flex-col md:flex-row gap-2 sm:gap-4 h-[75vh] md:h-[60vh] min-h-[500px] mx-1 sm:mx-0">
-                
-                {/* JUCĂTOR A (SUS PE MOBIL / STÂNGA PE DESKTOP) */}
                 <div className="flex-1 bg-slate-900 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-slate-800 flex flex-col items-center justify-center p-4 sm:p-8 text-center relative overflow-hidden shadow-xl sm:shadow-2xl">
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950/80 z-0"></div>
                     <div className="relative z-10 flex flex-col items-center w-full">
@@ -1733,25 +1735,23 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                     </div>
                 </div>
 
-                {/* BULINA VS */}
                 <div className="md:w-24 flex items-center justify-center -my-6 md:my-0 md:-mx-12 z-20 shrink-0">
                     <div className="w-10 h-10 sm:w-16 sm:h-16 bg-rose-600 rounded-full flex items-center justify-center text-white font-black italic text-sm sm:text-2xl border-2 sm:border-4 border-slate-950 shadow-[0_0_15px_rgba(225,29,72,0.5)]">VS</div>
                 </div>
 
-                {/* JUCĂTOR B (JOS PE MOBIL / DREAPTA PE DESKTOP) */}
                 <div className={`flex-1 rounded-2xl sm:rounded-3xl border-2 sm:border-4 flex flex-col items-center justify-center p-4 sm:p-8 text-center relative overflow-hidden shadow-xl sm:shadow-2xl transition-colors duration-300 ${
                     revealResult === 'correct' ? 'bg-emerald-900 border-emerald-500' :
                     revealResult === 'wrong' ? 'bg-rose-900 border-rose-500' : 'bg-slate-900 border-slate-800'
                 }`}>
-                     <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-b from-transparent to-slate-950/80 z-0"></div>
-                     <div className="relative z-10 flex flex-col items-center w-full h-full justify-center">
+                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-b from-transparent to-slate-950/80 z-0"></div>
+                    <div className="relative z-10 flex flex-col items-center w-full h-full justify-center">
                         <img src={playerB?.image || GENERIC_USER_IMAGE} className="w-20 h-20 sm:w-40 sm:h-40 rounded-full object-cover border-2 sm:border-4 border-white shadow-xl mb-3 sm:mb-6 bg-white mt-4 sm:mt-0" />
                         <h2 className="text-lg sm:text-3xl font-black text-white uppercase tracking-tight mb-1 sm:mb-2 line-clamp-1">{playerB?.name}</h2>
                         <p className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-3 sm:mb-6 line-clamp-1">{playerB?.team_name || playerB?.team}</p>
                         <p className={`text-[8px] sm:text-xs font-black uppercase tracking-widest mb-2 sm:mb-4 ${
                             revealResult === 'correct' ? 'text-emerald-300' : revealResult === 'wrong' ? 'text-rose-300' : 'text-emerald-400'
                         }`}>Are {catLabel}</p>
-                        
+
                         {revealResult ? (
                             <div className="animate-in fade-in zoom-in duration-300">
                                 <div className={`text-2xl sm:text-5xl font-black drop-shadow-md bg-white/10 px-4 sm:px-6 py-1.5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/20 whitespace-nowrap ${
