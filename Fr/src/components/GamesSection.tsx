@@ -182,6 +182,12 @@ export function GamesSection({ user }: GamesProps) {
     const [activeGame, setActiveGame] = useState<'menu' | 'grid' | 'hilo' | 'xi'>('menu');
     const [isMuted, setIsMuted] = useState(false);
 
+    useEffect(() => {
+        if (activeGame !== 'xi') {
+            window.dispatchEvent(new CustomEvent('toggle-floating-bars', { detail: false }));
+        }
+    }, [activeGame]);
+
     const initialCached = useMemo(() => getCachedPlayers(), []);
 
     const { data: allPlayers = [], isLoading, isError } = useQuery<Player[]>({
@@ -402,6 +408,14 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
     const [win, setWin] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const shouldHide = Boolean(activeSlot && !win && !gaveUp);
+        window.dispatchEvent(new CustomEvent('toggle-floating-bars', { detail: shouldHide }));
+        return () => {
+            window.dispatchEvent(new CustomEvent('toggle-floating-bars', { detail: false }));
+        };
+    }, [activeSlot, win, gaveUp]);
 
     useEffect(() => {
         const fetchMatches = async () => {
@@ -724,7 +738,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
                             <div className="flex gap-0.5 sm:gap-1 flex-wrap justify-center opacity-50 mt-2 w-full px-1">
                                 {removeDiacritics(activeSlot.name).toUpperCase().split('').map((char, j) => (
-                                    <div key={`empty-${j}`} className="w-5 h-7 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded sm:rounded-md text-[10px] sm:text-xl border border-slate-700 bg-slate-800">
+                                    <div key={`empty-${j}`} className={`w-5 h-7 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded sm:rounded-md text-[10px] sm:text-xl border border-slate-700 bg-slate-800`}>
                                         {char === ' ' ? ' ' : '_'}
                                     </div>
                                 ))}

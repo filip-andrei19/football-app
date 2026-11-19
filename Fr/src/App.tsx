@@ -158,6 +158,8 @@ export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   const [showWarning, setShowWarning] = useState(false);
+  const [modalHideBars, setModalHideBars] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   const [activeChatRoom, setActiveChatRoom] = useState("general_chat");
   const [activeChatPartner, setActiveChatPartner] = useState<{ name: string; avatar?: string } | null>(null);
@@ -192,6 +194,31 @@ export default function App() {
       setActiveSection('collectors');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+  }, []);
+
+  useEffect(() => {
+    setModalHideBars(false);
+  }, [activeSection]);
+
+  useEffect(() => {
+    const handleToggleBars = (e: any) => {
+      setModalHideBars(Boolean(e?.detail));
+    };
+    window.addEventListener('toggle-floating-bars', handleToggleBars);
+    return () => window.removeEventListener('toggle-floating-bars', handleToggleBars);
+  }, []);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const handleViewportResize = () => {
+      const heightRatio = vv.height / window.innerHeight;
+      setKeyboardOpen(heightRatio < 0.78);
+    };
+
+    vv.addEventListener('resize', handleViewportResize);
+    return () => vv.removeEventListener('resize', handleViewportResize);
   }, []);
 
   useEffect(() => {
@@ -294,6 +321,7 @@ export default function App() {
   };
 
   const isAdmin = user?.role === 'admin' || user?.email === 'admin.nou@scout.ro';
+  const hideFloatingBars = modalHideBars || keyboardOpen;
 
   const navigation = [
     { id: 'home' as Section, label: 'Teren', icon: Home },
@@ -563,29 +591,31 @@ export default function App() {
         </main>
 
         {/* BARA DE NAVIGARE JOS PENTRU MOBIL */}
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t-2 border-slate-200 dark:border-slate-800 px-2 py-1.5 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
-          {navigation.slice(0, 5).map((item) => {
-            const isActive = activeSection === item.id;
-            return (
-              <button
-                type="button"
-                key={item.id}
-                onClick={() => {
-                  setActiveSection(item.id);
-                  setMobileMenuOpen(false);
-                }}
-                className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
-                  isActive
-                    ? 'text-emerald-600 dark:text-emerald-400 scale-105'
-                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-              >
-                <item.icon className={`w-5 h-5 mb-0.5 ${isActive ? 'stroke-[2.5]' : ''}`} />
-                <span className="text-[9px] font-black uppercase tracking-wider">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
+        {!hideFloatingBars && (
+          <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t-2 border-slate-200 dark:border-slate-800 px-2 py-1.5 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
+            {navigation.slice(0, 5).map((item) => {
+              const isActive = activeSection === item.id;
+              return (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => {
+                    setActiveSection(item.id);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+                    isActive
+                      ? 'text-emerald-600 dark:text-emerald-400 scale-105'
+                      : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <item.icon className={`w-5 h-5 mb-0.5 ${isActive ? 'stroke-[2.5]' : ''}`} />
+                  <span className="text-[9px] font-black uppercase tracking-wider">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
 
         {showWarning && (
           <div className="fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border-4 border-rose-600 rounded-3xl p-5 shadow-[0_20px_50px_rgba(225,29,72,0.5)] z-[9999] w-[92%] max-w-md flex items-start gap-4 animate-in slide-in-from-bottom-5">
@@ -612,7 +642,7 @@ export default function App() {
           </div>
         )}
 
-        {user && (
+        {user && !hideFloatingBars && (
           <ChatWidget
             key={activeChatRoom}
             user={user}
