@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy, Component, ErrorInfo, ReactNode } from 'react';
-import { Home, Star, Heart, ShoppingBag, Menu, X, LogOut, Settings, ShieldAlert, Moon, Sun, Calendar, AlertTriangle, Gamepad2, RotateCcw } from 'lucide-react';
+import { Home, Star, Heart, ShoppingBag, X, LogOut, ShieldAlert, Moon, Sun, Calendar, AlertTriangle, Gamepad2, RotateCcw } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -146,7 +146,6 @@ type Section = 'home' | 'games' | 'stars' | 'heroes' | 'collectors' | 'matches' 
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<Section>('home');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<{
     name: string;
     email: string;
@@ -464,15 +463,40 @@ export default function App() {
                 })}
               </nav>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-400 hover:text-emerald-500 hover:border-emerald-500 transition-colors"
+                  className="p-2.5 sm:p-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-400 hover:text-emerald-500 hover:border-emerald-500 transition-colors"
+                  title={theme === 'light' ? 'Mod Întunecat' : 'Mod Luminos'}
                 >
                   {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
                 </button>
 
+                {/* Pe telefon: doar butonul de Profil lângă tema dark/light */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('profile')}
+                  className={`sm:hidden flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-colors ${
+                    activeSection === 'profile'
+                      ? 'bg-emerald-600 border-emerald-700 text-white'
+                      : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-emerald-500'
+                  }`}
+                  title="Profil"
+                >
+                  <div className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-xs font-black text-emerald-600 dark:text-emerald-400 overflow-hidden border border-emerald-200 dark:border-emerald-800 shrink-0">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      user.name.charAt(0)
+                    )}
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-wider max-w-[70px] truncate">
+                    {user.name.split(' ')[0]}
+                  </span>
+                </button>
+
+                {/* Pe desktop: butoanele complete */}
                 <div className="hidden sm:flex items-center gap-3 ml-2 pl-4 border-l-2 border-slate-200 dark:border-slate-800">
                   {isAdmin && (
                     <Button
@@ -506,80 +530,9 @@ export default function App() {
                     <LogOut className="h-4 w-4" />
                   </Button>
                 </div>
-
-                <Button
-                  variant="ghost"
-                  className="lg:hidden !px-3 h-12 border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500"
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                >
-                  {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                </Button>
               </div>
             </div>
           </div>
-
-          {mobileMenuOpen && (
-            <div className="lg:hidden border-t-4 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-4 shadow-xl flex flex-col gap-3 animate-in slide-in-from-top-5 absolute w-full z-40">
-              {navigation.map((item) => {
-                const isActive = activeSection === item.id;
-                return (
-                  <Button
-                    key={item.id}
-                    variant={isActive ? 'default' : 'ghost'}
-                    onClick={() => {
-                      setActiveSection(item.id);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`w-full justify-start gap-4 border-b-4 ${
-                      isActive
-                        ? 'bg-emerald-600 border-emerald-800'
-                        : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900'
-                    }`}
-                  >
-                    <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-slate-400'}`} /> {item.label}
-                  </Button>
-                );
-              })}
-
-              <div className="border-t-2 border-slate-200 dark:border-slate-800 my-2" />
-
-              {isAdmin && (
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    setActiveSection('admin');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full justify-start gap-4 border-b-4 border-rose-800"
-                >
-                  <ShieldAlert className="h-5 w-5" /> Comisia Centrală (Admin)
-                </Button>
-              )}
-
-              <div className="flex gap-3 mt-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setActiveSection('profile');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex-1 justify-center gap-3 border-b-4 border-slate-300 dark:border-slate-950"
-                >
-                  <Settings className="h-5 w-5 text-slate-400" /> Vestiar (Profil)
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex-1 justify-center gap-3 border-b-4 border-rose-800 bg-slate-100 dark:bg-slate-900 text-rose-500 border-slate-200 dark:border-slate-800 hover:bg-rose-500 hover:text-white"
-                >
-                  <LogOut className="h-5 w-5" /> Ieșire
-                </Button>
-              </div>
-            </div>
-          )}
         </header>
 
         <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 pb-24 lg:pb-8 relative z-10">
@@ -599,10 +552,7 @@ export default function App() {
                 <button
                   type="button"
                   key={item.id}
-                  onClick={() => {
-                    setActiveSection(item.id);
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={() => setActiveSection(item.id)}
                   className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all ${
                     isActive
                       ? 'text-emerald-600 dark:text-emerald-400 scale-105'

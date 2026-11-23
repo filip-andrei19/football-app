@@ -636,13 +636,13 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 </div>
             </div>
 
-            <div className="bg-[#4ade80] rounded-2xl sm:rounded-3xl border-4 sm:border-8 border-white py-6 px-2 sm:p-8 min-h-[450px] sm:min-h-[600px] relative shadow-2xl overflow-hidden flex flex-col-reverse justify-around gap-2 sm:gap-6 mx-1 sm:mx-0">
+            <div className="bg-[#4ade80] rounded-2xl sm:rounded-3xl border-4 sm:border-8 border-white py-6 px-1.5 sm:p-8 min-h-[450px] sm:min-h-[600px] relative shadow-2xl overflow-hidden flex flex-col-reverse justify-around gap-3 sm:gap-6 mx-1 sm:mx-0">
                 <div className="absolute inset-0 border-4 sm:border-[6px] border-white/40 m-2 sm:m-4 rounded-lg sm:rounded-xl pointer-events-none"></div>
                 <div className="absolute top-1/2 left-0 w-full h-[4px] sm:h-[6px] bg-white/40 -translate-y-1/2 pointer-events-none"></div>
                 <div className="absolute top-1/2 left-1/2 w-20 h-20 sm:w-32 sm:h-32 border-4 sm:border-[6px] border-white/40 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
 
                 {rows.map((rowPlayers, rowIndex) => (
-                    <div key={rowIndex} className="relative z-10 flex justify-center gap-2 sm:gap-12 w-full px-1">
+                    <div key={rowIndex} className="relative z-10 flex justify-center gap-1.5 sm:gap-12 w-full px-0.5 sm:px-1">
                         {rowPlayers.map((player, idx) => {
                             const pid = player._id || player.id || player.dbId;
                             const isGuessed = pid ? guessedIds.has(pid) : false;
@@ -652,7 +652,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                             return (
                                 <div
                                     key={idx}
-                                    className={`flex flex-col items-center w-[18%] sm:w-auto ${isClickable ? 'cursor-pointer hover:scale-110 transition-transform' : ''}`}
+                                    className={`flex flex-col items-center flex-1 max-w-[23%] sm:max-w-none sm:w-auto ${isClickable ? 'cursor-pointer hover:scale-110 transition-transform' : ''}`}
                                     onClick={() => {
                                         if (isClickable) {
                                             setActiveSlot(player);
@@ -682,12 +682,12 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                     </div>
                                     <div className="mt-0.5 sm:mt-2 text-center w-full px-0.5">
                                         {(isGuessed || showRed) ? (
-                                            <div className={`font-black uppercase text-[7px] sm:text-xs tracking-tighter sm:tracking-tight bg-slate-900 px-1 sm:px-2 py-0.5 sm:py-1 rounded sm:rounded-md border sm:border-2 truncate w-full ${showRed ? 'text-rose-400 border-rose-500' : 'text-white border-slate-700'}`}>
+                                            <div className={`font-black uppercase text-[7px] sm:text-xs tracking-tighter sm:tracking-tight bg-slate-900 px-1 sm:px-2 py-0.5 rounded sm:rounded-md border sm:border-2 break-words whitespace-normal leading-tight w-full ${showRed ? 'text-rose-400 border-rose-500' : 'text-white border-slate-700'}`}>
                                                 {player.name}
                                             </div>
                                         ) : (
-                                            <div className="font-black text-slate-800/60 tracking-[0.1em] sm:tracking-[0.2em] bg-white/30 px-1 sm:px-2 rounded sm:rounded-md text-[8px] sm:text-base">
-                                                {"_".repeat(Math.min(player.name.length, 8))}
+                                            <div className="font-black text-slate-800/60 tracking-[0.05em] sm:tracking-[0.2em] bg-white/30 px-1 sm:px-2 rounded sm:rounded-md text-[8px] sm:text-base break-all">
+                                                {"_".repeat(Math.min(player.name.length, 12))}
                                             </div>
                                         )}
                                     </div>
