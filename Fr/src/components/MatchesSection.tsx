@@ -7,7 +7,7 @@ import {
     Calendar, Trophy, X, Globe,
     Users, BarChart2, ListOrdered, Clock, Bookmark,
     Swords, History, ArrowUp, ArrowDown, Minus,
-    Heart, Bell, Settings, Scale, Activity, Award, TrendingUp, Check
+    Heart, Bell, Settings, Scale, Activity, Award, TrendingUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -108,6 +108,106 @@ const getAuthHeaders = () => {
     return {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+};
+
+// ==========================================
+// INTERPRETARE EVENIMENTE MECI (GOL, PENALTY RATAT, VAR, ETC.)
+// ==========================================
+const getEventPresentation = (ev: any) => {
+    const type = String(ev?.type || '').toLowerCase();
+    const detail = String(ev?.detail || '').trim();
+    const detailLower = detail.toLowerCase();
+
+    if (type === 'goal') {
+        if (detailLower.includes('missed')) {
+            return {
+                icon: '❌',
+                badge: 'PENALTY RATAT',
+                badgeClass: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40',
+                isActualGoal: false,
+            };
+        }
+        if (detailLower.includes('cancelled') || detailLower.includes('disallowed')) {
+            return {
+                icon: '🚫',
+                badge: detail ? detail.toUpperCase() : 'GOL ANULAT',
+                badgeClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40',
+                isActualGoal: false,
+            };
+        }
+        if (detailLower.includes('own')) {
+            return {
+                icon: '⚽',
+                badge: 'AUTOGOL',
+                badgeClass: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40',
+                isActualGoal: true,
+            };
+        }
+        if (detailLower.includes('penalty')) {
+            return {
+                icon: '⚽',
+                badge: 'PENALTY',
+                badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40',
+                isActualGoal: true,
+            };
+        }
+        return {
+            icon: '⚽',
+            badge: null,
+            badgeClass: '',
+            isActualGoal: true,
+        };
+    }
+
+    if (type === 'var') {
+        return {
+            icon: '📺',
+            badge: detail ? detail.toUpperCase() : 'VAR',
+            badgeClass: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/40',
+            isActualGoal: false,
+        };
+    }
+
+    if (type === 'card') {
+        if (detailLower.includes('red')) {
+            return {
+                icon: '🟥',
+                badge: 'CARTONAȘ ROȘU',
+                badgeClass: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40',
+                isActualGoal: false,
+            };
+        }
+        if (detailLower.includes('second yellow')) {
+            return {
+                icon: '🟨🟥',
+                badge: 'AL DOILEA GALBEN',
+                badgeClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40',
+                isActualGoal: false,
+            };
+        }
+        return {
+            icon: '🟨',
+            badge: null,
+            badgeClass: '',
+            isActualGoal: false,
+        };
+    }
+
+    if (type === 'subst') {
+        return {
+            icon: '🔄',
+            badge: null,
+            badgeClass: '',
+            isActualGoal: false,
+        };
+    }
+
+    return {
+        icon: 'ℹ️',
+        badge: detail ? detail.toUpperCase() : (ev?.type ? String(ev.type).toUpperCase() : 'EVENIMENT'),
+        badgeClass: 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/30',
+        isActualGoal: false,
     };
 };
 
@@ -864,8 +964,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             const isSamePlayer = (playerId && ev.player?.id === playerId) || (playerName && ev.player?.name && ev.player.name.toLowerCase() === playerName.toLowerCase());
             const isSubbedOut = ev.type === 'subst' && ((playerId && ev.assist?.id === playerId) || (playerName && ev.assist?.name && ev.assist.name.toLowerCase() === playerName.toLowerCase()));
             if (isSamePlayer) {
-                if (ev.type === 'Goal' && ev.detail !== 'Missed Penalty') goals += 1;
-                if (ev.type === 'Card' && ev.detail === 'Yellow Card') yellow = true;
+                const pres = getEventPresentation(ev);
+                if (pres.isActualGoal) goals += 1;
+                if (ev.type === 'Card' && (ev.detail === 'Yellow Card' || ev.detail === 'Second Yellow card')) yellow = true;
                 if (ev.type === 'Card' && ev.detail?.includes('Red')) red = true;
                 if (ev.type === 'subst') subOut = true;
             }
@@ -1378,12 +1479,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                     {selectedMatchDetails.events.map((ev: any, idx: number) => {
                                                         const isHome = ev.team?.id === selectedMatchDetails.home_team_id;
                                                         const eventTeamName = isHome ? selectedMatchDetails.home_team_name : selectedMatchDetails.away_team_name;
-                                                        let icon = "•";
-                                                        if (ev.type === "Goal") icon = "⚽"; else if (ev.type === "Card" && ev.detail === "Yellow Card") icon = "🟨"; else if (ev.type === "Card" && ev.detail?.includes("Red")) icon = "🟥"; else if (ev.type === "subst") icon = "🔄";
+                                                        const presentation = getEventPresentation(ev);
                                                         return (
                                                             <div key={idx} className={`flex items-center p-2.5 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors ${isHome ? 'flex-row' : 'flex-row-reverse text-right'}`}>
                                                                 <div className="w-8 sm:w-16 font-black text-slate-900 dark:text-white text-center shrink-0 text-[10px] sm:text-base bg-slate-100 dark:bg-slate-800 py-0.5 sm:py-1 rounded">{ev.time?.elapsed}'</div>
-                                                                <div className="text-sm sm:text-2xl mx-2 sm:mx-4 shrink-0 drop-shadow-md">{icon}</div>
+                                                                <div className="text-sm sm:text-2xl mx-2 sm:mx-4 shrink-0 drop-shadow-md">{presentation.icon}</div>
                                                                 <div className="flex-1 min-w-0">
                                                                     {ev.type === "subst" ? (
                                                                         <>
@@ -1416,17 +1516,22 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                         </>
                                                                     ) : (
                                                                         <>
-                                                                            <p className="font-black text-slate-900 dark:text-white tracking-tight text-[10px] sm:text-sm truncate">
-                                                                                {ev.player?.name ? (
+                                                                            <div className={`flex flex-wrap items-center gap-1.5 ${isHome ? 'justify-start' : 'justify-end'}`}>
+                                                                                {ev.player?.name && (
                                                                                     <button
                                                                                         type="button"
                                                                                         onClick={() => handleOpenPlayerProfile(ev.player.name, eventTeamName)}
-                                                                                        className="hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-slate-300 dark:decoration-slate-700 hover:decoration-emerald-500 cursor-pointer font-black"
+                                                                                        className="font-black text-slate-900 dark:text-white tracking-tight text-[10px] sm:text-sm hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-slate-300 dark:decoration-slate-700 hover:decoration-emerald-500 cursor-pointer"
                                                                                     >
                                                                                         {ev.player.name}
                                                                                     </button>
-                                                                                ) : null}
-                                                                            </p>
+                                                                                )}
+                                                                                {presentation.badge && (
+                                                                                    <span className={`px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-wider border ${presentation.badgeClass}`}>
+                                                                                        {presentation.badge}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
                                                                             {ev.assist?.name && (
                                                                                 <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 tracking-widest truncate mt-0.5">
                                                                                     Pasă:{' '}
@@ -1473,7 +1578,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
                                                     <div className={`relative w-full ${lineupViewMode === 'both' ? 'h-[750px] sm:h-[950px]' : 'h-[500px] sm:h-[700px]'} rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl border-2 sm:border-8 border-slate-900 flex flex-col justify-between p-1 sm:p-5 select-none`} style={{ backgroundImage: 'repeating-linear-gradient(to bottom, #10b981 0px, #10b981 40px, #059669 40px, #059669 80px)' }}>
                                                         <div className="absolute inset-1.5 sm:inset-3 border-2 sm:border-4 border-white/50 rounded-lg sm:rounded-xl pointer-events-none"></div>
-                                                        <div className="absolute top-1/2 inset-x-1.5 sm:inset-x-3 h-0.5 sm:h-1 bg-white/50 -translate-y-1/2 pointer-events-none"></div>
+                                                        <div className="absolute top-1/2 inset-x-1.5 sm:inset-3 h-0.5 sm:h-1 bg-white/50 -translate-y-1/2 pointer-events-none"></div>
                                                         <div className="absolute top-1/2 left-1/2 w-16 h-16 sm:w-40 sm:h-40 border-2 sm:border-4 border-white/50 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
                                                         <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 sm:w-3 sm:h-3 bg-white/70 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
 
