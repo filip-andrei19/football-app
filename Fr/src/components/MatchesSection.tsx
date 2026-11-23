@@ -103,6 +103,15 @@ interface NotificationPrefs {
     redCards: boolean;
 }
 
+const normalizeName = (val?: string) =>
+    String(val || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
 const getAuthHeaders = () => {
     const token = localStorage.getItem('footballAppToken');
     return {
@@ -115,20 +124,29 @@ const getAuthHeaders = () => {
 // INTERPRETARE EVENIMENTE MECI (GOL, PENALTY RATAT, VAR, ETC.)
 // ==========================================
 const getEventPresentation = (ev: any) => {
-    const type = String(ev?.type || '').toLowerCase();
+    const type = String(ev?.type || '').toLowerCase().trim();
     const detail = String(ev?.detail || '').trim();
-    const detailLower = detail.toLowerCase();
+    const comments = String(ev?.comments || '').trim();
+    const combinedLower = `${detail} ${comments}`.toLowerCase();
+
+    const isMissedPenalty =
+        combinedLower.includes('missed penalty') ||
+        combinedLower.includes('penalty missed') ||
+        combinedLower.includes('missed') ||
+        combinedLower.includes('penalty shootout missed') ||
+        (combinedLower.includes('penalty') && (combinedLower.includes('fail') || combinedLower.includes('save') || combinedLower.includes('post') || combinedLower.includes('bar')));
+
+    if (isMissedPenalty) {
+        return {
+            icon: '❌',
+            badge: 'PENALTY RATAT',
+            badgeClass: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40',
+            isActualGoal: false,
+        };
+    }
 
     if (type === 'goal') {
-        if (detailLower.includes('missed')) {
-            return {
-                icon: '❌',
-                badge: 'PENALTY RATAT',
-                badgeClass: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40',
-                isActualGoal: false,
-            };
-        }
-        if (detailLower.includes('cancelled') || detailLower.includes('disallowed')) {
+        if (combinedLower.includes('cancelled') || combinedLower.includes('disallowed') || combinedLower.includes('var')) {
             return {
                 icon: '🚫',
                 badge: detail ? detail.toUpperCase() : 'GOL ANULAT',
@@ -136,7 +154,7 @@ const getEventPresentation = (ev: any) => {
                 isActualGoal: false,
             };
         }
-        if (detailLower.includes('own')) {
+        if (combinedLower.includes('own')) {
             return {
                 icon: '⚽',
                 badge: 'AUTOGOL',
@@ -144,7 +162,7 @@ const getEventPresentation = (ev: any) => {
                 isActualGoal: true,
             };
         }
-        if (detailLower.includes('penalty')) {
+        if (combinedLower.includes('penalty')) {
             return {
                 icon: '⚽',
                 badge: 'PENALTY',
@@ -170,7 +188,7 @@ const getEventPresentation = (ev: any) => {
     }
 
     if (type === 'card') {
-        if (detailLower.includes('red')) {
+        if (combinedLower.includes('red')) {
             return {
                 icon: '🟥',
                 badge: 'CARTONAȘ ROȘU',
@@ -178,7 +196,7 @@ const getEventPresentation = (ev: any) => {
                 isActualGoal: false,
             };
         }
-        if (detailLower.includes('second yellow')) {
+        if (combinedLower.includes('second yellow')) {
             return {
                 icon: '🟨🟥',
                 badge: 'AL DOILEA GALBEN',
@@ -801,10 +819,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             if (!playerOrName.detailed_stats && !playerOrName.statistics_summary) {
                 setLoadingPlayerCard(true);
                 try {
-                    const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(playerOrName.name)}&limit=5`);
+                    const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(playerOrName.name)}&limit=10`);
                     if (res.ok) {
                         const list: Player[] = await res.json();
-                        const exact = list.find(p => p._id === playerOrName._id || p.name.toLowerCase() === playerOrName.name.toLowerCase());
+                        const targetNorm = normalizeName(playerOrName.name);
+                        const exact = list.find(p => p._id === playerOrName._id || normalizeName(p.name) === targetNorm);
                         if (exact) setSelectedPlayer(exact);
                     }
                 } catch {} finally {
@@ -815,6 +834,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         }
 
         const cleanName = playerOrName.trim();
+        const targetNorm = normalizeName(cleanName);
         setLoadingPlayerCard(true);
         setSelectedPlayer({
             _id: `temp_${cleanName}`,
@@ -824,25 +844,21 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         });
 
         try {
-            const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(cleanName)}&limit=10`);
+            const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(cleanName)}&limit=20`);
             if (res.ok) {
-                const players: Player[] = await res.json();
-                if (players && players.length > 0) {
-                    const exactMatch = players.find(p => (p.name || '').toLowerCase().trim() === cleanName.toLowerCase());
-                    setSelectedPlayer(exactMatch || players[0]);
-                    return;
-                }
-            }
+                const playersList: Player[] = await res.json();
+                if (Array.isArray(playersList) && playersList.length > 0) {
+                    const exactMatch = playersList.find(p => normalizeName(p.name) === targetNorm);
+                    const endsWithMatch = !exactMatch
+                        ? playersList.find(p => {
+                            const cand = normalizeName(p.name);
+                            return cand.endsWith(` ${targetNorm}`) || targetNorm.endsWith(` ${cand}`);
+                        })
+                        : undefined;
 
-            const parts = cleanName.split(/\s+/);
-            const lastToken = parts[parts.length - 1];
-            if (lastToken && lastToken.length >= 3 && lastToken !== cleanName) {
-                const resLast = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(lastToken)}&limit=10`);
-                if (resLast.ok) {
-                    const fallbackPlayers: Player[] = await resLast.json();
-                    if (fallbackPlayers && fallbackPlayers.length > 0) {
-                        setSelectedPlayer(fallbackPlayers[0]);
-                        return;
+                    const matched = exactMatch || endsWithMatch;
+                    if (matched) {
+                        setSelectedPlayer(matched);
                     }
                 }
             }
@@ -960,9 +976,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const getPlayerMatchBadges = (playerName?: string, playerId?: number) => {
         const events = selectedMatchDetails?.events || [];
         let goals = 0; let yellow = false; let red = false; let subOut = false;
+        const targetNorm = normalizeName(playerName);
+
         events.forEach((ev: any) => {
-            const isSamePlayer = (playerId && ev.player?.id === playerId) || (playerName && ev.player?.name && ev.player.name.toLowerCase() === playerName.toLowerCase());
-            const isSubbedOut = ev.type === 'subst' && ((playerId && ev.assist?.id === playerId) || (playerName && ev.assist?.name && ev.assist.name.toLowerCase() === playerName.toLowerCase()));
+            const evPlayerNorm = normalizeName(ev.player?.name);
+            const isSamePlayer = (playerId && ev.player?.id === playerId) || (targetNorm && evPlayerNorm && evPlayerNorm === targetNorm);
+            const evAssistNorm = normalizeName(ev.assist?.name);
+            const isSubbedOut = ev.type === 'subst' && ((playerId && ev.assist?.id === playerId) || (targetNorm && evAssistNorm && evAssistNorm === targetNorm));
             if (isSamePlayer) {
                 const pres = getEventPresentation(ev);
                 if (pres.isActualGoal) goals += 1;
@@ -1311,7 +1331,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                     className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border transition shrink-0 ${isFav ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-amber-500'}`}
                                                     title="Marchează la favorite"
                                                 >
-                                                    <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isFav ? 'fill-current' : ''}`} />
+                                                    <Heart className={`w-3.5 h-3.5 sm:w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
                                                 </button>
 
                                                 <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-4 px-1 sm:px-2 min-w-0">
@@ -1818,6 +1838,18 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             {loadingPlayerCard ? (
                                 <div className="py-10 text-center text-xs font-black uppercase tracking-widest text-slate-400">
                                     Se încarcă datele complete ale jucătorului...
+                                </div>
+                            ) : selectedPlayer._id.startsWith('temp_') ? (
+                                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs sm:text-sm space-y-2">
+                                    <p className="font-black uppercase text-slate-900 dark:text-white">
+                                        {selectedPlayer.name}
+                                    </p>
+                                    <p className="text-slate-500 dark:text-slate-400 font-bold">
+                                        Echipă în meci: {selectedPlayer.team_name || '—'}
+                                    </p>
+                                    <p className="text-xs text-slate-400 pt-1">
+                                        Acest jucător nu are încă o fișă completă în baza de date de scouting.
+                                    </p>
                                 </div>
                             ) : (
                                 <>
