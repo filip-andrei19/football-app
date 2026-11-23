@@ -1,16 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Globe, Shield, Star, Activity, X, Trophy, MapPin, 
   User as UserIcon, SlidersHorizontal, Scale, Bookmark, 
   TrendingUp, RotateCcw, Check, AlertTriangle 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useForm } from '@tanstack/react-form';
-// 1. Am adăugat importul obligatoriu pentru useStore-ul din TanStack Form
-import { useStore } from '@tanstack/react-form';
+import { useForm, useStore } from '@tanstack/react-form';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
-const API_URL = (import.meta as any).env.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
+const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 
 interface DetailedStat {
   competition: string;
@@ -133,7 +132,7 @@ const PlayerRadarChart = ({ primaryPlayer, secondaryPlayer }: { primaryPlayer: P
   const m1 = computeScoutingMetrics(primaryPlayer);
   const m2 = secondaryPlayer ? computeScoutingMetrics(secondaryPlayer) : null;
 
-  const isMobile = window.innerWidth < 640;
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
   const size = isMobile ? 180 : 230;
   const center = size / 2;
   const radius = isMobile ? 60 : 78;
@@ -205,14 +204,13 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
   const [showProFilters, setShowProFilters] = useState(false);
 
-  // 2. CONFIGURAREA FORMULARULUI TANSTACK
   const filterForm = useForm({
     defaultValues: {
       searchTerm: "",
       searchMode: 'players' as 'players' | 'teams',
       positionFilter: "Toate",
       maxAgeFilter: "",
-      minHeightFilter: "0", // Trebuie să fie string sau number consistently în select, le vom ține string
+      minHeightFilter: "0",
       minMinutesFilter: "0",
       minGoalsFilter: "0",
       minRatingFilter: "0",
@@ -223,7 +221,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     }
   });
 
-  // 3. APELUL CORECT CĂTRE USESTORE DIN TANSTACK
   const formValues = useStore(filterForm.store, (state) => state.values);
 
   const [watchlistIds, setWatchlistIds] = useState<string[]>(() => {
@@ -236,6 +233,14 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   const [compareList, setCompareList] = useState<Player[]>([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [greeting, setGreeting] = useState("Salut");
+
+  useEffect(() => {
+    const shouldHide = Boolean(selectedPlayer);
+    window.dispatchEvent(new CustomEvent('toggle-floating-bars', { detail: shouldHide }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('toggle-floating-bars', { detail: false }));
+    };
+  }, [selectedPlayer]);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -271,7 +276,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     formValues.leagueFilter !== "Toate" ||
     parseFloat(formValues.minRatingFilter) > 0;
 
-  // Auto-Fetch
   useEffect(() => {
     const fetchResults = async () => {
       if (formValues.onlyWatchlist && formValues.searchMode === 'players') {
@@ -454,11 +458,11 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         <div className="absolute top-[20%] right-[10%] w-[30vw] h-[30vw] rounded-full bg-blue-500/10 blur-[120px]"></div>
       </div>
 
-      {selectedTeam && (
-        <div className="fixed inset-0 top-0 sm:top-16 z-[9999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-opacity p-2 sm:p-4">
-          <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 mt-10 sm:mt-0">
+      {selectedTeam && createPortal(
+        <div className="fixed inset-0 z-[9999999] flex items-center justify-center bg-slate-950/85 backdrop-blur-sm transition-opacity p-2 sm:p-4">
+          <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl border-2 sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 relative">
             <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-2 sm:border-b-4 border-slate-700 relative pt-safe">
-                <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-10 sm:pr-0">
+                <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-12 sm:pr-0">
                     <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
                         <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" />
                     </div>
@@ -469,14 +473,17 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                         </p>
                     </div>
                 </div>
-                <div className="absolute top-3 right-3 sm:static flex items-center gap-2">
-                    <button onClick={() => setSelectedTeam(null)} className="p-1.5 sm:p-3 bg-white/10 hover:bg-rose-500 rounded-lg sm:rounded-full border border-white/20 hover:border-rose-600 transition-colors text-white shrink-0">
-                        <X className="w-4 h-4 sm:w-6 sm:h-6" />
-                    </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTeam(null)}
+                  aria-label="Închide lotul echipei"
+                  className="p-2 sm:p-3 bg-white/10 hover:bg-rose-500 rounded-xl sm:rounded-full border border-white/20 hover:border-rose-600 transition-colors text-white shrink-0 cursor-pointer"
+                >
+                    <X className="w-4 h-4 sm:w-6 sm:h-6" />
+                </button>
             </div>
 
-            <div className="overflow-y-auto p-2 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-4 sm:space-y-6 flex-1 pb-safe-bottom pb-20">
+            <div className="overflow-y-auto p-2 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-4 sm:space-y-6 flex-1 pb-safe-bottom pb-10">
               {([
                 { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-500 border-amber-500", bg: "bg-amber-500/10" },
                 { title: "Fundași", data: selectedTeam.squad.Defenders, color: "text-blue-500 border-blue-500", bg: "bg-blue-500/10" },
@@ -504,6 +511,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                             </div>
                             <div className="flex items-center gap-2 shrink-0 pr-1">
                                 <button
+                                    type="button"
                                     onClick={(e) => toggleComparePlayer(e, p)}
                                     title="Compară jucătorul"
                                     className={`p-1.5 sm:p-3 rounded-lg sm:rounded-xl border-2 transition ${
@@ -523,7 +531,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="relative z-10 space-y-6 sm:space-y-10">
@@ -551,6 +560,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             <div className="flex justify-center mb-2 sm:mb-3">
                <div className="bg-slate-200/50 dark:bg-slate-800/50 p-1 sm:p-1.5 rounded-lg sm:rounded-xl inline-flex border border-slate-300/50 dark:border-slate-700/50 backdrop-blur shadow-sm w-[90%] sm:w-auto">
                   <button
+                    type="button"
                     onClick={() => { filterForm.setFieldValue('searchMode', 'players'); filterForm.setFieldValue('searchTerm', ''); }}
                     className={`flex-1 sm:flex-none px-4 sm:px-6 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all ${
                       formValues.searchMode === 'players' 
@@ -561,6 +571,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     Jucători
                   </button>
                   <button
+                    type="button"
                     onClick={() => { filterForm.setFieldValue('searchMode', 'teams'); filterForm.setFieldValue('searchTerm', ''); filterForm.setFieldValue('onlyWatchlist', false); setShowProFilters(false); }}
                     className={`flex-1 sm:flex-none px-4 sm:px-6 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all ${
                       formValues.searchMode === 'teams' 
@@ -597,6 +608,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 
                 {formValues.searchTerm && (
                   <button
+                    type="button"
                     onClick={() => filterForm.setFieldValue('searchTerm', '')}
                     className="p-1.5 sm:p-2 mr-2 sm:mr-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-rose-500 hover:text-white transition-colors"
                   >
@@ -609,6 +621,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             {formValues.searchMode === 'players' && (
               <div className="flex flex-wrap items-center justify-center gap-2 mt-3 sm:mt-4 mx-2">
                 <button
+                    type="button"
                     onClick={() => {
                       setShowProFilters(!showProFilters);
                       if (formValues.onlyWatchlist) filterForm.setFieldValue('onlyWatchlist', false);
@@ -623,6 +636,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       filterForm.setFieldValue('onlyWatchlist', !formValues.onlyWatchlist);
                       filterForm.setFieldValue('searchMode', 'players');
@@ -650,6 +664,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   </span>
                 </div>
                 <button
+                  type="button"
                   onClick={resetProFilters}
                   className="text-[9px] sm:text-xs font-black uppercase tracking-widest text-rose-400 hover:text-rose-300 flex items-center gap-1 bg-rose-500/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded border border-rose-500/20 transition-colors"
                 >
@@ -697,7 +712,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               {[...Array(10)].map((_, i) => (
                 <div key={i} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col items-center animate-pulse h-[200px] sm:h-[260px]">
                   <div className="w-full h-8 sm:h-12 bg-slate-200 dark:bg-slate-800 border-b-2 border-slate-300 dark:border-slate-700"></div>
-                  <div className="w-14 h-14 sm:w-20 sm:h-20 sm:w-24 sm:h-24 rounded-full bg-slate-300 dark:bg-slate-700 -mt-6 sm:-mt-8 mb-2 sm:mb-4 border-2 sm:border-4 border-white dark:border-slate-900"></div>
+                  <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-slate-300 dark:bg-slate-700 -mt-6 sm:-mt-8 mb-2 sm:mb-4 border-2 sm:border-4 border-white dark:border-slate-900"></div>
                   <div className="w-3/4 h-3 sm:h-4 bg-slate-200 dark:bg-slate-800 rounded mb-2"></div>
                   <div className="w-1/2 h-2 sm:h-3 bg-slate-200 dark:bg-slate-800 rounded mb-auto"></div>
                   <div className="w-full h-8 sm:h-10 bg-slate-100 dark:bg-slate-800 mt-2 sm:mt-4 flex justify-between p-1.5 sm:p-2 gap-2">
@@ -722,7 +737,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
           )}
           
-          {error && <div className="text-center text-rose-500 font-black border-2 sm:border-4 border-rose-500 bg-rose-950/50 py-4 sm:py-6 px-4 sm:px-10 rounded-xl sm:rounded-2xl uppercase tracking-widest max-w-lg mx-auto text-[10px] sm:text-base mx-2">{error}</div>}
+          {error && <div className="text-center text-rose-500 font-black border-2 sm:border-4 border-rose-500 bg-rose-950/50 py-4 sm:py-6 px-4 sm:px-10 rounded-xl sm:rounded-2xl uppercase tracking-widest max-w-lg mx-auto text-[10px] sm:text-base">{error}</div>}
           
           {!showResults && !loading && (
             <div className="text-center py-10 sm:py-20 mx-2">
@@ -755,6 +770,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   >
                     <div className="w-full h-10 sm:h-12 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex justify-between px-1.5 sm:px-2 pt-1.5 sm:pt-2 border-b-2 border-emerald-500">
                        <button
+                        type="button"
                         onClick={(e) => toggleWatchlist(e, player)}
                         className={`p-1 sm:p-1.5 rounded-md sm:rounded-lg border-2 h-fit transition z-10 bg-white dark:bg-slate-900 ${
                           isWatched
@@ -765,6 +781,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                         <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 ${isWatched ? 'fill-current' : ''}`} />
                       </button>
                       <button
+                        type="button"
                         onClick={(e) => toggleComparePlayer(e, player)}
                         className={`p-1 sm:p-1.5 rounded-md sm:rounded-lg border-2 h-fit transition z-10 bg-white dark:bg-slate-900 ${
                           isSelectedForCompare
@@ -780,7 +797,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                       <img
                         src={player.image || GENERIC_USER_IMAGE}
                         alt={player.name}
-                        className="w-14 h-14 sm:w-20 sm:h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 sm:border-4 border-white dark:border-slate-900 shadow-md bg-white dark:bg-slate-800"
+                        className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover border-2 sm:border-4 border-white dark:border-slate-900 shadow-md bg-white dark:bg-slate-800"
                         onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                       />
                       {isNationalOnly && (
@@ -797,7 +814,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     
                     <div className="px-2 sm:px-3 pb-2 sm:pb-3 w-full text-center flex-1 flex flex-col justify-between">
                       <div>
-                        <h3 className="text-[11px] sm:text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-0.5 sm:mb-1 truncate w-full" title={player.name}>
+                        <h3 className="text-[11px] sm:text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-0.5 sm:mb-1 truncate w-full" title={player.name}>
                           {player.name}
                         </h3>
                         
@@ -832,17 +849,16 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
               {teams.map((team, idx) => (
                 <div key={idx} onClick={() => handleTeamClick(team.team_name)} className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-md sm:shadow-lg hover:shadow-2xl border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all cursor-pointer group flex flex-col items-center text-center">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 sm:w-28 sm:h-28 mb-3 sm:mb-4 bg-slate-50 dark:bg-slate-800 rounded-xl sm:rounded-2xl p-2 sm:p-4 shadow-inner group-hover:scale-110 transition-transform">
+                  <div className="w-16 h-16 sm:w-20 sm:h-28 mb-3 sm:mb-4 bg-slate-50 dark:bg-slate-800 rounded-xl sm:rounded-2xl p-2 sm:p-4 shadow-inner group-hover:scale-110 transition-transform">
                     <img src={team.team_logo} alt={team.team_name} className="w-full h-full object-contain drop-shadow-md" />
                   </div>
-                  <h4 className="font-black text-[11px] sm:text-sm sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight break-words">{team.team_name}</h4>
+                  <h4 className="font-black text-[11px] sm:text-sm md:text-lg text-slate-900 dark:text-white uppercase tracking-tight break-words">{team.team_name}</h4>
                   <div className="mt-1.5 sm:mt-2 w-6 sm:w-8 h-1 bg-emerald-500 rounded-full group-hover:w-12 sm:group-hover:w-16 transition-all"></div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* EMPTY STATE ILUSTRAT CĂUTARE */}
           {showResults && !loading && ((formValues.searchMode === 'players' && displayedPlayers.length === 0) || (formValues.searchMode === 'teams' && teams.length === 0)) && (
             <div className="text-center py-12 sm:py-20 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-sm border-2 border-dashed border-slate-300 dark:border-slate-800 max-w-2xl mx-auto relative overflow-hidden mx-2">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.05),transparent_50%)]"></div>
@@ -869,7 +885,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
       </div>
 
       {compareList.length > 0 && (
-      <div className="fixed bottom-[75px] sm:bottom-8 left-1/2 -translate-x-1/2 z-[99998] bg-slate-950 px-2 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-2 sm:gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
+        <div className="fixed bottom-[75px] sm:bottom-8 left-1/2 -translate-x-1/2 z-[99998] bg-slate-950 px-2 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-2 sm:gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
           <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
             <Scale className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-400 shrink-0 animate-pulse" />
             <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
@@ -878,6 +894,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-4 h-4 sm:w-6 sm:h-6 rounded object-cover shrink-0" />
                   <span className="truncate max-w-[60px] sm:max-w-[120px]">{p.name}</span>
                   <button
+                    type="button"
                     onClick={(e) => toggleComparePlayer(e, p)}
                     className="text-slate-400 hover:text-rose-400 ml-0.5 sm:ml-1 bg-slate-900 p-0.5 rounded shrink-0"
                   >
@@ -895,6 +912,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
           <div className="flex items-center shrink-0">
             <button
+              type="button"
               disabled={compareList.length < 2}
               onClick={() => setShowCompareModal(true)}
               className={`px-3 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition border-b-2 sm:border-b-4 ${
@@ -909,47 +927,51 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         </div>
       )}
 
-      {selectedPlayer && (
+      {/* FEREASTRĂ SEPARATĂ FIȘĂ JUCĂTOR (DEASUPRA BARELOR) */}
+      {selectedPlayer && createPortal(
         <div
-          className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[9999999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setSelectedPlayer(null)}
         >
           <div
-            className="bg-white dark:bg-slate-900 w-full h-[100dvh] sm:h-auto sm:max-w-3xl sm:max-h-[92vh] sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col sm:border-4 border-emerald-600/30"
+            className="bg-white dark:bg-slate-900 w-full h-[96dvh] sm:h-auto sm:max-w-3xl sm:max-h-[92vh] rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.65)] overflow-hidden flex flex-col border-2 sm:border-4 border-emerald-600/40 relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative bg-slate-900 shrink-0 px-3 sm:px-8 py-4 sm:py-8 sm:border-b-4 border-emerald-500 overflow-hidden pt-safe">
+            <div className="relative bg-slate-900 shrink-0 px-3 sm:px-8 py-4 sm:py-7 border-b-2 sm:border-b-4 border-emerald-500 overflow-hidden pt-safe">
               <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#10b981_20px,#10b981_22px),repeating-linear-gradient(90deg,transparent,transparent_20px,#10b981_20px,#10b981_22px)]"></div>
               
               <button
+                type="button"
                 onClick={() => setSelectedPlayer(null)}
-                className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-slate-950/50 border border-white/20 hover:bg-rose-500 hover:border-rose-500 rounded-full p-1.5 sm:p-2 text-white transition-colors z-20"
+                aria-label="Închide fișa jucătorului"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-slate-950/80 border border-white/25 hover:bg-rose-600 hover:border-rose-500 rounded-xl sm:rounded-full p-2 text-white transition-colors z-30 shadow-lg cursor-pointer"
               >
                 <X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" />
               </button>
               
-              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-3 sm:gap-6 relative z-10">
+              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-3 sm:gap-6 relative z-10 pr-0 sm:pr-10">
                 <img
                   src={selectedPlayer.image || GENERIC_USER_IMAGE}
                   alt={selectedPlayer.name}
-                  className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-xl sm:rounded-2xl object-cover border-2 sm:border-4 border-white shadow-xl sm:shadow-2xl bg-slate-800 shrink-0 mt-4 sm:mt-0"
+                  className="w-20 h-20 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-xl sm:rounded-2xl object-cover border-2 sm:border-4 border-white shadow-xl sm:shadow-2xl bg-slate-800 shrink-0 mt-2 sm:mt-0"
                   onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                 />
                 
                 <div className="text-white text-center sm:text-left flex-1 min-w-0 px-2 sm:px-0">
-                  <h2 className="text-xl sm:text-3xl md:text-5xl font-black uppercase tracking-tighter break-words whitespace-normal leading-tight sm:drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] line-clamp-2">{selectedPlayer.name}</h2>
+                  <h2 className="text-xl sm:text-3xl md:text-4xl font-black uppercase tracking-tighter break-words whitespace-normal leading-tight sm:drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">{selectedPlayer.name}</h2>
                   <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 mt-1 sm:mt-2">
                     {selectedPlayer.team_logo && (
-                      <img src={selectedPlayer.team_logo} alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 sm:w-8 sm:h-8 bg-white rounded-md p-0.5 sm:p-1 object-contain" />
+                      <img src={selectedPlayer.team_logo} alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-md p-0.5 object-contain shrink-0" />
                     )}
-                    <span className="font-bold text-xs sm:text-lg sm:text-xl text-emerald-400 uppercase tracking-widest truncate max-w-[200px]">{selectedPlayer.team_name || selectedPlayer.team}</span>
+                    <span className="font-bold text-xs sm:text-base md:text-lg text-emerald-400 uppercase tracking-widest truncate max-w-[220px]">{selectedPlayer.team_name || selectedPlayer.team}</span>
                   </div>
                 </div>
 
-                <div className="flex flex-row sm:flex-col gap-2 shrink-0 mt-2 sm:mt-0 w-full sm:w-auto px-4 sm:px-0">
+                <div className="flex flex-row sm:flex-col gap-2 shrink-0 mt-1 sm:mt-0 w-full sm:w-auto px-2 sm:px-0">
                   <button
+                    type="button"
                     onClick={(e) => toggleWatchlist(e, selectedPlayer)}
-                    className={`flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1.5 sm:gap-2 border-b-2 sm:border-b-4 transition ${
+                    className={`flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1.5 sm:gap-2 border-b-2 sm:border-b-4 transition cursor-pointer ${
                       watchlistIds.includes(selectedPlayer._id)
                         ? 'bg-amber-500 border-amber-700 text-slate-950'
                         : 'bg-white border-slate-300 text-slate-900 hover:bg-emerald-50'
@@ -959,11 +981,12 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     {watchlistIds.includes(selectedPlayer._id) ? 'În Listă' : 'Listă'}
                   </button>
                   <button
+                    type="button"
                     onClick={(e) => {
                       toggleComparePlayer(e, selectedPlayer);
                       setSelectedPlayer(null);
                     }}
-                    className="flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest bg-slate-800 border-b-2 sm:border-b-4 border-slate-950 hover:bg-slate-700 text-white flex items-center gap-1.5 sm:gap-2 transition"
+                    className="flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest bg-slate-800 border-b-2 sm:border-b-4 border-slate-950 hover:bg-slate-700 text-white flex items-center gap-1.5 sm:gap-2 transition cursor-pointer"
                   >
                     <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Compară
                   </button>
@@ -971,22 +994,22 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4 sm:p-8 bg-slate-50 dark:bg-slate-950 pb-safe-bottom">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-8 bg-slate-50 dark:bg-slate-950 pb-safe-bottom">
               
               <div className="flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3 mb-6 sm:mb-8">
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
                   <Globe className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500" />
                   {selectedPlayer.nationality || "N/A"}
                 </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
                   <UserIcon className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500" />
                   {selectedPlayer.age ? `${selectedPlayer.age} ANI` : "N/A"}
                 </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
                   <Activity className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500" />
                   {selectedPlayer.height || "-"} / {selectedPlayer.weight || "-"}
                 </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-emerald-100 dark:bg-emerald-900/40 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-emerald-300 dark:border-emerald-700 text-[10px] sm:text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-emerald-100 dark:bg-emerald-900/40 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-emerald-300 dark:border-emerald-700 text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
                   {selectedPlayer.position || "N/A"}
                 </div>
               </div>
@@ -994,7 +1017,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               <h3 className="text-sm sm:text-lg font-black uppercase tracking-widest text-slate-800 dark:text-white mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2 border-b-2 border-emerald-500/20 pb-1.5 sm:pb-2">
                 <Trophy className="w-4 h-4 sm:w-6 sm:h-6 text-amber-500" /> Cifrele Sezonului
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3 sm:gap-4 mb-6 sm:mb-10">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4 mb-6 sm:mb-10">
                 <div className="bg-white dark:bg-slate-900 p-2 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center">
                   <span className="block text-xl sm:text-3xl font-black text-slate-900 dark:text-white">{selectedPlayer.statistics_summary?.total_appearances || 0}</span>
                   <span className="text-[8px] sm:text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-0.5 sm:mt-1">Meciuri</span>
@@ -1034,7 +1057,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                       <h4 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center justify-center lg:justify-start gap-1.5 sm:gap-2 text-center lg:text-left mt-2 lg:mt-0">
                         <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Randament / 90 Minute
                       </h4>
-                      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:gap-4">
+                      <div className="grid grid-cols-2 gap-2 sm:gap-4">
                         <div className="bg-slate-800 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-emerald-500/30 text-center">
                           <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-400">Goluri / 90'</span>
                           <p className="text-xl sm:text-3xl font-black text-white mt-0.5 sm:mt-1">{m.goalsPer90}</p>
@@ -1103,16 +1126,17 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showCompareModal && compareList.length === 2 && (
+      {showCompareModal && compareList.length === 2 && createPortal(
         <div
-          className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[9999999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300"
           onClick={() => setShowCompareModal(false)}
         >
           <div
-            className="bg-slate-900 w-full h-[100dvh] sm:h-auto sm:max-w-4xl sm:max-h-[95vh] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:border-4 border-emerald-600/50"
+            className="bg-slate-900 w-full h-[96dvh] sm:h-auto sm:max-w-4xl sm:max-h-[95vh] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col border-2 sm:border-4 border-emerald-600/50 relative"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-center justify-between border-b-2 border-emerald-600/30 pt-safe shrink-0">
@@ -1125,8 +1149,10 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 </h2>
               </div>
               <button
+                type="button"
                 onClick={() => setShowCompareModal(false)}
-                className="p-1.5 sm:p-2.5 bg-slate-800 hover:bg-rose-500 hover:border-rose-500 border border-slate-700 rounded-full transition text-white"
+                aria-label="Închide comparația"
+                className="p-2 sm:p-2.5 bg-slate-800 hover:bg-rose-500 hover:border-rose-500 border border-slate-700 rounded-full transition text-white cursor-pointer"
               >
                 <X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" />
               </button>
@@ -1170,7 +1196,6 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     </div>
                   </div>
 
-                  {/* RADARUL PE MOBIL MAI MIC */}
                   <div className="bg-slate-800 p-2 sm:p-6 rounded-2xl sm:rounded-3xl border sm:border-2 border-slate-700 flex flex-col items-center overflow-hidden">
                     <div className="flex items-center justify-center gap-2 sm:gap-6 text-[8px] sm:text-xs font-black uppercase tracking-widest mb-2 sm:mb-4 flex-wrap">
                       <span className="flex items-center gap-1 sm:gap-2 text-yellow-400 truncate max-w-[120px] sm:max-w-none">
@@ -1224,7 +1249,8 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               );
             })()}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

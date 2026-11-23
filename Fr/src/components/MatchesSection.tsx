@@ -7,7 +7,7 @@ import {
     Calendar, Trophy, X, Globe,
     Users, BarChart2, ListOrdered, Clock, Bookmark,
     Swords, History, ArrowUp, ArrowDown, Minus,
-    Heart, Bell, Settings
+    Heart, Bell, Settings, Scale, Activity, Award, TrendingUp, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -257,7 +257,7 @@ const computeScoutingMetrics = (player: Player) => {
 
     const goalsPer90 = minutes >= 90 ? Number(((goals / minutes) * 90).toFixed(2)) : 0;
     const assistsPer90 = minutes >= 90 ? Number(((assists / minutes) * 90).toFixed(2)) : 0;
-    const contributionsPer90 = goalsPer90 + assistsPer90;
+    const contributionsPer90 = Number((goalsPer90 + assistsPer90).toFixed(2));
     const minsPerContribution = (goals + assists) > 0 ? Math.round(minutes / (goals + assists)) : 0;
 
     const BASE_SCORE = 19;
@@ -309,9 +309,9 @@ const computeScoutingMetrics = (player: Player) => {
 const PlayerRadarChart = ({ primaryPlayer }: { primaryPlayer: Player }) => {
     const m1 = computeScoutingMetrics(primaryPlayer);
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
-    const size = isMobile ? 180 : 230;
+    const size = isMobile ? 190 : 240;
     const center = size / 2;
-    const radius = isMobile ? 60 : 78;
+    const radius = isMobile ? 62 : 82;
     const axes = m1.radar.map(r => r.label);
 
     const getCoordinates = (index: number, value: number) => {
@@ -334,16 +334,16 @@ const PlayerRadarChart = ({ primaryPlayer }: { primaryPlayer: Player }) => {
                         const { x, y } = getCoordinates(idx, level);
                         return `${x},${y}`;
                     }).join(" ");
-                    return <polygon key={level} points={pts} fill="none" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="1" strokeDasharray={level < 100 ? "3 3" : undefined} />;
+                    return <polygon key={level} points={pts} fill="none" stroke="rgba(16, 185, 129, 0.35)" strokeWidth="1" strokeDasharray={level < 100 ? "3 3" : undefined} />;
                 })}
                 {axes.map((_, idx) => {
                     const end = getCoordinates(idx, 100);
-                    return <line key={idx} x1={center} y1={center} x2={end.x} y2={end.y} stroke="rgba(16, 185, 129, 0.4)" strokeWidth="1" />;
+                    return <line key={idx} x1={center} y1={center} x2={end.x} y2={end.y} stroke="rgba(16, 185, 129, 0.45)" strokeWidth="1" />;
                 })}
                 <polygon points={buildPolygonPoints(m1.radar)} fill="rgba(250, 204, 21, 0.4)" stroke="#facc15" strokeWidth="3" />
                 {m1.radar.map((item, idx) => {
                     const pt1 = getCoordinates(idx, item.value);
-                    const labelPos = getCoordinates(idx, 120);
+                    const labelPos = getCoordinates(idx, 122);
                     return (
                         <g key={idx}>
                             <circle cx={pt1.x} cy={pt1.y} r={isMobile ? "3" : "4"} fill="#facc15" stroke="#fff" strokeWidth="1.5" />
@@ -391,6 +391,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [loadingPlayerCard, setLoadingPlayerCard] = useState(false);
 
     const [compareList, setCompareList] = useState<Player[]>([]);
+    const [showCompareModal, setShowCompareModal] = useState(false);
     const [watchlistIds, setWatchlistIds] = useState<string[]>(() => {
         try {
             const saved = localStorage.getItem('scout_watchlist_ids');
@@ -598,9 +599,21 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         e.stopPropagation();
         setCompareList(prev => {
             const exists = prev.some(p => p._id === player._id);
-            if (exists) return prev.filter(p => p._id !== player._id);
-            if (prev.length >= 2) return [prev[1], player];
-            return [...prev, player];
+            if (exists) {
+                toast("Eliminat din comparare.", { icon: '⚖️' });
+                return prev.filter(p => p._id !== player._id);
+            }
+            if (prev.length >= 2) {
+                toast.success(`${player.name} a înlocuit primul jucător la comparare.`);
+                return [prev[1], player];
+            }
+            const next = [...prev, player];
+            if (next.length === 2) {
+                setShowCompareModal(true);
+            } else {
+                toast.success(`${player.name} adăugat la comparare (1/2). Alege încă un jucător.`);
+            }
+            return next;
         });
     };
 
@@ -680,9 +693,28 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         }
     };
 
-    const handleOpenPlayerProfile = async (playerName?: string, fallbackTeam?: string) => {
-        if (!playerName) return;
-        const cleanName = playerName.trim();
+    const handleOpenPlayerProfile = async (playerOrName: Player | string, fallbackTeam?: string) => {
+        if (!playerOrName) return;
+
+        if (typeof playerOrName !== 'string') {
+            setSelectedPlayer(playerOrName);
+            if (!playerOrName.detailed_stats && !playerOrName.statistics_summary) {
+                setLoadingPlayerCard(true);
+                try {
+                    const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(playerOrName.name)}&limit=5`);
+                    if (res.ok) {
+                        const list: Player[] = await res.json();
+                        const exact = list.find(p => p._id === playerOrName._id || p.name.toLowerCase() === playerOrName.name.toLowerCase());
+                        if (exact) setSelectedPlayer(exact);
+                    }
+                } catch {} finally {
+                    setLoadingPlayerCard(false);
+                }
+            }
+            return;
+        }
+
+        const cleanName = playerOrName.trim();
         setLoadingPlayerCard(true);
         setSelectedPlayer({
             _id: `temp_${cleanName}`,
@@ -702,7 +734,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 }
             }
 
-            // Fallback după ultimul cuvânt dacă numele este abreviat (ex. "I. Popescu" -> "Popescu")
             const parts = cleanName.split(/\s+/);
             const lastToken = parts[parts.length - 1];
             if (lastToken && lastToken.length >= 3 && lastToken !== cleanName) {
@@ -1066,6 +1097,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             }));
         });
     }, [standingsData, matches, selectedMatchDetails]);
+
+    const playerMetrics = selectedPlayer ? computeScoutingMetrics(selectedPlayer) : null;
 
     return (
         <div className="w-full max-w-5xl mx-auto py-6 sm:py-8 px-2 sm:px-4 min-h-[80vh] relative z-0 animate-in fade-in duration-500 pb-24 sm:pb-20 mt-4 sm:mt-0">
@@ -1579,7 +1612,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     </div>
                                     <div className="divide-y divide-slate-100 dark:divide-slate-800">
                                         {section.data.map(p => (
-                                            <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between p-2 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition gap-2 cursor-pointer">
+                                            <div key={p._id} onClick={() => handleOpenPlayerProfile(p, selectedTeam.teamInfo.name)} className="flex items-center justify-between p-2 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition gap-2 cursor-pointer">
                                                 <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
                                                     <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-8 h-8 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
                                                     <div className="min-w-0 flex-1">
@@ -1601,100 +1634,268 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 document.body
             )}
 
-            {/* MODAL PROFIL JUCĂTOR - DIN LOTURI, FORMAȚII ȘI EVENIMENTE */}
+            {/* MODAL PROFIL JUCĂTOR COMPLET (CA ÎN HOME) */}
             {selectedPlayer && createPortal(
                 <div
                     className="fixed inset-0 z-[99999999] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-200"
                     onClick={() => setSelectedPlayer(null)}
                 >
                     <div
-                        className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col shadow-2xl border-2 sm:border-4 border-emerald-600/40"
+                        className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-3xl max-h-[92dvh] overflow-hidden flex flex-col shadow-2xl border-2 sm:border-4 border-emerald-600/40"
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-start justify-between gap-3 border-b-2 border-slate-800 shrink-0">
-                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                        {/* HEADER JUCĂTOR + LISTĂ / COMPARĂ */}
+                        <div className="bg-slate-950 text-white p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 sm:border-b-4 border-emerald-600 shrink-0 relative">
+                            <button
+                                type="button"
+                                onClick={() => setSelectedPlayer(null)}
+                                className="absolute top-3 right-3 sm:static p-2 rounded-xl bg-slate-800 hover:bg-rose-600 text-white border border-slate-700 transition-colors shrink-0 order-3 sm:order-none"
+                                title="Închide"
+                            >
+                                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </button>
+
+                            <div className="flex items-center gap-3 sm:gap-5 min-w-0 pr-10 sm:pr-0">
                                 <img
                                     src={selectedPlayer.image || GENERIC_USER_IMAGE}
                                     alt={selectedPlayer.name}
                                     onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
-                                    className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 bg-white shrink-0"
+                                    className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 sm:border-4 border-emerald-500 bg-white shrink-0 shadow-lg"
                                 />
                                 <div className="min-w-0">
-                                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-400 block mb-0.5">
+                                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-400 block mb-1">
                                         Fișă Jucător • Scouting
                                     </span>
-                                    <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tight truncate">
+                                    <h3 className="text-xl sm:text-3xl font-black uppercase tracking-tight leading-none break-words">
                                         {selectedPlayer.name}
                                     </h3>
-                                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider truncate mt-0.5">
-                                        {selectedPlayer.team_name || selectedPlayer.team || 'Echipă necunoscută'} • {selectedPlayer.position || 'Jucător'}
-                                    </p>
+                                    <div className="flex items-center gap-2 mt-2 text-xs sm:text-sm font-black text-emerald-400 uppercase tracking-wider">
+                                        {selectedPlayer.team_logo && (
+                                            <img src={selectedPlayer.team_logo} alt="" className="w-4 h-4 sm:w-5 sm:h-5 object-contain bg-white rounded p-0.5 shrink-0" />
+                                        )}
+                                        <span className="truncate">{selectedPlayer.team_name || selectedPlayer.team || 'Echipă necunoscută'}</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                                {!selectedPlayer._id.startsWith('temp_') && (
+                            {!selectedPlayer._id.startsWith('temp_') && (
+                                <div className="flex items-center gap-2 shrink-0">
                                     <button
                                         type="button"
                                         onClick={(e) => toggleWatchlist(e, selectedPlayer)}
-                                        className={`p-2 rounded-xl border transition-colors ${
+                                        className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl border text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                                             watchlistIds.includes(selectedPlayer._id)
                                                 ? 'bg-emerald-600 text-white border-emerald-500'
-                                                : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-emerald-500'
+                                                : 'bg-white text-slate-900 border-slate-200 hover:bg-slate-100'
                                         }`}
-                                        title="Salvează în Lista de Scout"
                                     >
-                                        <Bookmark className={`w-4 h-4 ${watchlistIds.includes(selectedPlayer._id) ? 'fill-current' : ''}`} />
+                                        <Bookmark className={`w-3.5 h-3.5 ${watchlistIds.includes(selectedPlayer._id) ? 'fill-current' : ''}`} />
+                                        {watchlistIds.includes(selectedPlayer._id) ? 'În Listă' : 'Listă'}
                                     </button>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedPlayer(null)}
-                                    className="p-2 rounded-xl bg-slate-800 hover:bg-rose-600 text-white border border-slate-700 transition-colors"
-                                >
-                                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                                </button>
-                            </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={(e) => toggleComparePlayer(e, selectedPlayer)}
+                                        className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl border text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                                            compareList.some(p => p._id === selectedPlayer._id)
+                                                ? 'bg-amber-500 text-slate-950 border-amber-400'
+                                                : 'bg-slate-800 text-white border-slate-700 hover:bg-slate-700'
+                                        }`}
+                                    >
+                                        <Scale className="w-3.5 h-3.5" />
+                                        Compară
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 bg-slate-50 dark:bg-slate-950 flex-1">
+                        <div className="overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6 bg-slate-50 dark:bg-slate-950 flex-1">
                             {loadingPlayerCard ? (
                                 <div className="py-10 text-center text-xs font-black uppercase tracking-widest text-slate-400">
-                                    Se încarcă datele jucătorului...
+                                    Se încarcă datele complete ale jucătorului...
                                 </div>
                             ) : (
                                 <>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                                        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Vârstă</span>
-                                            <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white">{selectedPlayer.age ? `${selectedPlayer.age} ani` : '—'}</span>
-                                        </div>
-                                        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Naționalitate</span>
-                                            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate block">{selectedPlayer.nationality || '—'}</span>
-                                        </div>
-                                        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Goluri / Pase</span>
-                                            <span className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400">
-                                                {selectedPlayer.statistics_summary?.total_goals ?? 0} / {selectedPlayer.statistics_summary?.total_assists ?? 0}
+                                    {/* BADGE-URI BIOGRAFICE */}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {selectedPlayer.nationality && (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                                <Globe className="w-3.5 h-3.5 text-emerald-500" /> {selectedPlayer.nationality}
                                             </span>
-                                        </div>
-                                        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Rating</span>
-                                            <span className="text-sm sm:text-base font-black text-amber-500">
-                                                {selectedPlayer.statistics_summary?.rating || '—'}
+                                        )}
+                                        {selectedPlayer.age && (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                                <Users className="w-3.5 h-3.5 text-blue-500" /> {selectedPlayer.age} ANI
                                             </span>
+                                        )}
+                                        {(selectedPlayer.height || selectedPlayer.weight) && (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                                <Activity className="w-3.5 h-3.5 text-emerald-500" /> {selectedPlayer.height || '—'} / {selectedPlayer.weight || '—'}
+                                            </span>
+                                        )}
+                                        {selectedPlayer.position && (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-[10px] sm:text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                                                {selectedPlayer.position}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* CIFRELE SEZONULUI */}
+                                    <div className="space-y-3">
+                                        <h4 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                                            <Award className="w-4 h-4 text-amber-500" /> Cifrele Sezonului
+                                        </h4>
+                                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+                                            <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center">
+                                                <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white block">{playerMetrics?.apps ?? 0}</span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Meciuri</span>
+                                            </div>
+                                            <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border-2 border-emerald-500/40 text-center">
+                                                <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 block">{playerMetrics?.goals ?? 0}</span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Goluri</span>
+                                            </div>
+                                            <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border-2 border-blue-500/40 text-center">
+                                                <span className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 block">{playerMetrics?.assists ?? 0}</span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pase Decisive</span>
+                                            </div>
+                                            <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border-2 border-slate-200 dark:border-slate-800 text-center">
+                                                <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white block">{playerMetrics?.minutes ?? 0}&apos;</span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Minute</span>
+                                            </div>
+                                            <div className="col-span-2 sm:col-span-1 bg-white dark:bg-slate-900 p-3 rounded-2xl border-2 border-amber-500/50 text-center">
+                                                <span className="text-xl sm:text-2xl font-black text-amber-500 block">
+                                                    {playerMetrics && playerMetrics.rating > 0 ? playerMetrics.rating.toFixed(2) : '—'}
+                                                </span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Rating SofaScore</span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {selectedPlayer.statistics_summary && (
-                                        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col items-center">
-                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Profil Scouting</h4>
-                                            <PlayerRadarChart primaryPlayer={selectedPlayer} />
+                                    {/* ANALIZA SCOUTER (RADAR) + RANDAMENT / 90 MINUTE */}
+                                    <div className="bg-slate-900 text-white rounded-3xl p-4 sm:p-6 border-2 border-slate-800 space-y-5">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                                            <div className="flex flex-col items-center">
+                                                <h4 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-400 mb-3 flex items-center gap-1.5">
+                                                    <Activity className="w-4 h-4" /> Analiza Scouter (Radar)
+                                                </h4>
+                                                <PlayerRadarChart primaryPlayer={selectedPlayer} />
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <h4 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
+                                                    <TrendingUp className="w-4 h-4" /> Randament / 90 Minute
+                                                </h4>
+                                                <div className="grid grid-cols-2 gap-2.5">
+                                                    <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                                                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Goluri / 90&apos;</span>
+                                                        <span className="text-base sm:text-lg font-black text-emerald-400">{playerMetrics?.goalsPer90 ?? 0}</span>
+                                                    </div>
+                                                    <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                                                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Assist / 90&apos;</span>
+                                                        <span className="text-base sm:text-lg font-black text-blue-400">{playerMetrics?.assistsPer90 ?? 0}</span>
+                                                    </div>
+                                                    <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                                                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Contribuții / 90&apos;</span>
+                                                        <span className="text-base sm:text-lg font-black text-amber-400">{playerMetrics?.contributionsPer90 ?? 0}</span>
+                                                    </div>
+                                                    <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                                                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Min / Contribuție</span>
+                                                        <span className="text-base sm:text-lg font-black text-white">
+                                                            {playerMetrics && playerMetrics.minsPerContribution > 0 ? `${playerMetrics.minsPerContribution}'` : '—'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    )}
+
+                                        {/* DETALII PE COMPETIȚII (DACĂ EXISTĂ) */}
+                                        {Array.isArray(selectedPlayer.detailed_stats) && selectedPlayer.detailed_stats.length > 0 && (
+                                            <div className="pt-4 border-t border-slate-800 space-y-2">
+                                                <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                    Statistici pe Competiții
+                                                </h5>
+                                                <div className="divide-y divide-slate-800/80 bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden text-xs">
+                                                    {selectedPlayer.detailed_stats.map((st, idx) => (
+                                                        <div key={idx} className="flex items-center justify-between px-3.5 py-2.5 gap-2">
+                                                            <div className="min-w-0">
+                                                                <p className="font-black text-white truncate">{st.competition}</p>
+                                                                <p className="text-[10px] text-slate-400 font-bold">{st.appearances} meciuri • {st.minutes}&apos;</p>
+                                                            </div>
+                                                            <div className="text-right font-black shrink-0 text-[11px]">
+                                                                <span className="text-emerald-400">{st.goals}G</span>
+                                                                <span className="text-slate-600 mx-1">/</span>
+                                                                <span className="text-blue-400">{st.assists}A</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </>
                             )}
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* MODAL COMPARARE 2 JUCĂTORI */}
+            {showCompareModal && compareList.length === 2 && createPortal(
+                <div
+                    className="fixed inset-0 z-[999999999] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-3 sm:p-4"
+                    onClick={() => setShowCompareModal(false)}
+                >
+                    <div
+                        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-xl overflow-hidden border-2 sm:border-4 border-amber-500/50 shadow-2xl"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="bg-slate-950 text-white p-4 sm:p-5 flex items-center justify-between border-b border-slate-800">
+                            <h3 className="text-sm sm:text-base font-black uppercase tracking-widest flex items-center gap-2">
+                                <Scale className="w-4 h-4 text-amber-400" /> Comparare Jucători
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowCompareModal(false)}
+                                className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-white transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="p-4 sm:p-6 space-y-4 text-xs sm:text-sm">
+                            {(() => {
+                                const [p1, p2] = compareList;
+                                const m1 = computeScoutingMetrics(p1);
+                                const m2 = computeScoutingMetrics(p2);
+                                const rows = [
+                                    { label: 'Meciuri', v1: m1.apps, v2: m2.apps },
+                                    { label: 'Goluri', v1: m1.goals, v2: m2.goals },
+                                    { label: 'Pase Decisive', v1: m1.assists, v2: m2.assists },
+                                    { label: 'Minute', v1: m1.minutes, v2: m2.minutes },
+                                    { label: 'Rating', v1: m1.rating, v2: m2.rating },
+                                    { label: 'Goluri / 90\'', v1: m1.goalsPer90, v2: m2.goalsPer90 },
+                                    { label: 'Assist / 90\'', v1: m1.assistsPer90, v2: m2.assistsPer90 },
+                                ];
+                                return (
+                                    <>
+                                        <div className="grid grid-cols-3 items-center gap-2 text-center font-black uppercase">
+                                            <div className="truncate text-emerald-600 dark:text-emerald-400">{p1.name}</div>
+                                            <div className="text-[10px] text-slate-400">Metrică</div>
+                                            <div className="truncate text-blue-600 dark:text-blue-400">{p2.name}</div>
+                                        </div>
+                                        <div className="divide-y divide-slate-200 dark:divide-slate-800 border rounded-2xl border-slate-200 dark:border-slate-800 overflow-hidden">
+                                            {rows.map((r, i) => (
+                                                <div key={i} className="grid grid-cols-3 items-center px-3 py-2.5 text-center bg-slate-50 dark:bg-slate-950">
+                                                    <span className={`font-black ${r.v1 > r.v2 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}`}>{r.v1}</span>
+                                                    <span className="text-[10px] font-bold uppercase text-slate-500">{r.label}</span>
+                                                    <span className={`font-black ${r.v2 > r.v1 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>{r.v2}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>,
