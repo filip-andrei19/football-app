@@ -4,15 +4,20 @@ import { io } from 'socket.io-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, SortingState } from '@tanstack/react-table';
 import {
-    Calendar, Trophy, Activity, X, Globe, User as UserIcon, Star,
-    MapPin, Users, BarChart2, ListOrdered, Clock, Scale, Bookmark,
-    Check, TrendingUp, Swords, History, ArrowUp, ArrowDown, Minus,
+    Calendar, Trophy, X, Globe,
+    Users, BarChart2, ListOrdered, Clock, Bookmark,
+    Swords, History, ArrowUp, ArrowDown, Minus,
     Heart, Bell, Settings
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
-const socket = io("https://football-backend-m2a4.onrender.com");
+const API_BASE = (import.meta as any).env?.VITE_API_URL || "https://football-backend-m2a4.onrender.com";
+const socket = io(API_BASE, {
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1000,
+});
 const PRIORITY_LEAGUES = [283, 284, 2, 3, 848, 39, 140, 135, 78, 61];
 
 interface Match {
@@ -98,6 +103,14 @@ interface NotificationPrefs {
     redCards: boolean;
 }
 
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('footballAppToken');
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+};
+
 // ==========================================
 // COMPONENTA TANSTACK TABLE PENTRU CLASAMENT
 // ==========================================
@@ -148,7 +161,7 @@ function StandingsTable({ data, selectedMatchDetails, handleTeamClick }: { data:
         },
         {
             id: 'goals',
-            accessorFn: (row: any) => row.liveGoalsFor - row.liveGoalsAgainst, // Sortare după golaveraj
+            accessorFn: (row: any) => row.liveGoalsFor - row.liveGoalsAgainst,
             header: 'G',
             cell: (info: any) => {
                 const row = info.row.original;
@@ -159,11 +172,11 @@ function StandingsTable({ data, selectedMatchDetails, handleTeamClick }: { data:
             accessorKey: 'livePoints',
             header: 'PCT',
             cell: (info: any) => {
-                 const points = info.getValue();
-                 const row = info.row.original;
-                 const isCurrentTeam = row.team?.id === selectedMatchDetails.home_team_id || row.team?.id === selectedMatchDetails.away_team_id;
-                 const isPlayingNow = row.isLivePlaying;
-                 return <div className={`text-center font-black text-xs sm:text-sm ${isPlayingNow ? 'text-amber-500' : isCurrentTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{points}</div>
+                const points = info.getValue();
+                const row = info.row.original;
+                const isCurrentTeam = row.team?.id === selectedMatchDetails.home_team_id || row.team?.id === selectedMatchDetails.away_team_id;
+                const isPlayingNow = row.isLivePlaying;
+                return <div className={`text-center font-black text-xs sm:text-sm ${isPlayingNow ? 'text-amber-500' : isCurrentTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{points}</div>;
             }
         }
     ], [selectedMatchDetails]);
@@ -217,7 +230,6 @@ function StandingsTable({ data, selectedMatchDetails, handleTeamClick }: { data:
 }
 // ==========================================
 
-
 const urlB64ToUint8Array = (base64String: string) => {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -230,73 +242,73 @@ const urlB64ToUint8Array = (base64String: string) => {
 };
 
 const computeScoutingMetrics = (player: Player) => {
-  const stats = player.statistics_summary || {
-    total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0"
-  };
+    const stats = player.statistics_summary || {
+        total_goals: 0, total_assists: 0, total_appearances: 0, minutes_played: 0, rating: "0"
+    };
 
-  const posLower = (player.position || "").toLowerCase();
-  const isDefensive = posLower.includes('defender') || posLower.includes('back') || posLower.includes('goalkeeper') || posLower.includes('portar');
+    const posLower = (player.position || "").toLowerCase();
+    const isDefensive = posLower.includes('defender') || posLower.includes('back') || posLower.includes('goalkeeper') || posLower.includes('portar');
 
-  const goals = stats.total_goals || 0;
-  const assists = stats.total_assists || 0;
-  const apps = stats.total_appearances || 0;
-  const minutes = stats.minutes_played || 0;
-  const rating = parseFloat(stats.rating || "0") || 0;
+    const goals = stats.total_goals || 0;
+    const assists = stats.total_assists || 0;
+    const apps = stats.total_appearances || 0;
+    const minutes = stats.minutes_played || 0;
+    const rating = parseFloat(stats.rating || "0") || 0;
 
-  const goalsPer90 = minutes >= 90 ? Number(((goals / minutes) * 90).toFixed(2)) : 0;
-  const assistsPer90 = minutes >= 90 ? Number(((assists / minutes) * 90).toFixed(2)) : 0;
-  const contributionsPer90 = goalsPer90 + assistsPer90;
-  const minsPerContribution = (goals + assists) > 0 ? Math.round(minutes / (goals + assists)) : 0;
+    const goalsPer90 = minutes >= 90 ? Number(((goals / minutes) * 90).toFixed(2)) : 0;
+    const assistsPer90 = minutes >= 90 ? Number(((assists / minutes) * 90).toFixed(2)) : 0;
+    const contributionsPer90 = goalsPer90 + assistsPer90;
+    const minsPerContribution = (goals + assists) > 0 ? Math.round(minutes / (goals + assists)) : 0;
 
-  const BASE_SCORE = 19;
-  let primaryScore = BASE_SCORE;
-  let primaryLabel = "Finalizare";
-  
-  if (isDefensive) {
-      primaryLabel = "Defensivă";
-      const defRatingScore = rating > 6.4 ? Math.min(50, (rating - 6.4) * (50 / 1.4)) : 0; 
-      const defAppsScore = Math.min(30, (apps / 38) * 30);
-      primaryScore = Math.min(99, Math.round(BASE_SCORE + defRatingScore + defAppsScore));
-  } else {
-      const rateScore = Math.min(60, (goalsPer90 / 1.2) * 60);
-      const volScore = Math.min(20, (goals / 35) * 20);
-      primaryScore = Math.min(99, Math.round(BASE_SCORE + rateScore + volScore));
-  }
+    const BASE_SCORE = 19;
+    let primaryScore = BASE_SCORE;
+    let primaryLabel = "Finalizare";
 
-  const assistRateScore = Math.min(60, (assistsPer90 / 0.7) * 60);
-  const assistVolScore = Math.min(20, (assists / 20) * 20);
-  const creativityScore = Math.min(99, Math.round(BASE_SCORE + assistRateScore + assistVolScore));
+    if (isDefensive) {
+        primaryLabel = "Defensivă";
+        const defRatingScore = rating > 6.4 ? Math.min(50, (rating - 6.4) * (50 / 1.4)) : 0;
+        const defAppsScore = Math.min(30, (apps / 38) * 30);
+        primaryScore = Math.min(99, Math.round(BASE_SCORE + defRatingScore + defAppsScore));
+    } else {
+        const rateScore = Math.min(60, (goalsPer90 / 1.2) * 60);
+        const volScore = Math.min(20, (goals / 35) * 20);
+        primaryScore = Math.min(99, Math.round(BASE_SCORE + rateScore + volScore));
+    }
 
-  const appsScore = Math.min(40, (apps / 38) * 40);
-  const minsScore = Math.min(40, (minutes / 3420) * 40);
-  const consistencyScore = Math.min(99, Math.round(BASE_SCORE + appsScore + minsScore));
+    const assistRateScore = Math.min(60, (assistsPer90 / 0.7) * 60);
+    const assistVolScore = Math.min(20, (assists / 20) * 20);
+    const creativityScore = Math.min(99, Math.round(BASE_SCORE + assistRateScore + assistVolScore));
 
-  let formScore = BASE_SCORE;
-  if (rating > 6.0) {
-      formScore = Math.min(99, Math.round(BASE_SCORE + ((rating - 6.0) * 40)));
-  } else if (rating > 0 && rating <= 6.0) {
-      formScore = Math.max(1, Math.round(rating * 3));
-  }
+    const appsScore = Math.min(40, (apps / 38) * 40);
+    const minsScore = Math.min(40, (minutes / 3420) * 40);
+    const consistencyScore = Math.min(99, Math.round(BASE_SCORE + appsScore + minsScore));
 
-  const impactRateScore = Math.min(60, (contributionsPer90 / 1.4) * 60);
-  const impactFormScore = Math.min(20, (formScore / 100) * 20);
-  const impactScore = Math.min(99, Math.round(BASE_SCORE + impactRateScore + impactFormScore));
+    let formScore = BASE_SCORE;
+    if (rating > 6.0) {
+        formScore = Math.min(99, Math.round(BASE_SCORE + ((rating - 6.0) * 40)));
+    } else if (rating > 0 && rating <= 6.0) {
+        formScore = Math.max(1, Math.round(rating * 3));
+    }
 
-  return {
-    goals, assists, apps, minutes, rating, goalsPer90, assistsPer90, contributionsPer90, minsPerContribution,
-    radar: [
-      { label: primaryLabel, value: primaryScore || 0 },
-      { label: "Creație", value: creativityScore || 0 },
-      { label: "Constanță", value: consistencyScore || 0 },
-      { label: "Formă", value: formScore || 0 },
-      { label: "Impact", value: impactScore || 0 }
-    ]
-  };
+    const impactRateScore = Math.min(60, (contributionsPer90 / 1.4) * 60);
+    const impactFormScore = Math.min(20, (formScore / 100) * 20);
+    const impactScore = Math.min(99, Math.round(BASE_SCORE + impactRateScore + impactFormScore));
+
+    return {
+        goals, assists, apps, minutes, rating, goalsPer90, assistsPer90, contributionsPer90, minsPerContribution,
+        radar: [
+            { label: primaryLabel, value: primaryScore || 0 },
+            { label: "Creație", value: creativityScore || 0 },
+            { label: "Constanță", value: consistencyScore || 0 },
+            { label: "Formă", value: formScore || 0 },
+            { label: "Impact", value: impactScore || 0 }
+        ]
+    };
 };
 
 const PlayerRadarChart = ({ primaryPlayer }: { primaryPlayer: Player }) => {
     const m1 = computeScoutingMetrics(primaryPlayer);
-    const isMobile = window.innerWidth < 640;
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
     const size = isMobile ? 180 : 230;
     const center = size / 2;
     const radius = isMobile ? 60 : 78;
@@ -352,18 +364,20 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [dates, setDates] = useState<{ date: Date; label: string; isToday: boolean }[]>([]);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [subFilter, setSubFilter] = useState<'all' | 'live' | 'finished' | 'favorites'>('all');
-    
+
     const [favoriteMatches, setFavoriteMatches] = useState<number[]>([]);
-    const [favoriteTeams, setFavoriteTeams] = useState<string[]>([]); 
-    
+    const [favoriteTeams, setFavoriteTeams] = useState<string[]>([]);
+
     const [showNotifSettings, setShowNotifSettings] = useState(false);
     const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(() => {
         try {
             const saved = localStorage.getItem('scout_notif_prefs');
             return saved ? JSON.parse(saved) : { goals: true, matchStart: true, halfTime: false, fullTime: true, redCards: true };
-        } catch { return { goals: true, matchStart: true, halfTime: false, fullTime: true, redCards: true }; }
+        } catch {
+            return { goals: true, matchStart: true, halfTime: false, fullTime: true, redCards: true };
+        }
     });
-    
+
     const notifPrefsRef = useRef(notifPrefs);
     useEffect(() => {
         notifPrefsRef.current = notifPrefs;
@@ -372,15 +386,18 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const [selectedTeam, setSelectedTeam] = useState<SquadData | null>(null);
     const [loadingRoster, setLoadingRoster] = useState(false);
-    
+
     const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+    const [loadingPlayerCard, setLoadingPlayerCard] = useState(false);
+
     const [compareList, setCompareList] = useState<Player[]>([]);
-    const [showCompareModal, setShowCompareModal] = useState(false);
     const [watchlistIds, setWatchlistIds] = useState<string[]>(() => {
         try {
             const saved = localStorage.getItem('scout_watchlist_ids');
             return saved ? JSON.parse(saved) : [];
-        } catch { return []; }
+        } catch {
+            return [];
+        }
     });
 
     const [selectedMatchDetails, setSelectedMatchDetails] = useState<Match | null>(null);
@@ -396,9 +413,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         try {
             const registration = await navigator.serviceWorker.ready;
             let subscription = await registration.pushManager.getSubscription();
-            
+
             if (!subscription) {
-                const publicVapidKey = (import.meta as any).env.VITE_VAPID_PUBLIC_KEY; 
+                const publicVapidKey = (import.meta as any).env?.VITE_VAPID_PUBLIC_KEY;
                 if (!publicVapidKey) return;
                 const applicationServerKey = urlB64ToUint8Array(publicVapidKey);
                 subscription = await registration.pushManager.subscribe({
@@ -407,12 +424,14 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 });
             }
 
-            await fetch('https://football-backend-m2a4.onrender.com/api/notifications/subscribe', {
+            await fetch(`${API_BASE}/api/notifications/subscribe`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ email: email, subscription: subscription })
             });
-        } catch (error) { console.error('Eroare la abonarea Push:', error); }
+        } catch (error) {
+            console.error('Eroare la abonarea Push:', error);
+        }
     };
 
     useEffect(() => {
@@ -443,20 +462,23 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         setSelectedDate(today);
 
         if (userEmail) {
-            fetch(`https://football-backend-m2a4.onrender.com/api/users/refresh`, {
+            fetch(`${API_BASE}/api/users/refresh`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ email: userEmail })
-            }).then(res => res.json()).then(data => {
-                if (data.success && data.user) {
-                    if (data.user.favoriteMatches) setFavoriteMatches(data.user.favoriteMatches);
-                    if (data.user.favoriteTeams) setFavoriteTeams(data.user.favoriteTeams);
-                    if (data.user.scoutWatchlist) {
-                        setWatchlistIds(data.user.scoutWatchlist);
-                        localStorage.setItem('scout_watchlist_ids', JSON.stringify(data.user.scoutWatchlist));
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.user) {
+                        if (data.user.favoriteMatches) setFavoriteMatches(data.user.favoriteMatches);
+                        if (data.user.favoriteTeams) setFavoriteTeams(data.user.favoriteTeams);
+                        if (data.user.scoutWatchlist) {
+                            setWatchlistIds(data.user.scoutWatchlist);
+                            localStorage.setItem('scout_watchlist_ids', JSON.stringify(data.user.scoutWatchlist));
+                        }
                     }
-                }
-            }).catch(() => {});
+                })
+                .catch(() => {});
         }
     }, [userEmail]);
 
@@ -468,12 +490,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const { data: matches = [], isLoading: loading } = useQuery({
         queryKey: ['matches', localDateStr],
         queryFn: async () => {
-            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/matches?date=${localDateStr}`);
+            const res = await fetch(`${API_BASE}/api/sport/matches?date=${localDateStr}`);
             if (!res.ok) throw new Error("Eroare preluare meciuri");
             return res.json();
         },
-        staleTime: 60 * 1000,       
-        refetchInterval: 60 * 1000, 
+        staleTime: 60 * 1000,
+        refetchInterval: 60 * 1000,
     });
 
     useEffect(() => {
@@ -481,7 +503,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             queryClient.setQueriesData<Match[]>({ queryKey: ['matches', localDateStr] }, (oldMatches) => {
                 if (!oldMatches) return oldMatches;
                 const index = oldMatches.findIndex(m => m.fixture_id === updatedMatch.fixture_id);
-                
+
                 if (index !== -1) {
                     const oldMatch = oldMatches[index];
                     const isFavMatch = favoriteMatches.includes(updatedMatch.fixture_id);
@@ -531,27 +553,24 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         return () => { socket.off("live_match_update"); };
     }, [favoriteMatches, favoriteTeams, queryClient, localDateStr]);
 
-    const toggleNotifPref = (key: keyof NotificationPrefs) => { setNotifPrefs(prev => ({ ...prev, [key]: !prev[key] })); };
-
-    const toggleFavoriteTeam = async (e: React.MouseEvent, teamName: string) => {
-        e.stopPropagation();
-        if (!userEmail) { toast.error("Trebuie să ai legitimație (cont) pentru a salva echipe la favorite!"); return; }
-        const isFav = favoriteTeams.includes(teamName);
-        const newFavTeams = isFav ? favoriteTeams.filter(t => t !== teamName) : [...favoriteTeams, teamName];
-        setFavoriteTeams(newFavTeams);
-        try {
-            await fetch(`https://football-backend-m2a4.onrender.com/api/users/favorite-teams/toggle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: userEmail, teamName }) });
-        } catch (err) { setFavoriteTeams(favoriteTeams); }
+    const toggleNotifPref = (key: keyof NotificationPrefs) => {
+        setNotifPrefs(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     const toggleFavoriteMatch = async (e: React.MouseEvent, fixtureId: number) => {
         e.stopPropagation();
         if (!userEmail) { toast.error("Trebuie să ai legitimație (cont) pentru a salva meciuri la favorite!"); return; }
         try {
-            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/users/favorite-matches/toggle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: userEmail, fixtureId }) });
+            const res = await fetch(`${API_BASE}/api/users/favorite-matches/toggle`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ email: userEmail, fixtureId })
+            });
             const data = await res.json();
             if (data.success) { setFavoriteMatches(data.favoriteMatches); }
-        } catch (err) { console.error(err); }
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     const toggleWatchlist = async (e: React.MouseEvent, player: Player) => {
@@ -562,10 +581,17 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         const updated = exists ? watchlistIds.filter(id => id !== playerId) : [...watchlistIds, playerId];
         setWatchlistIds(updated);
         localStorage.setItem('scout_watchlist_ids', JSON.stringify(updated));
+        toast.success(exists ? "Eliminat din Lista de Scout." : "Adăugat în Lista de Scout!");
 
         try {
-            await fetch(`https://football-backend-m2a4.onrender.com/api/users/watchlist/toggle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: userEmail, playerId }) });
-        } catch (err) { console.error(err); }
+            await fetch(`${API_BASE}/api/users/watchlist/toggle`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ email: userEmail, playerId })
+            });
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     const toggleComparePlayer = (e: React.MouseEvent, player: Player) => {
@@ -586,14 +612,18 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             const data: any = await queryClient.fetchQuery({
                 queryKey: ['teamRoster', teamName],
                 queryFn: async () => {
-                    const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/teams/${encodeURIComponent(teamName)}/roster`);
+                    const res = await fetch(`${API_BASE}/api/sport/teams/${encodeURIComponent(teamName)}/roster`);
                     if (!res.ok) throw new Error("Nu am putut prelua lotul.");
                     return res.json();
                 },
-                staleTime: 60 * 60 * 1000, 
+                staleTime: 60 * 60 * 1000,
             });
             setSelectedTeam(data);
-        } catch (err: any) { toast.error(err.message); } finally { setLoadingRoster(false); }
+        } catch (err: any) {
+            toast.error(err.message);
+        } finally {
+            setLoadingRoster(false);
+        }
     };
 
     const handleMatchClick = async (match: Match) => {
@@ -602,7 +632,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
         setSelectedMatchDetails(match);
         setLineupViewMode('both');
-        setActiveMatchTab(match.status_short === "NS" ? 'h2h' : 'events'); 
+        setActiveMatchTab(match.status_short === "NS" ? 'h2h' : 'events');
 
         fetchStandings(match.league_id);
 
@@ -610,11 +640,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             const fullData: any = await queryClient.fetchQuery({
                 queryKey: ['matchDetails', match.fixture_id],
                 queryFn: async () => {
-                    const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/matches/${match.fixture_id}/details`);
+                    const res = await fetch(`${API_BASE}/api/sport/matches/${match.fixture_id}/details`);
                     if (!res.ok) throw new Error("Eroare preluare foi de joc");
                     return res.json();
                 },
-                staleTime: 60 * 1000, 
+                staleTime: 60 * 1000,
             });
 
             setSelectedMatchDetails(fullData);
@@ -622,7 +652,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 if (!oldMatches) return oldMatches;
                 return oldMatches.map(m => (m.fixture_id === fullData.fixture_id ? { ...m, ...fullData } : m));
             });
-        } catch (err) { console.error("Eroare detalii meci:", err); } finally { setLoadingMatchDetails(false); }
+        } catch (err) {
+            console.error("Eroare detalii meci:", err);
+        } finally {
+            setLoadingMatchDetails(false);
+        }
     };
 
     const fetchStandings = async (leagueId: number) => {
@@ -632,33 +666,67 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             const data: any = await queryClient.fetchQuery({
                 queryKey: ['standings', leagueId],
                 queryFn: async () => {
-                    const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/standings/${leagueId}`);
+                    const res = await fetch(`${API_BASE}/api/sport/standings/${leagueId}`);
                     if (!res.ok) throw new Error("Eroare clasament");
                     return res.json();
                 },
-                staleTime: 15 * 60 * 1000, 
+                staleTime: 15 * 60 * 1000,
             });
             setStandingsData(data.table || []);
-        } catch (err) { console.error("Eroare clasament:", err); } finally { setLoadingStandings(false); }
+        } catch (err) {
+            console.error("Eroare clasament:", err);
+        } finally {
+            setLoadingStandings(false);
+        }
     };
 
-    const handleLineupPlayerClick = async (playerName?: string) => {
+    const handleOpenPlayerProfile = async (playerName?: string, fallbackTeam?: string) => {
         if (!playerName) return;
+        const cleanName = playerName.trim();
+        setLoadingPlayerCard(true);
+        setSelectedPlayer({
+            _id: `temp_${cleanName}`,
+            name: cleanName,
+            position: 'Jucător',
+            team_name: fallbackTeam || '',
+        });
+
         try {
-            const res = await fetch(`https://football-backend-m2a4.onrender.com/api/sport/players?search=${encodeURIComponent(playerName)}`);
+            const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(cleanName)}&limit=10`);
             if (res.ok) {
-                const players = await res.json();
-                if (players && players.length > 0) { setSelectedPlayer(players[0]); } 
-                else { toast.error(`Dosarul pentru jucătorul ${playerName} nu se află încă în arhivă.`); }
+                const players: Player[] = await res.json();
+                if (players && players.length > 0) {
+                    const exactMatch = players.find(p => (p.name || '').toLowerCase().trim() === cleanName.toLowerCase());
+                    setSelectedPlayer(exactMatch || players[0]);
+                    return;
+                }
             }
-        } catch (err) { console.error(err); }
+
+            // Fallback după ultimul cuvânt dacă numele este abreviat (ex. "I. Popescu" -> "Popescu")
+            const parts = cleanName.split(/\s+/);
+            const lastToken = parts[parts.length - 1];
+            if (lastToken && lastToken.length >= 3 && lastToken !== cleanName) {
+                const resLast = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(lastToken)}&limit=10`);
+                if (resLast.ok) {
+                    const fallbackPlayers: Player[] = await resLast.json();
+                    if (fallbackPlayers && fallbackPlayers.length > 0) {
+                        setSelectedPlayer(fallbackPlayers[0]);
+                        return;
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Eroare la încărcarea profilului jucătorului:", err);
+        } finally {
+            setLoadingPlayerCard(false);
+        }
     };
 
     const filteredMatches = matches.filter((match: Match) => {
         const isLive = ["1H", "HT", "2H", "ET", "P", "BT", "LIVE"].includes(match.status_short);
         const isFinished = ["FT", "AET", "PEN"].includes(match.status_short);
         const isFav = favoriteMatches.includes(match.fixture_id) || favoriteTeams.includes(match.home_team_name) || favoriteTeams.includes(match.away_team_name);
-        
+
         if (subFilter === 'live') return isLive;
         if (subFilter === 'finished') return isFinished;
         if (subFilter === 'favorites') return isFav;
@@ -666,7 +734,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     });
 
     const groupedMatches = filteredMatches.reduce((acc: Record<string, { league_id: number; logo: string; items: Match[] }>, match: Match) => {
-        if (!acc[match.league_name]) { acc[match.league_name] = { league_id: match.league_id, logo: match.league_logo, items: [] }; }
+        if (!acc[match.league_name]) {
+            acc[match.league_name] = { league_id: match.league_id, logo: match.league_logo, items: [] };
+        }
         acc[match.league_name].items.push(match);
         return acc;
     }, {} as Record<string, { league_id: number; logo: string; items: Match[] }>);
@@ -687,7 +757,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const renderStatus = (match: Match) => {
         const status = match.status_short;
         const liveStatuses = ["1H", "2H", "HT", "ET", "P", "BT", "LIVE"];
-        if (status === "NS") return null; 
+        if (status === "NS") return null;
         if (liveStatuses.includes(status)) return <span className="text-rose-600 font-black animate-pulse text-[10px] sm:text-xs tracking-widest uppercase">{match.elapsed ? `${match.elapsed}'` : status}</span>;
         if (status === "FT" || status === "AET" || status === "PEN") return <span className="text-slate-400 font-black text-[9px] sm:text-xs uppercase tracking-widest">Final</span>;
         return <span className="text-amber-500 font-black text-[9px] sm:text-xs uppercase tracking-widest">{status}</span>;
@@ -716,9 +786,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     const parts = String(gridStr).split(':');
                     row = parseInt(parts[0], 10) || 1; col = parseInt(parts[1], 10) || idx + 1;
                 } else if (item?.player?.pos === 'G') { row = 1; col = 1;
-                } else if (item?.player?.pos === 'D') { row = 2;
-                } else if (item?.player?.pos === 'M') { row = 3;
-                } else { row = 4; }
+                } else if (item?.player?.pos === 'D') { row = 2; col = 1;
+                } else if (item?.player?.pos === 'M') { row = 3; col = 1;
+                } else { row = 4; col = 1; }
                 if (!rowsMap.has(row)) rowsMap.set(row, []);
                 rowsMap.get(row)!.push({ col, item });
             });
@@ -736,7 +806,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         const resultRows: any[][] = [];
         if (gk.length > 0) resultRows.push(gk);
 
-        if (formationStr && /^\d+(-\d+)+\$/.test(formationStr.trim())) {
+        if (formationStr && /^\d+(-\d+)+$/.test(formationStr.trim())) {
             const counts = formationStr.trim().split('-').map(Number);
             let cursor = 0;
             counts.forEach(count => {
@@ -773,7 +843,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         return { goals, yellow, red, subOut };
     };
 
-    const renderPitchPlayerNode = (item: any, isAwayTeam: boolean, idx: number) => {
+    const renderPitchPlayerNode = (item: any, isAwayTeam: boolean, idx: number, teamName?: string) => {
         const pName: string = item?.player?.name || "Jucător";
         const pNum = item?.player?.number ?? "-";
         const pPos = item?.player?.pos || "";
@@ -781,15 +851,20 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         const isGK = pPos === 'G';
         const badges = getPlayerMatchBadges(pName, item?.player?.id);
         const shortName = pName.includes(' ') ? `${pName.split(' ')[0].charAt(0)}. ${pName.split(' ').slice(-1)[0]}` : pName;
-        
+
         let shirtStyle = isAwayTeam ? "bg-slate-900 text-white border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" : "bg-white text-slate-900 border-slate-300 shadow-[0_0_10px_rgba(255,255,255,0.5)]";
         if (isGK) { shirtStyle = isAwayTeam ? "bg-amber-500 text-slate-950 border-amber-300" : "bg-yellow-400 text-slate-950 border-white"; }
-        
+
         const ratingNum = pRating ? parseFloat(pRating) : 0;
         const ratingBg = ratingNum >= 7.5 ? "bg-emerald-500" : ratingNum >= 6.8 ? "bg-emerald-600" : ratingNum > 0 ? "bg-amber-500" : "bg-slate-700";
 
         return (
-            <div key={item?.player?.id || `${pName}-${idx}`} onClick={() => handleLineupPlayerClick(pName)} className="cursor-pointer group flex flex-col items-center select-none w-auto sm:w-[85px] z-10 mx-0.5 sm:mx-1" title={`${pName} (#${pNum}) - Poziție: ${pPos || 'Titular'}`}>
+            <div
+                key={item?.player?.id || `${pName}-${idx}`}
+                onClick={() => handleOpenPlayerProfile(pName, teamName)}
+                className="cursor-pointer group flex flex-col items-center select-none w-auto sm:w-[85px] z-10 mx-0.5 sm:mx-1"
+                title={`${pName} (#${pNum}) - Apasă pentru profil`}
+            >
                 <div className="relative">
                     <div className={`w-7 h-7 sm:w-12 sm:h-12 rounded-full ${shirtStyle} font-black text-[9px] sm:text-base flex items-center justify-center border-2 sm:border-4 group-hover:scale-110 transition-transform`}>{pNum}</div>
                     {ratingNum > 0 && <span className={`absolute -top-1.5 -right-1 sm:-right-3 ${ratingBg} text-white text-[6px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.5 rounded shadow-sm border border-white/30`}>{ratingNum.toFixed(1)}</span>}
@@ -797,7 +872,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     {(badges.yellow || badges.red) && <span className={`absolute -top-1 -left-1 w-2 h-2.5 sm:w-3 sm:h-4 rounded-[1px] sm:rounded-sm shadow border border-white/50 ${badges.red ? 'bg-red-600' : 'bg-yellow-400'}`} />}
                     {badges.subOut && <span className="absolute -bottom-1 -left-1 sm:-bottom-1.5 sm:-left-2 bg-slate-900 text-white text-[6px] sm:text-[8px] rounded-full w-2.5 h-2.5 sm:w-4 sm:h-4 flex items-center justify-center shadow border border-white/50">🔄</span>}
                 </div>
-                <div className="mt-0.5 sm:mt-1 bg-slate-950/90 text-white text-[6px] sm:text-[10px] font-bold px-1 sm:px-1.5 py-0.5 rounded shadow-md max-w-full text-center border border-white/10 tracking-tight sm:tracking-wide leading-tight w-full break-words truncate">{shortName}</div>
+                <div className="mt-0.5 sm:mt-1 bg-slate-950/90 group-hover:bg-emerald-700 text-white text-[6px] sm:text-[10px] font-bold px-1 sm:px-1.5 py-0.5 rounded shadow-md max-w-full text-center border border-white/10 tracking-tight sm:tracking-wide leading-tight w-full break-words truncate transition-colors">{shortName}</div>
             </div>
         );
     };
@@ -830,7 +905,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
         const realFormHome = parseForm(rawHomeForm);
         const realFormAway = parseForm(rawAwayForm);
-        
+
         let matchPredictions = selectedMatchDetails?.predictions;
 
         if (!matchPredictions) {
@@ -856,16 +931,16 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             const homeFormPts = calculateFormPoints(realFormHome);
             const awayFormPts = calculateFormPoints(realFormAway);
 
-            const homeAdvantage = 5; 
+            const homeAdvantage = 5;
             const homeTotal = homePrestige + homeFormPts + homeAdvantage;
             const awayTotal = awayPrestige + awayFormPts;
             const matchTotal = homeTotal + awayTotal;
 
             const diff = Math.abs(homeTotal - awayTotal);
-            let drawChance = Math.max(12, 30 - Math.floor(diff / 2));
+            const drawChance = Math.max(12, 30 - Math.floor(diff / 2));
             const remainingChance = 100 - drawChance;
-            let homeChance = Math.round((homeTotal / matchTotal) * remainingChance);
-            let awayChance = remainingChance - homeChance;
+            const homeChance = Math.round((homeTotal / matchTotal) * remainingChance);
+            const awayChance = remainingChance - homeChance;
 
             matchPredictions = { home: homeChance, draw: drawChance, away: awayChance };
         }
@@ -930,9 +1005,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const liveStandings = useMemo(() => {
         if (!standingsData || standingsData.length === 0) return [];
-        
+
         return standingsData.map(groupTable => {
-            let liveTable = groupTable.map((row: any) => ({
+            const liveTable = groupTable.map((row: any) => ({
                 ...row,
                 livePoints: row.points,
                 livePlayed: row.all?.played || 0,
@@ -942,8 +1017,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 originalRank: row.rank
             }));
 
-            const liveLeagueMatches = matches.filter((m: Match) => 
-                m.league_id === selectedMatchDetails?.league_id && 
+            const liveLeagueMatches = matches.filter((m: Match) =>
+                m.league_id === selectedMatchDetails?.league_id &&
                 ["1H", "2H", "HT", "ET", "P", "BT", "LIVE"].includes(m.status_short)
             );
 
@@ -1102,7 +1177,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                     className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border transition shrink-0 ${isFav ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-amber-500'}`}
                                                     title="Marchează la favorite"
                                                 >
-                                                    <Heart className={`w-3.5 h-3.5 sm:w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+                                                    <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isFav ? 'fill-current' : ''}`} />
                                                 </button>
 
                                                 <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-4 px-1 sm:px-2 min-w-0">
@@ -1144,7 +1219,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     })}
                 </div>
             )}
-            
+
             {loadingRoster && createPortal(
                 <div className="fixed inset-0 z-[999999] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center">
                     <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
@@ -1168,7 +1243,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         </div>
                         <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
                             <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest text-center mb-4 sm:mb-6">Alege ce primești pentru meciurile favorite</p>
-                            
+
                             {[
                                 { id: 'goals', label: 'Goluri Marcate', icon: '⚽' },
                                 { id: 'matchStart', label: 'Fluier de Start', icon: '▶️' },
@@ -1181,7 +1256,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         <span className="text-lg sm:text-xl">{setting.icon}</span>
                                         <span className="text-[10px] sm:text-sm font-black text-white uppercase tracking-wider">{setting.label}</span>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => toggleNotifPref(setting.id as keyof NotificationPrefs)}
                                         className={`w-10 h-5 sm:w-12 sm:h-6 rounded-full transition-colors relative shrink-0 ${notifPrefs[setting.id as keyof NotificationPrefs] ? 'bg-emerald-500' : 'bg-slate-600'}`}
                                     >
@@ -1208,7 +1283,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 <span className="truncate max-w-[150px] sm:max-w-none">{selectedMatchDetails.league_name}</span>
                                 {selectedMatchDetails.league_round && <span className="text-slate-500 hidden sm:inline">• {selectedMatchDetails.league_round}</span>}
                             </div>
-                            
+
                             <div className="flex items-center justify-between gap-1 sm:gap-6 max-w-2xl mx-auto relative z-10 px-1 sm:px-0">
                                 <div onClick={e => handleTeamClick(e, selectedMatchDetails.home_team_name)} className="flex-1 flex flex-col items-center text-center cursor-pointer group">
                                     <div className="w-12 h-12 sm:w-24 sm:h-24 bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-3 shadow-[0_0_15px_rgba(255,255,255,0.2)] mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
@@ -1233,9 +1308,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
                         <div className="flex border-b-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shrink-0 overflow-x-auto scrollbar-hide snap-x">
                             {[
-                                { id: 'events', label: 'Evenimente', icon: Clock }, 
-                                { id: 'lineups', label: 'Tactică', icon: Users }, 
-                                { id: 'stats', label: 'Statistici', icon: BarChart2 }, 
+                                { id: 'events', label: 'Evenimente', icon: Clock },
+                                { id: 'lineups', label: 'Tactică', icon: Users },
+                                { id: 'stats', label: 'Statistici', icon: BarChart2 },
                                 { id: 'standings', label: 'Clasament', icon: ListOrdered },
                                 { id: 'h2h', label: 'H2H & Formă', icon: History }
                             ].map(tab => {
@@ -1244,7 +1319,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     <button key={tab.id} onClick={() => { setActiveMatchTab(tab.id as any); if (tab.id === 'standings') fetchStandings(selectedMatchDetails.league_id); }} className={`snap-start flex-1 py-3 sm:py-3.5 px-3 sm:px-4 text-[9px] sm:text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1.5 sm:gap-2 border-b-4 transition-all whitespace-nowrap min-w-fit ${isActive ? 'border-emerald-600 bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-inner' : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800'}`}>
                                         <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> {tab.label}
                                     </button>
-                                )
+                                );
                             })}
                         </div>
 
@@ -1269,6 +1344,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                     )}
                                                     {selectedMatchDetails.events.map((ev: any, idx: number) => {
                                                         const isHome = ev.team?.id === selectedMatchDetails.home_team_id;
+                                                        const eventTeamName = isHome ? selectedMatchDetails.home_team_name : selectedMatchDetails.away_team_name;
                                                         let icon = "•";
                                                         if (ev.type === "Goal") icon = "⚽"; else if (ev.type === "Card" && ev.detail === "Yellow Card") icon = "🟨"; else if (ev.type === "Card" && ev.detail?.includes("Red")) icon = "🟥"; else if (ev.type === "subst") icon = "🔄";
                                                         return (
@@ -1278,13 +1354,58 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                 <div className="flex-1 min-w-0">
                                                                     {ev.type === "subst" ? (
                                                                         <>
-                                                                            <p className="font-black text-emerald-600 dark:text-emerald-500 tracking-tight text-[9px] sm:text-sm truncate uppercase">INTRĂ: {ev.assist?.name || "N/A"}</p>
-                                                                            <p className="text-[8px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-500 tracking-widest truncate mt-0.5 uppercase">IESE: {ev.player?.name}</p>
+                                                                            <p className="font-black text-emerald-600 dark:text-emerald-500 tracking-tight text-[9px] sm:text-sm truncate uppercase">
+                                                                                INTRĂ:{' '}
+                                                                                {ev.assist?.name ? (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleOpenPlayerProfile(ev.assist.name, eventTeamName)}
+                                                                                        className="underline decoration-emerald-500/40 hover:decoration-emerald-400 cursor-pointer font-black uppercase"
+                                                                                    >
+                                                                                        {ev.assist.name}
+                                                                                    </button>
+                                                                                ) : (
+                                                                                    "N/A"
+                                                                                )}
+                                                                            </p>
+                                                                            <p className="text-[8px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-500 tracking-widest truncate mt-0.5 uppercase">
+                                                                                IESE:{' '}
+                                                                                {ev.player?.name && (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleOpenPlayerProfile(ev.player.name, eventTeamName)}
+                                                                                        className="underline decoration-rose-500/40 hover:decoration-rose-400 cursor-pointer font-bold uppercase"
+                                                                                    >
+                                                                                        {ev.player.name}
+                                                                                    </button>
+                                                                                )}
+                                                                            </p>
                                                                         </>
                                                                     ) : (
                                                                         <>
-                                                                            <p className="font-black text-slate-900 dark:text-white tracking-tight text-[10px] sm:text-sm truncate">{ev.player?.name}</p>
-                                                                            {ev.assist?.name && <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 tracking-widest truncate mt-0.5">Pasă: {ev.assist.name}</p>}
+                                                                            <p className="font-black text-slate-900 dark:text-white tracking-tight text-[10px] sm:text-sm truncate">
+                                                                                {ev.player?.name ? (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleOpenPlayerProfile(ev.player.name, eventTeamName)}
+                                                                                        className="hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-slate-300 dark:decoration-slate-700 hover:decoration-emerald-500 cursor-pointer font-black"
+                                                                                    >
+                                                                                        {ev.player.name}
+                                                                                    </button>
+                                                                                ) : null}
+                                                                            </p>
+                                                                            {ev.assist?.name && (
+                                                                                <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 tracking-widest truncate mt-0.5">
+                                                                                    Pasă:{' '}
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleOpenPlayerProfile(ev.assist.name, eventTeamName)}
+                                                                                        className="hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-slate-400/40 cursor-pointer font-bold"
+                                                                                    >
+                                                                                        {ev.assist.name}
+                                                                                    </button>
+                                                                                </p>
+                                                                            )}
                                                                         </>
                                                                     )}
                                                                 </div>
@@ -1327,19 +1448,19 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                             <>
                                                                 <div className="flex-1 flex flex-col justify-around relative z-10 pb-2 sm:pb-4 pt-1">
                                                                     {homeRowsTopDown.map((rowItems, rIdx) => (
-                                                                        <div key={`home-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, false, pIdx))}</div>
+                                                                        <div key={`home-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, false, pIdx, homeTeamLineup?.team?.name))}</div>
                                                                     ))}
                                                                 </div>
                                                                 <div className="flex-1 flex flex-col justify-around relative z-10 pt-2 sm:pt-4 pb-1">
                                                                     {awayRowsBottomUp.map((rowItems, rIdx) => (
-                                                                        <div key={`away-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, true, pIdx))}</div>
+                                                                        <div key={`away-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, true, pIdx, awayTeamLineup?.team?.name))}</div>
                                                                     ))}
                                                                 </div>
                                                             </>
                                                         ) : (
                                                             <div className="flex-1 flex flex-col justify-around relative z-10 py-2 sm:py-4">
                                                                 {singleTeamRows.map((rowItems, rIdx) => (
-                                                                    <div key={`single-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, lineupViewMode === 'away', pIdx))}</div>
+                                                                    <div key={`single-row-${rIdx}`} className="flex items-center justify-around px-1 sm:px-2">{rowItems.map((item: any, pIdx: number) => renderPitchPlayerNode(item, lineupViewMode === 'away', pIdx, singleTeamLineup?.team?.name))}</div>
                                                                 ))}
                                                             </div>
                                                         )}
@@ -1402,44 +1523,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                 <div className="space-y-4 sm:space-y-6 mx-1 sm:mx-0">
                                                     {liveStandings.map((groupTable: any[], gIdx: number) => (
                                                         <div key={gIdx} className="bg-white dark:bg-slate-950 rounded-xl sm:rounded-3xl border sm:border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm relative">
-                                                            <div className="overflow-x-auto scrollbar-hide">
-                                                                <table className="w-full text-[10px] sm:text-sm text-left min-w-[300px]">
-                                                                    <thead className="bg-slate-900 text-slate-400 font-black tracking-widest text-[8px] sm:text-[9px] border-b sm:border-b-2 border-slate-700 uppercase">
-                                                                        <tr>
-                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3 text-center w-8 sm:w-12">Loc</th>
-                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3 text-center w-6 sm:w-8">+/-</th>
-                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3">Formație</th>
-                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3 text-center">J</th>
-                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3 text-center">G</th>
-                                                                            <th className="py-2 sm:py-4 px-1 sm:px-3 text-center text-emerald-400">PCT</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                                                                        {groupTable.map((row: any) => {
-                                                                            const isCurrentTeam = row.team?.id === selectedMatchDetails.home_team_id || row.team?.id === selectedMatchDetails.away_team_id;
-                                                                            const isPlayingNow = row.isLivePlaying;
-                                                                            return (
-                                                                                <tr key={row.team?.id || row.originalRank} onClick={e => row.team?.name && handleTeamClick(e, row.team.name)} className={`cursor-pointer transition-colors ${isPlayingNow ? 'bg-amber-50 dark:bg-amber-900/10' : isCurrentTeam ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-900'}`}>
-                                                                                    <td className="py-2 sm:py-3.5 px-1 sm:px-3 text-center font-black text-slate-500">{row.liveRank}</td>
-                                                                                    <td className="py-2 sm:py-3.5 px-1 sm:px-3 text-center">
-                                                                                        {row.trend === 'up' && <ArrowUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500 mx-auto" />}
-                                                                                        {row.trend === 'down' && <ArrowDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-rose-500 mx-auto" />}
-                                                                                        {row.trend === 'same' && <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-300 dark:text-slate-600 mx-auto" />}
-                                                                                    </td>
-                                                                                    <td className="py-2 sm:py-3.5 px-1 sm:px-3 flex items-center gap-1.5 sm:gap-3">
-                                                                                        <img src={row.team?.logo} alt="logo" className="w-4 h-4 sm:w-6 sm:h-6 object-contain bg-white rounded p-0.5 shrink-0" />
-                                                                                        <span className={`font-black tracking-tight truncate max-w-[85px] sm:max-w-[200px] ${isCurrentTeam ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.team?.name}</span>
-                                                                                        {isPlayingNow && <span className="ml-0.5 sm:ml-1 px-1 sm:px-1.5 py-0.5 bg-rose-600 text-white text-[6px] sm:text-[8px] font-black rounded uppercase animate-pulse">Live</span>}
-                                                                                    </td>
-                                                                                    <td className="py-2 sm:py-3.5 px-1 sm:px-3 text-center font-bold text-slate-500 dark:text-slate-400">{row.livePlayed}</td>
-                                                                                    <td className="py-2 sm:py-3.5 px-1 sm:px-3 text-center font-bold text-slate-500 dark:text-slate-400 text-[9px] sm:text-[11px] whitespace-nowrap">{row.liveGoalsFor}:{row.liveGoalsAgainst}</td>
-                                                                                    <td className={`py-2 sm:py-3.5 px-1 sm:px-3 text-center font-black text-xs sm:text-sm ${isPlayingNow ? 'text-amber-500' : isCurrentTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.livePoints}</td>
-                                                                                </tr>
-                                                                            );
-                                                                        })}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
+                                                            <StandingsTable
+                                                                data={groupTable}
+                                                                selectedMatchDetails={selectedMatchDetails}
+                                                                handleTeamClick={handleTeamClick}
+                                                            />
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1453,65 +1541,162 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 </div>,
                 document.body
             )}
-            
+
             {/* MODAL ECHIPĂ / ROSTER - SE DESCHIDE CÂND DAI CLICK PE ECHIPĂ */}
             {selectedTeam && createPortal(
                 <div className="fixed inset-0 top-0 sm:top-16 z-[9999999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-opacity p-2 sm:p-4">
-                  <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 mt-10 sm:mt-0">
-                    
-                    <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-2 sm:border-b-4 border-slate-700 relative pt-safe">
-                        <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-10 sm:pr-0">
-                            <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-                                <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" />
-                            </div>
-                            <div className="min-w-0 flex flex-col">
-                                <h2 className="text-lg sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{selectedTeam.teamInfo.name}</h2>
-                                <p className="text-[9px] sm:text-base text-emerald-400 font-bold uppercase tracking-widest mt-0.5 truncate">
-                                    ⚽ LOTUL OFICIAL • {selectedTeam.teamInfo.totalPlayers} Jucători
-                                </p>
-                            </div>
-                        </div>
-                        <div className="absolute top-3 right-3 sm:static flex items-center gap-2">
-                            <button onClick={() => setSelectedTeam(null)} className="p-1.5 sm:p-3 bg-white/10 hover:bg-rose-500 rounded-lg sm:rounded-full border border-white/20 hover:border-rose-600 transition-colors text-white shrink-0">
-                                <X className="w-4 h-4 sm:w-6 sm:h-6" />
-                            </button>
-                        </div>
-                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 mt-10 sm:mt-0">
 
-                    <div className="overflow-y-auto p-2 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-4 sm:space-y-6 flex-1 pb-safe-bottom pb-20">
-                      {([
-                        { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-500 border-amber-500", bg: "bg-amber-500/10" },
-                        { title: "Fundași", data: selectedTeam.squad.Defenders, color: "text-blue-500 border-blue-500", bg: "bg-blue-500/10" },
-                        { title: "Mijlocași", data: selectedTeam.squad.Midfielders, color: "text-emerald-500 border-emerald-500", bg: "bg-emerald-500/10" },
-                        { title: "Atacanți", data: selectedTeam.squad.Attackers, color: "text-rose-500 border-rose-500", bg: "bg-rose-500/10" }
-                      ]).map((section, idx) => section.data.length > 0 && (
-                        <div key={idx} className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-md border-2 border-slate-200 dark:border-slate-800 overflow-hidden">
-                          <div className={`px-3 py-2 sm:px-4 sm:py-3 border-l-4 ${section.color} ${section.bg} border-b border-b-slate-100 dark:border-b-slate-800`}>
-                            <h3 className={`font-black uppercase tracking-wider text-xs sm:text-base ${section.color.split(' ')[0]}`}>{section.title}</h3>
-                          </div>
-                          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {section.data.map(p => {
-                              const isSelectedForCompare = compareList.some(item => item._id === p._id);
-                              return (
-                                <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between p-2 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition gap-2 cursor-pointer">
-                                    <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-                                        <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-8 h-8 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base break-words uppercase tracking-tight" title={p.name}>{p.name}</p>
-                                            <div className="flex gap-1.5 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase tracking-wider">
-                                                {p.age && <span className="shrink-0">{p.age} ani</span>}
-                                                {p.nationality && <span className="truncate">• {p.nationality}</span>}
+                        <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-2 sm:border-b-4 border-slate-700 relative pt-safe">
+                            <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-10 sm:pr-0">
+                                <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                                    <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" />
+                                </div>
+                                <div className="min-w-0 flex flex-col">
+                                    <h2 className="text-lg sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{selectedTeam.teamInfo.name}</h2>
+                                    <p className="text-[9px] sm:text-base text-emerald-400 font-bold uppercase tracking-widest mt-0.5 truncate">
+                                        ⚽ LOTUL OFICIAL • {selectedTeam.teamInfo.totalPlayers} Jucători
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="absolute top-3 right-3 sm:static flex items-center gap-2">
+                                <button onClick={() => setSelectedTeam(null)} className="p-1.5 sm:p-3 bg-white/10 hover:bg-rose-500 rounded-lg sm:rounded-full border border-white/20 hover:border-rose-600 transition-colors text-white shrink-0">
+                                    <X className="w-4 h-4 sm:w-6 sm:h-6" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="overflow-y-auto p-2 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-4 sm:space-y-6 flex-1 pb-safe-bottom pb-20">
+                            {([
+                                { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-500 border-amber-500", bg: "bg-amber-500/10" },
+                                { title: "Fundași", data: selectedTeam.squad.Defenders, color: "text-blue-500 border-blue-500", bg: "bg-blue-500/10" },
+                                { title: "Mijlocași", data: selectedTeam.squad.Midfielders, color: "text-emerald-500 border-emerald-500", bg: "bg-emerald-500/10" },
+                                { title: "Atacanți", data: selectedTeam.squad.Attackers, color: "text-rose-500 border-rose-500", bg: "bg-rose-500/10" }
+                            ]).map((section, idx) => section.data.length > 0 && (
+                                <div key={idx} className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-md border-2 border-slate-200 dark:border-slate-800 overflow-hidden">
+                                    <div className={`px-3 py-2 sm:px-4 sm:py-3 border-l-4 ${section.color} ${section.bg} border-b border-b-slate-100 dark:border-b-slate-800`}>
+                                        <h3 className={`font-black uppercase tracking-wider text-xs sm:text-base ${section.color.split(' ')[0]}`}>{section.title}</h3>
+                                    </div>
+                                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                        {section.data.map(p => (
+                                            <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between p-2 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition gap-2 cursor-pointer">
+                                                <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+                                                    <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-8 h-8 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base break-words uppercase tracking-tight" title={p.name}>{p.name}</p>
+                                                        <div className="flex gap-1.5 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase tracking-wider">
+                                                            {p.age && <span className="shrink-0">{p.age} ani</span>}
+                                                            {p.nationality && <span className="truncate">• {p.nationality}</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
                                 </div>
-                              );
-                            })}
-                          </div>
+                            ))}
                         </div>
-                      ))}
                     </div>
-                  </div>
+                </div>,
+                document.body
+            )}
+
+            {/* MODAL PROFIL JUCĂTOR - DIN LOTURI, FORMAȚII ȘI EVENIMENTE */}
+            {selectedPlayer && createPortal(
+                <div
+                    className="fixed inset-0 z-[99999999] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-200"
+                    onClick={() => setSelectedPlayer(null)}
+                >
+                    <div
+                        className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col shadow-2xl border-2 sm:border-4 border-emerald-600/40"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="bg-slate-950 text-white p-4 sm:p-6 flex items-start justify-between gap-3 border-b-2 border-slate-800 shrink-0">
+                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                <img
+                                    src={selectedPlayer.image || GENERIC_USER_IMAGE}
+                                    alt={selectedPlayer.name}
+                                    onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
+                                    className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 bg-white shrink-0"
+                                />
+                                <div className="min-w-0">
+                                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-400 block mb-0.5">
+                                        Fișă Jucător • Scouting
+                                    </span>
+                                    <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tight truncate">
+                                        {selectedPlayer.name}
+                                    </h3>
+                                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider truncate mt-0.5">
+                                        {selectedPlayer.team_name || selectedPlayer.team || 'Echipă necunoscută'} • {selectedPlayer.position || 'Jucător'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                {!selectedPlayer._id.startsWith('temp_') && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => toggleWatchlist(e, selectedPlayer)}
+                                        className={`p-2 rounded-xl border transition-colors ${
+                                            watchlistIds.includes(selectedPlayer._id)
+                                                ? 'bg-emerald-600 text-white border-emerald-500'
+                                                : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-emerald-500'
+                                        }`}
+                                        title="Salvează în Lista de Scout"
+                                    >
+                                        <Bookmark className={`w-4 h-4 ${watchlistIds.includes(selectedPlayer._id) ? 'fill-current' : ''}`} />
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedPlayer(null)}
+                                    className="p-2 rounded-xl bg-slate-800 hover:bg-rose-600 text-white border border-slate-700 transition-colors"
+                                >
+                                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 bg-slate-50 dark:bg-slate-950 flex-1">
+                            {loadingPlayerCard ? (
+                                <div className="py-10 text-center text-xs font-black uppercase tracking-widest text-slate-400">
+                                    Se încarcă datele jucătorului...
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                                        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Vârstă</span>
+                                            <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white">{selectedPlayer.age ? `${selectedPlayer.age} ani` : '—'}</span>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Naționalitate</span>
+                                            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate block">{selectedPlayer.nationality || '—'}</span>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Goluri / Pase</span>
+                                            <span className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400">
+                                                {selectedPlayer.statistics_summary?.total_goals ?? 0} / {selectedPlayer.statistics_summary?.total_assists ?? 0}
+                                            </span>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Rating</span>
+                                            <span className="text-sm sm:text-base font-black text-amber-500">
+                                                {selectedPlayer.statistics_summary?.rating || '—'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {selectedPlayer.statistics_summary && (
+                                        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col items-center">
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Profil Scouting</h4>
+                                            <PlayerRadarChart primaryPlayer={selectedPlayer} />
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
                 </div>,
                 document.body
             )}
