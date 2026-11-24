@@ -540,8 +540,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [loadingPlayerCard, setLoadingPlayerCard] = useState(false);
 
     const resolvedPlayerCache = useRef<Record<string, Player | null>>({});
-    const inFlightPlayerRequests = useRef>>(new Map());
-    const [, setNameResolveTick] = useState(0);
+    const inFlightPlayerRequests = useRef(new Map());
 
     const [compareList, setCompareList] = useState<Player[]>([]);
     const [showCompareModal, setShowCompareModal] = useState(false);
@@ -666,25 +665,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     };
 
     const getDisplayPlayerName = (rawName?: string, fallbackTeam?: string, apiPlayerId?: number): string => {
-        if (!rawName) return "";
-        const targetNorm = normalizeName(rawName);
+        if (!rawName || typeof rawName !== 'string') return "";
         const cacheKey = getPlayerCacheKey(rawName, fallbackTeam, apiPlayerId);
-
-        if (Object.prototype.hasOwnProperty.call(resolvedPlayerCache.current, cacheKey)) {
-            return resolvedPlayerCache.current[cacheKey]?.name || rawName;
-        }
-
-        if (!inFlightPlayerRequests.current.has(cacheKey)) {
-            findPlayerInDB(rawName, fallbackTeam, apiPlayerId)
-                .then((found) => {
-                    if (found?.name && normalizeName(found.name) !== targetNorm) {
-                        setNameResolveTick((t) => t + 1);
-                    }
-                })
-                .catch(() => {});
-        }
-
-        return rawName;
+        return resolvedPlayerCache.current[cacheKey]?.name || rawName;
     };
 
     const subscribeToPushNotifications = async (email: string) => {
@@ -963,7 +946,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 },
                 staleTime: 15 * 60 * 1000,
             });
-            setStandingsData(data.table || []);
+            setStandingsData(Array.isArray(data?.table) ? data.table : []);
         } catch (err) {
             console.error("Eroare clasament:", err);
         } finally {
@@ -1178,8 +1161,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         let rawHomeForm = selectedMatchDetails?.form?.home;
         let rawAwayForm = selectedMatchDetails?.form?.away;
 
-        if ((!rawHomeForm || !rawAwayForm) && standingsData.length > 0) {
+        if ((!rawHomeForm || !rawAwayForm) && Array.isArray(standingsData) && standingsData.length > 0) {
             standingsData.forEach(groupTable => {
+                if (!Array.isArray(groupTable)) return;
                 groupTable.forEach((row: any) => {
                     if (row.team?.id === selectedMatchDetails?.home_team_id && row.form) {
                         rawHomeForm = row.form;
@@ -1301,9 +1285,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const singleTeamRows = buildExactCoachRows(singleTeamLineup?.startXI || [], singleTeamLineup?.formation, false);
 
     const liveStandings = useMemo(() => {
-        if (!standingsData || standingsData.length === 0) return [];
+        if (!Array.isArray(standingsData) || standingsData.length === 0) return [];
 
-        return standingsData.map(groupTable => {
+        return standingsData.filter(Array.isArray).map(groupTable => {
             const liveTable = groupTable.map((row: any) => ({
                 ...row,
                 livePoints: row.points,
@@ -1776,37 +1760,35 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                             {!selectedMatchDetails.statistics || selectedMatchDetails.statistics.length < 2 ? (
                                                 <div className="text-center py-12 sm:py-16 bg-white dark:bg-slate-950 rounded-2xl sm:rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-500 font-bold tracking-widest text-[10px] sm:text-xs uppercase">Datele statistice nu au fost procesate încă.</div>
                                             ) : (
-                                                <>
-                                                    <div className="bg-white dark:bg-slate-950 rounded-2xl sm:rounded-3xl border-2 border-slate-200 dark:border-slate-800 p-3 sm:p-8 space-y-4 sm:space-y-6 shadow-sm">
-                                                        {(() => {
-                                                            const homeStats = selectedMatchDetails.statistics[0].statistics;
-                                                            const awayStats = selectedMatchDetails.statistics[1].statistics;
-                                                            return homeStats.map((statItem: any) => {
-                                                                const homeValRaw = statItem.value ?? 0;
-                                                                const awayStatItem = awayStats.find((s: any) => s.type === statItem.type);
-                                                                const awayValRaw = awayStatItem?.value ?? 0;
-                                                                const homeNum = parseFloat(String(homeValRaw).replace('%', '')) || 0;
-                                                                const awayNum = parseFloat(String(awayValRaw).replace('%', '')) || 0;
-                                                                const total = homeNum + awayNum;
-                                                                const homePercent = total > 0 ? Math.round((homeNum / total) * 100) : 50;
-                                                                const awayPercent = 100 - homePercent;
-                                                                return (
-                                                                    <div key={statItem.type} className="space-y-1.5 sm:space-y-2">
-                                                                        <div className="flex justify-between text-[11px] sm:text-base font-black">
-                                                                            <span className="text-slate-900 dark:text-white w-8 sm:w-10 text-left">{homeValRaw}</span>
-                                                                            <span className="text-slate-400 text-[8px] sm:text-[10px] tracking-widest text-center flex-1 uppercase truncate px-1">{translateStatLabel(statItem.type)}</span>
-                                                                            <span className="text-slate-900 dark:text-white w-8 sm:w-10 text-right">{awayValRaw}</span>
-                                                                        </div>
-                                                                        <div className="w-full h-2 sm:h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex border border-slate-200 dark:border-slate-700">
-                                                                            <div style={{ width: `${homePercent}%` }} className="bg-emerald-500 h-full transition-all"></div>
-                                                                            <div style={{ width: `${awayPercent}%` }} className="bg-blue-500 h-full transition-all"></div>
-                                                                        </div>
+                                                <div className="bg-white dark:bg-slate-950 rounded-2xl sm:rounded-3xl border-2 border-slate-200 dark:border-slate-800 p-3 sm:p-8 space-y-4 sm:space-y-6 shadow-sm">
+                                                    {(() => {
+                                                        const homeStats = selectedMatchDetails.statistics[0]?.statistics || [];
+                                                        const awayStats = selectedMatchDetails.statistics[1]?.statistics || [];
+                                                        return homeStats.map((statItem: any) => {
+                                                            const homeValRaw = statItem.value ?? 0;
+                                                            const awayStatItem = awayStats.find((s: any) => s.type === statItem.type);
+                                                            const awayValRaw = awayStatItem?.value ?? 0;
+                                                            const homeNum = parseFloat(String(homeValRaw).replace('%', '')) || 0;
+                                                            const awayNum = parseFloat(String(awayValRaw).replace('%', '')) || 0;
+                                                            const total = homeNum + awayNum;
+                                                            const homePercent = total > 0 ? Math.round((homeNum / total) * 100) : 50;
+                                                            const awayPercent = 100 - homePercent;
+                                                            return (
+                                                                <div key={statItem.type} className="space-y-1.5 sm:space-y-2">
+                                                                    <div className="flex justify-between text-[11px] sm:text-base font-black">
+                                                                        <span className="text-slate-900 dark:text-white w-8 sm:w-10 text-left">{homeValRaw}</span>
+                                                                        <span className="text-slate-400 text-[8px] sm:text-[10px] tracking-widest text-center flex-1 uppercase truncate px-1">{translateStatLabel(statItem.type)}</span>
+                                                                        <span className="text-slate-900 dark:text-white w-8 sm:w-10 text-right">{awayValRaw}</span>
                                                                     </div>
-                                                                );
-                                                            });
-                                                        })()}
-                                                    </div>
-                                                </>
+                                                                    <div className="w-full h-2 sm:h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex border border-slate-200 dark:border-slate-700">
+                                                                        <div style={{ width: `${homePercent}%` }} className="bg-emerald-500 h-full transition-all"></div>
+                                                                        <div style={{ width: `${awayPercent}%` }} className="bg-blue-500 h-full transition-all"></div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        });
+                                                    })()}
+                                                </div>
                                             )}
                                         </div>
                                     )}
