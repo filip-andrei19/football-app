@@ -855,25 +855,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 ...playerOrName,
                 team_name: normalizedTeam,
             });
-            if (!playerOrName.detailed_stats && !playerOrName.statistics_summary) {
-                setLoadingPlayerCard(true);
-                try {
-                    const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(playerOrName.name)}&limit=10`);
-                    if (res.ok) {
-                        const list: Player[] = await res.json();
-                        const targetNorm = normalizeName(playerOrName.name);
-                        const exact = list.find(p => p._id === playerOrName._id || normalizeName(p.name) === targetNorm);
-                        if (exact) {
-                            setSelectedPlayer({
-                                ...exact,
-                                team_name: sanitizeTeamName(exact, normalizedTeam),
-                            });
-                        }
-                    }
-                } catch {} finally {
-                    setLoadingPlayerCard(false);
-                }
-            }
             return;
         }
 
@@ -882,13 +863,25 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         const cleanFallbackTeam = sanitizeTeamName(fallbackTeam, '');
         const fallbackTeamNorm = normalizeName(cleanFallbackTeam);
 
-        const allTokens = targetNorm.split(' ').filter(Boolean);
-        const significantTokens = allTokens.filter(t => t.length >= 3);
-        // Token-ul principal distinctiv (ex. "baena" din "alejandro baena rodriguez", sau ultimul token dacă sunt doar 2)
-        const primarySurnameToken = significantTokens.length >= 3
-            ? significantTokens[significantTokens.length - 2]
-            : (significantTokens[significantTokens.length - 1] || allTokens[allTokens.length - 1] || '');
-        const secondaryTokens = significantTokens.filter(t => t !== primarySurnameToken);
+        const tokens = targetNorm.split(' ').filter(t => t.length >= 2);
+        const longTokens = tokens.filter(t => t.length >= 3);
+        const candidateSearchTerms: string[] = [];
+
+        if (longTokens.length >= 3) {
+            candidateSearchTerms.push(longTokens[longTokens.length - 2]);
+            candidateSearchTerms.push(longTokens[longTokens.length - 1]);
+        } else if (longTokens.length > 0) {
+            candidateSearchTerms.push(longTokens[longTokens.length - 1]);
+        }
+
+        for (const tok of longTokens) {
+            if (!candidateSearchTerms.includes(tok)) {
+                candidateSearchTerms.push(tok);
+            }
+        }
+        if (!candidateSearchTerms.includes(cleanName)) {
+            candidateSearchTerms.push(cleanName);
+        }
 
         setLoadingPlayerCard(true);
         setSelectedPlayer({
@@ -898,92 +891,75 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             team_name: cleanFallbackTeam,
         });
 
-        const scoreCandidate = (p: Player, requiredToken?: string): number => {
-            const candName = normalizeName(p.name);
-            const candParts = candName.split(' ').filter(Boolean);
-            const candTeam = normalizeName(sanitizeTeamName(p, ''));
+        const scoreCandidate = (candidate: Player, searchedTerm: string): number => {
+            const candNorm = normalizeName(candidate.name);
+            const candParts = candNorm.split(' ').filter(Boolean);
+            const candTeam = normalizeName(sanitizeTeamName(candidate, ''));
+            const termNorm = normalizeName(searchedTerm);
 
-            if (candName === targetNorm) return 1000;
+            if (candNorm === targetNorm) return 1000;
 
-            const hasPrimarySurname = primarySurnameToken
-                ? (candParts.includes(primarySurnameToken) || candName.includes(primarySurnameToken))
-                : false;
-
-            if (requiredToken) {
-                const reqNorm = normalizeName(requiredToken);
-                const hasRequired = candParts.includes(reqNorm) || candName.includes(reqNorm);
-                if (!hasRequired) return 0;
+            if (termNorm && termNorm !== targetNorm) {
+                const hasTerm = candParts.includes(termNorm) || candNorm.includes(termNorm);
+                if (!hasTerm) return -1;
             }
 
             let score = 0;
-            if (hasPrimarySurname) {
-                score += 120;
+            let matchedLongTokens = 0;
+
+            for (const tok of longTokens) {
+                const directHit = candParts.includes(tok) || candNorm.includes(tok);
+                const initialHit = candParts.some(cp => cp.length === 1 && cp[0] === tok[0]);
+                if (directHit) {
+                    score += 90;
+                    matchedLongTokens += 1;
+                } else if (initialHit) {
+                    score += 25;
+                }
             }
 
-            secondaryTokens.forEach((tok) => {
-                if (candParts.includes(tok) || candName.includes(tok)) {
-                    score += 35;
-                } else if (candParts.some(cp => cp.length === 1 && cp[0] === tok[0])) {
-                    score += 15;
-                }
-            });
+            if (matchedLongTokens === 0) return -1;
 
             if (fallbackTeamNorm && candTeam) {
-                const teamMatches = candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam);
-                if (teamMatches) {
-                    score += 150;
-                } else if (!hasPrimarySurname) {
-                    score -= 100;
+                const sameTeam = candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam);
+                if (sameTeam) {
+                    score += 140;
+                } else {
+                    score -= matchedLongTokens >= 2 ? 20 : 120;
                 }
             }
 
             return score;
         };
 
-        const pickBestFromList = (candidates: Player[], requiredToken?: string): Player | undefined => {
-            if (!Array.isArray(candidates) || candidates.length === 0) return undefined;
-
-            const exactMatch = candidates.find(p => normalizeName(p.name) === targetNorm);
-            if (exactMatch) return exactMatch;
-
-            let bestPlayer: Player | undefined;
+        try {
+            let bestCandidate: Player | undefined;
             let bestScore = 0;
 
-            for (const cand of candidates) {
-                const s = scoreCandidate(cand, requiredToken);
-                if (s > bestScore) {
-                    bestScore = s;
-                    bestPlayer = cand;
-                }
-            }
+            for (const term of candidateSearchTerms) {
+                const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(term)}&limit=30`);
+                if (!res.ok) continue;
 
-            return bestScore >= 120 ? bestPlayer : undefined;
-        };
+                const list: Player[] = await res.json();
+                if (!Array.isArray(list) || list.length === 0) continue;
 
-        // Căutăm mai întâi după token-ul principal (ex. "baena"), apoi după numele complet și celelalte prenume/nume
-        const searchQueue = Array.from(
-            new Set([
-                ...(primarySurnameToken ? [primarySurnameToken] : []),
-                cleanName,
-                ...secondaryTokens,
-            ].filter(Boolean))
-        );
-
-        try {
-            for (const q of searchQueue) {
-                const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(q)}&limit=40`);
-                if (res.ok) {
-                    const list: Player[] = await res.json();
-                    const reqTok = q === cleanName ? undefined : q;
-                    const matched = pickBestFromList(list, reqTok);
-                    if (matched) {
-                        setSelectedPlayer({
-                            ...matched,
-                            team_name: sanitizeTeamName(matched, cleanFallbackTeam),
-                        });
-                        return;
+                for (const cand of list) {
+                    const s = scoreCandidate(cand, term);
+                    if (s > bestScore) {
+                        bestScore = s;
+                        bestCandidate = cand;
                     }
                 }
+
+                if (bestScore >= 190) break;
+            }
+
+            if (bestCandidate && bestScore >= 90) {
+                setSelectedPlayer({
+                    ...bestCandidate,
+                    name: bestCandidate.name || cleanName,
+                    team_name: sanitizeTeamName(bestCandidate, cleanFallbackTeam),
+                });
             }
         } catch (err) {
             console.error("Eroare la încărcarea profilului jucătorului:", err);
