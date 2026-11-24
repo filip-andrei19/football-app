@@ -989,6 +989,23 @@ const startServer = async () => {
             }
         });
 
+        // Căutare EXACTĂ după api_id (metoda Flashscore)
+        app.get('/api/sport/players/by-api-id/:apiId', async (req, res) => {
+            try {
+                const numericId = Number(req.params.apiId);
+                if (!numericId) return res.status(400).json({ error: "ID invalid." });
+
+                const player = await Player.findOne({
+                    $or: [{ api_id: numericId }, { api_player_id: numericId }]
+                });
+
+                if (!player) return res.status(404).json({ error: "Jucător negăsit în DB." });
+                res.json(sanitizePlayerDoc(player));
+            } catch (err) {
+                res.status(500).json({ error: "Eroare la căutarea după ID." });
+            }
+        });
+
         app.get('/api/sport/players', async (req, res) => {
             try {
                 const {

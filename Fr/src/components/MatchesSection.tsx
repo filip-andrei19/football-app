@@ -540,6 +540,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [loadingPlayerCard, setLoadingPlayerCard] = useState(false);
 
     const resolvedPlayerCache = useRef<Record<string, Player | null>>({});
+    const inFlightPlayerRequests = useRef>>(new Map());
     const [, setNameResolveTick] = useState(0);
 
     const [compareList, setCompareList] = useState<Player[]>([]);
@@ -561,88 +562,129 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const [lineupViewMode, setLineupViewMode] = useState<'both' | 'home' | 'away'>('both');
 
-    const findPlayerInDB = async (rawName: string, fallbackTeam?: string): Promise<Player | undefined> => {
+    const getPlayerCacheKey = (rawName: string, fallbackTeam?: string, apiPlayerId?: number) => {
+        if (apiPlayerId) return `id_${apiPlayerId}`;
+        return `${normalizeName(rawName)}__${normalizeName(sanitizeTeamName(fallbackTeam, ''))}`;
+    };
+
+    const findPlayerInDB = (
+        rawName: string,
+        fallbackTeam?: string,
+        apiPlayerId?: number
+    ): Promise<Player | undefined> => {
         const cleanName = rawName.trim();
         const targetNorm = normalizeName(cleanName);
         const cleanFallbackTeam = sanitizeTeamName(fallbackTeam, '');
         const fallbackTeamNorm = normalizeName(cleanFallbackTeam);
+        const cacheKey = getPlayerCacheKey(cleanName, cleanFallbackTeam, apiPlayerId);
 
-        const cacheKey = `${targetNorm}__${fallbackTeamNorm}`;
         if (Object.prototype.hasOwnProperty.call(resolvedPlayerCache.current, cacheKey)) {
-            return resolvedPlayerCache.current[cacheKey] || undefined;
+            return Promise.resolve(resolvedPlayerCache.current[cacheKey] || undefined);
         }
 
-        const tokens = targetNorm.split(' ').filter(t => t.length >= 2);
-        const queries = Array.from(new Set([cleanName, ...tokens].filter(Boolean)));
+        const existingReq = inFlightPlayerRequests.current.get(cacheKey);
+        if (existingReq) return existingReq;
 
-        let bestCandidate: Player | undefined;
-        let bestScore = -1;
-
-        for (const q of queries) {
+        const requestPromise = (async (): Promise<Player | undefined> => {
             try {
-                const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(q)}&limit=30`);
-                if (!res.ok) continue;
-
-                const list: Player[] = await res.json();
-                if (!Array.isArray(list) || list.length === 0) continue;
-
-                for (const cand of list) {
-                    const candNorm = normalizeName(cand.name);
-                    const candTeam = normalizeName(sanitizeTeamName(cand, ''));
-                    let score = 0;
-
-                    if (candNorm === targetNorm) {
-                        score += 500;
-                    }
-
-                    for (const tok of tokens) {
-                        if (candNorm.includes(tok)) {
-                            score += tok.length >= 3 ? 110 : 60;
+                // 1. Căutare EXACTĂ după ID (metoda Flashscore)
+                if (apiPlayerId) {
+                    try {
+                        const resById = await fetch(`${API_BASE}/api/sport/players/by-api-id/${apiPlayerId}`);
+                        if (resById.ok) {
+                            const exactPlayer: Player = await resById.json();
+                            const resolved: Player = {
+                                ...exactPlayer,
+                                name: exactPlayer.name || cleanName,
+                                team_name: sanitizeTeamName(exactPlayer, cleanFallbackTeam),
+                            };
+                            resolvedPlayerCache.current[cacheKey] = resolved;
+                            return resolved;
                         }
-                    }
-
-                    if (fallbackTeamNorm && candTeam) {
-                        if (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam)) {
-                            score += 140;
-                        }
-                    }
-
-                    if (score > bestScore && score >= 60) {
-                        bestScore = score;
-                        bestCandidate = {
-                            ...cand,
-                            name: cand.name || cleanName,
-                            team_name: sanitizeTeamName(cand, cleanFallbackTeam),
-                        };
-                    }
+                    } catch {}
                 }
 
-                if (bestScore >= 250) break;
-            } catch {}
-        }
+                // 2. Fallback după nume doar dacă nu există ID sau nu a fost găsit după ID
+                const tokens = targetNorm.split(' ').filter(t => t.length >= 2);
+                const queries = Array.from(new Set([cleanName, ...tokens].filter(Boolean)));
 
-        resolvedPlayerCache.current[cacheKey] = bestCandidate || null;
-        return bestCandidate;
+                let bestCandidate: Player | undefined;
+                let bestScore = -1;
+
+                for (const q of queries) {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(q)}&limit=30`);
+                        if (!res.ok) continue;
+
+                        const list: Player[] = await res.json();
+                        if (!Array.isArray(list) || list.length === 0) continue;
+
+                        for (const cand of list) {
+                            const candNorm = normalizeName(cand.name);
+                            const candTeam = normalizeName(sanitizeTeamName(cand, ''));
+                            let score = 0;
+
+                            if (candNorm === targetNorm) {
+                                score += 500;
+                            }
+
+                            for (const tok of tokens) {
+                                if (candNorm.includes(tok)) {
+                                    score += tok.length >= 3 ? 110 : 60;
+                                }
+                            }
+
+                            if (fallbackTeamNorm && candTeam) {
+                                if (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam)) {
+                                    score += 140;
+                                }
+                            }
+
+                            if (score > bestScore && score >= 60) {
+                                bestScore = score;
+                                bestCandidate = {
+                                    ...cand,
+                                    name: cand.name || cleanName,
+                                    team_name: sanitizeTeamName(cand, cleanFallbackTeam),
+                                };
+                            }
+                        }
+
+                        if (bestScore >= 250) break;
+                    } catch {}
+                }
+
+                resolvedPlayerCache.current[cacheKey] = bestCandidate || null;
+                return bestCandidate;
+            } finally {
+                inFlightPlayerRequests.current.delete(cacheKey);
+            }
+        })();
+
+        inFlightPlayerRequests.current.set(cacheKey, requestPromise);
+        return requestPromise;
     };
 
-    const getDisplayPlayerName = (rawName?: string, fallbackTeam?: string): string => {
+    const getDisplayPlayerName = (rawName?: string, fallbackTeam?: string, apiPlayerId?: number): string => {
         if (!rawName) return "";
         const targetNorm = normalizeName(rawName);
-        const fallbackTeamNorm = normalizeName(sanitizeTeamName(fallbackTeam, ''));
-        const cacheKey = `${targetNorm}__${fallbackTeamNorm}`;
+        const cacheKey = getPlayerCacheKey(rawName, fallbackTeam, apiPlayerId);
 
-        if (!Object.prototype.hasOwnProperty.call(resolvedPlayerCache.current, cacheKey)) {
-            resolvedPlayerCache.current[cacheKey] = null;
-            findPlayerInDB(rawName, fallbackTeam).then((found) => {
-                if (found?.name && normalizeName(found.name) !== targetNorm) {
-                    resolvedPlayerCache.current[cacheKey] = found;
-                    setNameResolveTick((t) => t + 1);
-                }
-            }).catch(() => {});
+        if (Object.prototype.hasOwnProperty.call(resolvedPlayerCache.current, cacheKey)) {
+            return resolvedPlayerCache.current[cacheKey]?.name || rawName;
         }
 
-        const cached = resolvedPlayerCache.current[cacheKey];
-        return cached?.name || rawName;
+        if (!inFlightPlayerRequests.current.has(cacheKey)) {
+            findPlayerInDB(rawName, fallbackTeam, apiPlayerId)
+                .then((found) => {
+                    if (found?.name && normalizeName(found.name) !== targetNorm) {
+                        setNameResolveTick((t) => t + 1);
+                    }
+                })
+                .catch(() => {});
+        }
+
+        return rawName;
     };
 
     const subscribeToPushNotifications = async (email: string) => {
@@ -929,7 +971,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         }
     };
 
-    const handleOpenPlayerProfile = async (playerOrName: Player | string, fallbackTeam?: string) => {
+    const handleOpenPlayerProfile = async (
+        playerOrName: Player | string,
+        fallbackTeam?: string,
+        apiPlayerId?: number
+    ) => {
         if (!playerOrName) return;
 
         if (typeof playerOrName !== 'string') {
@@ -953,7 +999,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         });
 
         try {
-            const matched = await findPlayerInDB(cleanName, cleanFallbackTeam);
+            const matched = await findPlayerInDB(cleanName, cleanFallbackTeam, apiPlayerId);
             if (matched) {
                 setSelectedPlayer(matched);
             }
@@ -1092,12 +1138,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
     const renderPitchPlayerNode = (item: any, isAwayTeam: boolean, idx: number, teamName?: string) => {
         const pName: string = item?.player?.name || "Jucător";
+        const pId: number | undefined = item?.player?.id;
         const pNum = item?.player?.number ?? "-";
         const pPos = item?.player?.pos || "";
         const pRating = item?.player?.rating;
         const isGK = pPos === 'G';
-        const badges = getPlayerMatchBadges(pName, item?.player?.id);
-        const resolvedFullName = getDisplayPlayerName(pName, teamName);
+        const badges = getPlayerMatchBadges(pName, pId);
+        const resolvedFullName = getDisplayPlayerName(pName, teamName, pId);
         const shortName = resolvedFullName.includes(' ')
             ? `${resolvedFullName.split(' ')[0].charAt(0)}. ${resolvedFullName.split(' ').slice(-1)[0]}`
             : resolvedFullName;
@@ -1110,8 +1157,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
         return (
             <div
-                key={item?.player?.id || `${pName}-${idx}`}
-                onClick={() => handleOpenPlayerProfile(pName, teamName)}
+                key={pId || `${pName}-${idx}`}
+                onClick={() => handleOpenPlayerProfile(pName, teamName, pId)}
                 className="cursor-pointer group flex flex-col items-center select-none w-auto sm:w-[85px] z-10 mx-0.5 sm:mx-1"
                 title={`${resolvedFullName} (#${pNum}) - Apasă pentru profil`}
             >
@@ -1608,10 +1655,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                                 {ev.assist?.name ? (
                                                                                     <button
                                                                                         type="button"
-                                                                                        onClick={() => handleOpenPlayerProfile(ev.assist.name, eventTeamName)}
+                                                                                        onClick={() => handleOpenPlayerProfile(ev.assist.name, eventTeamName, ev.assist?.id)}
                                                                                         className="underline decoration-emerald-500/40 hover:decoration-emerald-400 cursor-pointer font-black uppercase"
                                                                                     >
-                                                                                        {getDisplayPlayerName(ev.assist.name, eventTeamName)}
+                                                                                        {getDisplayPlayerName(ev.assist.name, eventTeamName, ev.assist?.id)}
                                                                                     </button>
                                                                                 ) : (
                                                                                     "N/A"
@@ -1622,10 +1669,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                                 {ev.player?.name && (
                                                                                     <button
                                                                                         type="button"
-                                                                                        onClick={() => handleOpenPlayerProfile(ev.player.name, eventTeamName)}
+                                                                                        onClick={() => handleOpenPlayerProfile(ev.player.name, eventTeamName, ev.player?.id)}
                                                                                         className="underline decoration-rose-500/40 hover:decoration-rose-400 cursor-pointer font-bold uppercase"
                                                                                     >
-                                                                                        {getDisplayPlayerName(ev.player.name, eventTeamName)}
+                                                                                        {getDisplayPlayerName(ev.player.name, eventTeamName, ev.player?.id)}
                                                                                     </button>
                                                                                 )}
                                                                             </p>
@@ -1636,10 +1683,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                                 {ev.player?.name && (
                                                                                     <button
                                                                                         type="button"
-                                                                                        onClick={() => handleOpenPlayerProfile(ev.player.name, eventTeamName)}
+                                                                                        onClick={() => handleOpenPlayerProfile(ev.player.name, eventTeamName, ev.player?.id)}
                                                                                         className="font-black text-slate-900 dark:text-white tracking-tight text-[10px] sm:text-sm hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-slate-300 dark:decoration-slate-700 hover:decoration-emerald-500 cursor-pointer"
                                                                                     >
-                                                                                        {getDisplayPlayerName(ev.player.name, eventTeamName)}
+                                                                                        {getDisplayPlayerName(ev.player.name, eventTeamName, ev.player?.id)}
                                                                                     </button>
                                                                                 )}
                                                                                 {presentation.badge && (
@@ -1653,10 +1700,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                                     Pasă:{' '}
                                                                                     <button
                                                                                         type="button"
-                                                                                        onClick={() => handleOpenPlayerProfile(ev.assist.name, eventTeamName)}
+                                                                                        onClick={() => handleOpenPlayerProfile(ev.assist.name, eventTeamName, ev.assist?.id)}
                                                                                         className="hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-slate-400/40 cursor-pointer font-bold"
                                                                                     >
-                                                                                        {getDisplayPlayerName(ev.assist.name, eventTeamName)}
+                                                                                        {getDisplayPlayerName(ev.assist.name, eventTeamName, ev.assist?.id)}
                                                                                     </button>
                                                                                 </p>
                                                                             )}
