@@ -882,8 +882,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         const cleanFallbackTeam = sanitizeTeamName(fallbackTeam, '');
         const fallbackTeamNorm = normalizeName(cleanFallbackTeam);
 
-        const tokens = targetNorm.split(' ').filter(Boolean);
-        const lastToken = tokens.length > 0 ? tokens[tokens.length - 1] : '';
+        const allTokens = targetNorm.split(' ').filter(Boolean);
+        const significantTokens = allTokens.filter(t => t.length >= 3);
+        const lastToken = significantTokens.length > 0
+            ? significantTokens[significantTokens.length - 1]
+            : (allTokens[allTokens.length - 1] || '');
+        const givenTokens = significantTokens.slice(0, -1);
 
         setLoadingPlayerCard(true);
         setSelectedPlayer({
@@ -893,59 +897,78 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             team_name: cleanFallbackTeam,
         });
 
-        const findBestCandidate = (candidates: Player[]) => {
+        const scoreCandidate = (p: Player): number => {
+            const candName = normalizeName(p.name);
+            const candParts = candName.split(' ').filter(Boolean);
+            const candTeam = normalizeName(sanitizeTeamName(p, ''));
+
+            if (candName === targetNorm) return 1000;
+
+            let score = 0;
+            if (lastToken && (candParts.includes(lastToken) || candName.includes(lastToken))) {
+                score += 100;
+            }
+
+            givenTokens.forEach((gt) => {
+                if (candParts.includes(gt) || candName.includes(gt) || candParts.some(cp => cp.length === 1 && cp[0] === gt[0])) {
+                    score += 40;
+                }
+            });
+
+            if (allTokens.length >= 2 && candParts.some(cp => cp.length === 1 && cp[0] === allTokens[0][0])) {
+                score += 20;
+            }
+
+            if (fallbackTeamNorm && candTeam) {
+                if (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam)) {
+                    score += 80;
+                }
+            }
+
+            return score;
+        };
+
+        const pickBestFromList = (candidates: Player[]): Player | undefined => {
             if (!Array.isArray(candidates) || candidates.length === 0) return undefined;
 
             const exactMatch = candidates.find(p => normalizeName(p.name) === targetNorm);
             if (exactMatch) return exactMatch;
 
-            if (lastToken && lastToken.length >= 3) {
-                const surnameMatches = candidates.filter(p => {
-                    const candName = normalizeName(p.name);
-                    const candParts = candName.split(' ').filter(Boolean);
-                    return candParts.includes(lastToken) || candName.includes(lastToken);
-                });
+            let bestPlayer: Player | undefined;
+            let bestScore = 0;
 
-                if (fallbackTeamNorm) {
-                    const teamMatched = surnameMatches.find(p => {
-                        const candTeam = normalizeName(sanitizeTeamName(p, ''));
-                        return candTeam && (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam));
-                    });
-                    if (teamMatched) return teamMatched;
-                }
-
-                if (surnameMatches.length === 1) {
-                    return surnameMatches[0];
+            for (const cand of candidates) {
+                const s = scoreCandidate(cand);
+                const hasSurnameOrFull =
+                    (lastToken && (normalizeName(cand.name).split(' ').includes(lastToken) || normalizeName(cand.name).includes(lastToken))) ||
+                    significantTokens.some(tok => normalizeName(cand.name).split(' ').includes(tok));
+                if (hasSurnameOrFull && s > bestScore) {
+                    bestScore = s;
+                    bestPlayer = cand;
                 }
             }
 
+            if (bestScore >= 100) return bestPlayer;
             return undefined;
         };
 
-        try {
-            const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(cleanName)}&limit=30`);
-            if (res.ok) {
-                const playersList: Player[] = await res.json();
-                const matched = findBestCandidate(playersList);
-                if (matched) {
-                    setSelectedPlayer({
-                        ...matched,
-                        team_name: sanitizeTeamName(matched, cleanFallbackTeam),
-                    });
-                    return;
-                }
-            }
+        // Ordinea de căutare: numele complet, apoi fiecare prenume/token (inclusiv numele de familie), pentru a acoperi toate variantele
+        const searchQueries = Array.from(
+            new Set([cleanName, ...givenTokens, ...(lastToken ? [lastToken] : [])].filter(Boolean))
+        );
 
-            if (lastToken && lastToken.length >= 3) {
-                const resSurname = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(lastToken)}&limit=50`);
-                if (resSurname.ok) {
-                    const surnameList: Player[] = await resSurname.json();
-                    const matchedSurname = findBestCandidate(surnameList);
-                    if (matchedSurname) {
+        try {
+            for (const q of searchQueries) {
+                const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(q)}&limit=40`);
+                if (res.ok) {
+                    const list: Player[] = await res.json();
+                    const matched = pickBestFromList(list);
+                    if (matched) {
                         setSelectedPlayer({
-                            ...matchedSurname,
-                            team_name: sanitizeTeamName(matchedSurname, cleanFallbackTeam),
+                            ...matched,
+                            team_name: sanitizeTeamName(matched, cleanFallbackTeam),
                         });
+                        return;
                     }
                 }
             }
