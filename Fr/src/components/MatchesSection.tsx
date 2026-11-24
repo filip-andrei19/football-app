@@ -134,7 +134,14 @@ const getEventPresentation = (ev: any) => {
         combinedLower.includes('penalty missed') ||
         combinedLower.includes('missed') ||
         combinedLower.includes('penalty shootout missed') ||
-        (combinedLower.includes('penalty') && (combinedLower.includes('fail') || combinedLower.includes('save') || combinedLower.includes('post') || combinedLower.includes('bar')));
+        (combinedLower.includes('penalty') && (
+            combinedLower.includes('fail') ||
+            combinedLower.includes('save') ||
+            combinedLower.includes('saved') ||
+            combinedLower.includes('post') ||
+            combinedLower.includes('bar') ||
+            combinedLower.includes('off target')
+        ));
 
     if (isMissedPenalty) {
         return {
@@ -849,14 +856,24 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 const playersList: Player[] = await res.json();
                 if (Array.isArray(playersList) && playersList.length > 0) {
                     const exactMatch = playersList.find(p => normalizeName(p.name) === targetNorm);
-                    const endsWithMatch = !exactMatch
+
+                    const tokens = targetNorm.split(' ').filter(t => t.length >= 3);
+                    const lastToken = tokens[tokens.length - 1];
+                    const fallbackTeamNorm = normalizeName(fallbackTeam);
+
+                    const tokenAndTeamMatch = !exactMatch && lastToken
                         ? playersList.find(p => {
-                            const cand = normalizeName(p.name);
-                            return cand.endsWith(` ${targetNorm}`) || targetNorm.endsWith(` ${cand}`);
+                            const candName = normalizeName(p.name);
+                            const candTeam = normalizeName(p.team_name || p.team);
+                            const sameSurname = candName.split(' ').includes(lastToken);
+                            const sameTeam = fallbackTeamNorm && candTeam
+                                ? (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam))
+                                : false;
+                            return sameSurname && sameTeam;
                         })
                         : undefined;
 
-                    const matched = exactMatch || endsWithMatch;
+                    const matched = exactMatch || tokenAndTeamMatch;
                     if (matched) {
                         setSelectedPlayer(matched);
                     }
