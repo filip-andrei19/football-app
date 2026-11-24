@@ -543,6 +543,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
     const [loadingPlayerCard, setLoadingPlayerCard] = useState(false);
 
+    // Cache local pentru rezolvarea numelui curat din DB pe baza (numeDinMeci + echipa)
+    const resolvedPlayerCache = useRef<Record<string, Player | null>>({});
+    const [, setNameResolveTick] = useState(0);
+
     const [compareList, setCompareList] = useState<Player[]>([]);
     const [showCompareModal, setShowCompareModal] = useState(false);
     const [watchlistIds, setWatchlistIds] = useState<string[]>(() => {
@@ -561,6 +565,136 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [loadingStandings, setLoadingStandings] = useState(false);
 
     const [lineupViewMode, setLineupViewMode] = useState<'both' | 'home' | 'away'>('both');
+
+    const findPlayerInDB = async (rawName: string, fallbackTeam?: string): Promise<Player | undefined> => {
+        const cleanName = rawName.trim();
+        const targetNorm = normalizeName(cleanName);
+        const cleanFallbackTeam = sanitizeTeamName(fallbackTeam, '');
+        const fallbackTeamNorm = normalizeName(cleanFallbackTeam);
+
+        const cacheKey = `${targetNorm}__${fallbackTeamNorm}`;
+        if (Object.prototype.hasOwnProperty.call(resolvedPlayerCache.current, cacheKey)) {
+            return resolvedPlayerCache.current[cacheKey] || undefined;
+        }
+
+        const tokens = targetNorm.split(' ').filter(t => t.length >= 2);
+        const longTokens = tokens.filter(t => t.length >= 3);
+        const candidateSearchTerms: string[] = [];
+
+        if (longTokens.length >= 3) {
+            candidateSearchTerms.push(longTokens[longTokens.length - 2]);
+            candidateSearchTerms.push(longTokens[longTokens.length - 1]);
+        } else if (longTokens.length > 0) {
+            candidateSearchTerms.push(longTokens[longTokens.length - 1]);
+        }
+
+        for (const tok of longTokens) {
+            if (!candidateSearchTerms.includes(tok)) {
+                candidateSearchTerms.push(tok);
+            }
+        }
+        for (const tok of tokens) {
+            if (!candidateSearchTerms.includes(tok)) {
+                candidateSearchTerms.push(tok);
+            }
+        }
+        if (!candidateSearchTerms.includes(cleanName)) {
+            candidateSearchTerms.push(cleanName);
+        }
+
+        const scoreCandidate = (candidate: Player, searchedTerm: string): number => {
+            const candNorm = normalizeName(candidate.name);
+            const candParts = candNorm.split(' ').filter(Boolean);
+            const candTeam = normalizeName(sanitizeTeamName(candidate, ''));
+            const termNorm = normalizeName(searchedTerm);
+
+            if (candNorm === targetNorm) return 1000;
+
+            if (termNorm && termNorm !== targetNorm) {
+                const hasTerm = candParts.includes(termNorm) || candNorm.includes(termNorm);
+                if (!hasTerm) return -1;
+            }
+
+            let score = 0;
+            let matchedTokens = 0;
+
+            for (const tok of tokens) {
+                const directHit = candParts.includes(tok) || candNorm.includes(tok);
+                const initialHit = candParts.some(cp => cp.length === 1 && cp[0] === tok[0]);
+                if (directHit) {
+                    score += tok.length >= 3 ? 90 : 50;
+                    matchedTokens += 1;
+                } else if (initialHit) {
+                    score += 25;
+                }
+            }
+
+            if (matchedTokens === 0) return -1;
+
+            if (fallbackTeamNorm && candTeam) {
+                const sameTeam = candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam);
+                if (sameTeam) {
+                    score += 140;
+                } else {
+                    score -= matchedTokens >= 2 ? 20 : 120;
+                }
+            }
+
+            return score;
+        };
+
+        let bestCandidate: Player | undefined;
+        let bestScore = 0;
+
+        for (const term of candidateSearchTerms) {
+            const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(term)}&limit=40`);
+            if (!res.ok) continue;
+
+            const list: Player[] = await res.json();
+            if (!Array.isArray(list) || list.length === 0) continue;
+
+            for (const cand of list) {
+                const s = scoreCandidate(cand, term);
+                if (s > bestScore) {
+                    bestScore = s;
+                    bestCandidate = cand;
+                }
+            }
+
+            if (bestScore >= 190) break;
+        }
+
+        const result = bestCandidate && bestScore >= 80
+            ? {
+                  ...bestCandidate,
+                  name: bestCandidate.name || cleanName,
+                  team_name: sanitizeTeamName(bestCandidate, cleanFallbackTeam),
+              }
+            : undefined;
+
+        resolvedPlayerCache.current[cacheKey] = result || null;
+        return result;
+    };
+
+    const getDisplayPlayerName = (rawName?: string, fallbackTeam?: string): string => {
+        if (!rawName) return "";
+        const targetNorm = normalizeName(rawName);
+        const fallbackTeamNorm = normalizeName(sanitizeTeamName(fallbackTeam, ''));
+        const cacheKey = `${targetNorm}__${fallbackTeamNorm}`;
+
+        if (!Object.prototype.hasOwnProperty.call(resolvedPlayerCache.current, cacheKey)) {
+            resolvedPlayerCache.current[cacheKey] = null;
+            findPlayerInDB(rawName, fallbackTeam).then((found) => {
+                if (found?.name && normalizeName(found.name) !== targetNorm) {
+                    resolvedPlayerCache.current[cacheKey] = found;
+                    setNameResolveTick((t) => t + 1);
+                }
+            }).catch(() => {});
+        }
+
+        const cached = resolvedPlayerCache.current[cacheKey];
+        return cached?.name || rawName;
+    };
 
     const subscribeToPushNotifications = async (email: string) => {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -859,29 +993,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         }
 
         const cleanName = playerOrName.trim();
-        const targetNorm = normalizeName(cleanName);
         const cleanFallbackTeam = sanitizeTeamName(fallbackTeam, '');
-        const fallbackTeamNorm = normalizeName(cleanFallbackTeam);
-
-        const tokens = targetNorm.split(' ').filter(t => t.length >= 2);
-        const longTokens = tokens.filter(t => t.length >= 3);
-        const candidateSearchTerms: string[] = [];
-
-        if (longTokens.length >= 3) {
-            candidateSearchTerms.push(longTokens[longTokens.length - 2]);
-            candidateSearchTerms.push(longTokens[longTokens.length - 1]);
-        } else if (longTokens.length > 0) {
-            candidateSearchTerms.push(longTokens[longTokens.length - 1]);
-        }
-
-        for (const tok of longTokens) {
-            if (!candidateSearchTerms.includes(tok)) {
-                candidateSearchTerms.push(tok);
-            }
-        }
-        if (!candidateSearchTerms.includes(cleanName)) {
-            candidateSearchTerms.push(cleanName);
-        }
 
         setLoadingPlayerCard(true);
         setSelectedPlayer({
@@ -891,75 +1003,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             team_name: cleanFallbackTeam,
         });
 
-        const scoreCandidate = (candidate: Player, searchedTerm: string): number => {
-            const candNorm = normalizeName(candidate.name);
-            const candParts = candNorm.split(' ').filter(Boolean);
-            const candTeam = normalizeName(sanitizeTeamName(candidate, ''));
-            const termNorm = normalizeName(searchedTerm);
-
-            if (candNorm === targetNorm) return 1000;
-
-            if (termNorm && termNorm !== targetNorm) {
-                const hasTerm = candParts.includes(termNorm) || candNorm.includes(termNorm);
-                if (!hasTerm) return -1;
-            }
-
-            let score = 0;
-            let matchedLongTokens = 0;
-
-            for (const tok of longTokens) {
-                const directHit = candParts.includes(tok) || candNorm.includes(tok);
-                const initialHit = candParts.some(cp => cp.length === 1 && cp[0] === tok[0]);
-                if (directHit) {
-                    score += 90;
-                    matchedLongTokens += 1;
-                } else if (initialHit) {
-                    score += 25;
-                }
-            }
-
-            if (matchedLongTokens === 0) return -1;
-
-            if (fallbackTeamNorm && candTeam) {
-                const sameTeam = candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam);
-                if (sameTeam) {
-                    score += 140;
-                } else {
-                    score -= matchedLongTokens >= 2 ? 20 : 120;
-                }
-            }
-
-            return score;
-        };
-
         try {
-            let bestCandidate: Player | undefined;
-            let bestScore = 0;
-
-            for (const term of candidateSearchTerms) {
-                const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(term)}&limit=30`);
-                if (!res.ok) continue;
-
-                const list: Player[] = await res.json();
-                if (!Array.isArray(list) || list.length === 0) continue;
-
-                for (const cand of list) {
-                    const s = scoreCandidate(cand, term);
-                    if (s > bestScore) {
-                        bestScore = s;
-                        bestCandidate = cand;
-                    }
-                }
-
-                if (bestScore >= 190) break;
-            }
-
-            if (bestCandidate && bestScore >= 90) {
-                setSelectedPlayer({
-                    ...bestCandidate,
-                    name: bestCandidate.name || cleanName,
-                    team_name: sanitizeTeamName(bestCandidate, cleanFallbackTeam),
-                });
+            const matched = await findPlayerInDB(cleanName, cleanFallbackTeam);
+            if (matched) {
+                setSelectedPlayer(matched);
             }
         } catch (err) {
             console.error("Eroare la încărcarea profilului jucătorului:", err);
@@ -1101,7 +1148,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         const pRating = item?.player?.rating;
         const isGK = pPos === 'G';
         const badges = getPlayerMatchBadges(pName, item?.player?.id);
-        const shortName = pName.includes(' ') ? `${pName.split(' ')[0].charAt(0)}. ${pName.split(' ').slice(-1)[0]}` : pName;
+        const resolvedFullName = getDisplayPlayerName(pName, teamName);
+        const shortName = resolvedFullName.includes(' ')
+            ? `${resolvedFullName.split(' ')[0].charAt(0)}. ${resolvedFullName.split(' ').slice(-1)[0]}`
+            : resolvedFullName;
 
         let shirtStyle = isAwayTeam ? "bg-slate-900 text-white border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" : "bg-white text-slate-900 border-slate-300 shadow-[0_0_10px_rgba(255,255,255,0.5)]";
         if (isGK) { shirtStyle = isAwayTeam ? "bg-amber-500 text-slate-950 border-amber-300" : "bg-yellow-400 text-slate-950 border-white"; }
@@ -1114,7 +1164,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 key={item?.player?.id || `${pName}-${idx}`}
                 onClick={() => handleOpenPlayerProfile(pName, teamName)}
                 className="cursor-pointer group flex flex-col items-center select-none w-auto sm:w-[85px] z-10 mx-0.5 sm:mx-1"
-                title={`${pName} (#${pNum}) - Apasă pentru profil`}
+                title={`${resolvedFullName} (#${pNum}) - Apasă pentru profil`}
             >
                 <div className="relative">
                     <div className={`w-7 h-7 sm:w-12 sm:h-12 rounded-full ${shirtStyle} font-black text-[9px] sm:text-base flex items-center justify-center border-2 sm:border-4 group-hover:scale-110 transition-transform`}>{pNum}</div>
@@ -1614,7 +1664,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                                         onClick={() => handleOpenPlayerProfile(ev.assist.name, eventTeamName)}
                                                                                         className="underline decoration-emerald-500/40 hover:decoration-emerald-400 cursor-pointer font-black uppercase"
                                                                                     >
-                                                                                        {ev.assist.name}
+                                                                                        {getDisplayPlayerName(ev.assist.name, eventTeamName)}
                                                                                     </button>
                                                                                 ) : (
                                                                                     "N/A"
@@ -1628,7 +1678,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                                         onClick={() => handleOpenPlayerProfile(ev.player.name, eventTeamName)}
                                                                                         className="underline decoration-rose-500/40 hover:decoration-rose-400 cursor-pointer font-bold uppercase"
                                                                                     >
-                                                                                        {ev.player.name}
+                                                                                        {getDisplayPlayerName(ev.player.name, eventTeamName)}
                                                                                     </button>
                                                                                 )}
                                                                             </p>
@@ -1642,7 +1692,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                                         onClick={() => handleOpenPlayerProfile(ev.player.name, eventTeamName)}
                                                                                         className="font-black text-slate-900 dark:text-white tracking-tight text-[10px] sm:text-sm hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-slate-300 dark:decoration-slate-700 hover:decoration-emerald-500 cursor-pointer"
                                                                                     >
-                                                                                        {ev.player.name}
+                                                                                        {getDisplayPlayerName(ev.player.name, eventTeamName)}
                                                                                     </button>
                                                                                 )}
                                                                                 {presentation.badge && (
@@ -1659,7 +1709,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                                                         onClick={() => handleOpenPlayerProfile(ev.assist.name, eventTeamName)}
                                                                                         className="hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-slate-400/40 cursor-pointer font-bold"
                                                                                     >
-                                                                                        {ev.assist.name}
+                                                                                        {getDisplayPlayerName(ev.assist.name, eventTeamName)}
                                                                                     </button>
                                                                                 </p>
                                                                             )}

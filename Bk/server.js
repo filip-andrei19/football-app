@@ -50,6 +50,84 @@ const PORT = process.env.PORT || 3000;
 const TOKEN_SECRET = process.env.JWT_SECRET || 'cheie_secreta_foarte_lunga_si_sigura';
 
 // ==========================================
+// HELPERI CĂUTARE & CURĂȚARE DATE SPORT
+// ==========================================
+const normalizeForSearch = (val) =>
+    String(val || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+const escapeRegex = (str) => String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const charAccentMap = {
+    a: '[aàáâãäåăāą]',
+    c: '[cçćč]',
+    d: '[dďđ]',
+    e: '[eèéêëēęě]',
+    g: '[gğġ]',
+    i: '[iìíîïīį]',
+    l: '[lĺľł]',
+    n: '[nñńň]',
+    o: '[oòóôõöøōő]',
+    r: '[rŕř]',
+    s: '[sśŝşș]',
+    t: '[tťţț]',
+    u: '[uùúûüūůű]',
+    y: '[yýÿ]',
+    z: '[zźżž]',
+};
+
+const buildAccentRegex = (rawTerm) => {
+    const norm = normalizeForSearch(rawTerm);
+    if (!norm) return null;
+    const pattern = norm
+        .split('')
+        .map((ch) => {
+            if (ch === ' ') return '\\s+';
+            return charAccentMap[ch] || escapeRegex(ch);
+        })
+        .join('');
+    return new RegExp(pattern, 'i');
+};
+
+const cleanTeamField = (val) => {
+    const s = String(val || '').trim();
+    if (!s || /^\d+$/.test(s)) return undefined;
+    return s;
+};
+
+const cleanLogoField = (val) => {
+    const s = String(val || '').trim();
+    return /^https?:\/\//i.test(s) ? s : '';
+};
+
+const sanitizePlayerDoc = (doc) => {
+    const raw = typeof doc?.toObject === 'function' ? doc.toObject() : { ...doc };
+    const cleanTeamName = cleanTeamField(raw.team_name);
+    const cleanTeam = cleanTeamField(raw.team);
+    const cleanSummaryTeam = cleanTeamField(raw.statistics_summary?.team_name);
+    const resolvedTeam = cleanTeamName || cleanTeam || cleanSummaryTeam;
+
+    if (resolvedTeam) {
+        raw.team_name = resolvedTeam;
+        raw.team = resolvedTeam;
+    } else {
+        delete raw.team_name;
+        delete raw.team;
+    }
+
+    if (raw.team_logo !== undefined) {
+        raw.team_logo = cleanLogoField(raw.team_logo);
+    }
+
+    return raw;
+};
+
+// ==========================================
 // RUTE HEALTH CHECK (PENTRU UPTIMEROBOT / RENDER)
 // ==========================================
 app.get('/api/health', (req, res) => {
@@ -608,7 +686,7 @@ const startServer = async () => {
                 if (!user) return res.status(404).json({ error: "User not found" });
                 const watchlistIds = user.scoutWatchlist || [];
                 const watchedPlayers = await Player.find({ _id: { $in: watchlistIds } });
-                res.json({ success: true, scoutWatchlist: watchlistIds, watchedPlayers });
+                res.json({ success: true, scoutWatchlist: watchlistIds, watchedPlayers: watchedPlayers.map(sanitizePlayerDoc) });
             } catch (err) {
                 res.status(500).json({ error: "Eroare la preluarea watchlist-ului." });
             }
@@ -919,6 +997,9 @@ const startServer = async () => {
                 } = req.query;
 
                 const conditions = [];
+                const searchTokens = search
+                    ? normalizeForSearch(search).split(' ').filter((t) => t.length >= 2)
+                    : [];
 
                 if (diaspora === 'true') {
                     conditions.push({
@@ -937,15 +1018,30 @@ const startServer = async () => {
                 }
 
                 if (search) {
-                    conditions.push({
-                        $or: [
-                            { name: { $regex: search, $options: 'i' } },
-                            { firstname: { $regex: search, $options: 'i' } },
-                            { lastname: { $regex: search, $options: 'i' } },
-                            { team_name: { $regex: search, $options: 'i' } },
-                            { team: { $regex: search, $options: 'i' } }
-                        ]
-                    });
+                    const searchOr = [];
+                    const fullRegex = buildAccentRegex(search);
+                    if (fullRegex) {
+                        searchOr.push(
+                            { name: { $regex: fullRegex } },
+                            { firstname: { $regex: fullRegex } },
+                            { lastname: { $regex: fullRegex } },
+                            { team_name: { $regex: fullRegex } },
+                            { team: { $regex: fullRegex } }
+                        );
+                    }
+                    for (const tok of searchTokens) {
+                        const tokRegex = buildAccentRegex(tok);
+                        if (tokRegex) {
+                            searchOr.push(
+                                { name: { $regex: tokRegex } },
+                                { firstname: { $regex: tokRegex } },
+                                { lastname: { $regex: tokRegex } }
+                            );
+                        }
+                    }
+                    if (searchOr.length > 0) {
+                        conditions.push({ $or: searchOr });
+                    }
                 }
 
                 if (position && position !== 'Toate') {
@@ -975,10 +1071,11 @@ const startServer = async () => {
                 if (leagueId) conditions.push({ league_id: Number(leagueId) });
                 if (nationality) conditions.push({ nationality: { $regex: nationality, $options: 'i' } });
                 if (team) {
+                    const teamRegex = buildAccentRegex(team) || new RegExp(escapeRegex(team), 'i');
                     conditions.push({
                         $or: [
-                            { team_name: { $regex: team, $options: 'i' } },
-                            { team: { $regex: team, $options: 'i' } }
+                            { team_name: { $regex: teamRegex } },
+                            { team: { $regex: teamRegex } }
                         ]
                     });
                 }
@@ -989,7 +1086,18 @@ const startServer = async () => {
                 const skipValue = (page - 1) * limitValue;
 
                 const playersQuery = Player.find(finalQuery).sort({ _id: -1 }).skip(skipValue).limit(limitValue);
-                let players = await playersQuery;
+                let players = (await playersQuery).map(sanitizePlayerDoc);
+
+                if (searchTokens.length > 0) {
+                    players = players
+                        .map((p) => {
+                            const candNorm = normalizeForSearch(p.name);
+                            const matchedCount = searchTokens.filter((t) => candNorm.includes(t)).length;
+                            return { p, matchedCount };
+                        })
+                        .sort((a, b) => b.matchedCount - a.matchedCount)
+                        .map((item) => item.p);
+                }
 
                 if (minRating) {
                     const minR = parseFloat(minRating);
@@ -1010,7 +1118,7 @@ const startServer = async () => {
                 if (!ids) return res.status(400).json({ error: "Parametrul ids este obligatoriu." });
                 const idList = String(ids).split(',').map(id => id.trim()).filter(Boolean);
                 const players = await Player.find({ _id: { $in: idList } });
-                res.json(players);
+                res.json(players.map(sanitizePlayerDoc));
             } catch (err) {
                 res.status(500).json({ error: "Eroare la compararea jucătorilor." });
             }
@@ -1021,10 +1129,11 @@ const startServer = async () => {
                 const { q } = req.query;
                 let matchQuery = {};
                 if (q) {
+                    const qRegex = buildAccentRegex(q) || new RegExp(escapeRegex(q), 'i');
                     matchQuery = {
                         $or: [
-                            { team_name: { $regex: q, $options: 'i' } },
-                            { team: { $regex: q, $options: 'i' } }
+                            { team_name: { $regex: qRegex } },
+                            { team: { $regex: qRegex } }
                         ]
                     };
                 }
@@ -1036,7 +1145,13 @@ const startServer = async () => {
                     { $sort: { team_name: 1 } },
                     { $limit: 200 }
                 ]);
-                res.json(teams);
+                const cleanedTeams = teams
+                    .map((t) => ({
+                        team_name: cleanTeamField(t.team_name),
+                        team_logo: cleanLogoField(t.team_logo),
+                    }))
+                    .filter((t) => Boolean(t.team_name));
+                res.json(cleanedTeams);
             } catch (err) {
                 res.status(500).json({ error: "Eroare." });
             }
@@ -1044,7 +1159,7 @@ const startServer = async () => {
 
         app.get('/api/sport/teams/:teamName/roster', async (req, res) => {
             try {
-                const teamNameRegex = new RegExp(`^${req.params.teamName.trim()}$`, 'i');
+                const teamNameRegex = buildAccentRegex(req.params.teamName.trim()) || new RegExp(`^${escapeRegex(req.params.teamName.trim())}$`, 'i');
                 const players = await Player.find({
                     $or: [
                         { team_name: teamNameRegex },
@@ -1054,26 +1169,32 @@ const startServer = async () => {
 
                 if (!players || players.length === 0) return res.status(404).json({ message: "Nu sunt jucători." });
 
+                const sanitizedPlayers = players.map(sanitizePlayerDoc);
+
                 const roster = {
-                    teamInfo: { name: req.params.teamName, logo: players[0].team_logo || "", totalPlayers: players.length },
+                    teamInfo: {
+                        name: cleanTeamField(req.params.teamName) || sanitizedPlayers[0].team_name || "Echipă",
+                        logo: cleanLogoField(sanitizedPlayers[0].team_logo),
+                        totalPlayers: sanitizedPlayers.length
+                    },
                     squad: {
-                        Goalkeepers: players.filter(p => {
+                        Goalkeepers: sanitizedPlayers.filter(p => {
                             const pos = (p.position || "").toLowerCase();
                             return pos.includes('goalkeeper') || pos.includes('portar');
                         }),
-                        Defenders: players.filter(p => {
+                        Defenders: sanitizedPlayers.filter(p => {
                             const pos = (p.position || "").toLowerCase();
                             return pos.includes('defender') || pos.includes('back');
                         }),
-                        Midfielders: players.filter(p => {
+                        Midfielders: sanitizedPlayers.filter(p => {
                             const pos = (p.position || "").toLowerCase();
                             return pos.includes('midfield') || pos.includes('mijloca');
                         }),
-                        Attackers: players.filter(p => {
+                        Attackers: sanitizedPlayers.filter(p => {
                             const pos = (p.position || "").toLowerCase();
                             return pos.includes('forward') || pos.includes('striker') || pos.includes('wing') || pos.includes('attack');
                         }),
-                        Unknown: players.filter(p => {
+                        Unknown: sanitizedPlayers.filter(p => {
                             const pos = (p.position || "").toLowerCase();
                             return !pos || (!pos.includes('goalkeeper') && !pos.includes('portar') && !pos.includes('defender') && !pos.includes('back') && !pos.includes('midfield') && !pos.includes('mijloca') && !pos.includes('forward') && !pos.includes('striker') && !pos.includes('wing') && !pos.includes('attack'));
                         })
