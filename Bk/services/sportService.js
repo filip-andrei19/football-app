@@ -9,6 +9,48 @@ const Match = require('../models/match');
 const StartingXI = require('../models/StartingXI');
 const Leaderboard = require('../models/Leaderboard');
 
+const normalizeForSearch = (val) =>
+  String(val || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const escapeRegex = (str) => String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const charAccentMap = {
+  a: '[aàáâãäåăāą]',
+  c: '[cçćč]',
+  d: '[dďđ]',
+  e: '[eèéêëēęě]',
+  g: '[gğġ]',
+  i: '[iìíîïīį]',
+  l: '[lĺľł]',
+  n: '[nñńň]',
+  o: '[oòóôõöøōő]',
+  r: '[rŕř]',
+  s: '[sśŝşș]',
+  t: '[tťţț]',
+  u: '[uùúûüūůű]',
+  y: '[yýÿ]',
+  z: '[zźżž]',
+};
+
+const buildAccentRegex = (rawTerm) => {
+  const norm = normalizeForSearch(rawTerm);
+  if (!norm) return null;
+  const pattern = norm
+    .split('')
+    .map((ch) => {
+      if (ch === ' ') return '\\s+';
+      return charAccentMap[ch] || escapeRegex(ch);
+    })
+    .join('');
+  return new RegExp(pattern, 'i');
+};
+
 // --- PLAYERS ---
 const createPlayer = async (data) => await Player.create(data);
 
@@ -30,9 +72,16 @@ const getAllPlayers = async (query = {}) => {
       filter.age = { $lte: 21, $ne: null };
   }
 
-  // 3. Căutare după nume
+  // 3. Căutare după nume (fără diacritice, pe nume/prenume/echipă)
   if (query.search) {
-      filter.name = { $regex: query.search, $options: 'i' }; 
+      const searchRegex = buildAccentRegex(query.search) || new RegExp(escapeRegex(query.search), 'i');
+      filter.$or = [
+          { name: { $regex: searchRegex } },
+          { firstname: { $regex: searchRegex } },
+          { lastname: { $regex: searchRegex } },
+          { team_name: { $regex: searchRegex } },
+          { team: { $regex: searchRegex } }
+      ];
   }
 
   return await Player.find(filter)

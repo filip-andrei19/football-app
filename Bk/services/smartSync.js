@@ -27,6 +27,14 @@ function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function cleanTeamValue(val, fallback = "Unknown") {
+    const cleaned = String(val || "").trim();
+    if (!cleaned || /^\d+$/.test(cleaned)) {
+        return fallback;
+    }
+    return cleaned;
+}
+
 // --- FUNCȚIE SCUT PENTRU PROTEJAREA API-ULUI ---
 async function safeGet(url, config) {
     const res = await axios.get(url, config);
@@ -55,8 +63,14 @@ async function getPlayerPastTeams(playerId) {
             const transfers = res.data.response[0].transfers;
             if (transfers && Array.isArray(transfers)) {
                 transfers.forEach(t => {
-                    if (t.teams && t.teams.out && t.teams.out.name) pastTeams.add(t.teams.out.name);
-                    if (t.teams && t.teams.in && t.teams.in.name) pastTeams.add(t.teams.in.name);
+                    if (t.teams && t.teams.out && t.teams.out.name) {
+                        const outName = cleanTeamValue(t.teams.out.name, "");
+                        if (outName) pastTeams.add(outName);
+                    }
+                    if (t.teams && t.teams.in && t.teams.in.name) {
+                        const inName = cleanTeamValue(t.teams.in.name, "");
+                        if (inName) pastTeams.add(inName);
+                    }
                 });
             }
         }
@@ -191,7 +205,7 @@ async function getRealClubInfoAndStats(playerId, nationalTeamId) {
         const aggregatedStats = calculateTotalStats(statsArray, realClub.id);
 
         return { 
-            name: realClub.name || "Unknown", 
+            name: cleanTeamValue(realClub.name, "Unknown"), 
             logo: realClub.logo || "",
             league_id: aggregatedStats.league_id,
             stats: aggregatedStats
@@ -220,17 +234,19 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
                 try {
                     if (!item || !item.player) continue;
                     const p = item.player;
+                    if (!p.id) continue;
+
                     await wait(2000); 
                     
                     const realClubInfo = await getRealClubInfoAndStats(p.id, teamId);
                     
-                    let finalTeamName = teamName; 
+                    let finalTeamName = cleanTeamValue(teamName, "Romania (Nationala)"); 
                     let finalTeamLogo = teamLogo;
                     let leagueId = null;
                     let finalStats = calculateTotalStats(item.statistics, teamId); 
 
                     if (realClubInfo) {
-                        finalTeamName = realClubInfo.name; 
+                        finalTeamName = cleanTeamValue(realClubInfo.name, finalTeamName); 
                         finalTeamLogo = realClubInfo.logo;
                         leagueId = realClubInfo.league_id;
                         finalStats = realClubInfo.stats; 
@@ -252,13 +268,6 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
                         }
                     }
 
-                    if (!p.id) continue;
-
-                    await Player.deleteMany({ api_id: p.id });
-                    
-                    // --- AICI EXTRAGEM MARKET VALUE (Dacă există) ---
-                    // Notă: API-Sports ar putea să expună o cotă (gen "market_value" sau "value" în diferite structuri). 
-                    // Verificăm câteva proprietăți comune pe care s-ar putea să le primești de la ei.
                     let playerMarketValue = null;
                     if (p.market_value) {
                          playerMarketValue = p.market_value;
@@ -285,7 +294,7 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
                         team_logo: finalTeamLogo,
                         league_id: leagueId || null,
                         past_teams: pastTeamsArray, 
-                        market_value: playerMarketValue, // <--- ADĂUGAT
+                        market_value: playerMarketValue,
                         detailed_stats: finalStats.detailed_stats || [],
                         statistics_summary: {
                             team: finalTeamName,
@@ -298,8 +307,12 @@ async function processNationalTeam(teamId, teamName, teamLogo) {
                         }
                     };
 
-                    const playerDoc = new Player(newPlayerData);
-                    await playerDoc.save();
+                    if (existingPlayer) {
+                        await Player.updateOne({ _id: existingPlayer._id }, { $set: newPlayerData });
+                    } else {
+                        const playerDoc = new Player(newPlayerData);
+                        await playerDoc.save();
+                    }
                     console.log(`   [NATIONALA] Salvat: ${p.name}`);
                 } catch (innerErr) {
                     console.log(`Eroare izolata jucator (Nationala): ${innerErr.message}`);
@@ -335,9 +348,11 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                     if (!item || !item.player) continue;
 
                     const p = item.player;
+                    if (!p.id) continue;
+
                     const totalStats = calculateTotalStats(item.statistics, teamId);
 
-                    let actualTeamName = teamName;
+                    let actualTeamName = cleanTeamValue(teamName, "Unknown");
                     let actualTeamLogo = teamLogo;
                     let actualLeagueId = totalStats.league_id || leagueId || null;
 
@@ -365,14 +380,13 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         if (currentTransfer.teams && currentTransfer.teams.in && currentTransfer.teams.in.id !== teamId) {
                             const transferYear = new Date(currentTransfer.date).getFullYear();
                             if (transferYear >= SEASON) {
-                                actualTeamName = currentTransfer.teams.in.name;
+                                actualTeamName = cleanTeamValue(currentTransfer.teams.in.name, actualTeamName);
                                 actualTeamLogo = currentTransfer.teams.in.logo;
                                 actualLeagueId = totalStats.league_id || null;
                             }
                         }
                     }
                     
-                    // --- AICI EXTRAGEM MARKET VALUE (Dacă există) ---
                     let playerMarketValue = null;
                     if (p.market_value) {
                          playerMarketValue = p.market_value;
@@ -399,7 +413,7 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                         team_logo: actualTeamLogo,
                         league_id: actualLeagueId,
                         past_teams: pastTeamsArray, 
-                        market_value: playerMarketValue, // <--- ADĂUGAT
+                        market_value: playerMarketValue,
                         detailed_stats: totalStats.detailed_stats || [],
                         statistics_summary: {
                             team_name: actualTeamName,
@@ -411,8 +425,6 @@ async function processTeamAndUpdate(teamId, teamName, teamLogo, leagueId) {
                             rating: totalStats.rating || null
                         }
                     };
-
-                    if (!p.id) continue;
 
                     if (existingPlayer) {
                         if (!p.nationality && existingPlayer.nationality === "Romania" && teamName !== "Romania (Nationala)") {
@@ -446,7 +458,7 @@ async function syncTeamPlayersAfterMatch(teamId, teamName, teamLogo, leagueId) {
     const lastSync = recentTeamSyncMap.get(Number(teamId)) || 0;
     if (now - lastSync < 30 * 60 * 1000) return;
     recentTeamSyncMap.set(Number(teamId), now);
-    await processTeamAndUpdate(teamId, teamName || "Unknown", teamLogo || "", leagueId || null);
+    await processTeamAndUpdate(teamId, cleanTeamValue(teamName, "Unknown"), teamLogo || "", leagueId || null);
 }
 
 async function syncMatchTeamsPlayers(matchDoc) {

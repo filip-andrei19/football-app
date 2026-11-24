@@ -587,13 +587,29 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     const candNorm = normalizeName(cand.name);
                     const candTeam = normalizeName(sanitizeTeamName(cand, ''));
                     let score = 0;
+                    let matchedTokens = 0;
 
-                    if (candNorm === targetNorm) score += 500;
-                    tokens.forEach((tok) => {
-                        if (candNorm.includes(tok)) score += 100;
-                    });
-                    if (fallbackTeamNorm && candTeam && (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam))) {
-                        score += 150;
+                    if (candNorm === targetNorm) {
+                        score += 1000;
+                        matchedTokens = tokens.length || 1;
+                    }
+
+                    for (const tok of tokens) {
+                        if (candNorm.includes(tok)) {
+                            score += tok.length >= 5 ? 130 : 100;
+                            matchedTokens += 1;
+                        }
+                    }
+
+                    if (matchedTokens === 0 && candNorm !== targetNorm) continue;
+
+                    if (fallbackTeamNorm && candTeam) {
+                        const sameTeam = candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam);
+                        if (sameTeam) {
+                            score += 150;
+                        } else if (matchedTokens < 2) {
+                            score -= 100;
+                        }
                     }
 
                     if (score > bestScore && score >= 100) {
