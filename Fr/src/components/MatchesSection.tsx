@@ -880,6 +880,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         const cleanName = playerOrName.trim();
         const targetNorm = normalizeName(cleanName);
         const cleanFallbackTeam = sanitizeTeamName(fallbackTeam, '');
+        const fallbackTeamNorm = normalizeName(cleanFallbackTeam);
+
+        const tokens = targetNorm.split(' ').filter(Boolean);
+        const firstInitial = tokens.length >= 2 ? tokens[0][0] : '';
+        const lastToken = tokens.length > 0 ? tokens[tokens.length - 1] : '';
+
         setLoadingPlayerCard(true);
         setSelectedPlayer({
             _id: `temp_${cleanName}`,
@@ -888,34 +894,64 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             team_name: cleanFallbackTeam,
         });
 
+        const findBestCandidate = (candidates: Player[]) => {
+            if (!Array.isArray(candidates) || candidates.length === 0) return undefined;
+
+            const exactMatch = candidates.find(p => normalizeName(p.name) === targetNorm);
+            if (exactMatch) return exactMatch;
+
+            if (lastToken && lastToken.length >= 3) {
+                const surnameAndTeam = candidates.find(p => {
+                    const candName = normalizeName(p.name);
+                    const candTeam = normalizeName(sanitizeTeamName(p, ''));
+                    const candParts = candName.split(' ').filter(Boolean);
+                    const hasSurname = candParts.includes(lastToken) || candName.includes(lastToken);
+                    const initialMatches = !firstInitial || (candParts[0] && candParts[0][0] === firstInitial);
+                    const teamMatches = fallbackTeamNorm && candTeam
+                        ? (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam))
+                        : false;
+                    return hasSurname && initialMatches && (teamMatches || !fallbackTeamNorm);
+                });
+                if (surnameAndTeam) return surnameAndTeam;
+
+                if (fallbackTeamNorm) {
+                    const sameSurnameAndTeamLoose = candidates.find(p => {
+                        const candName = normalizeName(p.name);
+                        const candTeam = normalizeName(sanitizeTeamName(p, ''));
+                        const hasSurname = candName.split(' ').includes(lastToken) || candName.includes(lastToken);
+                        const teamMatches = candTeam && (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam));
+                        return hasSurname && teamMatches;
+                    });
+                    if (sameSurnameAndTeamLoose) return sameSurnameAndTeamLoose;
+                }
+            }
+
+            return undefined;
+        };
+
         try {
-            const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(cleanName)}&limit=20`);
+            const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(cleanName)}&limit=25`);
             if (res.ok) {
                 const playersList: Player[] = await res.json();
-                if (Array.isArray(playersList) && playersList.length > 0) {
-                    const exactMatch = playersList.find(p => normalizeName(p.name) === targetNorm);
+                const matched = findBestCandidate(playersList);
+                if (matched) {
+                    setSelectedPlayer({
+                        ...matched,
+                        team_name: sanitizeTeamName(matched, cleanFallbackTeam),
+                    });
+                    return;
+                }
+            }
 
-                    const tokens = targetNorm.split(' ').filter(t => t.length >= 3);
-                    const lastToken = tokens[tokens.length - 1];
-                    const fallbackTeamNorm = normalizeName(cleanFallbackTeam);
-
-                    const tokenAndTeamMatch = !exactMatch && lastToken
-                        ? playersList.find(p => {
-                            const candName = normalizeName(p.name);
-                            const candTeam = normalizeName(sanitizeTeamName(p, ''));
-                            const sameSurname = candName.split(' ').includes(lastToken);
-                            const sameTeam = fallbackTeamNorm && candTeam
-                                ? (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam))
-                                : false;
-                            return sameSurname && sameTeam;
-                        })
-                        : undefined;
-
-                    const matched = exactMatch || tokenAndTeamMatch;
-                    if (matched) {
+            if (lastToken && lastToken.length >= 3) {
+                const resSurname = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(lastToken)}&limit=25`);
+                if (resSurname.ok) {
+                    const surnameList: Player[] = await resSurname.json();
+                    const matchedSurname = findBestCandidate(surnameList);
+                    if (matchedSurname) {
                         setSelectedPlayer({
-                            ...matched,
-                            team_name: sanitizeTeamName(matched, cleanFallbackTeam),
+                            ...matchedSurname,
+                            team_name: sanitizeTeamName(matchedSurname, cleanFallbackTeam),
                         });
                     }
                 }
@@ -1389,7 +1425,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                     className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border transition shrink-0 ${isFav ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-amber-500'}`}
                                                     title="Marchează la favorite"
                                                 >
-                                                    <Heart className={`w-3.5 h-3.5 sm:w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+                                                    <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isFav ? 'fill-current' : ''}`} />
                                                 </button>
 
                                                 <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-4 px-1 sm:px-2 min-w-0">
