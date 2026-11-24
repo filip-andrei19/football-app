@@ -518,6 +518,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [favoriteTeams, setFavoriteTeams] = useState<string[]>([]);
 
     const [showNotifSettings, setShowNotifSettings] = useState(false);
+    const [notifPermission, setNotifPermission] = useState<string>(() => {
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+            return Notification.permission;
+        }
+        return 'unsupported';
+    });
+
     const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(() => {
         try {
             const saved = localStorage.getItem('scout_notif_prefs');
@@ -696,13 +703,48 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         }
     };
 
+    const handleEnablePushNotifications = async () => {
+        if (!('Notification' in window)) {
+            toast.error("Browserul tău nu suportă notificări.");
+            return;
+        }
+        if (!userEmail) {
+            toast.error("Conectează-te în cont pentru a activa notificările.");
+            return;
+        }
+
+        try {
+            const permission = await Notification.requestPermission();
+            setNotifPermission(permission);
+
+            if (permission === 'granted') {
+                await subscribeToPushNotifications(userEmail);
+                toast.success("Notificările în bară au fost activate!");
+
+                if (navigator.serviceWorker) {
+                    navigator.serviceWorker.ready
+                        .then((reg) => {
+                            reg.showNotification("⚽ Alerte Live Activate!", {
+                                body: "Vei primi notificări pentru meciurile tale favorite.",
+                                icon: "/icon-192.png",
+                                badge: "/icon-192.png",
+                            });
+                        })
+                        .catch(() => {});
+                }
+            } else if (permission === 'denied') {
+                toast.error("Notificările sunt blocate din setările browserului.");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Nu am putut activa notificările.");
+        }
+    };
+
     useEffect(() => {
         if ("Notification" in window) {
-            if (Notification.permission === "default") {
-                Notification.requestPermission().then(permission => {
-                    if (permission === "granted" && userEmail) subscribeToPushNotifications(userEmail);
-                });
-            } else if (Notification.permission === "granted" && userEmail) {
+            setNotifPermission(Notification.permission);
+            if (Notification.permission === "granted" && userEmail) {
                 subscribeToPushNotifications(userEmail);
             }
         }
@@ -1524,7 +1566,27 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             </button>
                         </div>
                         <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-                            <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest text-center mb-4 sm:mb-6">Alege ce primești pentru meciurile favorite</p>
+                            <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest text-center mb-2">Alege ce primești pentru meciurile favorite</p>
+
+                            <div className="mb-4">
+                                {notifPermission === 'granted' ? (
+                                    <div className="w-full py-2.5 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider text-center">
+                                        ✅ Notificări active pe acest dispozitiv
+                                    </div>
+                                ) : notifPermission === 'denied' ? (
+                                    <div className="w-full py-2.5 px-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-400 text-[10px] sm:text-xs font-black uppercase tracking-wider text-center">
+                                        🚫 Blocate din browser (activează-le din setările site-ului)
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handleEnablePushNotifications}
+                                        className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] sm:text-xs font-black uppercase tracking-wider transition-colors shadow-md cursor-pointer"
+                                    >
+                                        🔔 Activează notificările în bară
+                                    </button>
+                                )}
+                            </div>
 
                             {[
                                 { id: 'goals', label: 'Goluri Marcate', icon: '⚽' },
