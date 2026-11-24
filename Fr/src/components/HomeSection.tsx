@@ -11,6 +11,16 @@ import { useForm, useStore } from '@tanstack/react-form';
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 
+const sanitizeTeamName = (raw?: string, fallback = "Club Necunoscut"): string => {
+  const cleaned = String(raw || '').trim();
+  if (!cleaned || /^\d+$/.test(cleaned)) return fallback;
+  return cleaned;
+};
+
+const hasValidImageUrl = (url?: string): boolean => {
+  return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+};
+
 interface DetailedStat {
   competition: string;
   type: string;
@@ -431,10 +441,15 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   };
 
   const handleTeamClick = async (teamName: string) => {
+    const cleanTeam = sanitizeTeamName(teamName, "");
+    if (!cleanTeam) {
+      toast.error("Numele echipei nu este disponibil pentru acest rezultat.");
+      return;
+    }
     setLoadingRoster(true);
     setSelectedTeam(null);
     try {
-      const res = await fetch(`${API_URL}/api/sport/teams/${encodeURIComponent(teamName)}/roster`);
+      const res = await fetch(`${API_URL}/api/sport/teams/${encodeURIComponent(cleanTeam)}/roster`);
       if (!res.ok) throw new Error("Eroare preluare lot");
       const data = await res.json();
       setSelectedTeam(data);
@@ -463,11 +478,15 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl border-2 sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 relative">
             <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-2 sm:border-b-4 border-slate-700 relative pt-safe">
                 <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-12 sm:pr-0">
-                    <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-                        <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" />
+                    <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)] flex items-center justify-center">
+                        {hasValidImageUrl(selectedTeam.teamInfo.logo) ? (
+                          <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        ) : (
+                          <Shield className="w-7 h-7 sm:w-10 sm:h-10 text-emerald-600" />
+                        )}
                     </div>
                     <div className="min-w-0 flex flex-col">
-                        <h2 className="text-lg sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{selectedTeam.teamInfo.name}</h2>
+                        <h2 className="text-lg sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{sanitizeTeamName(selectedTeam.teamInfo.name, "Echipă")}</h2>
                         <p className="text-[9px] sm:text-base text-emerald-400 font-bold uppercase tracking-widest mt-0.5 truncate">
                             ⚽ LOTUL OFICIAL • {selectedTeam.teamInfo.totalPlayers} Jucători
                         </p>
@@ -756,7 +775,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           {showResults && !loading && formValues.searchMode === 'players' && displayedPlayers.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 animate-in slide-in-from-bottom-8 duration-700">
               {displayedPlayers.map((player) => {
-                const teamNameStr = player.team_name || player.team || "Club Necunoscut";
+                const teamNameStr = sanitizeTeamName(player.team_name || player.team, "Club Necunoscut");
                 const isNationalOnly = teamNameStr.toLowerCase().includes("nationala") || teamNameStr.toLowerCase() === "romania";
                 const metrics = computeScoutingMetrics(player);
                 const isWatched = watchlistIds.includes(player._id);
@@ -819,10 +838,10 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                         </h3>
                         
                         <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold truncate w-full uppercase mb-1 sm:mb-2">
-                          {player.team_logo ? (
-                            <img src={player.team_logo} alt={teamNameStr} className="w-3 h-3 sm:w-4 sm:h-4 object-contain" />
+                          {hasValidImageUrl(player.team_logo) ? (
+                            <img src={player.team_logo} alt={teamNameStr} className="w-3 h-3 sm:w-4 sm:h-4 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                           ) : (
-                            <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                           )}
                           <span className="truncate">{teamNameStr}</span>
                         </div>
@@ -847,15 +866,30 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
           {showResults && !loading && formValues.searchMode === 'teams' && teams.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
-              {teams.map((team, idx) => (
-                <div key={idx} onClick={() => handleTeamClick(team.team_name)} className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-md sm:shadow-lg hover:shadow-2xl border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all cursor-pointer group flex flex-col items-center text-center">
-                  <div className="w-16 h-16 sm:w-20 sm:h-28 mb-3 sm:mb-4 bg-slate-50 dark:bg-slate-800 rounded-xl sm:rounded-2xl p-2 sm:p-4 shadow-inner group-hover:scale-110 transition-transform">
-                    <img src={team.team_logo} alt={team.team_name} className="w-full h-full object-contain drop-shadow-md" />
+              {teams.map((team, idx) => {
+                const displayTeamName = sanitizeTeamName(team.team_name, "Echipă");
+                const showLogo = hasValidImageUrl(team.team_logo);
+                return (
+                  <div key={idx} onClick={() => handleTeamClick(displayTeamName)} className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-md sm:shadow-lg hover:shadow-2xl border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all cursor-pointer group flex flex-col items-center text-center">
+                    <div className="w-16 h-16 sm:w-20 sm:h-28 mb-3 sm:mb-4 bg-slate-50 dark:bg-slate-800 rounded-xl sm:rounded-2xl p-2 sm:p-4 shadow-inner group-hover:scale-110 transition-transform flex items-center justify-center">
+                      {showLogo ? (
+                        <img
+                          src={team.team_logo}
+                          alt={displayTeamName}
+                          className="w-full h-full object-contain drop-shadow-md"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-500" />
+                      )}
+                    </div>
+                    <h4 className="font-black text-[11px] sm:text-sm md:text-lg text-slate-900 dark:text-white uppercase tracking-tight break-words">{displayTeamName}</h4>
+                    <div className="mt-1.5 sm:mt-2 w-6 sm:w-8 h-1 bg-emerald-500 rounded-full group-hover:w-12 sm:group-hover:w-16 transition-all"></div>
                   </div>
-                  <h4 className="font-black text-[11px] sm:text-sm md:text-lg text-slate-900 dark:text-white uppercase tracking-tight break-words">{team.team_name}</h4>
-                  <div className="mt-1.5 sm:mt-2 w-6 sm:w-8 h-1 bg-emerald-500 rounded-full group-hover:w-12 sm:group-hover:w-16 transition-all"></div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -960,10 +994,10 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 <div className="text-white text-center sm:text-left flex-1 min-w-0 px-2 sm:px-0">
                   <h2 className="text-xl sm:text-3xl md:text-4xl font-black uppercase tracking-tighter break-words whitespace-normal leading-tight sm:drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">{selectedPlayer.name}</h2>
                   <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 mt-1 sm:mt-2">
-                    {selectedPlayer.team_logo && (
-                      <img src={selectedPlayer.team_logo} alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-md p-0.5 object-contain shrink-0" />
+                    {hasValidImageUrl(selectedPlayer.team_logo) && (
+                      <img src={selectedPlayer.team_logo} alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-md p-0.5 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                     )}
-                    <span className="font-bold text-xs sm:text-base md:text-lg text-emerald-400 uppercase tracking-widest truncate max-w-[220px]">{selectedPlayer.team_name || selectedPlayer.team}</span>
+                    <span className="font-bold text-xs sm:text-base md:text-lg text-emerald-400 uppercase tracking-widest truncate max-w-[220px]">{sanitizeTeamName(selectedPlayer.team_name || selectedPlayer.team, "Club Necunoscut")}</span>
                   </div>
                 </div>
 
@@ -1182,7 +1216,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     <div className="flex flex-col items-center text-center relative z-10 px-1">
                       <img src={p1.image || GENERIC_USER_IMAGE} alt={p1.name} className="w-14 h-14 sm:w-28 sm:h-28 rounded-xl sm:rounded-2xl object-cover border-2 sm:border-4 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)] mb-2 sm:mb-3 bg-white" />
                       <h3 className="font-black text-[10px] sm:text-xl text-white uppercase tracking-tight line-clamp-1">{p1.name}</h3>
-                      <span className="text-[7px] sm:text-xs font-black tracking-widest text-emerald-400 mt-0.5 sm:mt-1 uppercase bg-emerald-900/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded line-clamp-1">{p1.team || p1.team_name}</span>
+                      <span className="text-[7px] sm:text-xs font-black tracking-widest text-emerald-400 mt-0.5 sm:mt-1 uppercase bg-emerald-900/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded line-clamp-1">{sanitizeTeamName(p1.team || p1.team_name, "Club Necunoscut")}</span>
                     </div>
                     
                     <div className="relative z-10 flex flex-col items-center justify-center px-1 sm:px-4">
@@ -1192,7 +1226,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     <div className="flex flex-col items-center text-center relative z-10 px-1">
                       <img src={p2.image || GENERIC_USER_IMAGE} alt={p2.name} className="w-14 h-14 sm:w-28 sm:h-28 rounded-xl sm:rounded-2xl object-cover border-2 sm:border-4 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)] mb-2 sm:mb-3 bg-white" />
                       <h3 className="font-black text-[10px] sm:text-xl text-white uppercase tracking-tight line-clamp-1">{p2.name}</h3>
-                      <span className="text-[7px] sm:text-xs font-black tracking-widest text-blue-400 mt-0.5 sm:mt-1 uppercase bg-blue-900/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded line-clamp-1">{p2.team || p2.team_name}</span>
+                      <span className="text-[7px] sm:text-xs font-black tracking-widest text-blue-400 mt-0.5 sm:mt-1 uppercase bg-blue-900/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded line-clamp-1">{sanitizeTeamName(p2.team || p2.team_name, "Club Necunoscut")}</span>
                     </div>
                   </div>
 
