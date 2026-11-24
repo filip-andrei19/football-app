@@ -11,16 +11,6 @@ import { useForm, useStore } from '@tanstack/react-form';
 const GENERIC_USER_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
 const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://football-backend-m2a4.onrender.com';
 
-const sanitizeTeamName = (raw?: string, fallback = "Club Necunoscut"): string => {
-  const cleaned = String(raw || '').trim();
-  if (!cleaned || /^\d+$/.test(cleaned)) return fallback;
-  return cleaned;
-};
-
-const hasValidImageUrl = (url?: string): boolean => {
-  return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
-};
-
 interface DetailedStat {
   competition: string;
   type: string;
@@ -77,6 +67,33 @@ interface HomeProps {
   user: { name: string; email: string };
   onNavigate: (section: any) => void;
 }
+
+const sanitizeTeamName = (
+  playerOrName?: Player | string | null,
+  fallback = "Club Necunoscut"
+): string => {
+  const candidates: Array<string | undefined> =
+    typeof playerOrName === "string"
+      ? [playerOrName]
+      : [
+          playerOrName?.team_name,
+          playerOrName?.team,
+          playerOrName?.statistics_summary?.team_name,
+        ];
+
+  for (const raw of candidates) {
+    const cleaned = String(raw || "").trim();
+    if (cleaned && !/^\d+$/.test(cleaned)) {
+      return cleaned;
+    }
+  }
+
+  return fallback;
+};
+
+const hasValidImageUrl = (url?: string): boolean => {
+  return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+};
 
 const parseHeightCm = (heightStr?: string): number => {
   if (!heightStr) return 0;
@@ -775,7 +792,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           {showResults && !loading && formValues.searchMode === 'players' && displayedPlayers.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 animate-in slide-in-from-bottom-8 duration-700">
               {displayedPlayers.map((player) => {
-                const teamNameStr = sanitizeTeamName(player.team_name || player.team, "Club Necunoscut");
+                const teamNameStr = sanitizeTeamName(player, "Club Necunoscut");
                 const isNationalOnly = teamNameStr.toLowerCase().includes("nationala") || teamNameStr.toLowerCase() === "romania";
                 const metrics = computeScoutingMetrics(player);
                 const isWatched = watchlistIds.includes(player._id);
@@ -997,7 +1014,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     {hasValidImageUrl(selectedPlayer.team_logo) && (
                       <img src={selectedPlayer.team_logo} alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-md p-0.5 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                     )}
-                    <span className="font-bold text-xs sm:text-base md:text-lg text-emerald-400 uppercase tracking-widest truncate max-w-[220px]">{sanitizeTeamName(selectedPlayer.team_name || selectedPlayer.team, "Club Necunoscut")}</span>
+                    <span className="font-bold text-xs sm:text-base md:text-lg text-emerald-400 uppercase tracking-widest truncate max-w-[220px]">{sanitizeTeamName(selectedPlayer, "Club Necunoscut")}</span>
                   </div>
                 </div>
 
@@ -1216,7 +1233,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     <div className="flex flex-col items-center text-center relative z-10 px-1">
                       <img src={p1.image || GENERIC_USER_IMAGE} alt={p1.name} className="w-14 h-14 sm:w-28 sm:h-28 rounded-xl sm:rounded-2xl object-cover border-2 sm:border-4 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)] mb-2 sm:mb-3 bg-white" />
                       <h3 className="font-black text-[10px] sm:text-xl text-white uppercase tracking-tight line-clamp-1">{p1.name}</h3>
-                      <span className="text-[7px] sm:text-xs font-black tracking-widest text-emerald-400 mt-0.5 sm:mt-1 uppercase bg-emerald-900/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded line-clamp-1">{sanitizeTeamName(p1.team || p1.team_name, "Club Necunoscut")}</span>
+                      <span className="text-[7px] sm:text-xs font-black tracking-widest text-emerald-400 mt-0.5 sm:mt-1 uppercase bg-emerald-900/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded line-clamp-1">{sanitizeTeamName(p1, "Club Necunoscut")}</span>
                     </div>
                     
                     <div className="relative z-10 flex flex-col items-center justify-center px-1 sm:px-4">
@@ -1226,7 +1243,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                     <div className="flex flex-col items-center text-center relative z-10 px-1">
                       <img src={p2.image || GENERIC_USER_IMAGE} alt={p2.name} className="w-14 h-14 sm:w-28 sm:h-28 rounded-xl sm:rounded-2xl object-cover border-2 sm:border-4 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)] mb-2 sm:mb-3 bg-white" />
                       <h3 className="font-black text-[10px] sm:text-xl text-white uppercase tracking-tight line-clamp-1">{p2.name}</h3>
-                      <span className="text-[7px] sm:text-xs font-black tracking-widest text-blue-400 mt-0.5 sm:mt-1 uppercase bg-blue-900/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded line-clamp-1">{sanitizeTeamName(p2.team || p2.team_name, "Club Necunoscut")}</span>
+                      <span className="text-[7px] sm:text-xs font-black tracking-widest text-blue-400 mt-0.5 sm:mt-1 uppercase bg-blue-900/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded line-clamp-1">{sanitizeTeamName(p2, "Club Necunoscut")}</span>
                     </div>
                   </div>
 

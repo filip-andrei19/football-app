@@ -76,6 +76,7 @@ interface Player {
     league_id?: number;
     detailed_stats?: DetailedStat[];
     statistics_summary?: {
+        team_name?: string;
         total_goals: number;
         total_assists: number;
         total_appearances: number;
@@ -111,6 +112,33 @@ const normalizeName = (val?: string) =>
         .replace(/[^a-z0-9\s]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+
+const sanitizeTeamName = (
+    playerOrName?: Player | string | null,
+    fallback = "Echipă necunoscută"
+): string => {
+    const candidates: Array<string | undefined> =
+        typeof playerOrName === "string"
+            ? [playerOrName]
+            : [
+                  playerOrName?.team_name,
+                  playerOrName?.team,
+                  playerOrName?.statistics_summary?.team_name,
+              ];
+
+    for (const raw of candidates) {
+        const cleaned = String(raw || "").trim();
+        if (cleaned && !/^\d+$/.test(cleaned)) {
+            return cleaned;
+        }
+    }
+
+    return fallback;
+};
+
+const hasValidImageUrl = (url?: string): boolean => {
+    return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+};
 
 const getAuthHeaders = () => {
     const token = localStorage.getItem('footballAppToken');
@@ -822,7 +850,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         if (!playerOrName) return;
 
         if (typeof playerOrName !== 'string') {
-            setSelectedPlayer(playerOrName);
+            const normalizedTeam = sanitizeTeamName(playerOrName, fallbackTeam || '');
+            setSelectedPlayer({
+                ...playerOrName,
+                team_name: normalizedTeam,
+            });
             if (!playerOrName.detailed_stats && !playerOrName.statistics_summary) {
                 setLoadingPlayerCard(true);
                 try {
@@ -831,7 +863,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         const list: Player[] = await res.json();
                         const targetNorm = normalizeName(playerOrName.name);
                         const exact = list.find(p => p._id === playerOrName._id || normalizeName(p.name) === targetNorm);
-                        if (exact) setSelectedPlayer(exact);
+                        if (exact) {
+                            setSelectedPlayer({
+                                ...exact,
+                                team_name: sanitizeTeamName(exact, normalizedTeam),
+                            });
+                        }
                     }
                 } catch {} finally {
                     setLoadingPlayerCard(false);
@@ -842,12 +879,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
         const cleanName = playerOrName.trim();
         const targetNorm = normalizeName(cleanName);
+        const cleanFallbackTeam = sanitizeTeamName(fallbackTeam, '');
         setLoadingPlayerCard(true);
         setSelectedPlayer({
             _id: `temp_${cleanName}`,
             name: cleanName,
             position: 'Jucător',
-            team_name: fallbackTeam || '',
+            team_name: cleanFallbackTeam,
         });
 
         try {
@@ -859,12 +897,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
                     const tokens = targetNorm.split(' ').filter(t => t.length >= 3);
                     const lastToken = tokens[tokens.length - 1];
-                    const fallbackTeamNorm = normalizeName(fallbackTeam);
+                    const fallbackTeamNorm = normalizeName(cleanFallbackTeam);
 
                     const tokenAndTeamMatch = !exactMatch && lastToken
                         ? playersList.find(p => {
                             const candName = normalizeName(p.name);
-                            const candTeam = normalizeName(p.team_name || p.team);
+                            const candTeam = normalizeName(sanitizeTeamName(p, ''));
                             const sameSurname = candName.split(' ').includes(lastToken);
                             const sameTeam = fallbackTeamNorm && candTeam
                                 ? (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam))
@@ -875,7 +913,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
                     const matched = exactMatch || tokenAndTeamMatch;
                     if (matched) {
-                        setSelectedPlayer(matched);
+                        setSelectedPlayer({
+                            ...matched,
+                            team_name: sanitizeTeamName(matched, cleanFallbackTeam),
+                        });
                     }
                 }
             }
@@ -1724,11 +1765,15 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
                         <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-2 sm:border-b-4 border-slate-700 relative pt-safe">
                             <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-10 sm:pr-0">
-                                <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-                                    <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" />
+                                <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)] flex items-center justify-center">
+                                    {hasValidImageUrl(selectedTeam.teamInfo.logo) ? (
+                                        <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                    ) : (
+                                        <Trophy className="w-7 h-7 sm:w-10 sm:h-10 text-emerald-600" />
+                                    )}
                                 </div>
                                 <div className="min-w-0 flex flex-col">
-                                    <h2 className="text-lg sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{selectedTeam.teamInfo.name}</h2>
+                                    <h2 className="text-lg sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{sanitizeTeamName(selectedTeam.teamInfo.name, "Echipă")}</h2>
                                     <p className="text-[9px] sm:text-base text-emerald-400 font-bold uppercase tracking-widest mt-0.5 truncate">
                                         ⚽ LOTUL OFICIAL • {selectedTeam.teamInfo.totalPlayers} Jucători
                                     </p>
@@ -1812,10 +1857,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         {selectedPlayer.name}
                                     </h3>
                                     <div className="flex items-center gap-2 mt-2 text-xs sm:text-sm font-black text-emerald-400 uppercase tracking-wider">
-                                        {selectedPlayer.team_logo && (
-                                            <img src={selectedPlayer.team_logo} alt="" className="w-4 h-4 sm:w-5 sm:h-5 object-contain bg-white rounded p-0.5 shrink-0" />
+                                        {hasValidImageUrl(selectedPlayer.team_logo) && (
+                                            <img src={selectedPlayer.team_logo} alt="" className="w-4 h-4 sm:w-5 sm:h-5 object-contain bg-white rounded p-0.5 shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                                         )}
-                                        <span className="truncate">{selectedPlayer.team_name || selectedPlayer.team || 'Echipă necunoscută'}</span>
+                                        <span className="truncate">{sanitizeTeamName(selectedPlayer, 'Echipă necunoscută')}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1862,7 +1907,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         {selectedPlayer.name}
                                     </p>
                                     <p className="text-slate-500 dark:text-slate-400 font-bold">
-                                        Echipă în meci: {selectedPlayer.team_name || '—'}
+                                        Echipă în meci: {sanitizeTeamName(selectedPlayer, '—')}
                                     </p>
                                     <p className="text-xs text-slate-400 pt-1">
                                         Acest jucător nu are încă o fișă completă în baza de date de scouting.
