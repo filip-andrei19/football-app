@@ -148,9 +148,6 @@ const getAuthHeaders = () => {
     };
 };
 
-// ==========================================
-// INTERPRETARE EVENIMENTE MECI (GOL, PENALTY RATAT, VAR, ETC.)
-// ==========================================
 const getEventPresentation = (ev: any) => {
     const type = String(ev?.type || '').toLowerCase().trim();
     const detail = String(ev?.detail || '').trim();
@@ -264,9 +261,6 @@ const getEventPresentation = (ev: any) => {
     };
 };
 
-// ==========================================
-// COMPONENTA TANSTACK TABLE PENTRU CLASAMENT
-// ==========================================
 function StandingsTable({ data, selectedMatchDetails, handleTeamClick }: { data: any[], selectedMatchDetails: any, handleTeamClick: any }) {
     const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -381,7 +375,6 @@ function StandingsTable({ data, selectedMatchDetails, handleTeamClick }: { data:
         </div>
     );
 }
-// ==========================================
 
 const urlB64ToUint8Array = (base64String: string) => {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -543,7 +536,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
     const [loadingPlayerCard, setLoadingPlayerCard] = useState(false);
 
-    // Cache local pentru rezolvarea numelui curat din DB pe baza (numeDinMeci + echipa)
     const resolvedPlayerCache = useRef<Record<string, Player | null>>({});
     const [, setNameResolveTick] = useState(0);
 
@@ -577,103 +569,49 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             return resolvedPlayerCache.current[cacheKey] || undefined;
         }
 
-        const tokens = targetNorm.split(' ').filter(t => t.length >= 2);
-        const longTokens = tokens.filter(t => t.length >= 3);
-        const candidateSearchTerms: string[] = [];
-
-        if (longTokens.length >= 3) {
-            candidateSearchTerms.push(longTokens[longTokens.length - 2]);
-            candidateSearchTerms.push(longTokens[longTokens.length - 1]);
-        } else if (longTokens.length > 0) {
-            candidateSearchTerms.push(longTokens[longTokens.length - 1]);
-        }
-
-        for (const tok of longTokens) {
-            if (!candidateSearchTerms.includes(tok)) {
-                candidateSearchTerms.push(tok);
-            }
-        }
-        for (const tok of tokens) {
-            if (!candidateSearchTerms.includes(tok)) {
-                candidateSearchTerms.push(tok);
-            }
-        }
-        if (!candidateSearchTerms.includes(cleanName)) {
-            candidateSearchTerms.push(cleanName);
-        }
-
-        const scoreCandidate = (candidate: Player, searchedTerm: string): number => {
-            const candNorm = normalizeName(candidate.name);
-            const candParts = candNorm.split(' ').filter(Boolean);
-            const candTeam = normalizeName(sanitizeTeamName(candidate, ''));
-            const termNorm = normalizeName(searchedTerm);
-
-            if (candNorm === targetNorm) return 1000;
-
-            if (termNorm && termNorm !== targetNorm) {
-                const hasTerm = candParts.includes(termNorm) || candNorm.includes(termNorm);
-                if (!hasTerm) return -1;
-            }
-
-            let score = 0;
-            let matchedTokens = 0;
-
-            for (const tok of tokens) {
-                const directHit = candParts.includes(tok) || candNorm.includes(tok);
-                const initialHit = candParts.some(cp => cp.length === 1 && cp[0] === tok[0]);
-                if (directHit) {
-                    score += tok.length >= 3 ? 90 : 50;
-                    matchedTokens += 1;
-                } else if (initialHit) {
-                    score += 25;
-                }
-            }
-
-            if (matchedTokens === 0) return -1;
-
-            if (fallbackTeamNorm && candTeam) {
-                const sameTeam = candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam);
-                if (sameTeam) {
-                    score += 140;
-                } else {
-                    score -= matchedTokens >= 2 ? 20 : 120;
-                }
-            }
-
-            return score;
-        };
+        const tokens = targetNorm.split(' ').filter(t => t.length >= 3);
+        const queries = Array.from(new Set([cleanName, ...tokens].filter(Boolean)));
 
         let bestCandidate: Player | undefined;
-        let bestScore = 0;
+        let bestScore = -1;
 
-        for (const term of candidateSearchTerms) {
-            const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(term)}&limit=40`);
-            if (!res.ok) continue;
+        for (const q of queries) {
+            try {
+                const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(q)}&limit=30`);
+                if (!res.ok) continue;
 
-            const list: Player[] = await res.json();
-            if (!Array.isArray(list) || list.length === 0) continue;
+                const list: Player[] = await res.json();
+                if (!Array.isArray(list) || list.length === 0) continue;
 
-            for (const cand of list) {
-                const s = scoreCandidate(cand, term);
-                if (s > bestScore) {
-                    bestScore = s;
-                    bestCandidate = cand;
+                for (const cand of list) {
+                    const candNorm = normalizeName(cand.name);
+                    const candTeam = normalizeName(sanitizeTeamName(cand, ''));
+                    let score = 0;
+
+                    if (candNorm === targetNorm) score += 500;
+                    tokens.forEach((tok) => {
+                        if (candNorm.includes(tok)) score += 100;
+                    });
+                    if (fallbackTeamNorm && candTeam && (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam))) {
+                        score += 150;
+                    }
+
+                    if (score > bestScore && score >= 100) {
+                        bestScore = score;
+                        bestCandidate = {
+                            ...cand,
+                            name: cand.name || cleanName,
+                            team_name: sanitizeTeamName(cand, cleanFallbackTeam),
+                        };
+                    }
                 }
-            }
 
-            if (bestScore >= 190) break;
+                if (bestScore >= 250) break;
+            } catch {}
         }
 
-        const result = bestCandidate && bestScore >= 80
-            ? {
-                  ...bestCandidate,
-                  name: bestCandidate.name || cleanName,
-                  team_name: sanitizeTeamName(bestCandidate, cleanFallbackTeam),
-              }
-            : undefined;
-
-        resolvedPlayerCache.current[cacheKey] = result || null;
-        return result;
+        resolvedPlayerCache.current[cacheKey] = bestCandidate || null;
+        return bestCandidate;
     };
 
     const getDisplayPlayerName = (rawName?: string, fallbackTeam?: string): string => {
@@ -1531,7 +1469,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 document.body
             )}
 
-            {/* MODAL SETĂRI NOTIFICĂRI */}
             {showNotifSettings && createPortal(
                 <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in" onClick={() => setShowNotifSettings(false)}>
                     <div className="bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl border-2 sm:border-4 border-slate-700" onClick={e => e.stopPropagation()}>
@@ -1573,7 +1510,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 document.body
             )}
 
-            {/* MODAL DETALII MECI */}
             {selectedMatchDetails && createPortal(
                 <div className="fixed inset-0 z-[999999] flex items-center justify-center p-0 sm:p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedMatchDetails(null)}>
                     <div className="bg-white dark:bg-slate-900 sm:rounded-3xl w-full h-[100dvh] sm:h-auto sm:max-w-4xl sm:max-h-[92vh] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.5)] sm:border-4 border-emerald-600/30" onClick={e => e.stopPropagation()}>
@@ -1849,7 +1785,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 document.body
             )}
 
-            {/* MODAL ECHIPĂ / ROSTER - SE DESCHIDE CÂND DAI CLICK PE ECHIPĂ */}
             {selectedTeam && createPortal(
                 <div className="fixed inset-0 top-0 sm:top-16 z-[9999999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-opacity p-2 sm:p-4">
                     <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 mt-10 sm:mt-0">
@@ -1912,7 +1847,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 document.body
             )}
 
-            {/* MODAL PROFIL JUCĂTOR COMPLET (CA ÎN HOME) */}
             {selectedPlayer && createPortal(
                 <div
                     className="fixed inset-0 z-[99999999] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-200"
@@ -1922,7 +1856,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-3xl max-h-[92dvh] overflow-hidden flex flex-col shadow-2xl border-2 sm:border-4 border-emerald-600/40"
                         onClick={e => e.stopPropagation()}
                     >
-                        {/* HEADER JUCĂTOR + LISTĂ / COMPARĂ */}
                         <div className="bg-slate-950 text-white p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 sm:border-b-4 border-emerald-600 shrink-0 relative">
                             <button
                                 type="button"
@@ -2006,7 +1939,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 </div>
                             ) : (
                                 <>
-                                    {/* BADGE-URI BIOGRAFICE */}
                                     <div className="flex flex-wrap items-center gap-2">
                                         {selectedPlayer.nationality && (
                                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
@@ -2030,7 +1962,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         )}
                                     </div>
 
-                                    {/* CIFRELE SEZONULUI */}
                                     <div className="space-y-3">
                                         <h4 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
                                             <Award className="w-4 h-4 text-amber-500" /> Cifrele Sezonului
@@ -2061,7 +1992,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         </div>
                                     </div>
 
-                                    {/* ANALIZA SCOUTER (RADAR) + RANDAMENT / 90 MINUTE */}
                                     <div className="bg-slate-900 text-white rounded-3xl p-4 sm:p-6 border-2 border-slate-800 space-y-5">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                                             <div className="flex flex-col items-center">
@@ -2098,7 +2028,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                             </div>
                                         </div>
 
-                                        {/* DETALII PE COMPETIȚII (DACĂ EXISTĂ) */}
                                         {Array.isArray(selectedPlayer.detailed_stats) && selectedPlayer.detailed_stats.length > 0 && (
                                             <div className="pt-4 border-t border-slate-800 space-y-2">
                                                 <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -2130,7 +2059,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 document.body
             )}
 
-            {/* MODAL COMPARARE 2 JUCĂTORI */}
             {showCompareModal && compareList.length === 2 && createPortal(
                 <div
                     className="fixed inset-0 z-[999999999] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-3 sm:p-4"
