@@ -883,7 +883,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         const fallbackTeamNorm = normalizeName(cleanFallbackTeam);
 
         const tokens = targetNorm.split(' ').filter(Boolean);
-        const firstInitial = tokens.length >= 2 ? tokens[0][0] : '';
         const lastToken = tokens.length > 0 ? tokens[tokens.length - 1] : '';
 
         setLoadingPlayerCard(true);
@@ -901,28 +900,22 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             if (exactMatch) return exactMatch;
 
             if (lastToken && lastToken.length >= 3) {
-                const surnameAndTeam = candidates.find(p => {
+                const surnameMatches = candidates.filter(p => {
                     const candName = normalizeName(p.name);
-                    const candTeam = normalizeName(sanitizeTeamName(p, ''));
                     const candParts = candName.split(' ').filter(Boolean);
-                    const hasSurname = candParts.includes(lastToken) || candName.includes(lastToken);
-                    const initialMatches = !firstInitial || (candParts[0] && candParts[0][0] === firstInitial);
-                    const teamMatches = fallbackTeamNorm && candTeam
-                        ? (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam))
-                        : false;
-                    return hasSurname && initialMatches && (teamMatches || !fallbackTeamNorm);
+                    return candParts.includes(lastToken) || candName.includes(lastToken);
                 });
-                if (surnameAndTeam) return surnameAndTeam;
 
                 if (fallbackTeamNorm) {
-                    const sameSurnameAndTeamLoose = candidates.find(p => {
-                        const candName = normalizeName(p.name);
+                    const teamMatched = surnameMatches.find(p => {
                         const candTeam = normalizeName(sanitizeTeamName(p, ''));
-                        const hasSurname = candName.split(' ').includes(lastToken) || candName.includes(lastToken);
-                        const teamMatches = candTeam && (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam));
-                        return hasSurname && teamMatches;
+                        return candTeam && (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam));
                     });
-                    if (sameSurnameAndTeamLoose) return sameSurnameAndTeamLoose;
+                    if (teamMatched) return teamMatched;
+                }
+
+                if (surnameMatches.length === 1) {
+                    return surnameMatches[0];
                 }
             }
 
@@ -930,7 +923,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         };
 
         try {
-            const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(cleanName)}&limit=25`);
+            const res = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(cleanName)}&limit=30`);
             if (res.ok) {
                 const playersList: Player[] = await res.json();
                 const matched = findBestCandidate(playersList);
@@ -944,7 +937,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             }
 
             if (lastToken && lastToken.length >= 3) {
-                const resSurname = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(lastToken)}&limit=25`);
+                const resSurname = await fetch(`${API_BASE}/api/sport/players?search=${encodeURIComponent(lastToken)}&limit=50`);
                 if (resSurname.ok) {
                     const surnameList: Player[] = await resSurname.json();
                     const matchedSurname = findBestCandidate(surnameList);
