@@ -148,6 +148,9 @@ const getAuthHeaders = () => {
     };
 };
 
+// ==========================================
+// INTERPRETARE EVENIMENTE MECI (GOL, PENALTY RATAT, VAR, ETC.)
+// ==========================================
 const getEventPresentation = (ev: any) => {
     const type = String(ev?.type || '').toLowerCase().trim();
     const detail = String(ev?.detail || '').trim();
@@ -569,7 +572,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             return resolvedPlayerCache.current[cacheKey] || undefined;
         }
 
-        const tokens = targetNorm.split(' ').filter(t => t.length >= 3);
+        const tokens = targetNorm.split(' ').filter(t => t.length >= 2);
         const queries = Array.from(new Set([cleanName, ...tokens].filter(Boolean)));
 
         let bestCandidate: Player | undefined;
@@ -587,32 +590,24 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     const candNorm = normalizeName(cand.name);
                     const candTeam = normalizeName(sanitizeTeamName(cand, ''));
                     let score = 0;
-                    let matchedTokens = 0;
 
                     if (candNorm === targetNorm) {
-                        score += 1000;
-                        matchedTokens = tokens.length || 1;
+                        score += 500;
                     }
 
                     for (const tok of tokens) {
                         if (candNorm.includes(tok)) {
-                            score += tok.length >= 5 ? 130 : 100;
-                            matchedTokens += 1;
+                            score += tok.length >= 3 ? 110 : 60;
                         }
                     }
-
-                    if (matchedTokens === 0 && candNorm !== targetNorm) continue;
 
                     if (fallbackTeamNorm && candTeam) {
-                        const sameTeam = candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam);
-                        if (sameTeam) {
-                            score += 150;
-                        } else if (matchedTokens < 2) {
-                            score -= 100;
+                        if (candTeam.includes(fallbackTeamNorm) || fallbackTeamNorm.includes(candTeam)) {
+                            score += 140;
                         }
                     }
 
-                    if (score > bestScore && score >= 100) {
+                    if (score > bestScore && score >= 60) {
                         bestScore = score;
                         bestCandidate = {
                             ...cand,
