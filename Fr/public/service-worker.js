@@ -1,6 +1,6 @@
-// Versiunea 3.21 - Update PWA cu notificare personalizată, Web Push & Fix Cache (/assets/ exclus)
+// Versiunea 3.22 - Update PWA cu notificare personalizată, Web Push & Fix Cache (/assets/ exclus)
 
-const CACHE_NAME = 'scoutpro-cache-v3.21';
+const CACHE_NAME = 'scoutpro-cache-v3.22';
 const urlsToCache = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {

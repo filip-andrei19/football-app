@@ -496,7 +496,7 @@ export const ChatWidget = ({
           onMouseLeave={() => { isDraggingRef.current = false; }}
         >
           <div className="w-full max-w-4xl mx-auto flex items-center justify-between gap-2 z-20">
-            <div className="bg-[#11161D] text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-white/[0.08] tabular-nums">
+            <div className="bg-[#101726] text-slate-200 text-xs font-medium px-3 py-1.5 rounded-xl border border-white/[0.08] font-mono-stats">
               Previzualizare • {Math.round(zoomScale * 100)}%
             </div>
 
@@ -509,7 +509,7 @@ export const ChatWidget = ({
                   if (next === 1) setZoomPos({ x: 0, y: 0 });
                 }}
                 disabled={zoomScale <= 1}
-                className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
+                className="p-2 rounded-xl bg-[#101726] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
               >
                 <ZoomOut className="w-4 h-4" />
               </button>
@@ -517,21 +517,21 @@ export const ChatWidget = ({
                 type="button"
                 onClick={() => setZoomScale((prev) => clampZoom(prev + 0.5))}
                 disabled={zoomScale >= 4}
-                className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
+                className="p-2 rounded-xl bg-[#101726] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
               <button
                 type="button"
                 onClick={() => { setZoomScale(1); setZoomPos({ x: 0, y: 0 }); }}
-                className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
+                className="p-2 rounded-xl bg-[#101726] hover:bg-white/[0.08] text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
               <button
                 type="button"
                 onClick={() => setLightboxImage(null)}
-                className="p-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/25 transition-colors ml-1 cursor-pointer"
+                className="p-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/25 transition-colors ml-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -550,7 +550,7 @@ export const ChatWidget = ({
             onTouchEnd={handleLightboxTouchEnd}
             onClick={() => setLightboxImage(null)}
             style={{ touchAction: 'none' }}
-            className="flex-1 w-full max-w-4xl mx-auto my-3 flex items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-black/40 relative"
+            className="flex-1 w-full max-w-4xl mx-auto my-3 flex items-center justify-center overflow-hidden rounded-2xl border border-white/[0.08] bg-black/40 relative"
           >
             <img
               src={lightboxImage}
@@ -591,11 +591,11 @@ export const ChatWidget = ({
               onClearUnread?.();
             }}
             aria-label="Deschide mesaje"
-            className="relative bg-slate-900 dark:bg-[#11161D] border border-slate-700 dark:border-white/[0.12] hover:border-emerald-500/60 text-white p-3.5 rounded-full shadow-lg transition-colors flex items-center justify-center cursor-pointer"
+            className="relative bg-slate-900 dark:bg-[#101726] border border-slate-700 dark:border-white/[0.12] hover:border-emerald-500/60 text-white p-3.5 rounded-2xl shadow-lg transition-colors flex items-center justify-center cursor-pointer"
           >
             <MessageCircle className="w-5 h-5 text-emerald-400" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 bg-rose-500 text-white text-[10px] font-semibold rounded-full border-2 border-white dark:border-[#0B0F14] flex items-center justify-center tabular-nums">
+              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 bg-rose-500 text-white text-[10px] font-semibold rounded-full border-2 border-white dark:border-[#090D16] flex items-center justify-center font-mono-stats">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -603,9 +603,9 @@ export const ChatWidget = ({
         )}
 
         {isOpen && (
-          <div className="bg-white dark:bg-[#0B0F14] w-full sm:w-[360px] md:w-[400px] fixed inset-0 sm:static sm:inset-auto h-[100dvh] sm:h-[62vh] sm:min-h-[480px] sm:max-h-[680px] sm:rounded-xl shadow-2xl sm:border border-slate-200 dark:border-white/[0.08] flex flex-col overflow-hidden z-[100001]">
+          <div className="bg-white dark:bg-[#090D16] w-full sm:w-[360px] md:w-[400px] fixed inset-0 sm:static sm:inset-auto h-[100dvh] sm:h-[62vh] sm:min-h-[480px] sm:max-h-[680px] sm:rounded-2xl shadow-2xl sm:border border-slate-200 dark:border-white/[0.08] flex flex-col overflow-hidden z-[100001]">
             {/* HEADER */}
-            <div className="bg-slate-50 dark:bg-[#11161D] px-3.5 py-3 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center z-20 shrink-0">
+            <div className="bg-slate-50 dark:bg-[#101726] px-3.5 py-3 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center z-20 shrink-0">
               {view === 'chat' && activeRoom.startsWith('listing_') && activeConversationInfo ? (
                 <div className="flex items-center gap-2.5 w-full min-w-0 pr-2">
                   <button
@@ -669,7 +669,7 @@ export const ChatWidget = ({
 
             {/* ZONA CENTRALĂ */}
             <div
-              className="flex-1 overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F14] relative"
+              className="flex-1 overflow-y-auto bg-[#F3F5F8] dark:bg-[#090D16] relative"
               onClick={() => setShowReactionPickerId(null)}
             >
               {/* Mesaj fixat */}
@@ -695,9 +695,9 @@ export const ChatWidget = ({
                 <div className="p-3 space-y-3 pb-24 sm:pb-4">
                   <div
                     onClick={() => enterChat("general_chat", "Chat General")}
-                    className="bg-white dark:bg-[#11161D] p-3 rounded-xl cursor-pointer hover:border-emerald-500/40 transition-colors flex items-center gap-3 border border-slate-200 dark:border-white/[0.07]"
+                    className="bg-white dark:bg-[#101726] p-3 rounded-xl cursor-pointer hover:border-emerald-500/40 transition-colors flex items-center gap-3 border border-slate-200/80 dark:border-white/[0.07]"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
                       <Users className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
@@ -717,7 +717,7 @@ export const ChatWidget = ({
                   </div>
 
                   {conversations.length === 0 ? (
-                    <div className="text-center py-10 flex flex-col items-center border border-slate-200 dark:border-white/[0.07] rounded-xl bg-white dark:bg-[#11161D]">
+                    <div className="text-center py-10 flex flex-col items-center border border-slate-200 dark:border-white/[0.07] rounded-xl bg-white dark:bg-[#101726]">
                       <MessageCircle className="w-7 h-7 mb-2 text-slate-400 opacity-60" />
                       <p className="text-xs text-slate-500 dark:text-slate-400">Nicio conversație activă.</p>
                     </div>
@@ -727,7 +727,7 @@ export const ChatWidget = ({
                         <div
                           key={conv.roomId}
                           onClick={() => enterChat(conv.roomId, conv.title)}
-                          className="bg-white dark:bg-[#11161D] p-2.5 rounded-xl cursor-pointer hover:border-emerald-500/40 transition-colors flex items-center gap-3 border border-slate-200 dark:border-white/[0.07]"
+                          className="bg-white dark:bg-[#101726] p-2.5 rounded-xl cursor-pointer hover:border-emerald-500/40 transition-colors flex items-center gap-3 border border-slate-200/80 dark:border-white/[0.07]"
                         >
                           {conv.image ? (
                             <img
@@ -745,7 +745,7 @@ export const ChatWidget = ({
                               <h4 className="font-semibold text-xs text-slate-900 dark:text-white truncate" title={conv.title}>
                                 {conv.title}
                               </h4>
-                              <span className="text-[10px] text-slate-400 shrink-0 tabular-nums">
+                              <span className="text-[10px] text-slate-400 shrink-0 font-mono-stats">
                                 {new Date(conv.timestamp).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric' })}
                               </span>
                             </div>
@@ -774,7 +774,7 @@ export const ChatWidget = ({
                     {Object.keys(groupedMessages).map((dateKey) => (
                       <div key={dateKey}>
                         <div className="flex justify-center mb-3 mt-1">
-                          <span className="bg-slate-200/80 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400 text-[10px] font-medium px-2.5 py-0.5 rounded-full">
+                          <span className="bg-slate-200/80 dark:bg-[#101726] border border-slate-200 dark:border-white/[0.06] text-slate-600 dark:text-slate-400 text-[10px] font-medium px-2.5 py-0.5 rounded-full">
                             {formatDateSeparator(dateKey)}
                           </span>
                         </div>
@@ -800,28 +800,28 @@ export const ChatWidget = ({
                                   {/* Bară acțiuni hover */}
                                   {!msg.isDeleted && (
                                     <div
-                                      className={`opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.1] shadow-lg p-1 rounded-lg absolute -top-9 z-[30] ${isMe ? 'right-0' : 'left-0'} ${
+                                      className={`opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.1] shadow-lg p-1 rounded-xl absolute -top-9 z-[30] ${isMe ? 'right-0' : 'left-0'} ${
                                         showReactionPickerId === msg._id ? 'opacity-100' : ''
                                       } max-md:active:opacity-100 max-md:focus:opacity-100`}
                                     >
                                       <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); setShowReactionPickerId(msg._id); }}
-                                        className="p-1 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded transition-colors cursor-pointer"
+                                        className="p-1 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors cursor-pointer"
                                       >
                                         <Smile className="w-3.5 h-3.5" />
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => setReplyingTo(msg)}
-                                        className="p-1 text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded transition-colors cursor-pointer"
+                                        className="p-1 text-slate-400 hover:text-cyan-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors cursor-pointer"
                                       >
                                         <Reply className="w-3.5 h-3.5" />
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => handlePin(msg._id)}
-                                        className={`p-1 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded transition-colors cursor-pointer ${msg.isPinned ? 'text-amber-500' : 'text-slate-400 hover:text-amber-500'}`}
+                                        className={`p-1 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors cursor-pointer ${msg.isPinned ? 'text-amber-500' : 'text-slate-400 hover:text-amber-500'}`}
                                       >
                                         <Pin className="w-3.5 h-3.5" />
                                       </button>
@@ -830,7 +830,7 @@ export const ChatWidget = ({
                                         <button
                                           type="button"
                                           onClick={() => handleDeleteMessage(msg._id)}
-                                          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded transition-colors cursor-pointer"
+                                          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors cursor-pointer"
                                         >
                                           <Trash2 className="w-3.5 h-3.5" />
                                         </button>
@@ -840,7 +840,7 @@ export const ChatWidget = ({
                                         <button
                                           type="button"
                                           onClick={() => handleReportMessage(msg._id)}
-                                          className="p-1 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded transition-colors cursor-pointer"
+                                          className="p-1 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors cursor-pointer"
                                         >
                                           <Flag className="w-3.5 h-3.5" />
                                         </button>
@@ -851,7 +851,7 @@ export const ChatWidget = ({
                                   {/* Picker reacții */}
                                   {showReactionPickerId === msg._id && (
                                     <div
-                                      className={`absolute -top-11 z-[40] bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.1] shadow-xl rounded-xl px-1.5 py-1 flex gap-1 ${isMe ? 'right-0' : 'left-0'}`}
+                                      className={`absolute -top-11 z-[40] bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.1] shadow-xl rounded-xl px-1.5 py-1 flex gap-1 ${isMe ? 'right-0' : 'left-0'}`}
                                     >
                                       {AVAILABLE_EMOJIS.map((emoji) => (
                                         <button
@@ -880,8 +880,8 @@ export const ChatWidget = ({
                                       }}
                                       className={`relative flex flex-col border ${
                                         isMe
-                                          ? "bg-emerald-600 border-emerald-600 text-white rounded-xl rounded-tr-sm"
-                                          : "bg-white dark:bg-[#11161D] text-slate-900 dark:text-slate-100 border-slate-200 dark:border-white/[0.07] rounded-xl rounded-tl-sm"
+                                          ? "bg-emerald-600 border-emerald-600 text-white rounded-2xl rounded-tr-sm"
+                                          : "bg-white dark:bg-[#101726] text-slate-900 dark:text-slate-100 border-slate-200/80 dark:border-white/[0.07] rounded-2xl rounded-tl-sm"
                                       }`}
                                     >
                                       {msg.replyTo && (
@@ -902,16 +902,16 @@ export const ChatWidget = ({
 
                                       {msg.imageUrl && (
                                         <div
-                                          className="relative overflow-hidden rounded-lg cursor-pointer m-1"
+                                          className="relative overflow-hidden rounded-xl cursor-pointer m-1"
                                           onClick={(e) => { e.stopPropagation(); setLightboxImage(msg.imageUrl!); }}
                                         >
                                           <img
                                             src={msg.imageUrl}
                                             alt=""
-                                            className={`max-w-[220px] sm:max-w-[260px] w-full max-h-56 object-cover rounded-lg ${msg.replyTo ? 'mt-1' : ''}`}
+                                            className={`max-w-[220px] sm:max-w-[260px] w-full max-h-56 object-cover rounded-xl ${msg.replyTo ? 'mt-1' : ''}`}
                                           />
-                                          <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/70 to-transparent pointer-events-none rounded-b-lg" />
-                                          <div className="absolute bottom-1.5 right-2 text-white text-[10px] font-medium flex items-center gap-1 tabular-nums">
+                                          <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/70 to-transparent pointer-events-none rounded-b-xl" />
+                                          <div className="absolute bottom-1.5 right-2 text-white text-[10px] font-medium flex items-center gap-1 font-mono-stats">
                                             {msg.time} {isMe && <CheckCheck className="w-3 h-3 text-emerald-300" />}
                                           </div>
                                         </div>
@@ -921,7 +921,7 @@ export const ChatWidget = ({
                                         <div className="px-3 py-2 text-xs sm:text-[13px] leading-relaxed break-words max-w-[250px] sm:max-w-[300px]">
                                           {renderTextWithLinks(msg.message)}
                                           {!msg.imageUrl && (
-                                            <div className={`text-[10px] flex justify-end items-center gap-1 mt-1 tabular-nums ${isMe ? "text-emerald-100/80" : "text-slate-400"}`}>
+                                            <div className={`text-[10px] flex justify-end items-center gap-1 mt-1 font-mono-stats ${isMe ? "text-emerald-100/80" : "text-slate-400"}`}>
                                               {msg.time} {isMe && <CheckCheck className="w-3 h-3" />}
                                             </div>
                                           )}
@@ -930,7 +930,7 @@ export const ChatWidget = ({
 
                                       {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                                         <div
-                                          className={`absolute -bottom-3 flex gap-1 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.1] shadow-sm rounded-full px-1.5 py-0.5 z-10 ${isMe ? 'right-2' : 'left-2'}`}
+                                          className={`absolute -bottom-3 flex gap-1 bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.1] shadow-sm rounded-full px-1.5 py-0.5 z-10 ${isMe ? 'right-2' : 'left-2'}`}
                                         >
                                           {Object.entries(msg.reactions).map(([emoji, usersArr]) => (
                                             <button
@@ -944,7 +944,7 @@ export const ChatWidget = ({
                                               }`}
                                             >
                                               <span className="text-xs">{emoji}</span>
-                                              <span className="tabular-nums">{usersArr.length}</span>
+                                              <span className="font-mono-stats">{usersArr.length}</span>
                                             </button>
                                           ))}
                                         </div>
@@ -962,7 +962,7 @@ export const ChatWidget = ({
 
                     {isPartnerTyping && (
                       <div className="flex items-center gap-1.5 mt-2 ml-1">
-                        <div className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.07] px-3 py-2 rounded-xl rounded-tl-sm flex gap-1">
+                        <div className="bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.07] px-3 py-2 rounded-xl rounded-tl-sm flex gap-1">
                           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
                           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
                           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" />
@@ -973,9 +973,9 @@ export const ChatWidget = ({
                   </div>
 
                   {/* ZONA DE INPUT */}
-                  <div className="bg-white dark:bg-[#11161D] border-t border-slate-200 dark:border-white/[0.07] flex flex-col z-20 pb-safe">
+                  <div className="bg-white dark:bg-[#101726] border-t border-slate-200 dark:border-white/[0.07] flex flex-col z-20 pb-safe">
                     {replyingTo && (
-                      <div className="px-3 py-2 bg-slate-50 dark:bg-[#0B0F14] border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center">
+                      <div className="px-3 py-2 bg-slate-50 dark:bg-[#090D16] border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center">
                         <div className="flex flex-col min-w-0 flex-1 border-l-2 border-emerald-500 pl-2.5">
                           <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
                             Răspuns pentru {replyingTo.author}
@@ -1023,13 +1023,13 @@ export const ChatWidget = ({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-slate-500 hover:text-emerald-500 p-2 transition-colors bg-slate-100 dark:bg-white/[0.04] rounded-lg border border-slate-200 dark:border-white/[0.07] cursor-pointer"
+                        className="text-slate-500 hover:text-emerald-500 p-2 transition-colors bg-slate-100 dark:bg-[#090D16] rounded-xl border border-slate-200 dark:border-white/[0.07] cursor-pointer"
                         title="Atașează imagine"
                       >
                         <ImageIcon className="w-4 h-4" />
                       </button>
 
-                      <div className="flex-1 bg-slate-50 dark:bg-[#0B0F14] rounded-lg flex items-center px-3 border border-slate-200 dark:border-white/[0.08] focus-within:border-emerald-500/60 transition-colors">
+                      <div className="flex-1 bg-slate-50 dark:bg-[#090D16] rounded-xl flex items-center px-3 border border-slate-200 dark:border-white/[0.08] focus-within:border-emerald-500/60 transition-colors">
                         <input
                           type="text"
                           value={currentMessage}
@@ -1044,7 +1044,7 @@ export const ChatWidget = ({
                         type="button"
                         onClick={sendMessage}
                         disabled={isSending || (!currentMessage.trim() && !selectedImage)}
-                        className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white p-2 rounded-lg transition-colors shrink-0 cursor-pointer"
+                        className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white p-2 rounded-xl transition-colors shrink-0 cursor-pointer"
                       >
                         {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                       </button>

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw,
     Swords, Play, Activity, Globe, Users, Share2, Copy, Crown, Timer,
-    Heart, Volume2, VolumeX, ListOrdered, Share, Shirt, ChevronLeft, ChevronRight
+    Heart, Volume2, VolumeX, ListOrdered, Share, Shirt, ChevronLeft, ChevronRight,
+    ArrowUpRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client';
@@ -233,7 +234,7 @@ export function GamesSection({ user }: GamesProps) {
             {activeGame !== 'menu' && (
                 <button
                     onClick={() => setIsMuted(!isMuted)}
-                    className="fixed bottom-20 left-4 lg:bottom-6 lg:left-6 z-40 bg-white dark:bg-[#11161D] p-2.5 rounded-lg border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
+                    className="fixed bottom-20 left-4 lg:bottom-6 lg:left-6 z-40 bg-white dark:bg-[#101726] p-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
                     title={isMuted ? "Activează sunetul" : "Dezactivează sunetul"}
                 >
                     {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -241,23 +242,45 @@ export function GamesSection({ user }: GamesProps) {
             )}
 
             {activeGame === 'menu' && (
-                <div className="space-y-6">
-                    <div className="text-center space-y-1.5 pt-2 sm:pt-4">
-                        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
-                            Games Hub
-                        </h1>
-                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                            Testează-ți cunoștințele fotbalistice folosind baza de date oficială a platformei.
-                        </p>
+                <div className="space-y-5">
+                    {/* Header Bento */}
+                    <div className="bg-white dark:bg-[#101726] border border-slate-200/80 dark:border-white/[0.07] rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                                <Trophy className="w-3.5 h-3.5" /> Provocări zilnice
+                            </div>
+                            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                                Games Hub
+                            </h1>
+                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-lg">
+                                Testează-ți cunoștințele fotbalistice folosind baza de date oficială a platformei.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 font-mono-stats">
+                            <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#090D16] border border-slate-200/80 dark:border-white/[0.06] text-center">
+                                <span className="block text-sm font-semibold text-slate-900 dark:text-white">3</span>
+                                <span className="text-[10px] font-sans text-slate-500">Moduri</span>
+                            </div>
+                            <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#090D16] border border-slate-200/80 dark:border-white/[0.06] text-center">
+                                <span className="block text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                                    {allPlayers.length > 0 ? `${Math.floor(allPlayers.length / 100) * 100}+` : '—'}
+                                </span>
+                                <span className="text-[10px] font-sans text-slate-500">Jucători</span>
+                            </div>
+                        </div>
                     </div>
 
+                    {/* Grid Bento 3 carduri */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div
                             onClick={() => setActiveGame('grid')}
-                            className="bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/40 cursor-pointer transition-colors group flex flex-col items-start"
+                            className="bg-white dark:bg-[#101726] rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-white/[0.07] hover:border-emerald-500/40 cursor-pointer transition-colors group flex flex-col items-start"
                         >
-                            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
-                                <Activity className="w-5 h-5 text-emerald-500" />
+                            <div className="w-full flex items-center justify-between mb-4">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                    <Activity className="w-5 h-5 text-emerald-500" />
+                                </div>
+                                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 transition-colors" />
                             </div>
                             <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">
                                 Grila (X și 0)
@@ -265,17 +288,20 @@ export function GamesSection({ user }: GamesProps) {
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-5 flex-1">
                                 Joacă local sau online împotriva prietenilor (Best of 5). Găsește jucătorul care bifează intersecția.
                             </p>
-                            <button className="inline-flex items-center gap-1.5 bg-emerald-600 group-hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium text-xs transition-colors w-full sm:w-auto justify-center cursor-pointer">
-                                <Play className="w-3.5 h-3.5 fill-current" /> Joacă
+                            <button className="inline-flex items-center gap-1.5 bg-emerald-600 group-hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-medium text-xs transition-colors w-full justify-center cursor-pointer">
+                                <Play className="w-3.5 h-3.5 fill-current" /> Joacă acum
                             </button>
                         </div>
 
                         <div
                             onClick={() => setActiveGame('hilo')}
-                            className="bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] hover:border-blue-500/40 cursor-pointer transition-colors group flex flex-col items-start"
+                            className="bg-white dark:bg-[#101726] rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-white/[0.07] hover:border-cyan-500/40 cursor-pointer transition-colors group flex flex-col items-start"
                         >
-                            <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4">
-                                <Swords className="w-5 h-5 text-blue-500" />
+                            <div className="w-full flex items-center justify-between mb-4">
+                                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                                    <Swords className="w-5 h-5 text-cyan-500" />
+                                </div>
+                                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-cyan-500 transition-colors" />
                             </div>
                             <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">
                                 Hi-Lo: Statistici
@@ -283,17 +309,20 @@ export function GamesSection({ user }: GamesProps) {
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-5 flex-1">
                                 Mai mare sau mai mică? Alege o categorie și ghicește care jucător stă mai bine în cifre.
                             </p>
-                            <button className="inline-flex items-center gap-1.5 bg-blue-600 group-hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium text-xs transition-colors w-full sm:w-auto justify-center cursor-pointer">
-                                <Play className="w-3.5 h-3.5 fill-current" /> Joacă
+                            <button className="inline-flex items-center gap-1.5 bg-cyan-600 group-hover:bg-cyan-500 text-white px-4 py-2 rounded-xl font-medium text-xs transition-colors w-full justify-center cursor-pointer">
+                                <Play className="w-3.5 h-3.5 fill-current" /> Joacă acum
                             </button>
                         </div>
 
                         <div
                             onClick={() => setActiveGame('xi')}
-                            className="bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] hover:border-amber-500/40 cursor-pointer transition-colors group flex flex-col items-start"
+                            className="bg-white dark:bg-[#101726] rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-white/[0.07] hover:border-amber-500/40 cursor-pointer transition-colors group flex flex-col items-start"
                         >
-                            <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
-                                <Shirt className="w-5 h-5 text-amber-500" />
+                            <div className="w-full flex items-center justify-between mb-4">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                                    <Shirt className="w-5 h-5 text-amber-500" />
+                                </div>
+                                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 transition-colors" />
                             </div>
                             <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">
                                 Primul 11
@@ -301,8 +330,8 @@ export function GamesSection({ user }: GamesProps) {
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-5 flex-1">
                                 Ghicește cei 11 titulari dintr-o partidă memorabilă, literă cu literă, în stil Wordle.
                             </p>
-                            <button className="inline-flex items-center gap-1.5 bg-amber-600 group-hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-medium text-xs transition-colors w-full sm:w-auto justify-center cursor-pointer">
-                                <Play className="w-3.5 h-3.5 fill-current" /> Joacă
+                            <button className="inline-flex items-center gap-1.5 bg-amber-600 group-hover:bg-amber-500 text-white px-4 py-2 rounded-xl font-medium text-xs transition-colors w-full justify-center cursor-pointer">
+                                <Play className="w-3.5 h-3.5 fill-current" /> Joacă acum
                             </button>
                         </div>
                     </div>
@@ -341,7 +370,7 @@ function LeaderboardTable({ data, currentUserName }: { data: any[], currentUserN
                 else if (rank === 2) colorClass = 'text-slate-400 font-semibold';
                 else if (rank === 3) colorClass = 'text-amber-700 dark:text-amber-600 font-semibold';
 
-                return <div className={`text-center tabular-nums ${colorClass}`}>{rank}</div>;
+                return <div className={`text-center font-mono-stats ${colorClass}`}>{rank}</div>;
             }
         },
         {
@@ -368,7 +397,7 @@ function LeaderboardTable({ data, currentUserName }: { data: any[], currentUserN
             accessorKey: 'score',
             header: 'Scor',
             cell: (info: any) => (
-                <div className="text-right font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                <div className="text-right font-semibold text-emerald-600 dark:text-emerald-400 font-mono-stats">
                     {info.getValue()} pct
                 </div>
             )
@@ -385,9 +414,9 @@ function LeaderboardTable({ data, currentUserName }: { data: any[], currentUserN
     });
 
     return (
-        <div className="overflow-x-auto scrollbar-hide max-h-[60vh] sm:max-h-96 border border-slate-200 dark:border-white/[0.07] rounded-lg">
+        <div className="overflow-x-auto scrollbar-hide max-h-[60vh] sm:max-h-96 border border-slate-200 dark:border-white/[0.07] rounded-xl">
             <table className="w-full text-xs sm:text-[13px] text-left">
-                <thead className="sticky top-0 bg-slate-50 dark:bg-[#0B0F14] text-slate-500 dark:text-slate-400 font-medium text-[11px] border-b border-slate-200 dark:border-white/[0.07] z-10">
+                <thead className="sticky top-0 bg-slate-50 dark:bg-[#090D16] text-slate-500 dark:text-slate-400 font-medium text-[11px] border-b border-slate-200 dark:border-white/[0.07] z-10">
                     {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id}>
                             {headerGroup.headers.map(header => (
@@ -405,7 +434,7 @@ function LeaderboardTable({ data, currentUserName }: { data: any[], currentUserN
                         </tr>
                     ))}
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05] bg-white dark:bg-[#11161D]">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05] bg-white dark:bg-[#101726]">
                     {table.getRowModel().rows.length === 0 ? (
                         <tr>
                             <td colSpan={3} className="text-slate-500 text-center text-xs py-10">
@@ -595,11 +624,11 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
     if (!match) {
         return (
-            <div className="max-w-md mx-auto bg-white dark:bg-[#11161D] rounded-xl p-6 border border-slate-200 dark:border-white/[0.07] text-center space-y-4 mt-8">
+            <div className="max-w-md mx-auto bg-white dark:bg-[#101726] rounded-2xl p-6 border border-slate-200 dark:border-white/[0.07] text-center space-y-4 mt-8">
                 <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
                 <h2 className="text-base font-semibold text-slate-900 dark:text-white">Niciun meci disponibil</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Nu există meciuri adăugate în baza de date.</p>
-                <button onClick={onBack} className="bg-slate-900 dark:bg-white/[0.08] text-white px-4 py-2 rounded-lg font-medium text-xs cursor-pointer">
+                <button onClick={onBack} className="bg-slate-900 dark:bg-white/[0.08] text-white px-4 py-2 rounded-xl font-medium text-xs cursor-pointer">
                     Înapoi
                 </button>
             </div>
@@ -619,19 +648,19 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
     return (
         <div className="max-w-3xl mx-auto space-y-4">
             {/* Header Meci */}
-            <div className="bg-white dark:bg-[#11161D] p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-4">
+            <div className="bg-white dark:bg-[#101726] p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] space-y-4">
                 <div className="flex items-center justify-between">
                     <button onClick={onBack} className="text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium text-xs cursor-pointer">
                         <ChevronLeft className="w-4 h-4" /> Înapoi
                     </button>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono-stats">
                         {match.date} • {match.formation}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between gap-2 sm:gap-4">
                     <div
-                        className="flex-1 text-xs sm:text-base font-semibold text-center px-3 py-2 rounded-lg border border-black/10 truncate"
+                        className="flex-1 text-xs sm:text-base font-semibold text-center px-3 py-2 rounded-xl border border-black/10 truncate"
                         style={{
                             backgroundColor: match.isHome !== false ? homeColor : awayColor,
                             color: getContrastTextColor(match.isHome !== false ? homeColor : awayColor)
@@ -640,12 +669,12 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                         {match.isHome !== false ? match.teamName : match.opponent}
                     </div>
 
-                    <div className="shrink-0 bg-slate-100 dark:bg-white/[0.05] px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] font-bold text-slate-900 dark:text-white text-base sm:text-xl tabular-nums">
+                    <div className="shrink-0 bg-slate-100 dark:bg-[#090D16] px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/[0.08] font-bold text-slate-900 dark:text-white text-base sm:text-xl font-mono-stats">
                         {match.score}
                     </div>
 
                     <div
-                        className="flex-1 text-xs sm:text-base font-semibold text-center px-3 py-2 rounded-lg border border-black/10 truncate"
+                        className="flex-1 text-xs sm:text-base font-semibold text-center px-3 py-2 rounded-xl border border-black/10 truncate"
                         style={{
                             backgroundColor: match.isHome !== false ? awayColor : homeColor,
                             color: getContrastTextColor(match.isHome !== false ? awayColor : homeColor)
@@ -660,17 +689,17 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                         <button
                             onClick={handlePrevMatch}
                             disabled={currentMatchIndex === 0}
-                            className="inline-flex items-center gap-1 bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors disabled:opacity-35 cursor-pointer"
+                            className="inline-flex items-center gap-1 bg-slate-100 dark:bg-[#090D16] hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors disabled:opacity-35 cursor-pointer"
                         >
                             <ChevronLeft className="w-3.5 h-3.5" /> Anterior
                         </button>
-                        <span className="text-xs font-medium text-slate-500 tabular-nums">
+                        <span className="text-xs font-medium text-slate-500 font-mono-stats">
                             {currentMatchIndex + 1} / {allMatches.length}
                         </span>
                         <button
                             onClick={handleNextMatch}
                             disabled={currentMatchIndex === allMatches.length - 1}
-                            className="inline-flex items-center gap-1 bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors disabled:opacity-35 cursor-pointer"
+                            className="inline-flex items-center gap-1 bg-slate-100 dark:bg-[#090D16] hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors disabled:opacity-35 cursor-pointer"
                         >
                             Următor <ChevronRight className="w-3.5 h-3.5" />
                         </button>
@@ -680,10 +709,10 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
             {/* Teren tactic mat */}
             <div
-                className="rounded-xl border border-white/10 py-6 px-2 sm:p-6 min-h-[440px] sm:min-h-[540px] relative overflow-hidden flex flex-col-reverse justify-around gap-3 sm:gap-5 select-none"
-                style={{ backgroundImage: 'repeating-linear-gradient(to bottom, #142820 0px, #142820 44px, #11221b 44px, #11221b 88px)' }}
+                className="rounded-2xl border border-white/10 py-6 px-2 sm:p-6 min-h-[440px] sm:min-h-[540px] relative overflow-hidden flex flex-col-reverse justify-around gap-3 sm:gap-5 select-none"
+                style={{ backgroundImage: 'repeating-linear-gradient(to bottom, #11241d 0px, #11241d 44px, #0e1e18 44px, #0e1e18 88px)' }}
             >
-                <div className="absolute inset-2.5 border border-white/15 rounded-lg pointer-events-none" />
+                <div className="absolute inset-2.5 border border-white/15 rounded-xl pointer-events-none" />
                 <div className="absolute top-1/2 inset-x-2.5 h-px bg-white/15 -translate-y-1/2 pointer-events-none" />
                 <div className="absolute top-1/2 left-1/2 w-20 h-20 sm:w-28 sm:h-28 border border-white/15 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
@@ -716,7 +745,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                             }}
                                         />
                                         {(isGuessed || showRed) && (
-                                            <div className="absolute -bottom-1 -right-1 bg-[#0B0F14] rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center border border-white/40">
+                                            <div className="absolute -bottom-1 -right-1 bg-[#090D16] rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center border border-white/40">
                                                 <span className="text-[7px] sm:text-[9px] font-semibold text-white">
                                                     {player.name.substring(0, 2).toUpperCase()}
                                                 </span>
@@ -730,11 +759,11 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                     </div>
                                     <div className="mt-0.5 text-center w-full">
                                         {(isGuessed || showRed) ? (
-                                            <div className={`font-medium text-[9px] sm:text-[11px] bg-[#0B0F14]/90 px-1.5 py-0.5 rounded border truncate ${showRed ? 'text-rose-400 border-rose-500/40' : 'text-white border-white/15'}`}>
+                                            <div className={`font-medium text-[9px] sm:text-[11px] bg-[#090D16]/90 px-1.5 py-0.5 rounded border truncate ${showRed ? 'text-rose-400 border-rose-500/40' : 'text-white border-white/15'}`}>
                                                 {player.name}
                                             </div>
                                         ) : (
-                                            <div className="font-mono text-white/70 bg-black/35 px-1.5 py-0.5 rounded text-[9px] sm:text-xs truncate">
+                                            <div className="font-mono-stats text-white/70 bg-black/35 px-1.5 py-0.5 rounded text-[9px] sm:text-xs truncate">
                                                 {"_".repeat(Math.min(player.name.length, 10))}
                                             </div>
                                         )}
@@ -747,8 +776,8 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
             </div>
 
             {/* Footer progres */}
-            <div className="bg-white dark:bg-[#11161D] p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] flex items-center justify-between gap-3">
-                <div className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white bg-slate-100 dark:bg-white/[0.05] px-3 py-1.5 rounded-lg tabular-nums">
+            <div className="bg-white dark:bg-[#101726] p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] flex items-center justify-between gap-3">
+                <div className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white bg-slate-100 dark:bg-[#090D16] px-3 py-1.5 rounded-xl font-mono-stats">
                     <span className="text-emerald-600 dark:text-emerald-400">{guessedIds.size}</span>
                     <span className="text-slate-400">/11</span>
                 </div>
@@ -760,7 +789,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 {!win && !gaveUp ? (
                     <button
                         onClick={handleGiveUp}
-                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 px-3.5 py-1.5 rounded-lg font-medium text-xs transition-colors cursor-pointer"
+                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 px-3.5 py-1.5 rounded-xl font-medium text-xs transition-colors cursor-pointer"
                     >
                         Renunță
                     </button>
@@ -770,7 +799,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
             {/* Modal Wordle */}
             {activeSlot && !win && !gaveUp && (
                 <div className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4">
-                    <div className="bg-white dark:bg-[#11161D] w-full max-h-[88dvh] sm:h-auto sm:max-w-xl sm:rounded-xl border-t sm:border border-slate-200 dark:border-white/[0.08] shadow-2xl flex flex-col overflow-hidden rounded-t-xl">
+                    <div className="bg-white dark:bg-[#101726] w-full max-h-[88dvh] sm:h-auto sm:max-w-xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-white/[0.08] shadow-2xl flex flex-col overflow-hidden rounded-t-2xl">
                         <div className="px-4 py-3.5 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center shrink-0">
                             <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Ghicește numele</h3>
                             <button
@@ -787,7 +816,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                 return (
                                     <div key={idx} className="flex gap-1 flex-wrap justify-center w-full">
                                         {chars.map((char, j) => (
-                                            <div key={j} className={`w-6 h-8 sm:w-9 sm:h-10 flex items-center justify-center font-semibold text-white rounded text-xs sm:text-base ${colors[j]}`}>
+                                            <div key={j} className={`w-6 h-8 sm:w-9 sm:h-10 flex items-center justify-center font-semibold font-mono-stats text-white rounded-lg text-xs sm:text-base ${colors[j]}`}>
                                                 {char}
                                             </div>
                                         ))}
@@ -797,14 +826,14 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
                             <div className="flex gap-1 flex-wrap justify-center opacity-60 mt-1 w-full">
                                 {removeDiacritics(activeSlot.name).toUpperCase().split('').map((char, j) => (
-                                    <div key={`empty-${j}`} className="w-6 h-8 sm:w-9 sm:h-10 flex items-center justify-center font-semibold text-slate-500 dark:text-slate-400 rounded text-xs sm:text-base border border-slate-200 dark:border-white/[0.1] bg-slate-50 dark:bg-[#0B0F14]">
+                                    <div key={`empty-${j}`} className="w-6 h-8 sm:w-9 sm:h-10 flex items-center justify-center font-semibold font-mono-stats text-slate-500 dark:text-slate-400 rounded-lg text-xs sm:text-base border border-slate-200 dark:border-white/[0.1] bg-slate-50 dark:bg-[#090D16]">
                                         {char === ' ' ? ' ' : '_'}
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        <form onSubmit={handleSlotGuess} className="p-4 bg-slate-50 dark:bg-[#0B0F14] border-t border-slate-200 dark:border-white/[0.07] shrink-0 space-y-2.5">
+                        <form onSubmit={handleSlotGuess} className="p-4 bg-slate-50 dark:bg-[#090D16] border-t border-slate-200 dark:border-white/[0.07] shrink-0 space-y-2.5">
                             <p className="text-[11px] text-slate-500 text-center">
                                 Verde: literă corectă • Galben: există în nume, altă poziție
                             </p>
@@ -814,7 +843,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                     autoFocus
                                     maxLength={activeSlot ? removeDiacritics(activeSlot.name).length : undefined}
                                     placeholder="Scrie numele..."
-                                    className="flex-1 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-center text-slate-900 dark:text-white font-semibold uppercase tracking-wider outline-none focus:border-emerald-500 text-sm"
+                                    className="flex-1 bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-center text-slate-900 dark:text-white font-semibold uppercase tracking-wider outline-none focus:border-emerald-500 text-sm"
                                     value={slotGuess}
                                     onChange={e => {
                                         const val = e.target.value.toUpperCase();
@@ -822,7 +851,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                         setSlotGuess(val);
                                     }}
                                 />
-                                <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-lg font-medium text-xs transition-colors cursor-pointer">
+                                <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-xl font-medium text-xs transition-colors cursor-pointer">
                                     Verifică
                                 </button>
                             </div>
@@ -1259,7 +1288,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     const isMyTurn = mode === 'local' || (mode === 'online_playing' && turn === myRole);
 
     const renderHeader = (item: GridCriteria) => (
-        <div className="bg-slate-50 dark:bg-[#0B0F14] rounded-lg p-1.5 sm:p-2.5 flex flex-col items-center justify-center text-center border border-slate-200 dark:border-white/[0.07] h-full w-full">
+        <div className="bg-slate-50 dark:bg-[#090D16] rounded-xl p-1.5 sm:p-2.5 flex flex-col items-center justify-center text-center border border-slate-200 dark:border-white/[0.07] h-full w-full">
             {item.type === 'nationality' ? (
                 <span className="text-xl sm:text-3xl mb-1 leading-none">{item.image}</span>
             ) : item.image ? (
@@ -1280,7 +1309,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
     if (mode === 'menu') {
         return (
-            <div className="max-w-lg mx-auto bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] mt-4 space-y-6">
+            <div className="max-w-lg mx-auto bg-white dark:bg-[#101726] rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-white/[0.07] mt-4 space-y-6">
                 <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/[0.07] pb-3.5">
                     <button onClick={onBack} className="text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium text-xs cursor-pointer">
                         <ChevronLeft className="w-4 h-4" /> Înapoi
@@ -1295,7 +1324,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                         type="text"
                         value={playerName}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlayerName(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500"
+                        className="w-full bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500"
                         placeholder="Introdu numele..."
                     />
                 </div>
@@ -1303,7 +1332,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                         onClick={startLocal}
-                        className="p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/50 bg-slate-50 dark:bg-[#0B0F14] flex flex-col items-center gap-2 transition-colors cursor-pointer"
+                        className="p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/50 bg-slate-50 dark:bg-[#090D16] flex flex-col items-center gap-2 transition-colors cursor-pointer"
                     >
                         <Users className="w-6 h-6 text-emerald-500" />
                         <div className="text-center">
@@ -1316,9 +1345,9 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                             if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca online."); return; }
                             setMode('online_menu');
                         }}
-                        className="p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] hover:border-blue-500/50 bg-slate-50 dark:bg-[#0B0F14] flex flex-col items-center gap-2 transition-colors cursor-pointer"
+                        className="p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] hover:border-cyan-500/50 bg-slate-50 dark:bg-[#090D16] flex flex-col items-center gap-2 transition-colors cursor-pointer"
                     >
-                        <Globe className="w-6 h-6 text-blue-500" />
+                        <Globe className="w-6 h-6 text-cyan-500" />
                         <div className="text-center">
                             <div className="font-semibold text-sm text-slate-900 dark:text-white">Online vs Prieten</div>
                             <div className="text-xs text-slate-500">Creează sau intră cu cod</div>
@@ -1331,7 +1360,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
     if (mode === 'online_menu') {
         return (
-            <div className="max-w-md mx-auto bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] mt-4 space-y-5">
+            <div className="max-w-md mx-auto bg-white dark:bg-[#101726] rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-white/[0.07] mt-4 space-y-5">
                 <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/[0.07] pb-3.5">
                     <button onClick={() => setMode('menu')} className="text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium text-xs cursor-pointer">
                         <ChevronLeft className="w-4 h-4" /> Înapoi
@@ -1342,7 +1371,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
                 <button
                     onClick={createOnlineRoom}
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 px-4 rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                     <Share2 className="w-4 h-4" /> Creează cameră nouă
                 </button>
@@ -1359,11 +1388,11 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                         placeholder="Cod cameră (ex: A7B9K)"
                         value={joinInput}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setJoinInput(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-center text-slate-900 dark:text-white font-semibold uppercase tracking-widest outline-none focus:border-emerald-500 text-sm"
+                        className="w-full bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-center text-slate-900 dark:text-white font-semibold font-mono-stats uppercase tracking-widest outline-none focus:border-emerald-500 text-sm"
                     />
                     <button
                         onClick={joinOnlineRoom}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors cursor-pointer"
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-4 rounded-xl font-medium text-sm transition-colors cursor-pointer"
                     >
                         Conectează-te
                     </button>
@@ -1374,7 +1403,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
     if (mode === 'online_setup') {
         return (
-            <div className="relative max-w-md mx-auto bg-white dark:bg-[#11161D] rounded-xl p-6 border border-slate-200 dark:border-white/[0.07] text-center mt-4 space-y-5">
+            <div className="relative max-w-md mx-auto bg-white dark:bg-[#101726] rounded-2xl p-6 border border-slate-200/80 dark:border-white/[0.07] text-center mt-4 space-y-5">
                 <button
                     onClick={() => {
                         if (socketRef.current) socketRef.current.disconnect();
@@ -1385,13 +1414,13 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     <X className="w-4 h-4" />
                 </button>
 
-                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mt-2" />
+                <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mt-2" />
                 <h3 className="text-base font-semibold text-slate-900 dark:text-white">Așteptăm adversarul...</h3>
 
                 {myRole === 'X' && (
-                    <div className="bg-slate-50 dark:bg-[#0B0F14] p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-3">
+                    <div className="bg-slate-50 dark:bg-[#090D16] p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-3">
                         <p className="text-slate-500 text-xs">Trimite acest cod prietenului tău:</p>
-                        <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 tracking-[0.2em] tabular-nums">{roomCode}</div>
+                        <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 tracking-[0.2em] font-mono-stats">{roomCode}</div>
                         <button
                             onClick={() => { navigator.clipboard.writeText(roomCode); toast.success("Cod copiat!"); }}
                             className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium text-xs cursor-pointer"
@@ -1408,7 +1437,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
         <div className="max-w-2xl mx-auto space-y-4">
             {seriesWinner && (
                 <div className="fixed inset-0 z-[200000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] rounded-xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
+                    <div className="bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.08] rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
                         <Crown className="w-10 h-10 text-amber-500 mx-auto" />
                         <div>
                             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Câștigător serie!</h2>
@@ -1416,7 +1445,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                                 A câștigat jucătorul <span className="font-semibold text-emerald-500">{seriesWinner}</span>
                             </p>
                         </div>
-                        <button onClick={quitGame} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-medium text-sm cursor-pointer">
+                        <button onClick={quitGame} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-medium text-sm cursor-pointer">
                             Înapoi la meniu
                         </button>
                     </div>
@@ -1424,16 +1453,16 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
             )}
 
             {/* Bara Scor & Status */}
-            <div className="bg-white dark:bg-[#11161D] p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-3">
+            <div className="bg-white dark:bg-[#101726] p-4 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] space-y-3">
                 <div className="flex items-center justify-between gap-2">
                     <button onClick={quitGame} className="text-slate-500 hover:text-rose-500 flex items-center gap-1 font-medium text-xs cursor-pointer">
                         <X className="w-4 h-4" /> Ieșire
                     </button>
 
-                    <div className="flex items-center gap-3 text-sm font-semibold bg-slate-100 dark:bg-white/[0.05] px-3 py-1 rounded-lg tabular-nums">
+                    <div className="flex items-center gap-3 text-sm font-semibold bg-slate-100 dark:bg-[#090D16] border border-slate-200/70 dark:border-white/[0.06] px-3 py-1 rounded-xl font-mono-stats">
                         <span className={myRole === 'X' || mode === 'local' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}>X: {matchScore.X}</span>
                         <span className="text-slate-400">–</span>
-                        <span className={myRole === 'O' || mode === 'local' ? 'text-blue-500' : 'text-slate-400'}>O: {matchScore.O}</span>
+                        <span className={myRole === 'O' || mode === 'local' ? 'text-cyan-500' : 'text-slate-400'}>O: {matchScore.O}</span>
                     </div>
 
                     {winner ? (
@@ -1462,12 +1491,12 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                         </span>
                     ) : (
                         <span className="text-slate-600 dark:text-slate-300">
-                            Rândul lui: <strong className={turn === 'X' ? 'text-emerald-500' : 'text-blue-500'}>{turn}</strong>
+                            Rândul lui: <strong className={turn === 'X' ? 'text-emerald-500' : 'text-cyan-500'}>{turn}</strong>
                         </span>
                     )}
                     {!winner && (
-                        <span className={`inline-flex items-center gap-1 font-semibold tabular-nums px-2 py-0.5 rounded ${
-                            timeLeft <= 10 ? 'bg-rose-500/15 text-rose-500' : 'bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-slate-200'
+                        <span className={`inline-flex items-center gap-1 font-semibold font-mono-stats px-2 py-0.5 rounded-lg ${
+                            timeLeft <= 10 ? 'bg-rose-500/15 text-rose-500' : 'bg-slate-100 dark:bg-[#090D16] text-slate-700 dark:text-slate-200'
                         }`}>
                             <Timer className="w-3.5 h-3.5" /> 00:{timeLeft.toString().padStart(2, '0')}
                         </span>
@@ -1477,7 +1506,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
             {/* Grila 3x3 */}
             {gridRows.length > 0 && (
-                <div className="p-3 sm:p-5 bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] relative overflow-hidden">
+                <div className="p-3 sm:p-5 bg-white dark:bg-[#101726] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] relative overflow-hidden">
                     {!isMyTurn && !winner && (
                         <div className="absolute inset-0 z-50 bg-transparent cursor-not-allowed" onClick={() => toast.error("Nu este rândul tău.")} />
                     )}
@@ -1507,17 +1536,17 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                                                 }
                                                 if (!ans) setActiveCell({ r: rIdx, c: cIdx });
                                             }}
-                                            className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-colors p-1.5 ${
+                                            className={`aspect-square rounded-xl border flex flex-col items-center justify-center transition-colors p-1.5 ${
                                                 ans
                                                     ? ans.markedBy === 'X'
                                                         ? 'bg-emerald-500/10 border-emerald-500/35'
-                                                        : 'bg-blue-500/10 border-blue-500/35'
-                                                    : 'bg-slate-50 dark:bg-[#0B0F14] border-dashed border-slate-300 dark:border-white/[0.12] hover:border-emerald-500/50'
+                                                        : 'bg-cyan-500/10 border-cyan-500/35'
+                                                    : 'bg-slate-50 dark:bg-[#090D16] border-dashed border-slate-300 dark:border-white/[0.12] hover:border-emerald-500/50'
                                             } ${winner || (!isMyTurn && !ans) ? 'cursor-not-allowed' : 'cursor-pointer'} ${winner && !ans ? 'opacity-40' : ''}`}
                                         >
                                             {ans ? (
                                                 <div className="flex flex-col items-center justify-center text-center space-y-1">
-                                                    <span className={`text-lg sm:text-2xl font-bold leading-none ${ans.markedBy === 'X' ? 'text-emerald-500' : 'text-blue-500'}`}>
+                                                    <span className={`text-lg sm:text-2xl font-bold font-mono-stats leading-none ${ans.markedBy === 'X' ? 'text-emerald-500' : 'text-cyan-500'}`}>
                                                         {ans.markedBy}
                                                     </span>
                                                     <span className="text-[9px] sm:text-[11px] font-medium text-slate-900 dark:text-slate-100 leading-tight line-clamp-2">
@@ -1539,10 +1568,10 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
             {/* Modal căutare jucător */}
             {activeCell && !winner && isMyTurn && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
-                    <div className="bg-white dark:bg-[#11161D] w-full max-w-md rounded-xl border border-slate-200 dark:border-white/[0.08] shadow-2xl flex flex-col overflow-hidden max-h-[85dvh]">
+                    <div className="bg-white dark:bg-[#101726] w-full max-w-md rounded-2xl border border-slate-200 dark:border-white/[0.08] shadow-2xl flex flex-col overflow-hidden max-h-[85dvh]">
                         <div className="px-4 py-3.5 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center shrink-0">
                             <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
-                                Răspunde pentru <span className={turn === 'X' ? 'text-emerald-500' : 'text-blue-500'}>{turn}</span>
+                                Răspunde pentru <span className={turn === 'X' ? 'text-emerald-500' : 'text-cyan-500'}>{turn}</span>
                             </h3>
                             <button
                                 onClick={() => { setActiveCell(null); setSearchTerm(""); }}
@@ -1553,11 +1582,11 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                         </div>
 
                         <div className="p-4 space-y-3 flex-1 overflow-hidden flex flex-col">
-                            <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-[#0B0F14] px-3 py-2 rounded-lg border border-slate-200 dark:border-white/[0.07] shrink-0">
+                            <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-[#090D16] px-3 py-2 rounded-xl border border-slate-200 dark:border-white/[0.07] shrink-0">
                                 <span className="text-slate-600 dark:text-slate-300 font-medium truncate">
                                     {gridRows[activeCell.r].value} + {gridCols[activeCell.c].value}
                                 </span>
-                                <span className={`font-semibold tabular-nums ml-2 ${timeLeft <= 10 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                <span className={`font-semibold font-mono-stats ml-2 ${timeLeft <= 10 ? 'text-rose-500' : 'text-emerald-500'}`}>
                                     {timeLeft}s
                                 </span>
                             </div>
@@ -1566,7 +1595,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                                 type="text"
                                 autoFocus
                                 placeholder="Caută jucător (ex: Mbappe)..."
-                                className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500 shrink-0"
+                                className="w-full bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500 shrink-0"
                                 value={searchTerm}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                             />
@@ -1576,7 +1605,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                                     <button
                                         key={p._id}
                                         onClick={() => handleSelectPlayer(p)}
-                                        className="w-full text-left px-3 py-2.5 rounded-lg border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/50 bg-slate-50 dark:bg-[#0B0F14] hover:bg-emerald-500/10 text-slate-900 dark:text-slate-100 font-medium text-sm transition-colors cursor-pointer"
+                                        className="w-full text-left px-3 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/50 bg-slate-50 dark:bg-[#090D16] hover:bg-emerald-500/10 text-slate-900 dark:text-slate-100 font-medium text-sm transition-colors cursor-pointer"
                                     >
                                         {p.name}
                                     </button>
@@ -1769,7 +1798,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
     if (gameState === 'setup') {
         if (showLeaderboard) {
             return (
-                <div className="max-w-xl mx-auto bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] mt-4 space-y-4">
+                <div className="max-w-xl mx-auto bg-white dark:bg-[#101726] rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-white/[0.07] mt-4 space-y-4">
                     <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/[0.07] pb-3.5">
                         <button onClick={() => setShowLeaderboard(false)} className="text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium text-xs cursor-pointer">
                             <ChevronLeft className="w-4 h-4" /> Înapoi
@@ -1785,7 +1814,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
         }
 
         return (
-            <div className="max-w-lg mx-auto bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] mt-4 space-y-5">
+            <div className="max-w-lg mx-auto bg-white dark:bg-[#101726] rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-white/[0.07] mt-4 space-y-5">
                 <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/[0.07] pb-3.5">
                     <button onClick={onBack} className="text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium text-xs cursor-pointer">
                         <ChevronLeft className="w-4 h-4" /> Înapoi
@@ -1802,7 +1831,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                         type="text"
                         value={playerName}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlayerName(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500"
+                        className="w-full bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500"
                         placeholder="Alege un nume..."
                     />
                 </div>
@@ -1819,10 +1848,10 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                             <button
                                 key={c.id}
                                 onClick={() => setCategory(c.id as any)}
-                                className={`py-2.5 px-3 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
+                                className={`py-2.5 px-3 rounded-xl border text-xs font-medium transition-colors cursor-pointer ${
                                     category === c.id
                                         ? 'bg-emerald-600 border-emerald-600 text-white'
-                                        : 'bg-slate-50 dark:bg-[#0B0F14] border-slate-200 dark:border-white/[0.07] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/[0.15]'
+                                        : 'bg-slate-50 dark:bg-[#090D16] border-slate-200 dark:border-white/[0.07] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/[0.15]'
                                 }`}
                             >
                                 {c.label}
@@ -1833,7 +1862,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
 
                 <button
                     onClick={startGame}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors cursor-pointer"
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-4 rounded-xl font-medium text-sm transition-colors cursor-pointer"
                 >
                     Începe jocul (3 vieți)
                 </button>
@@ -1843,8 +1872,8 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
 
     if (gameState === 'gameover') {
         return (
-            <div className="max-w-md mx-auto bg-white dark:bg-[#11161D] rounded-xl p-6 border border-slate-200 dark:border-white/[0.07] text-center space-y-5 mt-6">
-                <div className="w-11 h-11 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto">
+            <div className="max-w-md mx-auto bg-white dark:bg-[#101726] rounded-2xl p-6 border border-slate-200/80 dark:border-white/[0.07] text-center space-y-5 mt-6">
+                <div className="w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto">
                     <AlertTriangle className="w-5 h-5 text-rose-500" />
                 </div>
                 <div>
@@ -1852,23 +1881,23 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Nu mai ai vieți rămase.</p>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-[#0B0F14] rounded-xl p-4 border border-slate-200 dark:border-white/[0.07]">
+                <div className="bg-slate-50 dark:bg-[#090D16] rounded-xl p-4 border border-slate-200 dark:border-white/[0.07]">
                     <p className="text-xs text-slate-500 mb-1">Scor final</p>
-                    <p className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{score}</p>
+                    <p className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 font-mono-stats">{score}</p>
                 </div>
 
                 <button
                     onClick={shareScore}
-                    className="w-full bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-900 dark:text-white py-2.5 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-900 dark:text-white py-2.5 rounded-xl font-medium text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                     <Share className="w-3.5 h-3.5" /> Copiază rezultatul
                 </button>
 
                 <div className="flex gap-2.5">
-                    <button onClick={startGame} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-medium text-xs transition-colors cursor-pointer">
+                    <button onClick={startGame} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-medium text-xs transition-colors cursor-pointer">
                         Joacă din nou
                     </button>
-                    <button onClick={() => setGameState('setup')} className="flex-1 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 py-2.5 rounded-lg font-medium text-xs transition-colors cursor-pointer">
+                    <button onClick={() => setGameState('setup')} className="flex-1 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 py-2.5 rounded-xl font-medium text-xs transition-colors cursor-pointer">
                         Meniu
                     </button>
                 </div>
@@ -1881,7 +1910,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
 
     return (
         <div className="max-w-4xl mx-auto space-y-4">
-            <div className="flex items-center justify-between bg-white dark:bg-[#11161D] px-4 py-3 rounded-xl border border-slate-200 dark:border-white/[0.07]">
+            <div className="flex items-center justify-between bg-white dark:bg-[#101726] px-4 py-3 rounded-2xl border border-slate-200/80 dark:border-white/[0.07]">
                 <button
                     onClick={() => { saveScore(score); setGameState('setup'); }}
                     className="text-slate-500 hover:text-rose-500 flex items-center gap-1 font-medium text-xs cursor-pointer"
@@ -1898,14 +1927,14 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                     ))}
                 </div>
 
-                <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md tabular-nums">
+                <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg font-mono-stats">
                     Scor: {score}
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
                 {/* Jucător A */}
-                <div className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] flex flex-col items-center justify-center p-6 sm:p-8 text-center">
+                <div className="bg-white dark:bg-[#101726] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] flex flex-col items-center justify-center p-6 sm:p-8 text-center">
                     <img
                         src={playerA?.image || GENERIC_USER_IMAGE}
                         alt={playerA?.name}
@@ -1914,18 +1943,18 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                     <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white line-clamp-1">{playerA?.name}</h2>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 line-clamp-1">{playerA?.team_name || playerA?.team}</p>
                     <span className="text-[11px] font-medium text-slate-500 mb-1.5">{catLabel}</span>
-                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-white/[0.05] px-4 py-2 rounded-lg tabular-nums">
+                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-[#090D16] border border-slate-200/70 dark:border-white/[0.06] px-4 py-2 rounded-xl font-mono-stats">
                         {getStatFormat(valA, category)}
                     </div>
                 </div>
 
                 {/* Jucător B */}
-                <div className={`rounded-xl border flex flex-col items-center justify-center p-6 sm:p-8 text-center transition-colors ${
+                <div className={`rounded-2xl border flex flex-col items-center justify-center p-6 sm:p-8 text-center transition-colors ${
                     revealResult === 'correct'
                         ? 'bg-emerald-500/10 border-emerald-500/40'
                         : revealResult === 'wrong'
                         ? 'bg-rose-500/10 border-rose-500/40'
-                        : 'bg-white dark:bg-[#11161D] border-slate-200 dark:border-white/[0.07]'
+                        : 'bg-white dark:bg-[#101726] border-slate-200/80 dark:border-white/[0.07]'
                 }`}>
                     <img
                         src={playerB?.image || GENERIC_USER_IMAGE}
@@ -1937,7 +1966,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                     <span className="text-[11px] font-medium text-slate-500 mb-2">{catLabel}</span>
 
                     {revealResult ? (
-                        <div className={`text-2xl sm:text-3xl font-bold px-4 py-2 rounded-lg tabular-nums ${
+                        <div className={`text-2xl sm:text-3xl font-bold px-4 py-2 rounded-xl font-mono-stats ${
                             revealResult === 'correct' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'
                         }`}>
                             {playerB && getStatFormat(getStatValue(playerB, category), category)}
@@ -1946,13 +1975,13 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
                         <div className="flex gap-2.5 w-full max-w-[260px]">
                             <button
                                 onClick={() => handleGuess('higher')}
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-3 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-3 rounded-xl font-medium text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                                 <ArrowUp className="w-4 h-4" /> Mai mare
                             </button>
                             <button
                                 onClick={() => handleGuess('lower')}
-                                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 px-3 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 px-3 rounded-xl font-medium text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                                 <ArrowDown className="w-4 h-4" /> Mai mică
                             </button>

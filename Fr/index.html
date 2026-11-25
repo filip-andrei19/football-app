@@ -8,10 +8,13 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#0B0F14" />
+    <meta name="theme-color" content="#090D16" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
 
     <!-- Forțează browserul să nu țină cache la acest fișier HTML -->
@@ -19,9 +22,18 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
 
-    <title>România Scout | Baza Oficială de Date</title>
+    <title>România Scout | Scouting & Live Data</title>
+    <style>
+      .font-mono-stats {
+        font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
   </head>
-  <body class="bg-[#F8FAFC] dark:bg-[#0B0F14] text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden" style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;">
+  <body
+    class="bg-[#F3F5F8] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden selection:bg-emerald-500/25 selection:text-emerald-300"
+    style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;"
+  >
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 

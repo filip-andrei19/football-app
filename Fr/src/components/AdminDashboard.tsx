@@ -49,7 +49,6 @@ interface ReportedMessage {
   timestamp: string;
 }
 
-// --- INTERFEȚE STARTING XI ---
 interface XIPlayer {
   _id?: string;
   id?: string;
@@ -97,7 +96,6 @@ export function AdminDashboard({ user }: { user: any }) {
   const [reportedMessages, setReportedMessages] = useState<ReportedMessage[]>([]);
   const [reportedListings, setReportedListings] = useState<ListingData[]>([]);
 
-  // Stări pentru Primul 11 (Starting XI)
   const [xis, setXis] = useState<StartingXIData[]>([]);
   const [editingXiId, setEditingXiId] = useState<string | null>(null);
 
@@ -117,7 +115,6 @@ export function AdminDashboard({ user }: { user: any }) {
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // === TANSTACK FORM PENTRU STORY ===
   const storyForm = useForm({
     defaultValues: {
       title: '',
@@ -494,50 +491,50 @@ export function AdminDashboard({ user }: { user: any }) {
 
   return (
     <div className="max-w-5xl mx-auto space-y-5 pb-16">
-      {/* Header Admin */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.07] p-4 sm:p-5 rounded-xl">
+      {/* Header Bento Admin */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-[#101726] border border-slate-200/80 dark:border-white/[0.07] p-4 sm:p-5 rounded-2xl">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
             <ShieldCheck className="w-5 h-5 text-rose-500" />
           </div>
           <div>
-            <h1 className="text-base font-semibold text-slate-900 dark:text-white leading-tight">
+            <h1 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white leading-tight">
               Panou Administrare
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Moderare utilizatori, anunțuri, articole și meciuri Primul 11.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 w-full md:w-auto tabular-nums">
-          <div className="bg-slate-50 dark:bg-[#0B0F14] px-3 py-2 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
+        <div className="grid grid-cols-4 gap-2 w-full md:w-auto font-mono-stats">
+          <div className="bg-slate-50 dark:bg-[#090D16] px-3 py-2 rounded-xl border border-slate-200/80 dark:border-white/[0.07] text-center">
             <div className="text-sm font-semibold text-slate-900 dark:text-white">{users.length}</div>
-            <div className="text-[10px] text-slate-500">Useri</div>
+            <div className="text-[10px] font-sans text-slate-500">Useri</div>
           </div>
-          <div className="bg-slate-50 dark:bg-[#0B0F14] px-3 py-2 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
-            <div className="text-sm font-semibold text-blue-500">{listings.length}</div>
-            <div className="text-[10px] text-slate-500">Anunțuri</div>
+          <div className="bg-slate-50 dark:bg-[#090D16] px-3 py-2 rounded-xl border border-slate-200/80 dark:border-white/[0.07] text-center">
+            <div className="text-sm font-semibold text-cyan-500">{listings.length}</div>
+            <div className="text-[10px] font-sans text-slate-500">Anunțuri</div>
           </div>
-          <div className="bg-slate-50 dark:bg-[#0B0F14] px-3 py-2 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
+          <div className="bg-slate-50 dark:bg-[#090D16] px-3 py-2 rounded-xl border border-slate-200/80 dark:border-white/[0.07] text-center">
             <div className="text-sm font-semibold text-emerald-500">{stories.length}</div>
-            <div className="text-[10px] text-slate-500">Articole</div>
+            <div className="text-[10px] font-sans text-slate-500">Articole</div>
           </div>
-          <div className={`px-3 py-2 rounded-lg border text-center ${
+          <div className={`px-3 py-2 rounded-xl border text-center ${
             totalReports > 0
               ? 'bg-rose-500/10 border-rose-500/25'
-              : 'bg-slate-50 dark:bg-[#0B0F14] border-slate-200 dark:border-white/[0.07]'
+              : 'bg-slate-50 dark:bg-[#090D16] border-slate-200/80 dark:border-white/[0.07]'
           }`}>
             <div className={`text-sm font-semibold ${totalReports > 0 ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
               {totalReports}
             </div>
-            <div className="text-[10px] text-slate-500">Raportări</div>
+            <div className="text-[10px] font-sans text-slate-500">Raportări</div>
           </div>
         </div>
       </div>
 
       {/* Tab-uri */}
-      <div className="flex gap-1 overflow-x-auto bg-slate-200/70 dark:bg-white/[0.04] p-1 rounded-lg border border-slate-200 dark:border-white/[0.06] scrollbar-hide">
+      <div className="flex gap-1 overflow-x-auto bg-slate-200/70 dark:bg-[#101726] p-1 rounded-xl border border-slate-200/80 dark:border-white/[0.07] scrollbar-hide">
         {[
           { id: 'users', label: 'Utilizatori', icon: Users },
           { id: 'listings', label: 'Fanshop', icon: ShoppingBag },
@@ -550,9 +547,9 @@ export function AdminDashboard({ user }: { user: any }) {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 md:flex-none px-3.5 py-2 font-medium rounded-md transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap text-xs cursor-pointer ${
+              className={`flex-1 md:flex-none px-3.5 py-2 font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap text-xs cursor-pointer ${
                 isActive
-                  ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                  ? 'bg-white dark:bg-[#182235] text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -564,14 +561,14 @@ export function AdminDashboard({ user }: { user: any }) {
       </div>
 
       {/* Conținut */}
-      <div className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] p-4 sm:p-5 min-h-[460px]">
+      <div className="bg-white dark:bg-[#101726] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] p-4 sm:p-5 min-h-[460px]">
         {activeTab !== 'reports' && activeTab !== 'xi' && (
-          <div className="relative bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] focus-within:border-emerald-500/60 rounded-lg flex items-center mb-4 transition-colors">
+          <div className="relative bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] focus-within:border-emerald-500/60 rounded-xl flex items-center mb-4 transition-colors">
             <Search className="text-slate-400 w-4 h-4 ml-3 shrink-0" />
             <input
               type="text"
               placeholder="Caută..."
-              className="w-full py-2 px-2.5 bg-transparent outline-none text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400"
+              className="w-full py-2.5 px-2.5 bg-transparent outline-none text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -596,9 +593,9 @@ export function AdminDashboard({ user }: { user: any }) {
           <>
             {/* 1. USERS TAB */}
             {activeTab === 'users' && (
-              <div className="overflow-x-auto border border-slate-200 dark:border-white/[0.07] rounded-lg">
+              <div className="overflow-x-auto border border-slate-200 dark:border-white/[0.07] rounded-xl">
                 <table className="w-full text-left text-xs sm:text-[13px] min-w-[480px]">
-                  <thead className="bg-slate-50 dark:bg-white/[0.02] text-slate-500 dark:text-slate-400 font-medium text-[11px] border-b border-slate-200 dark:border-white/[0.07]">
+                  <thead className="bg-slate-50 dark:bg-[#090D16] text-slate-500 dark:text-slate-400 font-medium text-[11px] border-b border-slate-200 dark:border-white/[0.07]">
                     <tr>
                       <th className="py-2.5 px-3">Utilizator</th>
                       <th className="py-2.5 px-3 hidden md:table-cell">Email</th>
@@ -612,7 +609,7 @@ export function AdminDashboard({ user }: { user: any }) {
                       <tr key={u._id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center font-semibold text-slate-600 dark:text-slate-300 overflow-hidden shrink-0 text-xs">
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#090D16] flex items-center justify-center font-semibold text-slate-600 dark:text-slate-300 overflow-hidden shrink-0 text-xs">
                               {u.avatar ? <img src={u.avatar} alt="" className="w-full h-full object-cover" /> : u.name[0]?.toUpperCase()}
                             </div>
                             <div className="min-w-0">
@@ -622,22 +619,22 @@ export function AdminDashboard({ user }: { user: any }) {
                           </div>
                         </td>
                         <td className="py-2.5 px-3 text-slate-500 hidden md:table-cell">{u.email}</td>
-                        <td className="py-2.5 px-3 text-center tabular-nums">
-                          <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded text-xs font-semibold ${
+                        <td className="py-2.5 px-3 text-center font-mono-stats">
+                          <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-md text-xs font-semibold ${
                             u.strikes && u.strikes > 0
                               ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25'
-                              : 'bg-slate-100 dark:bg-white/[0.04] text-slate-400'
+                              : 'bg-slate-100 dark:bg-[#090D16] text-slate-400'
                           }`}>
                             {u.strikes || 0}
                           </span>
                         </td>
                         <td className="py-2.5 px-3">
                           {u.isBanned ? (
-                            <span className="text-rose-500 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded text-[11px] font-medium">
+                            <span className="text-rose-500 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-md text-[11px] font-medium">
                               Blocat
                             </span>
                           ) : (
-                            <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded text-[11px] font-medium">
+                            <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md text-[11px] font-medium">
                               Activ
                             </span>
                           )}
@@ -647,7 +644,7 @@ export function AdminDashboard({ user }: { user: any }) {
                             <button
                               onClick={() => handleToggleBan(u._id, u.isBanned, u.name)}
                               title={u.isBanned ? "Deblochează" : "Blochează"}
-                              className="p-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#090D16] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
                             >
                               <Ban className="w-4 h-4" />
                             </button>
@@ -662,9 +659,9 @@ export function AdminDashboard({ user }: { user: any }) {
 
             {/* 2. LISTINGS TAB */}
             {activeTab === 'listings' && (
-              <div className="overflow-x-auto border border-slate-200 dark:border-white/[0.07] rounded-lg">
+              <div className="overflow-x-auto border border-slate-200 dark:border-white/[0.07] rounded-xl">
                 <table className="w-full text-left text-xs sm:text-[13px] min-w-[460px]">
-                  <thead className="bg-slate-50 dark:bg-white/[0.02] text-slate-500 dark:text-slate-400 font-medium text-[11px] border-b border-slate-200 dark:border-white/[0.07]">
+                  <thead className="bg-slate-50 dark:bg-[#090D16] text-slate-500 dark:text-slate-400 font-medium text-[11px] border-b border-slate-200 dark:border-white/[0.07]">
                     <tr>
                       <th className="py-2.5 px-3">Articol</th>
                       <th className="py-2.5 px-3">Preț</th>
@@ -679,12 +676,12 @@ export function AdminDashboard({ user }: { user: any }) {
                           <div className="font-medium text-slate-900 dark:text-slate-100 line-clamp-1">{l.title}</div>
                           <div className="text-[11px] text-slate-500 mt-0.5">{l.category}</div>
                         </td>
-                        <td className="py-2.5 px-3 font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{l.price}</td>
+                        <td className="py-2.5 px-3 font-semibold text-emerald-600 dark:text-emerald-400 font-mono-stats">{l.price}</td>
                         <td className="py-2.5 px-3 text-slate-500 hidden sm:table-cell">{l.seller}</td>
                         <td className="py-2.5 px-3 text-right">
                           <button
                             onClick={() => handleDeleteListing(l._id, l.title)}
-                            className="p-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#090D16] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -703,7 +700,7 @@ export function AdminDashboard({ user }: { user: any }) {
                   <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Articole Legende</h3>
                   <button
                     onClick={openAddModal}
-                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Plus className="w-4 h-4" /> Adaugă articol
                   </button>
@@ -713,16 +710,16 @@ export function AdminDashboard({ user }: { user: any }) {
                   {filteredStories.map(story => (
                     <div
                       key={story._id}
-                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50 dark:bg-[#0B0F14] p-3.5 rounded-xl border border-slate-200 dark:border-white/[0.07] gap-3"
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50 dark:bg-[#090D16] p-3.5 rounded-xl border border-slate-200 dark:border-white/[0.07] gap-3"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold text-sm text-slate-900 dark:text-white truncate">{story.title}</div>
                         <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">{story.excerpt}</div>
                         <div className="flex flex-wrap gap-1.5 mt-2 text-[11px]">
-                          <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-medium">
+                          <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md font-medium">
                             {story.role}
                           </span>
-                          <span className="bg-slate-200/70 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded">
+                          <span className="bg-slate-200/70 dark:bg-[#101726] text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-md">
                             {story.organization}
                           </span>
                         </div>
@@ -730,13 +727,13 @@ export function AdminDashboard({ user }: { user: any }) {
                       <div className="flex gap-1.5 shrink-0">
                         <button
                           onClick={() => openEditModal(story)}
-                          className="p-2 bg-white dark:bg-[#11161D] rounded-lg border border-slate-200 dark:border-white/[0.08] text-slate-500 hover:text-emerald-500 transition-colors cursor-pointer"
+                          className="p-2 bg-white dark:bg-[#101726] rounded-lg border border-slate-200 dark:border-white/[0.08] text-slate-500 hover:text-emerald-500 transition-colors cursor-pointer"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteStory(story._id)}
-                          className="p-2 bg-white dark:bg-[#11161D] rounded-lg border border-slate-200 dark:border-white/[0.08] text-slate-500 hover:text-rose-500 transition-colors cursor-pointer"
+                          className="p-2 bg-white dark:bg-[#101726] rounded-lg border border-slate-200 dark:border-white/[0.08] text-slate-500 hover:text-rose-500 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -756,7 +753,7 @@ export function AdminDashboard({ user }: { user: any }) {
                   </h3>
 
                   {reportedMessages.length === 0 ? (
-                    <div className="text-center py-8 text-xs text-slate-500 bg-slate-50 dark:bg-[#0B0F14] rounded-xl border border-slate-200 dark:border-white/[0.07]">
+                    <div className="text-center py-8 text-xs text-slate-500 bg-slate-50 dark:bg-[#090D16] rounded-xl border border-slate-200 dark:border-white/[0.07]">
                       Niciun mesaj raportat momentan.
                     </div>
                   ) : (
@@ -768,14 +765,14 @@ export function AdminDashboard({ user }: { user: any }) {
                         >
                           <div className="flex-1 min-w-0 space-y-2">
                             <div className="flex items-center gap-2 text-xs">
-                              <span className="bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded font-medium">
+                              <span className="bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md font-medium">
                                 {msg.room === 'general_chat' ? 'Chat General' : 'Privat'}
                               </span>
                               <span className="font-semibold text-slate-900 dark:text-white">{msg.author}</span>
-                              <span className="text-amber-500 font-medium tabular-nums">• {msg.reportedBy.length} raportări</span>
+                              <span className="text-amber-500 font-medium font-mono-stats">• {msg.reportedBy.length} raportări</span>
                             </div>
 
-                            <div className="p-3 bg-white dark:bg-[#0B0F14] rounded-lg border border-slate-200 dark:border-white/[0.07]">
+                            <div className="p-3 bg-white dark:bg-[#090D16] rounded-xl border border-slate-200 dark:border-white/[0.07]">
                               {msg.message && <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">{msg.message}</p>}
                               {msg.imageUrl && (
                                 <img src={msg.imageUrl} alt="Raportat" className="mt-2 max-w-[220px] max-h-40 rounded-lg object-cover border border-slate-200 dark:border-white/[0.08]" />
@@ -786,19 +783,19 @@ export function AdminDashboard({ user }: { user: any }) {
                           <div className="flex flex-row lg:flex-col gap-2 justify-center shrink-0">
                             <button
                               onClick={() => handleAddStrike(msg.author)}
-                              className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 font-medium text-xs py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                              className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 font-medium text-xs py-2 px-3 rounded-xl transition-colors cursor-pointer"
                             >
                               Abatere (+1)
                             </button>
                             <button
                               onClick={() => handleDismissReport(msg._id)}
-                              className="flex-1 bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 font-medium text-xs py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                              className="flex-1 bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 font-medium text-xs py-2 px-3 rounded-xl transition-colors cursor-pointer"
                             >
                               Ignoră
                             </button>
                             <button
                               onClick={() => handleDeleteReportedMessage(msg._id)}
-                              className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                              className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs py-2 px-3 rounded-xl transition-colors cursor-pointer"
                             >
                               Șterge
                             </button>
@@ -811,11 +808,11 @@ export function AdminDashboard({ user }: { user: any }) {
 
                 <div className="pt-5 border-t border-slate-200 dark:border-white/[0.07]">
                   <h3 className="font-semibold text-sm flex items-center gap-2 text-slate-900 dark:text-white mb-3">
-                    <ShoppingBag className="text-blue-500 w-4 h-4" /> Anunțuri raportate ({reportedListings.length})
+                    <ShoppingBag className="text-cyan-500 w-4 h-4" /> Anunțuri raportate ({reportedListings.length})
                   </h3>
 
                   {reportedListings.length === 0 ? (
-                    <div className="text-center py-8 text-xs text-slate-500 bg-slate-50 dark:bg-[#0B0F14] rounded-xl border border-slate-200 dark:border-white/[0.07]">
+                    <div className="text-center py-8 text-xs text-slate-500 bg-slate-50 dark:bg-[#090D16] rounded-xl border border-slate-200 dark:border-white/[0.07]">
                       Niciun anunț raportat momentan.
                     </div>
                   ) : (
@@ -823,24 +820,24 @@ export function AdminDashboard({ user }: { user: any }) {
                       {reportedListings.map(listing => (
                         <div
                           key={listing._id}
-                          className="bg-blue-500/[0.04] p-4 rounded-xl border border-blue-500/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
+                          className="bg-cyan-500/[0.04] p-4 rounded-xl border border-cyan-500/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
                         >
                           <div className="min-w-0">
                             <div className="font-semibold text-sm text-slate-900 dark:text-white">{listing.title}</div>
                             <p className="text-xs text-slate-500 mt-0.5">
-                              Vânzător: {listing.seller} • <span className="text-amber-500 font-medium tabular-nums">{listing.reportedBy?.length || 0} raportări</span>
+                              Vânzător: {listing.seller} • <span className="text-amber-500 font-medium font-mono-stats">{listing.reportedBy?.length || 0} raportări</span>
                             </p>
                           </div>
                           <div className="flex gap-2 shrink-0 w-full sm:w-auto">
                             <button
                               onClick={() => handleDismissListingReport(listing._id)}
-                              className="flex-1 sm:flex-none bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 font-medium text-xs py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                              className="flex-1 sm:flex-none bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 font-medium text-xs py-2 px-3 rounded-xl transition-colors cursor-pointer"
                             >
                               Ignoră
                             </button>
                             <button
                               onClick={() => handleDeleteListing(listing._id, listing.title)}
-                              className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                              className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs py-2 px-3 rounded-xl transition-colors cursor-pointer"
                             >
                               Șterge
                             </button>
@@ -857,7 +854,7 @@ export function AdminDashboard({ user }: { user: any }) {
             {activeTab === 'xi' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* Formular Adăugare / Editare */}
-                <div className="bg-slate-50 dark:bg-[#0B0F14] p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-4">
+                <div className="bg-slate-50 dark:bg-[#090D16] p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-4">
                   <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/[0.07] pb-3">
                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                       {editingXiId ? 'Editează meci' : 'Adaugă meci nou'}
@@ -878,28 +875,28 @@ export function AdminDashboard({ user }: { user: any }) {
                       placeholder="Echipa analizată"
                       value={teamName}
                       onChange={e => setTeamName(e.target.value)}
-                      className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-lg text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500"
+                      className="bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-xl text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500"
                     />
                     <input
                       type="text"
                       placeholder="Adversar"
                       value={opponent}
                       onChange={e => setOpponent(e.target.value)}
-                      className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-lg text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500"
+                      className="bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-xl text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500"
                     />
                     <input
                       type="text"
                       placeholder="Scor (ex: 2-1)"
                       value={score}
                       onChange={e => setScore(e.target.value)}
-                      className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-lg text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500"
+                      className="bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-xl text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500 font-mono-stats"
                     />
                     <input
                       type="text"
                       placeholder="Data / An"
                       value={date}
                       onChange={e => setDate(e.target.value)}
-                      className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-lg text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500"
+                      className="bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-xl text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500 font-mono-stats"
                     />
                   </div>
 
@@ -909,7 +906,7 @@ export function AdminDashboard({ user }: { user: any }) {
                       setFormation(e.target.value);
                       setSlotPlayers(Array(11).fill(null));
                     }}
-                    className="w-full bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-lg text-slate-900 dark:text-white font-medium text-xs outline-none cursor-pointer"
+                    className="w-full bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-xl text-slate-900 dark:text-white font-medium text-xs outline-none cursor-pointer font-mono-stats"
                   >
                     <option value="4-3-3">4-3-3</option>
                     <option value="4-4-2">4-4-2</option>
@@ -929,15 +926,15 @@ export function AdminDashboard({ user }: { user: any }) {
                   </select>
 
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] p-2 rounded-lg flex items-center justify-between gap-1">
+                    <div className="bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.08] p-2 rounded-xl flex items-center justify-between gap-1">
                       <label className="text-slate-500 text-[10px] font-medium">Echipă</label>
                       <input type="color" value={teamColor} onChange={e => setTeamColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-none" />
                     </div>
-                    <div className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] p-2 rounded-lg flex items-center justify-between gap-1">
+                    <div className="bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.08] p-2 rounded-xl flex items-center justify-between gap-1">
                       <label className="text-slate-500 text-[10px] font-medium">Adversar</label>
                       <input type="color" value={opponentColor} onChange={e => setOpponentColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-none" />
                     </div>
-                    <div className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] p-2 rounded-lg flex items-center justify-between gap-1">
+                    <div className="bg-white dark:bg-[#101726] border border-slate-200 dark:border-white/[0.08] p-2 rounded-xl flex items-center justify-between gap-1">
                       <label className="text-slate-500 text-[10px] font-medium">Acasă?</label>
                       <input type="checkbox" checked={isHome} onChange={e => setIsHome(e.target.checked)} className="w-4 h-4 accent-emerald-500 cursor-pointer" />
                     </div>
@@ -946,7 +943,7 @@ export function AdminDashboard({ user }: { user: any }) {
                   {/* Preview culori */}
                   <div className="flex gap-2 justify-center py-1">
                     <span
-                      className="px-3 py-1 rounded-md text-xs font-semibold border border-black/10"
+                      className="px-3 py-1 rounded-lg text-xs font-semibold border border-black/10"
                       style={{
                         backgroundColor: isHome ? teamColor : opponentColor,
                         color: getContrastTextColor(isHome ? teamColor : opponentColor)
@@ -955,7 +952,7 @@ export function AdminDashboard({ user }: { user: any }) {
                       {(isHome ? teamName : opponent) || "Gazdă"}
                     </span>
                     <span
-                      className="px-3 py-1 rounded-md text-xs font-semibold border border-black/10"
+                      className="px-3 py-1 rounded-lg text-xs font-semibold border border-black/10"
                       style={{
                         backgroundColor: isHome ? opponentColor : teamColor,
                         color: getContrastTextColor(isHome ? opponentColor : teamColor)
@@ -981,10 +978,10 @@ export function AdminDashboard({ user }: { user: any }) {
                               newSlots[idx] = { name: e.target.value, gridRow: getGridRowForSlot(idx, formation) };
                               setSlotPlayers(newSlots);
                             }}
-                            className={`px-2.5 py-2 rounded-lg border text-xs transition-colors outline-none ${
+                            className={`px-2.5 py-2 rounded-xl border text-xs transition-colors outline-none ${
                               player?.name.trim()
                                 ? 'bg-emerald-500/10 border-emerald-500/35 text-slate-900 dark:text-white'
-                                : 'bg-white dark:bg-[#11161D] border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-slate-200'
+                                : 'bg-white dark:bg-[#101726] border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-slate-200'
                             }`}
                           />
                         );
@@ -994,14 +991,14 @@ export function AdminDashboard({ user }: { user: any }) {
 
                   <button
                     onClick={handleSaveXI}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-medium text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Save className="w-4 h-4" /> {editingXiId ? 'Actualizează meciul' : 'Salvează meciul'}
                   </button>
                 </div>
 
                 {/* Lista Meciuri DB */}
-                <div className="bg-slate-50 dark:bg-[#0B0F14] p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] flex flex-col">
+                <div className="bg-slate-50 dark:bg-[#090D16] p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] flex flex-col">
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 pb-3 border-b border-slate-200 dark:border-white/[0.07]">
                     Istoric meciuri ({xis.length})
                   </h3>
@@ -1018,7 +1015,7 @@ export function AdminDashboard({ user }: { user: any }) {
                         return (
                           <div
                             key={x._id || x.id}
-                            className={`bg-white dark:bg-[#11161D] border rounded-lg p-3 flex justify-between items-center gap-2 transition-colors ${
+                            className={`bg-white dark:bg-[#101726] border rounded-xl p-3 flex justify-between items-center gap-2 transition-colors ${
                               editingXiId === (x._id || x.id)
                                 ? 'border-emerald-500'
                                 : 'border-slate-200 dark:border-white/[0.07]'
@@ -1027,20 +1024,20 @@ export function AdminDashboard({ user }: { user: any }) {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                                 <span
-                                  className="font-semibold text-[11px] px-2 py-0.5 rounded truncate max-w-[110px]"
+                                  className="font-semibold text-[11px] px-2 py-0.5 rounded-md truncate max-w-[110px]"
                                   style={{ backgroundColor: hColor, color: getContrastTextColor(hColor) }}
                                 >
                                   {hName}
                                 </span>
                                 <span className="text-slate-400 text-[10px]">vs</span>
                                 <span
-                                  className="font-semibold text-[11px] px-2 py-0.5 rounded truncate max-w-[110px]"
+                                  className="font-semibold text-[11px] px-2 py-0.5 rounded-md truncate max-w-[110px]"
                                   style={{ backgroundColor: aColor, color: getContrastTextColor(aColor) }}
                                 >
                                   {aName}
                                 </span>
                               </div>
-                              <div className="text-[11px] text-slate-500 tabular-nums">
+                              <div className="text-[11px] text-slate-500 font-mono-stats">
                                 {x.date} • {x.formation} • {x.score}
                               </div>
                             </div>
@@ -1048,14 +1045,14 @@ export function AdminDashboard({ user }: { user: any }) {
                             <div className="flex gap-1.5 shrink-0">
                               <button
                                 onClick={() => handleEditXI(x)}
-                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.05] text-slate-500 hover:text-emerald-500 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-[#090D16] text-slate-500 hover:text-emerald-500 transition-colors cursor-pointer"
                                 title="Editează"
                               >
                                 <Edit className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteXI(x._id || x.id || '')}
-                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.05] text-slate-500 hover:text-rose-500 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-[#090D16] text-slate-500 hover:text-rose-500 transition-colors cursor-pointer"
                                 title="Șterge"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1076,7 +1073,7 @@ export function AdminDashboard({ user }: { user: any }) {
       {/* MODAL ARTICOL (TANSTACK FORM) */}
       {showStoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4" onClick={() => setShowStoryModal(false)}>
-          <div className="bg-white dark:bg-[#11161D] rounded-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-white/[0.08] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-[#101726] rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-white/[0.08] shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="px-4 py-3.5 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                 {editingId ? 'Editează articol' : 'Adaugă articol nou'}
@@ -1100,7 +1097,7 @@ export function AdminDashboard({ user }: { user: any }) {
                 <storyForm.Field name="title">
                   {(field) => (
                     <input
-                      className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
                       value={field.state.value}
                       onChange={e => field.handleChange(e.target.value)}
                       placeholder="Titlu / Nume erou"
@@ -1111,7 +1108,7 @@ export function AdminDashboard({ user }: { user: any }) {
                   <storyForm.Field name="date">
                     {(field) => (
                       <input
-                        className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                        className="w-full bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500 font-mono-stats"
                         value={field.state.value}
                         onChange={e => field.handleChange(e.target.value)}
                         placeholder="An / Perioadă"
@@ -1121,7 +1118,7 @@ export function AdminDashboard({ user }: { user: any }) {
                   <storyForm.Field name="role">
                     {(field) => (
                       <input
-                        className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                        className="w-full bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
                         value={field.state.value}
                         onChange={e => field.handleChange(e.target.value)}
                         placeholder="Rol (ex: Maseur)"
@@ -1132,7 +1129,7 @@ export function AdminDashboard({ user }: { user: any }) {
                 <storyForm.Field name="organization">
                   {(field) => (
                     <input
-                      className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
                       value={field.state.value}
                       onChange={e => field.handleChange(e.target.value)}
                       placeholder="Club / Organizație"
@@ -1142,7 +1139,7 @@ export function AdminDashboard({ user }: { user: any }) {
                 <storyForm.Field name="excerpt">
                   {(field) => (
                     <input
-                      className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
                       value={field.state.value}
                       onChange={e => field.handleChange(e.target.value)}
                       placeholder="Prezentare scurtă..."
@@ -1152,7 +1149,7 @@ export function AdminDashboard({ user }: { user: any }) {
                 <storyForm.Field name="content">
                   {(field) => (
                     <textarea
-                      className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500 min-h-[120px] resize-y"
+                      className="w-full bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500 min-h-[120px] resize-y"
                       value={field.state.value}
                       onChange={e => field.handleChange(e.target.value)}
                       placeholder="Povestea completă..."
@@ -1165,7 +1162,7 @@ export function AdminDashboard({ user }: { user: any }) {
                 <button
                   type="submit"
                   disabled={!canSubmit || isSubmitting}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm py-2.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm py-2.5 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? 'Se salvează...' : 'Salvează'}
                 </button>

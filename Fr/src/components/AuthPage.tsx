@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, ArrowRight, Shield, Star, Activity, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, Star, Activity, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import stadionImg from '../Photo/stadion.jpg';
@@ -63,7 +63,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
       } else {
         toast.error(data.message || 'Autentificare eșuată. Încearcă din nou.');
       }
-    } catch (err) {
+    } catch {
       toast.error('Eroare de conexiune cu serverul.');
     } finally {
       setLoading(false);
@@ -73,61 +73,68 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   const passwordsMismatch = Boolean(formData.confirmPassword && formData.password !== formData.confirmPassword);
 
   return (
-    <div className="min-h-[100dvh] w-full flex bg-[#F8FAFC] dark:bg-[#0B0F14] text-slate-900 dark:text-slate-100 overflow-hidden">
-      {/* --- PARTEA STÂNGĂ: IMAGINI STADION (Ascunsă pe mobil) --- */}
-      <div className="hidden md:flex md:w-1/2 relative bg-[#0B0F14] overflow-hidden border-r border-slate-200 dark:border-white/[0.07]">
+    <div className="min-h-[100dvh] w-full flex bg-[#F3F5F8] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 overflow-hidden">
+      {/* --- PARTEA STÂNGĂ: VISUAL STADION (Ascunsă pe mobil) --- */}
+      <div className="hidden md:flex md:w-1/2 relative bg-[#090D16] overflow-hidden border-r border-slate-200 dark:border-white/[0.07]">
         {BACKGROUND_IMAGES.map((img, index) => (
           <div
             key={index}
             className={`absolute inset-0 bg-cover bg-center transition-all duration-[2000ms] ease-out ${
-              index === currentImageIndex ? 'opacity-45 scale-105' : 'opacity-0 scale-100'
+              index === currentImageIndex ? 'opacity-40 scale-105' : 'opacity-0 scale-100'
             }`}
             style={{ backgroundImage: `url(${img})` }}
           />
         ))}
 
-        {/* Overlay curat pentru lizibilitate */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F14] via-[#0B0F14]/60 to-[#0B0F14]/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#090D16] via-[#090D16]/65 to-[#090D16]/40" />
 
         <div className="relative z-10 flex flex-col justify-between p-10 lg:p-14 h-full text-white w-full">
           {/* Brand */}
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 border border-white/15 backdrop-blur-sm">
-              <span className="text-xs font-bold tracking-tight">RO</span>
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-[#101726]/80 border border-white/[0.12] backdrop-blur-sm overflow-hidden">
+              <span className="text-xs font-bold tracking-tight font-mono-stats">RO</span>
+              <span className="absolute bottom-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-500 via-amber-400 to-rose-500" />
             </div>
-            <span className="text-sm font-semibold tracking-tight text-white">
-              România Scout
-            </span>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold tracking-tight text-white leading-tight">
+                România Scout
+              </span>
+              <span className="text-[10px] text-slate-400">Live Hub & Analytics</span>
+            </div>
           </div>
 
-          {/* Mesaj principal */}
-          <div className="max-w-md space-y-5 mt-auto mb-12">
+          {/* Mesaj principal + Bento highlights */}
+          <div className="max-w-md space-y-5 mt-auto mb-10">
             <h2 className="text-3xl lg:text-4xl font-semibold leading-tight tracking-tight text-white">
-              {isLogin ? 'Analiză și date live pentru fotbalul românesc.' : 'Creează un cont de scouter.'}
+              {isLogin
+                ? 'Analiză și date live pentru fotbalul românesc.'
+                : 'Creează un cont de scouter.'}
             </h2>
             <p className="text-sm text-slate-300 leading-relaxed">
-              Statistici detaliate, monitorizare în timp real și fișe complete de jucători din ligile interne și internaționale.
+              Statistici detaliate, scoruri în timp real și fișe complete de jucători din ligile interne și internaționale.
             </p>
 
-            <div className="pt-3 space-y-2.5">
-              <div className="flex items-center gap-3 text-xs font-medium text-slate-200">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
+            <div className="grid grid-cols-2 gap-2.5 pt-2">
+              <div className="p-3 rounded-xl bg-[#101726]/80 border border-white/[0.08] backdrop-blur-sm space-y-1.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
                   <Activity className="w-3.5 h-3.5 text-emerald-400" />
                 </div>
-                Monitorizare performanțe și scoruri live
+                <p className="text-xs font-semibold text-white">Live & Tactică</p>
+                <p className="text-[11px] text-slate-400 leading-snug">Scoruri, formații și clasamente live.</p>
               </div>
-              <div className="flex items-center gap-3 text-xs font-medium text-slate-200">
-                <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center shrink-0">
-                  <Star className="w-3.5 h-3.5 text-amber-400" />
+              <div className="p-3 rounded-xl bg-[#101726]/80 border border-white/[0.08] backdrop-blur-sm space-y-1.5">
+                <div className="w-7 h-7 rounded-lg bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center">
+                  <Star className="w-3.5 h-3.5 text-cyan-400" />
                 </div>
-                Scouting tineri, stranieri și comparații directe
+                <p className="text-xs font-semibold text-white">Scouting U21</p>
+                <p className="text-[11px] text-slate-400 leading-snug">Radar, filtre avansate și comparații.</p>
               </div>
             </div>
           </div>
 
           {/* Footer stânga */}
-          <div className="flex justify-between items-center pt-6 border-t border-white/10">
-            <span className="text-[11px] font-medium text-slate-400">
+          <div className="flex justify-between items-center pt-5 border-t border-white/10">
+            <span className="text-[11px] font-medium text-slate-400 font-mono-stats">
               © 2026 România Scout
             </span>
             <div className="flex gap-1.5">
@@ -146,12 +153,13 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
 
       {/* --- PARTEA DREAPTĂ: FORMULAR LOGIN / REGISTER --- */}
       <div className="w-full md:w-1/2 flex items-center justify-center p-4 sm:p-8 lg:p-12 min-h-[100dvh] md:min-h-auto">
-        <div className="w-full max-w-sm bg-white dark:bg-[#11161D] p-6 sm:p-8 rounded-xl border border-slate-200 dark:border-white/[0.08] shadow-sm">
+        <div className="w-full max-w-sm bg-white dark:bg-[#101726] p-6 sm:p-8 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] shadow-sm">
           {/* Header formular */}
           <div className="mb-6">
             <div className="flex md:hidden items-center gap-2 mb-5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 dark:bg-white/[0.08] border border-slate-800 dark:border-white/[0.1]">
-                <span className="text-[11px] font-bold text-white">RO</span>
+              <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900 dark:bg-[#182235] border border-slate-800 dark:border-white/[0.1] overflow-hidden">
+                <span className="text-[11px] font-bold text-white font-mono-stats">RO</span>
+                <span className="absolute bottom-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-500 via-amber-400 to-rose-500" />
               </div>
               <span className="text-xs font-semibold text-slate-900 dark:text-white">România Scout</span>
             </div>
@@ -176,7 +184,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                   <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#0B0F14] outline-none transition-colors focus:border-emerald-500 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#090D16] outline-none transition-colors focus:border-emerald-500 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     placeholder="Ex: Andrei Popescu"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -194,7 +202,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="email"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#0B0F14] outline-none transition-colors focus:border-emerald-500 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#090D16] outline-none transition-colors focus:border-emerald-500 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   placeholder="nume@exemplu.ro"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -211,7 +219,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  className="w-full pl-9 pr-10 py-2.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#0B0F14] outline-none transition-colors focus:border-emerald-500 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#090D16] outline-none transition-colors focus:border-emerald-500 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -240,10 +248,10 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                   />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
-                    className={`w-full pl-9 pr-10 py-2.5 rounded-lg border outline-none transition-colors text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
+                    className={`w-full pl-9 pr-10 py-2.5 rounded-xl border outline-none transition-colors text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
                       passwordsMismatch
                         ? 'border-rose-500 bg-rose-500/5 focus:border-rose-500'
-                        : 'border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#0B0F14] focus:border-emerald-500'
+                        : 'border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#090D16] focus:border-emerald-500'
                     }`}
                     placeholder="Repetă parola"
                     value={formData.confirmPassword}
@@ -264,7 +272,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 mt-2 cursor-pointer"
+              className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60 mt-2 cursor-pointer"
             >
               {loading ? (
                 <span>Se procesează...</span>

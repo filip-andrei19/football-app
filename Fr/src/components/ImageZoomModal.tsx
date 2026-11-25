@@ -124,16 +124,15 @@ export function ImageZoomModal({ src, alt = 'Fotografie', onClose }: ImageZoomMo
 
   return (
     <div
-      className="fixed inset-0 z-[100000] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-between p-3 sm:p-5 select-none"
+      className="fixed inset-0 z-[100000] bg-[#090D16]/95 backdrop-blur-md flex flex-col items-center justify-between p-3 sm:p-5 select-none"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      {/* Bara de control sus */}
       <div className="w-full max-w-4xl flex items-center justify-between gap-2 z-20">
-        <div className="flex items-center gap-2 min-w-0 bg-[#11161D] border border-white/[0.08] px-3 py-1.5 rounded-lg">
+        <div className="flex items-center gap-2 min-w-0 bg-[#101726] border border-white/[0.08] px-3 py-1.5 rounded-xl">
           <span className="text-xs font-medium text-slate-200 truncate">{alt}</span>
-          <span className="text-xs font-semibold text-emerald-400 tabular-nums shrink-0">
+          <span className="text-xs font-semibold text-emerald-400 font-mono-stats shrink-0">
             {Math.round(scale * 100)}%
           </span>
         </div>
@@ -144,7 +143,7 @@ export function ImageZoomModal({ src, alt = 'Fotografie', onClose }: ImageZoomMo
             onClick={handleZoomOut}
             disabled={scale <= 1}
             title="Micșorează"
-            className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-[#101726] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
@@ -154,7 +153,7 @@ export function ImageZoomModal({ src, alt = 'Fotografie', onClose }: ImageZoomMo
             onClick={handleZoomIn}
             disabled={scale >= 3.5}
             title="Mărește"
-            className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-[#101726] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
@@ -163,7 +162,7 @@ export function ImageZoomModal({ src, alt = 'Fotografie', onClose }: ImageZoomMo
             type="button"
             onClick={handleReset}
             title="Resetează zoom"
-            className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-[#101726] hover:bg-white/[0.08] text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -172,14 +171,13 @@ export function ImageZoomModal({ src, alt = 'Fotografie', onClose }: ImageZoomMo
             type="button"
             onClick={onClose}
             title="Închide"
-            className="p-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/25 transition-colors ml-1 cursor-pointer"
+            className="p-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/25 transition-colors ml-1 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Zona imaginii */}
       <div
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
@@ -187,7 +185,7 @@ export function ImageZoomModal({ src, alt = 'Fotografie', onClose }: ImageZoomMo
         onTouchEnd={handleTouchEnd}
         onClick={onClose}
         style={{ touchAction: 'none' }}
-        className="flex-1 w-full max-w-4xl my-3 flex items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-black/40 relative"
+        className="flex-1 w-full max-w-4xl my-3 flex items-center justify-center overflow-hidden rounded-2xl border border-white/[0.08] bg-black/40 relative"
       >
         <img
           src={src}

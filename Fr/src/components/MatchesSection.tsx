@@ -7,8 +7,8 @@ import {
     Calendar, Trophy, X, Globe,
     Users, BarChart2, ListOrdered, Clock, Bookmark,
     Swords, History, ArrowUp, ArrowDown, Minus,
-    Heart, Bell, Settings, Scale, Activity, Award, TrendingUp,
-    CheckCircle2, Ban
+    Heart, Bell, Scale, Activity, Award, TrendingUp,
+    CheckCircle2, Ban, Radio
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -283,7 +283,7 @@ function StandingsTable({ data, selectedMatchDetails, handleTeamClick }: { data:
         {
             accessorKey: 'liveRank',
             header: '#',
-            cell: (info: any) => <div className="text-center font-medium text-slate-500 tabular-nums">{info.getValue()}</div>,
+            cell: (info: any) => <div className="text-center font-medium text-slate-500 font-mono-stats">{info.getValue()}</div>,
         },
         {
             accessorKey: 'trend',
@@ -325,7 +325,7 @@ function StandingsTable({ data, selectedMatchDetails, handleTeamClick }: { data:
         {
             accessorKey: 'livePlayed',
             header: 'MJ',
-            cell: (info: any) => <div className="text-center text-slate-500 dark:text-slate-400 tabular-nums">{info.getValue()}</div>,
+            cell: (info: any) => <div className="text-center text-slate-500 dark:text-slate-400 font-mono-stats">{info.getValue()}</div>,
         },
         {
             id: 'goals',
@@ -333,7 +333,7 @@ function StandingsTable({ data, selectedMatchDetails, handleTeamClick }: { data:
             header: 'Golaveraj',
             cell: (info: any) => {
                 const row = info.row.original;
-                return <div className="text-center text-slate-500 dark:text-slate-400 text-xs tabular-nums whitespace-nowrap">{row.liveGoalsFor}:{row.liveGoalsAgainst}</div>;
+                return <div className="text-center text-slate-500 dark:text-slate-400 text-xs font-mono-stats whitespace-nowrap">{row.liveGoalsFor}:{row.liveGoalsAgainst}</div>;
             }
         },
         {
@@ -345,7 +345,7 @@ function StandingsTable({ data, selectedMatchDetails, handleTeamClick }: { data:
                 const isCurrentTeam = row.team?.id === selectedMatchDetails.home_team_id || row.team?.id === selectedMatchDetails.away_team_id;
                 const isPlayingNow = row.isLivePlaying;
                 return (
-                    <div className={`text-center font-semibold tabular-nums ${isPlayingNow ? 'text-amber-500' : isCurrentTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                    <div className={`text-center font-semibold font-mono-stats ${isPlayingNow ? 'text-amber-500' : isCurrentTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                         {points}
                     </div>
                 );
@@ -529,7 +529,7 @@ const PlayerRadarChart = ({ primaryPlayer }: { primaryPlayer: Player }) => {
                     const labelPos = getCoordinates(idx, 124);
                     return (
                         <g key={idx}>
-                            <circle cx={pt1.x} cy={pt1.y} r={isMobile ? "3" : "3.5"} fill="#10b981" stroke="#0B0F14" strokeWidth="1.5" />
+                            <circle cx={pt1.x} cy={pt1.y} r={isMobile ? "3" : "3.5"} fill="#10b981" stroke="#090D16" strokeWidth="1.5" />
                             <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" className="text-[9px] sm:text-[10px] font-medium fill-slate-500 dark:fill-slate-400">
                                 {item.label} ({item.value})
                             </text>
@@ -627,7 +627,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
         const requestPromise = (async (): Promise<Player | undefined> => {
             try {
-                // 1. Căutare EXACTĂ după ID
                 if (apiPlayerId) {
                     try {
                         const resById = await fetch(`${API_BASE}/api/sport/players/by-api-id/${apiPlayerId}`);
@@ -644,7 +643,6 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     } catch {}
                 }
 
-                // 2. Fallback după nume
                 const tokens = targetNorm.split(' ').filter(t => t.length >= 2);
                 const queries = Array.from(new Set([cleanName, ...tokens].filter(Boolean)));
 
@@ -664,9 +662,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             const candTeam = normalizeName(sanitizeTeamName(cand, ''));
                             let score = 0;
 
-                            if (candNorm === targetNorm) {
-                                score += 500;
-                            }
+                            if (candNorm === targetNorm) score += 500;
 
                             for (const tok of tokens) {
                                 if (candNorm.includes(tok)) {
@@ -1107,7 +1103,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         if (status === "NS") return null;
         if (liveStatuses.includes(status)) {
             return (
-                <span className="inline-flex items-center gap-1 text-rose-500 font-semibold text-[11px] tabular-nums">
+                <span className="inline-flex items-center gap-1 text-rose-500 font-semibold text-[11px] font-mono-stats">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                     {match.elapsed ? `${match.elapsed}'` : status}
                 </span>
@@ -1218,7 +1214,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             : resolvedFullName;
 
         let shirtStyle = isAwayTeam
-            ? "bg-[#11161D] text-slate-100 border-blue-400/70"
+            ? "bg-[#101726] text-slate-100 border-cyan-400/70"
             : "bg-slate-100 text-slate-900 border-white/80";
         if (isGK) {
             shirtStyle = isAwayTeam
@@ -1237,11 +1233,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 title={`${resolvedFullName} (#${pNum})`}
             >
                 <div className="relative">
-                    <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-full ${shirtStyle} font-semibold text-[10px] sm:text-xs flex items-center justify-center border-2 group-hover:scale-105 transition-transform tabular-nums shadow-sm`}>
+                    <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-full ${shirtStyle} font-semibold text-[10px] sm:text-xs flex items-center justify-center border-2 group-hover:scale-105 transition-transform font-mono-stats shadow-sm`}>
                         {pNum}
                     </div>
                     {ratingNum > 0 && (
-                        <span className={`absolute -top-1.5 -right-2 ${ratingBg} text-white text-[8px] sm:text-[9px] font-semibold px-1 py-0.5 rounded tabular-nums`}>
+                        <span className={`absolute -top-1.5 -right-2 ${ratingBg} text-white text-[8px] sm:text-[9px] font-semibold px-1 py-0.5 rounded font-mono-stats`}>
                             {ratingNum.toFixed(1)}
                         </span>
                     )}
@@ -1254,12 +1250,12 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         <span className={`absolute -top-1 -left-1 w-2 h-2.5 rounded-[1px] ${badges.red ? 'bg-rose-500' : 'bg-amber-400'}`} />
                     )}
                     {badges.subOut && (
-                        <span className="absolute -bottom-1 -left-1.5 bg-[#0B0F14] text-slate-300 text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white/20">
+                        <span className="absolute -bottom-1 -left-1.5 bg-[#090D16] text-slate-300 text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white/20">
                             ⇄
                         </span>
                     )}
                 </div>
-                <div className="mt-1 bg-[#0B0F14]/85 group-hover:bg-emerald-600 text-slate-100 text-[9px] sm:text-[10px] font-medium px-1.5 py-0.5 rounded max-w-full text-center border border-white/10 truncate transition-colors">
+                <div className="mt-1 bg-[#090D16]/85 group-hover:bg-emerald-600 text-slate-100 text-[9px] sm:text-[10px] font-medium px-1.5 py-0.5 rounded max-w-full text-center border border-white/10 truncate transition-colors">
                     {shortName}
                 </div>
             </div>
@@ -1331,23 +1327,23 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
         return (
             <div className="space-y-4">
-                <div className="bg-white dark:bg-[#11161D] rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.07]">
+                <div className="bg-white dark:bg-[#101726] rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.07]">
                     <h4 className="text-xs font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                         <Swords className="w-3.5 h-3.5 text-emerald-500" /> Probabilitate rezultat
                     </h4>
-                    <div className="flex items-center justify-between text-xs font-medium mb-2 tabular-nums">
+                    <div className="flex items-center justify-between text-xs font-medium mb-2 font-mono-stats">
                         <span className="text-emerald-600 dark:text-emerald-400 truncate max-w-[35%]">
-                            {matchPredictions.home}% <span className="hidden sm:inline text-slate-500 font-normal">{selectedMatchDetails?.home_team_name}</span>
+                            {matchPredictions.home}% <span className="hidden sm:inline font-sans text-slate-500 font-normal">{selectedMatchDetails?.home_team_name}</span>
                         </span>
                         <span className="text-slate-500">{matchPredictions.draw}% Egal</span>
-                        <span className="text-blue-500 truncate max-w-[35%] text-right">
-                            <span className="hidden sm:inline text-slate-500 font-normal">{selectedMatchDetails?.away_team_name} </span>{matchPredictions.away}%
+                        <span className="text-cyan-500 truncate max-w-[35%] text-right">
+                            <span className="hidden sm:inline font-sans text-slate-500 font-normal">{selectedMatchDetails?.away_team_name} </span>{matchPredictions.away}%
                         </span>
                     </div>
                     <div className="w-full h-2 bg-slate-100 dark:bg-white/[0.06] rounded-full overflow-hidden flex">
                         <div style={{ width: `${matchPredictions.home}%` }} className="bg-emerald-500 h-full transition-all" />
                         <div style={{ width: `${matchPredictions.draw}%` }} className="bg-slate-400 dark:bg-slate-600 h-full transition-all" />
-                        <div style={{ width: `${matchPredictions.away}%` }} className="bg-blue-500 h-full transition-all" />
+                        <div style={{ width: `${matchPredictions.away}%` }} className="bg-cyan-500 h-full transition-all" />
                     </div>
                 </div>
 
@@ -1356,13 +1352,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         { name: selectedMatchDetails?.home_team_name, form: realFormHome },
                         { name: selectedMatchDetails?.away_team_name, form: realFormAway },
                     ].map((team, tIdx) => (
-                        <div key={tIdx} className="bg-white dark:bg-[#11161D] rounded-xl p-4 border border-slate-200 dark:border-white/[0.07]">
+                        <div key={tIdx} className="bg-white dark:bg-[#101726] rounded-xl p-4 border border-slate-200 dark:border-white/[0.07]">
                             <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-3 text-center truncate">
                                 Formă {team.name}
                             </h4>
-                            <div className="flex justify-center gap-1.5">
+                            <div className="flex justify-center gap-1.5 font-mono-stats">
                                 {team.form.map((res, i) => (
-                                    <div key={i} className={`w-7 h-7 rounded-md border flex items-center justify-center font-semibold text-xs ${formColor(res)}`}>
+                                    <div key={i} className={`w-7 h-7 rounded-lg border flex items-center justify-center font-semibold text-xs ${formColor(res)}`}>
                                         {res}
                                     </div>
                                 ))}
@@ -1443,25 +1439,30 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const playerMetrics = selectedPlayer ? computeScoutingMetrics(selectedPlayer) : null;
 
     return (
-        <div className="w-full max-w-4xl mx-auto min-h-[75vh] pb-16">
-            {/* Header & Filtre */}
-            <div className="mb-5 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.07] p-3.5 sm:p-4 rounded-xl">
+        <div className="w-full max-w-5xl mx-auto min-h-[75vh] pb-16 space-y-5">
+            {/* Header & Filtre Bento */}
+            <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#101726] border border-slate-200/80 dark:border-white/[0.07] p-4 rounded-2xl">
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
                             <Calendar className="w-4 h-4 text-emerald-500" />
                         </div>
                         <div>
                             <h2 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white leading-tight">
                                 Program Meciuri
                             </h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                                {matches.length} meciuri • {liveCount} live
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono-stats flex items-center gap-1.5 mt-0.5">
+                                <span>{matches.length} meciuri</span>
+                                <span>•</span>
+                                <span className={liveCount > 0 ? 'text-rose-500 font-semibold inline-flex items-center gap-1' : ''}>
+                                    {liveCount > 0 && <Radio className="w-3 h-3 animate-pulse" />}
+                                    {liveCount} live
+                                </span>
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/[0.04] p-1 rounded-lg border border-slate-200/80 dark:border-white/[0.06] overflow-x-auto scrollbar-hide">
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#090D16] p-1 rounded-xl border border-slate-200/80 dark:border-white/[0.07] overflow-x-auto scrollbar-hide">
                         {[
                             { id: 'all', label: 'Toate' },
                             { id: 'live', label: `Live (${liveCount})` },
@@ -1471,9 +1472,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             <button
                                 key={fil.id}
                                 onClick={() => setSubFilter(fil.id as any)}
-                                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
                                     subFilter === fil.id
-                                        ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                                        ? 'bg-white dark:bg-[#182235] text-slate-900 dark:text-white shadow-sm'
                                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                                 }`}
                             >
@@ -1482,7 +1483,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         ))}
                         <button
                             onClick={() => setShowNotifSettings(true)}
-                            className="px-2.5 py-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors ml-auto flex items-center gap-1.5 shrink-0 cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors ml-auto flex items-center gap-1.5 shrink-0 cursor-pointer"
                             title="Setări Notificări"
                         >
                             <Bell className="w-3.5 h-3.5" />
@@ -1499,14 +1500,14 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                             <button
                                 key={idx}
                                 onClick={() => setSelectedDate(item.date)}
-                                className={`py-2 px-1 rounded-lg border flex flex-col items-center justify-center transition-colors cursor-pointer ${
+                                className={`py-2 px-1 rounded-xl border flex flex-col items-center justify-center transition-colors cursor-pointer ${
                                     isSelected
                                         ? 'bg-slate-900 dark:bg-emerald-600 border-slate-900 dark:border-emerald-500 text-white'
-                                        : 'bg-white dark:bg-[#11161D] border-slate-200 dark:border-white/[0.07] text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/[0.15]'
+                                        : 'bg-white dark:bg-[#101726] border-slate-200/80 dark:border-white/[0.07] text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/[0.15]'
                                 }`}
                             >
                                 <span className="text-[10px] font-medium capitalize opacity-80">{item.label}</span>
-                                <span className="text-xs font-semibold tabular-nums mt-0.5">
+                                <span className="text-xs font-semibold font-mono-stats mt-0.5">
                                     {item.date.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' })}
                                 </span>
                             </button>
@@ -1522,7 +1523,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Se încarcă meciurile...</p>
                 </div>
             ) : filteredMatches.length === 0 ? (
-                <div className="text-center py-16 bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] max-w-md mx-auto p-6">
+                <div className="text-center py-16 bg-white dark:bg-[#101726] rounded-2xl border border-slate-200 dark:border-white/[0.07] max-w-md mx-auto p-6">
                     <Trophy className="w-8 h-8 text-slate-400 mx-auto mb-3 opacity-50" />
                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Niciun meci disponibil</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Nu există meciuri pentru filtrul sau data selectată.</p>
@@ -1532,14 +1533,19 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                     {sortedLeagueNames.map((leagueName) => {
                         const leagueData = groupedMatches[leagueName];
                         return (
-                            <div key={leagueName} className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] overflow-hidden">
-                                <div className="bg-slate-50 dark:bg-white/[0.02] px-4 py-2.5 border-b border-slate-200 dark:border-white/[0.06] flex items-center gap-2.5">
-                                    {leagueData.logo ? (
-                                        <img src={leagueData.logo} alt={leagueName} className="w-4 h-4 object-contain" />
-                                    ) : (
-                                        <Globe className="w-4 h-4 text-slate-400" />
-                                    )}
-                                    <h3 className="font-semibold text-xs text-slate-700 dark:text-slate-200 truncate">{leagueName}</h3>
+                            <div key={leagueName} className="bg-white dark:bg-[#101726] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden">
+                                <div className="bg-slate-50 dark:bg-[#090D16]/60 px-4 py-2.5 border-b border-slate-200/80 dark:border-white/[0.06] flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        {leagueData.logo ? (
+                                            <img src={leagueData.logo} alt={leagueName} className="w-4 h-4 object-contain shrink-0" />
+                                        ) : (
+                                            <Globe className="w-4 h-4 text-slate-400 shrink-0" />
+                                        )}
+                                        <h3 className="font-semibold text-xs text-slate-700 dark:text-slate-200 truncate">{leagueName}</h3>
+                                    </div>
+                                    <span className="text-[10px] font-mono-stats text-slate-400 shrink-0">
+                                        {leagueData.items.length}
+                                    </span>
                                 </div>
                                 <div className="divide-y divide-slate-100 dark:divide-white/[0.05]">
                                     {leagueData.items.map((match: Match) => {
@@ -1553,7 +1559,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                             >
                                                 <button
                                                     onClick={(e) => toggleFavoriteMatch(e, match.fixture_id)}
-                                                    className={`p-1.5 rounded-md transition-colors shrink-0 cursor-pointer ${
+                                                    className={`p-1.5 rounded-lg transition-colors shrink-0 cursor-pointer ${
                                                         isFav
                                                             ? 'text-amber-500 bg-amber-500/10'
                                                             : 'text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
@@ -1571,17 +1577,17 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         <img src={match.home_team_logo} alt="home" className="w-5 h-5 object-contain shrink-0" />
                                                     </div>
 
-                                                    <div className="flex flex-col items-center justify-center shrink-0 min-w-[68px]">
+                                                    <div className="flex flex-col items-center justify-center shrink-0 min-w-[72px]">
                                                         {match.status_short === "NS" ? (
-                                                            <span className="text-slate-500 dark:text-slate-400 font-medium text-xs tabular-nums bg-slate-100 dark:bg-white/[0.04] px-2.5 py-1 rounded-md">
+                                                            <span className="text-slate-500 dark:text-slate-400 font-medium text-xs font-mono-stats bg-slate-100 dark:bg-[#090D16] border border-slate-200/70 dark:border-white/[0.06] px-2.5 py-1 rounded-lg">
                                                                 {new Date(match.timestamp * 1000).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}
                                                             </span>
                                                         ) : (
                                                             <div className="flex flex-col items-center">
-                                                                <span className={`font-semibold text-sm tabular-nums px-2.5 py-0.5 rounded-md ${
+                                                                <span className={`font-semibold text-sm font-mono-stats px-2.5 py-0.5 rounded-lg ${
                                                                     isLive
-                                                                        ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
-                                                                        : 'bg-slate-100 dark:bg-white/[0.05] text-slate-900 dark:text-white'
+                                                                        ? 'bg-rose-500/15 text-rose-500 border border-rose-500/25'
+                                                                        : 'bg-slate-100 dark:bg-[#090D16] text-slate-900 dark:text-white border border-slate-200/70 dark:border-white/[0.06]'
                                                                 }`}>
                                                                     {match.home_goals ?? 0} - {match.away_goals ?? 0}
                                                                 </span>
@@ -1609,7 +1615,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* Loading Lot */}
             {loadingRoster && createPortal(
-                <div className="fixed inset-0 z-[999999] bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                <div className="fixed inset-0 z-[999999] bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                     <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
                     <span className="text-xs font-medium text-slate-300">Se încarcă lotul echipei...</span>
                 </div>,
@@ -1619,7 +1625,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             {/* Modal Alerte Live */}
             {showNotifSettings && createPortal(
                 <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm" onClick={() => setShowNotifSettings(false)}>
-                    <div className="bg-white dark:bg-[#11161D] rounded-xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white dark:bg-[#101726] rounded-2xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
                         <div className="px-4 py-3.5 border-b border-slate-200 dark:border-white/[0.07] flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Bell className="w-4 h-4 text-emerald-500" />
@@ -1636,25 +1642,25 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
                             <div>
                                 {notifPermission === 'granted' ? (
-                                    <div className="w-full py-2 px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-medium flex items-center justify-center gap-1.5">
+                                    <div className="w-full py-2 px-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-medium flex items-center justify-center gap-1.5">
                                         <CheckCircle2 className="w-3.5 h-3.5" /> Notificări active pe acest dispozitiv
                                     </div>
                                 ) : notifPermission === 'denied' ? (
-                                    <div className="w-full py-2 px-3 rounded-lg bg-rose-500/10 border border-rose-500/25 text-rose-500 text-xs font-medium flex items-center justify-center gap-1.5 text-center">
+                                    <div className="w-full py-2 px-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-500 text-xs font-medium flex items-center justify-center gap-1.5 text-center">
                                         <Ban className="w-3.5 h-3.5 shrink-0" /> Blocate din browser (activează din setările site-ului)
                                     </div>
                                 ) : (
                                     <button
                                         type="button"
                                         onClick={handleEnablePushNotifications}
-                                        className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors cursor-pointer"
+                                        className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors cursor-pointer"
                                     >
                                         Activează notificările în bară
                                     </button>
                                 )}
                             </div>
 
-                            <div className="divide-y divide-slate-100 dark:divide-white/[0.05] border border-slate-200 dark:border-white/[0.07] rounded-lg overflow-hidden">
+                            <div className="divide-y divide-slate-100 dark:divide-white/[0.05] border border-slate-200 dark:border-white/[0.07] rounded-xl overflow-hidden">
                                 {[
                                     { id: 'goals', label: 'Goluri marcate' },
                                     { id: 'matchStart', label: 'Fluier de start' },
@@ -1686,9 +1692,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             {/* Modal Detalii Meci */}
             {selectedMatchDetails && createPortal(
                 <div className="fixed inset-0 z-[999999] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedMatchDetails(null)}>
-                    <div className="bg-white dark:bg-[#0B0F14] sm:rounded-xl w-full h-[100dvh] sm:h-auto sm:max-w-3xl sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl sm:border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white dark:bg-[#090D16] sm:rounded-2xl w-full h-[100dvh] sm:h-auto sm:max-w-3xl sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl sm:border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
                         {/* Header Meci */}
-                        <div className="bg-slate-50 dark:bg-[#11161D] border-b border-slate-200 dark:border-white/[0.07] p-4 sm:p-5 shrink-0 relative">
+                        <div className="bg-slate-50 dark:bg-[#101726] border-b border-slate-200 dark:border-white/[0.07] p-4 sm:p-5 shrink-0 relative">
                             <button
                                 onClick={() => setSelectedMatchDetails(null)}
                                 className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
@@ -1704,7 +1710,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
                             <div className="flex items-center justify-between gap-2 sm:gap-6 max-w-xl mx-auto">
                                 <div onClick={e => handleTeamClick(e, selectedMatchDetails.home_team_name)} className="flex-1 flex flex-col items-center text-center cursor-pointer group">
-                                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] p-2 mb-2 group-hover:border-emerald-500/50 transition-colors flex items-center justify-center">
+                                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] p-2 mb-2 group-hover:border-emerald-500/50 transition-colors flex items-center justify-center">
                                         <img src={selectedMatchDetails.home_team_logo} alt={selectedMatchDetails.home_team_name} className="w-full h-full object-contain" />
                                     </div>
                                     <span className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 group-hover:text-emerald-500 transition-colors line-clamp-2">
@@ -1713,7 +1719,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 </div>
 
                                 <div className="flex flex-col items-center justify-center shrink-0 px-2">
-                                    <div className="text-2xl sm:text-4xl font-bold tracking-tight tabular-nums text-slate-900 dark:text-white">
+                                    <div className="text-2xl sm:text-4xl font-bold tracking-tight font-mono-stats text-slate-900 dark:text-white">
                                         {selectedMatchDetails.status_short === "NS" ? (
                                             <span className="text-slate-400">vs</span>
                                         ) : (
@@ -1724,7 +1730,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 </div>
 
                                 <div onClick={e => handleTeamClick(e, selectedMatchDetails.away_team_name)} className="flex-1 flex flex-col items-center text-center cursor-pointer group">
-                                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] p-2 mb-2 group-hover:border-emerald-500/50 transition-colors flex items-center justify-center">
+                                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white dark:bg-[#090D16] border border-slate-200 dark:border-white/[0.08] p-2 mb-2 group-hover:border-emerald-500/50 transition-colors flex items-center justify-center">
                                         <img src={selectedMatchDetails.away_team_logo} alt={selectedMatchDetails.away_team_name} className="w-full h-full object-contain" />
                                     </div>
                                     <span className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 group-hover:text-emerald-500 transition-colors line-clamp-2">
@@ -1735,7 +1741,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         </div>
 
                         {/* Tab-uri Meci */}
-                        <div className="flex border-b border-slate-200 dark:border-white/[0.07] bg-white dark:bg-[#11161D] shrink-0 overflow-x-auto scrollbar-hide">
+                        <div className="flex border-b border-slate-200 dark:border-white/[0.07] bg-white dark:bg-[#101726] shrink-0 overflow-x-auto scrollbar-hide">
                             {[
                                 { id: 'events', label: 'Evenimente', icon: Clock },
                                 { id: 'lineups', label: 'Tactică', icon: Users },
@@ -1764,7 +1770,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         </div>
 
                         {/* Conținut Tab */}
-                        <div className="flex-1 overflow-y-auto p-3 sm:p-5 bg-[#F8FAFC] dark:bg-[#0B0F14]">
+                        <div className="flex-1 overflow-y-auto p-3 sm:p-5 bg-[#F3F5F8] dark:bg-[#090D16]">
                             {loadingMatchDetails ? (
                                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                                     <div className="w-7 h-7 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -1777,13 +1783,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     {activeMatchTab === 'events' && (
                                         <div>
                                             {!selectedMatchDetails.events || selectedMatchDetails.events.length === 0 ? (
-                                                <div className="text-center py-14 bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] text-slate-500 text-xs">
+                                                <div className="text-center py-14 bg-white dark:bg-[#101726] rounded-xl border border-slate-200 dark:border-white/[0.07] text-slate-500 text-xs">
                                                     Niciun eveniment înregistrat până acum.
                                                 </div>
                                             ) : (
-                                                <div className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] divide-y divide-slate-100 dark:divide-white/[0.05] overflow-hidden">
+                                                <div className="bg-white dark:bg-[#101726] rounded-xl border border-slate-200 dark:border-white/[0.07] divide-y divide-slate-100 dark:divide-white/[0.05] overflow-hidden">
                                                     {selectedMatchDetails.ht_home_goals !== null && selectedMatchDetails.ht_home_goals !== undefined && (
-                                                        <div className="bg-slate-50 dark:bg-white/[0.02] text-slate-500 dark:text-slate-400 font-medium text-center py-2 text-xs tabular-nums">
+                                                        <div className="bg-slate-50 dark:bg-white/[0.02] text-slate-500 dark:text-slate-400 font-medium text-center py-2 text-xs font-mono-stats">
                                                             Pauză: <span className="text-slate-900 dark:text-white font-semibold">{selectedMatchDetails.ht_home_goals} - {selectedMatchDetails.ht_away_goals}</span>
                                                         </div>
                                                     )}
@@ -1793,7 +1799,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         const presentation = getEventPresentation(ev);
                                                         return (
                                                             <div key={idx} className={`flex items-center px-3 sm:px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors ${isHome ? 'flex-row' : 'flex-row-reverse text-right'}`}>
-                                                                <div className="w-10 text-center shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
+                                                                <div className="w-10 text-center shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono-stats">
                                                                     {ev.time?.elapsed}'
                                                                 </div>
                                                                 <div className={`w-6 h-6 rounded-md border flex items-center justify-center text-xs mx-2.5 shrink-0 ${presentation.iconClass}`}>
@@ -1864,7 +1870,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         );
                                                     })}
                                                     {["FT", "AET", "PEN"].includes(selectedMatchDetails.status_short) && (
-                                                        <div className="bg-slate-50 dark:bg-white/[0.02] text-slate-600 dark:text-slate-300 font-medium text-center py-2.5 text-xs tabular-nums">
+                                                        <div className="bg-slate-50 dark:bg-white/[0.02] text-slate-600 dark:text-slate-300 font-medium text-center py-2.5 text-xs font-mono-stats">
                                                             Final de meci • <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{selectedMatchDetails.home_goals} - {selectedMatchDetails.away_goals}</span>
                                                         </div>
                                                     )}
@@ -1876,17 +1882,17 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     {activeMatchTab === 'lineups' && (
                                         <div>
                                             {!selectedMatchDetails.lineups || selectedMatchDetails.lineups.length === 0 ? (
-                                                <div className="text-center py-14 bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] text-slate-500 text-xs">
+                                                <div className="text-center py-14 bg-white dark:bg-[#101726] rounded-xl border border-slate-200 dark:border-white/[0.07] text-slate-500 text-xs">
                                                     Formațiile de start nu sunt disponibile încă.
                                                 </div>
                                             ) : (
                                                 <div className="space-y-4">
-                                                    <div className="flex items-center justify-center gap-1 bg-slate-200/70 dark:bg-white/[0.04] p-1 rounded-lg max-w-md mx-auto border border-slate-200 dark:border-white/[0.06]">
+                                                    <div className="flex items-center justify-center gap-1 bg-slate-200/70 dark:bg-[#101726] p-1 rounded-xl max-w-md mx-auto border border-slate-200 dark:border-white/[0.07]">
                                                         <button
                                                             onClick={() => setLineupViewMode('both')}
-                                                            className={`flex-1 py-1.5 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                                                            className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                                                                 lineupViewMode === 'both'
-                                                                    ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                                                                    ? 'bg-white dark:bg-[#182235] text-slate-900 dark:text-white shadow-sm'
                                                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                                             }`}
                                                         >
@@ -1894,9 +1900,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         </button>
                                                         <button
                                                             onClick={() => setLineupViewMode('home')}
-                                                            className={`flex-1 py-1.5 px-2.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                                                            className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                                                                 lineupViewMode === 'home'
-                                                                    ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                                                                    ? 'bg-white dark:bg-[#182235] text-slate-900 dark:text-white shadow-sm'
                                                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                                             }`}
                                                         >
@@ -1905,9 +1911,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         </button>
                                                         <button
                                                             onClick={() => setLineupViewMode('away')}
-                                                            className={`flex-1 py-1.5 px-2.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                                                            className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                                                                 lineupViewMode === 'away'
-                                                                    ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                                                                    ? 'bg-white dark:bg-[#182235] text-slate-900 dark:text-white shadow-sm'
                                                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                                             }`}
                                                         >
@@ -1916,10 +1922,9 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                         </button>
                                                     </div>
 
-                                                    {/* Teren tactic mat (stil FotMob / SofaScore) */}
                                                     <div
                                                         className={`relative w-full ${lineupViewMode === 'both' ? 'h-[680px] sm:h-[820px]' : 'h-[460px] sm:h-[600px]'} rounded-xl overflow-hidden border border-white/10 flex flex-col justify-between p-2 sm:p-4 select-none`}
-                                                        style={{ backgroundImage: 'repeating-linear-gradient(to bottom, #142820 0px, #142820 44px, #11221b 44px, #11221b 88px)' }}
+                                                        style={{ backgroundImage: 'repeating-linear-gradient(to bottom, #11241d 0px, #11241d 44px, #0e1e18 44px, #0e1e18 88px)' }}
                                                     >
                                                         <div className="absolute inset-2.5 border border-white/15 rounded-lg pointer-events-none" />
                                                         <div className="absolute top-1/2 inset-x-2.5 h-px bg-white/15 -translate-y-1/2 pointer-events-none" />
@@ -1961,11 +1966,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     {activeMatchTab === 'stats' && (
                                         <div>
                                             {!selectedMatchDetails.statistics || selectedMatchDetails.statistics.length < 2 ? (
-                                                <div className="text-center py-14 bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] text-slate-500 text-xs">
+                                                <div className="text-center py-14 bg-white dark:bg-[#101726] rounded-xl border border-slate-200 dark:border-white/[0.07] text-slate-500 text-xs">
                                                     Statisticile nu sunt disponibile încă.
                                                 </div>
                                             ) : (
-                                                <div className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] p-4 sm:p-6 space-y-4">
+                                                <div className="bg-white dark:bg-[#101726] rounded-xl border border-slate-200 dark:border-white/[0.07] p-4 sm:p-6 space-y-4">
                                                     {(() => {
                                                         const homeStats = selectedMatchDetails.statistics[0]?.statistics || [];
                                                         const awayStats = selectedMatchDetails.statistics[1]?.statistics || [];
@@ -1980,14 +1985,14 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                             const awayPercent = 100 - homePercent;
                                                             return (
                                                                 <div key={statItem.type} className="space-y-1.5">
-                                                                    <div className="flex justify-between text-xs font-medium tabular-nums">
+                                                                    <div className="flex justify-between text-xs font-medium font-mono-stats">
                                                                         <span className="text-slate-900 dark:text-slate-100 w-10 text-left font-semibold">{homeValRaw}</span>
-                                                                        <span className="text-slate-500 dark:text-slate-400 text-center flex-1 truncate px-2">{translateStatLabel(statItem.type)}</span>
+                                                                        <span className="text-slate-500 dark:text-slate-400 font-sans text-center flex-1 truncate px-2">{translateStatLabel(statItem.type)}</span>
                                                                         <span className="text-slate-900 dark:text-slate-100 w-10 text-right font-semibold">{awayValRaw}</span>
                                                                     </div>
                                                                     <div className="w-full h-1.5 bg-slate-100 dark:bg-white/[0.06] rounded-full overflow-hidden flex">
                                                                         <div style={{ width: `${homePercent}%` }} className="bg-emerald-500 h-full transition-all" />
-                                                                        <div style={{ width: `${awayPercent}%` }} className="bg-blue-500 h-full transition-all" />
+                                                                        <div style={{ width: `${awayPercent}%` }} className="bg-cyan-500 h-full transition-all" />
                                                                     </div>
                                                                 </div>
                                                             );
@@ -2006,13 +2011,13 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                     <span className="text-xs text-slate-500">Se încarcă clasamentul...</span>
                                                 </div>
                                             ) : !standingsData || standingsData.length === 0 ? (
-                                                <div className="text-center py-14 bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] text-slate-500 text-xs">
+                                                <div className="text-center py-14 bg-white dark:bg-[#101726] rounded-xl border border-slate-200 dark:border-white/[0.07] text-slate-500 text-xs">
                                                     Clasamentul nu este disponibil.
                                                 </div>
                                             ) : (
                                                 <div className="space-y-4">
                                                     {liveStandings.map((groupTable: any[], gIdx: number) => (
-                                                        <div key={gIdx} className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] overflow-hidden">
+                                                        <div key={gIdx} className="bg-white dark:bg-[#101726] rounded-xl border border-slate-200 dark:border-white/[0.07] overflow-hidden">
                                                             <StandingsTable
                                                                 data={groupTable}
                                                                 selectedMatchDetails={selectedMatchDetails}
@@ -2035,10 +2040,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             {/* Modal Lot Echipă */}
             {selectedTeam && createPortal(
                 <div className="fixed inset-0 z-[9999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4" onClick={() => setSelectedTeam(null)}>
-                    <div className="bg-white dark:bg-[#0B0F14] rounded-xl w-full max-w-3xl max-h-[88vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
-                        <div className="bg-slate-50 dark:bg-[#11161D] px-4 py-4 flex items-center justify-between shrink-0 border-b border-slate-200 dark:border-white/[0.07]">
+                    <div className="bg-white dark:bg-[#090D16] rounded-2xl w-full max-w-3xl max-h-[88vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
+                        <div className="bg-slate-50 dark:bg-[#101726] px-4 py-4 flex items-center justify-between shrink-0 border-b border-slate-200 dark:border-white/[0.07]">
                             <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-11 h-11 bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] p-1.5 rounded-lg shrink-0 flex items-center justify-center">
+                                <div className="w-11 h-11 bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] p-1.5 rounded-xl shrink-0 flex items-center justify-center">
                                     {hasValidImageUrl(selectedTeam.teamInfo.logo) ? (
                                         <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                                     ) : (
@@ -2049,7 +2054,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white truncate">
                                         {sanitizeTeamName(selectedTeam.teamInfo.name, "Echipă")}
                                     </h2>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-mono-stats">
                                         Lot oficial • {selectedTeam.teamInfo.totalPlayers} jucători
                                     </p>
                                 </div>
@@ -2062,11 +2067,11 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         <div className="overflow-y-auto p-3 sm:p-5 space-y-4 flex-1">
                             {([
                                 { title: "Portari", data: selectedTeam.squad.Goalkeepers, accent: "text-amber-500" },
-                                { title: "Fundași", data: selectedTeam.squad.Defenders, accent: "text-blue-500" },
+                                { title: "Fundași", data: selectedTeam.squad.Defenders, accent: "text-cyan-500" },
                                 { title: "Mijlocași", data: selectedTeam.squad.Midfielders, accent: "text-emerald-500" },
                                 { title: "Atacanți", data: selectedTeam.squad.Attackers, accent: "text-rose-500" }
                             ]).map((section, idx) => section.data.length > 0 && (
-                                <div key={idx} className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] overflow-hidden">
+                                <div key={idx} className="bg-white dark:bg-[#101726] rounded-xl border border-slate-200 dark:border-white/[0.07] overflow-hidden">
                                     <div className="px-4 py-2 bg-slate-50 dark:bg-white/[0.02] border-b border-slate-200 dark:border-white/[0.06]">
                                         <h3 className={`font-semibold text-xs ${section.accent}`}>{section.title}</h3>
                                     </div>
@@ -2077,7 +2082,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                 <div className="min-w-0 flex-1">
                                                     <p className="font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm truncate">{p.name}</p>
                                                     <div className="flex gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                                                        {p.age && <span>{p.age} ani</span>}
+                                                        {p.age && <span className="font-mono-stats">{p.age} ani</span>}
                                                         {p.nationality && <span className="truncate">• {p.nationality}</span>}
                                                     </div>
                                                 </div>
@@ -2095,8 +2100,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             {/* Modal Fișă Jucător */}
             {selectedPlayer && createPortal(
                 <div className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4" onClick={() => setSelectedPlayer(null)}>
-                    <div className="bg-white dark:bg-[#0B0F14] rounded-xl w-full max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col shadow-2xl border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
-                        <div className="bg-slate-50 dark:bg-[#11161D] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/[0.07] shrink-0 relative">
+                    <div className="bg-white dark:bg-[#090D16] rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col shadow-2xl border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
+                        <div className="bg-slate-50 dark:bg-[#101726] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/[0.07] shrink-0 relative">
                             <button
                                 type="button"
                                 onClick={() => setSelectedPlayer(null)}
@@ -2133,7 +2138,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     <button
                                         type="button"
                                         onClick={(e) => toggleWatchlist(e, selectedPlayer)}
-                                        className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                                        className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                                             watchlistIds.includes(selectedPlayer._id)
                                                 ? 'bg-emerald-600 text-white border-emerald-600'
                                                 : 'bg-white dark:bg-white/[0.04] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/[0.08] hover:border-emerald-500/50'
@@ -2146,7 +2151,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     <button
                                         type="button"
                                         onClick={(e) => toggleComparePlayer(e, selectedPlayer)}
-                                        className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                                        className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                                             compareList.some(p => p._id === selectedPlayer._id)
                                                 ? 'bg-amber-500 text-slate-950 border-amber-500'
                                                 : 'bg-white dark:bg-white/[0.04] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/[0.08] hover:border-amber-500/50'
@@ -2165,7 +2170,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     Se încarcă datele jucătorului...
                                 </div>
                             ) : selectedPlayer._id.startsWith('temp_') ? (
-                                <div className="bg-slate-50 dark:bg-[#11161D] p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] text-xs space-y-1.5">
+                                <div className="bg-slate-50 dark:bg-[#101726] p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] text-xs space-y-1.5">
                                     <p className="font-semibold text-slate-900 dark:text-white">{selectedPlayer.name}</p>
                                     <p className="text-slate-500 dark:text-slate-400">Echipă în meci: {sanitizeTeamName(selectedPlayer, '—')}</p>
                                     <p className="text-slate-400 pt-1">Acest jucător nu are încă o fișă completă în baza de date de scouting.</p>
@@ -2174,22 +2179,22 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                 <>
                                     <div className="flex flex-wrap items-center gap-2">
                                         {selectedPlayer.nationality && (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-xs text-slate-700 dark:text-slate-300">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-xs text-slate-700 dark:text-slate-300">
                                                 <Globe className="w-3.5 h-3.5 text-slate-400" /> {selectedPlayer.nationality}
                                             </span>
                                         )}
                                         {selectedPlayer.age && (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-xs text-slate-700 dark:text-slate-300 tabular-nums">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-xs text-slate-700 dark:text-slate-300 font-mono-stats">
                                                 {selectedPlayer.age} ani
                                             </span>
                                         )}
                                         {(selectedPlayer.height || selectedPlayer.weight) && (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-xs text-slate-700 dark:text-slate-300 tabular-nums">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-xs text-slate-700 dark:text-slate-300 font-mono-stats">
                                                 {selectedPlayer.height || '—'} / {selectedPlayer.weight || '—'}
                                             </span>
                                         )}
                                         {selectedPlayer.position && (
-                                            <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                                                 {selectedPlayer.position}
                                             </span>
                                         )}
@@ -2199,33 +2204,33 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         <h4 className="text-xs font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                                             <Award className="w-3.5 h-3.5 text-emerald-500" /> Cifrele sezonului
                                         </h4>
-                                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                                            <div className="bg-slate-50 dark:bg-[#11161D] p-3 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
-                                                <span className="text-lg font-semibold text-slate-900 dark:text-white block tabular-nums">{playerMetrics?.apps ?? 0}</span>
-                                                <span className="text-[11px] text-slate-500">Meciuri</span>
+                                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 font-mono-stats">
+                                            <div className="bg-slate-50 dark:bg-[#101726] p-3 rounded-xl border border-slate-200 dark:border-white/[0.07] text-center">
+                                                <span className="text-lg font-semibold text-slate-900 dark:text-white block">{playerMetrics?.apps ?? 0}</span>
+                                                <span className="text-[11px] font-sans text-slate-500">Meciuri</span>
                                             </div>
-                                            <div className="bg-slate-50 dark:bg-[#11161D] p-3 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
-                                                <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400 block tabular-nums">{playerMetrics?.goals ?? 0}</span>
-                                                <span className="text-[11px] text-slate-500">Goluri</span>
+                                            <div className="bg-slate-50 dark:bg-[#101726] p-3 rounded-xl border border-slate-200 dark:border-white/[0.07] text-center">
+                                                <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400 block">{playerMetrics?.goals ?? 0}</span>
+                                                <span className="text-[11px] font-sans text-slate-500">Goluri</span>
                                             </div>
-                                            <div className="bg-slate-50 dark:bg-[#11161D] p-3 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
-                                                <span className="text-lg font-semibold text-blue-500 block tabular-nums">{playerMetrics?.assists ?? 0}</span>
-                                                <span className="text-[11px] text-slate-500">Pase decisive</span>
+                                            <div className="bg-slate-50 dark:bg-[#101726] p-3 rounded-xl border border-slate-200 dark:border-white/[0.07] text-center">
+                                                <span className="text-lg font-semibold text-cyan-500 block">{playerMetrics?.assists ?? 0}</span>
+                                                <span className="text-[11px] font-sans text-slate-500">Pase decisive</span>
                                             </div>
-                                            <div className="bg-slate-50 dark:bg-[#11161D] p-3 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
-                                                <span className="text-lg font-semibold text-slate-900 dark:text-white block tabular-nums">{playerMetrics?.minutes ?? 0}'</span>
-                                                <span className="text-[11px] text-slate-500">Minute</span>
+                                            <div className="bg-slate-50 dark:bg-[#101726] p-3 rounded-xl border border-slate-200 dark:border-white/[0.07] text-center">
+                                                <span className="text-lg font-semibold text-slate-900 dark:text-white block">{playerMetrics?.minutes ?? 0}'</span>
+                                                <span className="text-[11px] font-sans text-slate-500">Minute</span>
                                             </div>
-                                            <div className="col-span-2 sm:col-span-1 bg-slate-50 dark:bg-[#11161D] p-3 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
-                                                <span className="text-lg font-semibold text-amber-500 block tabular-nums">
+                                            <div className="col-span-2 sm:col-span-1 bg-slate-50 dark:bg-[#101726] p-3 rounded-xl border border-slate-200 dark:border-white/[0.07] text-center">
+                                                <span className="text-lg font-semibold text-amber-500 block">
                                                     {playerMetrics && playerMetrics.rating > 0 ? playerMetrics.rating.toFixed(2) : '—'}
                                                 </span>
-                                                <span className="text-[11px] text-slate-500">Rating</span>
+                                                <span className="text-[11px] font-sans text-slate-500">Rating</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="bg-slate-50 dark:bg-[#11161D] rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.07] space-y-5">
+                                    <div className="bg-slate-50 dark:bg-[#101726] rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.07] space-y-5">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center">
                                             <div className="flex flex-col items-center">
                                                 <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-1.5">
@@ -2238,22 +2243,22 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                                 <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                                                     <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> Randament / 90 min
                                                 </h4>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div className="bg-white dark:bg-[#0B0F14] p-3 rounded-lg border border-slate-200 dark:border-white/[0.06]">
-                                                        <span className="text-[11px] text-slate-500 block">Goluri / 90'</span>
-                                                        <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{playerMetrics?.goalsPer90 ?? 0}</span>
+                                                <div className="grid grid-cols-2 gap-2 font-mono-stats">
+                                                    <div className="bg-white dark:bg-[#090D16] p-3 rounded-xl border border-slate-200 dark:border-white/[0.06]">
+                                                        <span className="text-[11px] font-sans text-slate-500 block">Goluri / 90'</span>
+                                                        <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400">{playerMetrics?.goalsPer90 ?? 0}</span>
                                                     </div>
-                                                    <div className="bg-white dark:bg-[#0B0F14] p-3 rounded-lg border border-slate-200 dark:border-white/[0.06]">
-                                                        <span className="text-[11px] text-slate-500 block">Assist / 90'</span>
-                                                        <span className="text-base font-semibold text-blue-500 tabular-nums">{playerMetrics?.assistsPer90 ?? 0}</span>
+                                                    <div className="bg-white dark:bg-[#090D16] p-3 rounded-xl border border-slate-200 dark:border-white/[0.06]">
+                                                        <span className="text-[11px] font-sans text-slate-500 block">Assist / 90'</span>
+                                                        <span className="text-base font-semibold text-cyan-500">{playerMetrics?.assistsPer90 ?? 0}</span>
                                                     </div>
-                                                    <div className="bg-white dark:bg-[#0B0F14] p-3 rounded-lg border border-slate-200 dark:border-white/[0.06]">
-                                                        <span className="text-[11px] text-slate-500 block">Contribuții / 90'</span>
-                                                        <span className="text-base font-semibold text-amber-500 tabular-nums">{playerMetrics?.contributionsPer90 ?? 0}</span>
+                                                    <div className="bg-white dark:bg-[#090D16] p-3 rounded-xl border border-slate-200 dark:border-white/[0.06]">
+                                                        <span className="text-[11px] font-sans text-slate-500 block">Contribuții / 90'</span>
+                                                        <span className="text-base font-semibold text-amber-500">{playerMetrics?.contributionsPer90 ?? 0}</span>
                                                     </div>
-                                                    <div className="bg-white dark:bg-[#0B0F14] p-3 rounded-lg border border-slate-200 dark:border-white/[0.06]">
-                                                        <span className="text-[11px] text-slate-500 block">Min / Contribuție</span>
-                                                        <span className="text-base font-semibold text-slate-900 dark:text-white tabular-nums">
+                                                    <div className="bg-white dark:bg-[#090D16] p-3 rounded-xl border border-slate-200 dark:border-white/[0.06]">
+                                                        <span className="text-[11px] font-sans text-slate-500 block">Min / Contribuție</span>
+                                                        <span className="text-base font-semibold text-slate-900 dark:text-white">
                                                             {playerMetrics && playerMetrics.minsPerContribution > 0 ? `${playerMetrics.minsPerContribution}'` : '—'}
                                                         </span>
                                                     </div>
@@ -2264,17 +2269,17 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         {Array.isArray(selectedPlayer.detailed_stats) && selectedPlayer.detailed_stats.length > 0 && (
                                             <div className="pt-4 border-t border-slate-200 dark:border-white/[0.07] space-y-2">
                                                 <h5 className="text-xs font-medium text-slate-500">Statistici pe competiții</h5>
-                                                <div className="divide-y divide-slate-100 dark:divide-white/[0.05] bg-white dark:bg-[#0B0F14] rounded-lg border border-slate-200 dark:border-white/[0.06] overflow-hidden text-xs">
+                                                <div className="divide-y divide-slate-100 dark:divide-white/[0.05] bg-white dark:bg-[#090D16] rounded-xl border border-slate-200 dark:border-white/[0.06] overflow-hidden text-xs">
                                                     {selectedPlayer.detailed_stats.map((st, idx) => (
                                                         <div key={idx} className="flex items-center justify-between px-3 py-2 gap-2">
                                                             <div className="min-w-0">
                                                                 <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{st.competition}</p>
-                                                                <p className="text-[11px] text-slate-500 tabular-nums">{st.appearances} meciuri • {st.minutes}'</p>
+                                                                <p className="text-[11px] text-slate-500 font-mono-stats">{st.appearances} meciuri • {st.minutes}'</p>
                                                             </div>
-                                                            <div className="text-right font-semibold shrink-0 tabular-nums">
+                                                            <div className="text-right font-semibold shrink-0 font-mono-stats">
                                                                 <span className="text-emerald-600 dark:text-emerald-400">{st.goals}G</span>
                                                                 <span className="text-slate-400 mx-1">/</span>
-                                                                <span className="text-blue-500">{st.assists}A</span>
+                                                                <span className="text-cyan-500">{st.assists}A</span>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -2293,7 +2298,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
             {/* Modal Comparare */}
             {showCompareModal && compareList.length === 2 && createPortal(
                 <div className="fixed inset-0 z-[999999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4" onClick={() => setShowCompareModal(false)}>
-                    <div className="bg-white dark:bg-[#11161D] rounded-xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-white/[0.08] shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white dark:bg-[#101726] rounded-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-white/[0.08] shadow-2xl" onClick={e => e.stopPropagation()}>
                         <div className="px-4 py-3.5 flex items-center justify-between border-b border-slate-200 dark:border-white/[0.07]">
                             <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                                 <Scale className="w-4 h-4 text-emerald-500" /> Comparare jucători
@@ -2322,14 +2327,14 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                         <div className="grid grid-cols-3 items-center gap-2 text-center font-semibold">
                                             <div className="truncate text-emerald-600 dark:text-emerald-400">{p1.name}</div>
                                             <div className="text-[11px] font-medium text-slate-400">Metrică</div>
-                                            <div className="truncate text-blue-500">{p2.name}</div>
+                                            <div className="truncate text-cyan-500">{p2.name}</div>
                                         </div>
-                                        <div className="divide-y divide-slate-100 dark:divide-white/[0.05] border rounded-lg border-slate-200 dark:border-white/[0.07] overflow-hidden tabular-nums">
+                                        <div className="divide-y divide-slate-100 dark:divide-white/[0.05] border rounded-xl border-slate-200 dark:border-white/[0.07] overflow-hidden font-mono-stats">
                                             {rows.map((r, i) => (
                                                 <div key={i} className="grid grid-cols-3 items-center px-3 py-2.5 text-center bg-slate-50/50 dark:bg-white/[0.02]">
                                                     <span className={`font-semibold ${r.v1 > r.v2 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}`}>{r.v1}</span>
-                                                    <span className="text-[11px] text-slate-500">{r.label}</span>
-                                                    <span className={`font-semibold ${r.v2 > r.v1 ? 'text-blue-500' : 'text-slate-700 dark:text-slate-300'}`}>{r.v2}</span>
+                                                    <span className="text-[11px] font-sans text-slate-500">{r.label}</span>
+                                                    <span className={`font-semibold ${r.v2 > r.v1 ? 'text-cyan-500' : 'text-slate-700 dark:text-slate-300'}`}>{r.v2}</span>
                                                 </div>
                                             ))}
                                         </div>
