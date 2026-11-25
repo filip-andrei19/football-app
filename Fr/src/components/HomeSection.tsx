@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Globe, Shield, Star, Activity, X, Trophy, MapPin, 
-  User as UserIcon, SlidersHorizontal, Scale, Bookmark, 
-  TrendingUp, RotateCcw, Check, AlertTriangle 
+  Globe, Shield, Star, Activity, X, Trophy, MapPin,
+  User as UserIcon, SlidersHorizontal, Scale, Bookmark,
+  TrendingUp, RotateCcw, Check, AlertTriangle, Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm, useStore } from '@tanstack/react-form';
@@ -70,7 +70,7 @@ interface HomeProps {
 
 const sanitizeTeamName = (
   playerOrName?: Player | string | null,
-  fallback = "Club Necunoscut"
+  fallback = "Club necunoscut"
 ): string => {
   const candidates: Array<string | undefined> =
     typeof playerOrName === "string"
@@ -121,16 +121,16 @@ const computeScoutingMetrics = (player: Player) => {
 
   const goalsPer90 = minutes >= 90 ? Number(((goals / minutes) * 90).toFixed(2)) : 0;
   const assistsPer90 = minutes >= 90 ? Number(((assists / minutes) * 90).toFixed(2)) : 0;
-  const contributionsPer90 = goalsPer90 + assistsPer90;
+  const contributionsPer90 = Number((goalsPer90 + assistsPer90).toFixed(2));
   const minsPerContribution = (goals + assists) > 0 ? Math.round(minutes / (goals + assists)) : 0;
 
   let primaryScore = 20;
   let primaryLabel = "Finalizare";
   if (isDefensive) {
-      primaryLabel = "Defensivă";
-      primaryScore = Math.min(99, Math.max(20, Math.round(35 + (rating > 6.8 ? (rating - 6.8) * 40 : 0) + (Math.min(apps, 30) * 0.8))));
+    primaryLabel = "Defensivă";
+    primaryScore = Math.min(99, Math.max(20, Math.round(35 + (rating > 6.8 ? (rating - 6.8) * 40 : 0) + (Math.min(apps, 30) * 0.8))));
   } else {
-      primaryScore = Math.min(99, Math.max(20, Math.round(25 + (goalsPer90 * 75) + (Math.min(goals, 20) * 1.5))));
+    primaryScore = Math.min(99, Math.max(20, Math.round(25 + (goalsPer90 * 75) + (Math.min(goals, 20) * 1.5))));
   }
 
   const creativityScore = Math.min(99, Math.max(20, Math.round(25 + (assistsPer90 * 100) + (Math.min(assists, 15) * 1.5))));
@@ -138,7 +138,7 @@ const computeScoutingMetrics = (player: Player) => {
 
   let formScore = 30;
   if (rating > 5.5) {
-      formScore = Math.min(99, Math.max(30, Math.round(30 + ((rating - 6.0) * 35))));
+    formScore = Math.min(99, Math.max(30, Math.round(30 + ((rating - 6.0) * 35))));
   }
 
   const impactScore = Math.min(99, Math.max(25, Math.round((formScore * 0.4) + (contributionsPer90 * 55) + 15)));
@@ -160,10 +160,9 @@ const PlayerRadarChart = ({ primaryPlayer, secondaryPlayer }: { primaryPlayer: P
   const m2 = secondaryPlayer ? computeScoutingMetrics(secondaryPlayer) : null;
 
   const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
-  const size = isMobile ? 180 : 230;
+  const size = isMobile ? 190 : 230;
   const center = size / 2;
   const radius = isMobile ? 60 : 78;
-  
   const axes = m1.radar.map(r => r.label);
 
   const getCoordinates = (index: number, value: number) => {
@@ -174,40 +173,40 @@ const PlayerRadarChart = ({ primaryPlayer, secondaryPlayer }: { primaryPlayer: P
 
   const buildPolygonPoints = (radarData: { label: string; value: number }[]) =>
     radarData.map((item, idx) => {
-        const { x, y } = getCoordinates(idx, item.value);
-        return `${x},${y}`;
-      }).join(" ");
+      const { x, y } = getCoordinates(idx, item.value);
+      return `${x},${y}`;
+    }).join(" ");
 
   return (
     <div className="flex flex-col items-center">
-      <svg width={size} height={size} className="overflow-visible drop-shadow-md">
+      <svg width={size} height={size} className="overflow-visible">
         {[25, 50, 75, 100].map((level) => {
           const pts = axes.map((_, idx) => {
-              const { x, y } = getCoordinates(idx, level);
-              return `${x},${y}`;
-            }).join(" ");
+            const { x, y } = getCoordinates(idx, level);
+            return `${x},${y}`;
+          }).join(" ");
           return (
-            <polygon key={level} points={pts} fill="none" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="1" strokeDasharray={level < 100 ? "3 3" : undefined} />
+            <polygon key={level} points={pts} fill="none" stroke="rgba(148, 163, 184, 0.2)" strokeWidth="1" strokeDasharray={level < 100 ? "3 3" : undefined} />
           );
         })}
 
         {axes.map((_, idx) => {
           const end = getCoordinates(idx, 100);
           return (
-            <line key={idx} x1={center} y1={center} x2={end.x} y2={end.y} stroke="rgba(16, 185, 129, 0.4)" strokeWidth="1" />
+            <line key={idx} x1={center} y1={center} x2={end.x} y2={end.y} stroke="rgba(148, 163, 184, 0.2)" strokeWidth="1" />
           );
         })}
 
-        {m2 && <polygon points={buildPolygonPoints(m2.radar)} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth="3" />}
-        <polygon points={buildPolygonPoints(m1.radar)} fill="rgba(250, 204, 21, 0.4)" stroke="#facc15" strokeWidth="3" />
+        {m2 && <polygon points={buildPolygonPoints(m2.radar)} fill="rgba(59, 130, 246, 0.22)" stroke="#3b82f6" strokeWidth="2" />}
+        <polygon points={buildPolygonPoints(m1.radar)} fill="rgba(16, 185, 129, 0.22)" stroke="#10b981" strokeWidth="2" />
 
         {m1.radar.map((item, idx) => {
           const pt1 = getCoordinates(idx, item.value);
-          const labelPos = getCoordinates(idx, 120);
+          const labelPos = getCoordinates(idx, 124);
           return (
             <g key={idx}>
-              <circle cx={pt1.x} cy={pt1.y} r={isMobile ? "3" : "4"} fill="#facc15" stroke="#fff" strokeWidth="1.5" />
-              <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" className="text-[8px] sm:text-[10px] font-black fill-slate-700 dark:fill-slate-200 uppercase tracking-wider">
+              <circle cx={pt1.x} cy={pt1.y} r={isMobile ? "3" : "3.5"} fill="#10b981" stroke="#0B0F14" strokeWidth="1.5" />
+              <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" className="text-[9px] sm:text-[10px] font-medium fill-slate-500 dark:fill-slate-400">
                 {item.label} ({item.value})
               </text>
             </g>
@@ -271,7 +270,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
 
   useEffect(() => {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) setGreeting("Neața");
+    if (hour >= 5 && hour < 12) setGreeting("Bună dimineața");
     else if (hour >= 12 && hour < 18) setGreeting("Salut");
     else setGreeting("Bună seara");
   }, []);
@@ -314,7 +313,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             if (data.success && Array.isArray(data.watchedPlayers)) {
               setPlayers(data.watchedPlayers);
             }
-          } catch (e) { console.error(e); } 
+          } catch (e) { console.error(e); }
           finally { setLoading(false); }
         }
         return;
@@ -345,11 +344,11 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           if (formValues.searchTerm.trim()) params.append('search', formValues.searchTerm.trim());
           if (formValues.positionFilter !== 'Toate') params.append('position', formValues.positionFilter);
           if (formValues.maxAgeFilter) params.append('maxAge', formValues.maxAgeFilter);
-          
+
           if (parseInt(formValues.minMinutesFilter) > 0) params.append('minMinutes', formValues.minMinutesFilter);
           if (parseInt(formValues.minGoalsFilter) > 0) params.append('minGoals', formValues.minGoalsFilter);
           if (parseFloat(formValues.minRatingFilter) > 0) params.append('minRating', formValues.minRatingFilter);
-          
+
           if (formValues.nationalityFilter !== 'Toate') params.append('nationality', formValues.nationalityFilter);
           if (formValues.leagueFilter !== 'Toate') params.append('league_id', formValues.leagueFilter);
           params.append('limit', '250');
@@ -362,7 +361,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         }
       } catch (err: any) {
         console.error("Eroare fetch:", err);
-        setError("NU AM PUTUT ÎNCĂRCA DATELE DE PE SERVER.");
+        setError("Nu am putut încărca datele de pe server.");
       } finally {
         setLoading(false);
       }
@@ -379,7 +378,7 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
     return players
       .filter((p) => {
         if (formValues.onlyWatchlist && !watchlistIds.includes(p._id)) return false;
-        
+
         if (formValues.positionFilter !== "Toate") {
           const pos = (p.position || "").toLowerCase();
           if (formValues.positionFilter === "Portari" && !(pos.includes("goalkeeper") || pos.includes("portar"))) return false;
@@ -387,15 +386,15 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           if (formValues.positionFilter === "Mijlocași" && !(pos.includes("midfield") || pos.includes("mijloca"))) return false;
           if (formValues.positionFilter === "Atacanți" && !(pos.includes("forward") || pos.includes("striker") || pos.includes("wing") || pos.includes("ataca") || pos.includes("attack"))) return false;
         }
-        
+
         if (formValues.nationalityFilter !== "Toate") {
           const nat = (p.nationality || "").toLowerCase();
           if (!nat.includes(formValues.nationalityFilter.toLowerCase())) return false;
         }
 
         if (formValues.leagueFilter !== "Toate") {
-            const lId = p.league_id ? p.league_id.toString() : "";
-            if (lId !== formValues.leagueFilter) return false;
+          const lId = p.league_id ? p.league_id.toString() : "";
+          if (lId !== formValues.leagueFilter) return false;
         }
 
         if (formValues.maxAgeFilter && p.age && p.age > Number(formValues.maxAgeFilter)) return false;
@@ -482,83 +481,77 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
   const firstName = user?.name ? user.name.split(' ')[0] : 'Scouter';
 
   return (
-    <div className="relative min-h-[80vh] py-6 sm:py-10 overflow-hidden rounded-3xl pb-20">
-
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none">
-        <div className="absolute inset-0 opacity-[0.04] dark:opacity-[0.06] bg-[repeating-linear-gradient(0deg,transparent,transparent_60px,#fff_60px,#fff_62px),repeating-linear-gradient(90deg,transparent,transparent_60px,#fff_60px,#fff_62px)]"></div>
-        <div className="absolute top-0 left-1/4 w-[40vw] h-[40vw] rounded-full bg-emerald-500/20 blur-[150px] animate-pulse"></div>
-        <div className="absolute top-[20%] right-[10%] w-[30vw] h-[30vw] rounded-full bg-blue-500/10 blur-[120px]"></div>
-      </div>
-
+    <div className="min-h-[75vh] pb-16">
+      {/* Modal Lot Echipă */}
       {selectedTeam && createPortal(
-        <div className="fixed inset-0 z-[9999999] flex items-center justify-center bg-slate-950/85 backdrop-blur-sm transition-opacity p-2 sm:p-4">
-          <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl border-2 sm:border-4 border-emerald-600/30 animate-in fade-in zoom-in duration-300 relative">
-            <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-start sm:items-center justify-between shrink-0 border-b-2 sm:border-b-4 border-slate-700 relative pt-safe">
-                <div className="flex items-center gap-3 sm:gap-6 min-w-0 pr-12 sm:pr-0">
-                    <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.2)] flex items-center justify-center">
-                        {hasValidImageUrl(selectedTeam.teamInfo.logo) ? (
-                          <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                        ) : (
-                          <Shield className="w-7 h-7 sm:w-10 sm:h-10 text-emerald-600" />
-                        )}
-                    </div>
-                    <div className="min-w-0 flex flex-col">
-                        <h2 className="text-lg sm:text-4xl font-black uppercase tracking-tighter truncate drop-shadow-md">{sanitizeTeamName(selectedTeam.teamInfo.name, "Echipă")}</h2>
-                        <p className="text-[9px] sm:text-base text-emerald-400 font-bold uppercase tracking-widest mt-0.5 truncate">
-                            ⚽ LOTUL OFICIAL • {selectedTeam.teamInfo.totalPlayers} Jucători
-                        </p>
-                    </div>
+        <div className="fixed inset-0 z-[9999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4" onClick={() => setSelectedTeam(null)}>
+          <div className="bg-white dark:bg-[#0B0F14] rounded-xl w-full max-w-3xl max-h-[88vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200 dark:border-white/[0.08]" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-slate-50 dark:bg-[#11161D] px-4 py-4 flex items-center justify-between shrink-0 border-b border-slate-200 dark:border-white/[0.07]">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] p-1.5 rounded-lg shrink-0 flex items-center justify-center">
+                  {hasValidImageUrl(selectedTeam.teamInfo.logo) ? (
+                    <img src={selectedTeam.teamInfo.logo} alt="Logo" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  ) : (
+                    <Shield className="w-5 h-5 text-emerald-500" />
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTeam(null)}
-                  aria-label="Închide lotul echipei"
-                  className="p-2 sm:p-3 bg-white/10 hover:bg-rose-500 rounded-xl sm:rounded-full border border-white/20 hover:border-rose-600 transition-colors text-white shrink-0 cursor-pointer"
-                >
-                    <X className="w-4 h-4 sm:w-6 sm:h-6" />
-                </button>
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white truncate">
+                    {sanitizeTeamName(selectedTeam.teamInfo.name, "Echipă")}
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Lot oficial • {selectedTeam.teamInfo.totalPlayers} jucători
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTeam(null)}
+                aria-label="Închide lotul echipei"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors shrink-0 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="overflow-y-auto p-2 sm:p-6 bg-slate-100 dark:bg-slate-950 space-y-4 sm:space-y-6 flex-1 pb-safe-bottom pb-10">
+            <div className="overflow-y-auto p-3 sm:p-5 space-y-4 flex-1">
               {([
-                { title: "Portari", data: selectedTeam.squad.Goalkeepers, color: "text-amber-500 border-amber-500", bg: "bg-amber-500/10" },
-                { title: "Fundași", data: selectedTeam.squad.Defenders, color: "text-blue-500 border-blue-500", bg: "bg-blue-500/10" },
-                { title: "Mijlocași", data: selectedTeam.squad.Midfielders, color: "text-emerald-500 border-emerald-500", bg: "bg-emerald-500/10" },
-                { title: "Atacanți", data: selectedTeam.squad.Attackers, color: "text-rose-500 border-rose-500", bg: "bg-rose-500/10" }
+                { title: "Portari", data: selectedTeam.squad.Goalkeepers, accent: "text-amber-500" },
+                { title: "Fundași", data: selectedTeam.squad.Defenders, accent: "text-blue-500" },
+                { title: "Mijlocași", data: selectedTeam.squad.Midfielders, accent: "text-emerald-500" },
+                { title: "Atacanți", data: selectedTeam.squad.Attackers, accent: "text-rose-500" }
               ]).map((section, idx) => section.data.length > 0 && (
-                <div key={idx} className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-md border-2 border-slate-200 dark:border-slate-800 overflow-hidden">
-                  <div className={`px-3 py-2 sm:px-4 sm:py-3 border-l-4 ${section.color} ${section.bg} border-b border-b-slate-100 dark:border-b-slate-800`}>
-                    <h3 className={`font-black uppercase tracking-wider text-xs sm:text-base ${section.color.split(' ')[0]}`}>{section.title}</h3>
+                <div key={idx} className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] overflow-hidden">
+                  <div className="px-4 py-2 bg-slate-50 dark:bg-white/[0.02] border-b border-slate-200 dark:border-white/[0.06]">
+                    <h3 className={`font-semibold text-xs ${section.accent}`}>{section.title}</h3>
                   </div>
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="divide-y divide-slate-100 dark:divide-white/[0.05]">
                     {section.data.map(p => {
                       const isSelectedForCompare = compareList.some(item => item._id === p._id);
                       return (
-                        <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between p-2 sm:p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition gap-2 cursor-pointer">
-                            <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-                                <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-8 h-8 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
-                                <div className="min-w-0 flex-1">
-                                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-base break-words uppercase tracking-tight" title={p.name}>{p.name}</p>
-                                    <div className="flex gap-1.5 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate uppercase tracking-wider">
-                                        {p.age && <span className="shrink-0">{p.age} ani</span>}
-                                        {p.nationality && <span className="truncate">• {p.nationality}</span>}
-                                    </div>
-                                </div>
+                        <div key={p._id} onClick={() => setSelectedPlayer(p)} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors gap-2 cursor-pointer">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-white/[0.1] shrink-0 bg-white" onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }} />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm truncate" title={p.name}>{p.name}</p>
+                              <div className="flex gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                                {p.age && <span className="shrink-0 tabular-nums">{p.age} ani</span>}
+                                {p.nationality && <span className="truncate">• {p.nationality}</span>}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0 pr-1">
-                                <button
-                                    type="button"
-                                    onClick={(e) => toggleComparePlayer(e, p)}
-                                    title="Compară jucătorul"
-                                    className={`p-1.5 sm:p-3 rounded-lg sm:rounded-xl border-2 transition ${
-                                        isSelectedForCompare
-                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
-                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600'
-                                    }`}
-                                >
-                                    {isSelectedForCompare ? <Check className="w-3.5 h-3.5 sm:w-5 sm:h-5" /> : <Scale className="w-3.5 h-3.5 sm:w-5 sm:h-5" />}
-                                </button>
-                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => toggleComparePlayer(e, p)}
+                            title="Compară jucătorul"
+                            className={`p-1.5 rounded-lg border transition-colors shrink-0 cursor-pointer ${
+                              isSelectedForCompare
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'bg-white dark:bg-white/[0.04] text-slate-400 border-slate-200 dark:border-white/[0.08] hover:border-emerald-500/50 hover:text-emerald-500'
+                            }`}
+                          >
+                            {isSelectedForCompare ? <Check className="w-3.5 h-3.5" /> : <Scale className="w-3.5 h-3.5" />}
+                          </button>
                         </div>
                       );
                     })}
@@ -571,169 +564,157 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
         document.body
       )}
 
-      <div className="relative z-10 space-y-6 sm:space-y-10">
-        
-        <section className="text-center space-y-3 sm:space-y-5 px-3 max-w-4xl mx-auto">
-          
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm mx-auto">
-            <UserIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 dark:text-slate-400" />
-            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
-              Sectorul de Scouting
-            </span>
+      {/* Header & Căutare */}
+      <div className="space-y-6">
+        <section className="max-w-3xl mx-auto text-center space-y-4 pt-2 sm:pt-4">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
+              {greeting}, <span className="text-emerald-600 dark:text-emerald-400">{firstName}</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              Caută jucători sau echipe în baza de date de scouting.
+            </p>
           </div>
 
-          <h1 className="text-3xl sm:text-6xl font-black uppercase tracking-tighter text-slate-900 dark:text-white drop-shadow-sm flex items-center justify-center gap-2 sm:gap-3 px-2">
-            <span className="truncate max-w-[200px] sm:max-w-none">{greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-600">{firstName}</span>!</span>
-            <span className="text-2xl sm:text-5xl animate-wave origin-bottom-right shrink-0">👋</span>
-          </h1>
-          
-          <p className="text-[10px] sm:text-base text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest mb-4 sm:mb-8 px-2">
-            Baza de date este pregătită pentru analiză. Pe cine căutăm?
-          </p>
-
-          <div className="relative z-10 w-full max-w-2xl mx-auto">
-            
-            <div className="flex justify-center mb-2 sm:mb-3">
-               <div className="bg-slate-200/50 dark:bg-slate-800/50 p-1 sm:p-1.5 rounded-lg sm:rounded-xl inline-flex border border-slate-300/50 dark:border-slate-700/50 backdrop-blur shadow-sm w-[90%] sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={() => { filterForm.setFieldValue('searchMode', 'players'); filterForm.setFieldValue('searchTerm', ''); }}
-                    className={`flex-1 sm:flex-none px-4 sm:px-6 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all ${
-                      formValues.searchMode === 'players' 
-                      ? 'bg-emerald-600 text-white shadow-md' 
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
-                    }`}
-                  >
-                    Jucători
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { filterForm.setFieldValue('searchMode', 'teams'); filterForm.setFieldValue('searchTerm', ''); filterForm.setFieldValue('onlyWatchlist', false); setShowProFilters(false); }}
-                    className={`flex-1 sm:flex-none px-4 sm:px-6 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all ${
-                      formValues.searchMode === 'teams' 
-                      ? 'bg-emerald-600 text-white shadow-md' 
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
-                    }`}
-                  >
-                    Echipe
-                  </button>
-                </div>
-            </div>
-
-            <div className="relative group mx-2 sm:mx-0">
-              <div className="absolute -inset-1 bg-emerald-500/20 rounded-full blur group-hover:bg-emerald-500/30 transition duration-500 hidden sm:block"></div>
-              <div className="relative bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl sm:rounded-full shadow-lg flex items-center overflow-hidden">
-                
-                <div className="pl-3 sm:pl-5 pr-2 sm:pr-3 text-emerald-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                
-                <filterForm.Field name="searchTerm">
-                  {(field) => (
-                    <input
-                      type="text"
-                      placeholder={formValues.searchMode === 'players' ? "Căutare..." : "Ex: FCSB, Rapid..."}
-                      className="w-full py-3 sm:py-4 text-xs sm:text-lg font-bold tracking-wide border-0 bg-transparent focus:ring-0 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                    />
-                  )}
-                </filterForm.Field>
-                
-                {formValues.searchTerm && (
-                  <button
-                    type="button"
-                    onClick={() => filterForm.setFieldValue('searchTerm', '')}
-                    className="p-1.5 sm:p-2 mr-2 sm:mr-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-rose-500 hover:text-white transition-colors"
-                  >
-                    <X className="w-3 h-3 sm:w-4 sm:h-4 font-bold" />
-                  </button>
-                )}
+          <div className="w-full max-w-2xl mx-auto space-y-3">
+            {/* Switch Jucători / Echipe */}
+            <div className="flex justify-center">
+              <div className="bg-slate-200/70 dark:bg-white/[0.04] p-1 rounded-lg inline-flex border border-slate-200 dark:border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => { filterForm.setFieldValue('searchMode', 'players'); filterForm.setFieldValue('searchTerm', ''); }}
+                  className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    formValues.searchMode === 'players'
+                      ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Jucători
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { filterForm.setFieldValue('searchMode', 'teams'); filterForm.setFieldValue('searchTerm', ''); filterForm.setFieldValue('onlyWatchlist', false); setShowProFilters(false); }}
+                  className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    formValues.searchMode === 'teams'
+                      ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Echipe
+                </button>
               </div>
             </div>
 
-            {formValues.searchMode === 'players' && (
-              <div className="flex flex-wrap items-center justify-center gap-2 mt-3 sm:mt-4 mx-2">
-                <button
-                    type="button"
-                    onClick={() => {
-                      setShowProFilters(!showProFilters);
-                      if (formValues.onlyWatchlist) filterForm.setFieldValue('onlyWatchlist', false);
-                    }}
-                    className={`flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg sm:rounded-full text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all border ${
-                      showProFilters || hasActiveProFilters
-                        ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-500'
-                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-emerald-500'
-                    }`}
-                  >
-                    + Filtre Tactică
-                  </button>
+            {/* Bară de căutare */}
+            <div className="relative bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] focus-within:border-emerald-500/60 rounded-xl flex items-center transition-colors shadow-sm">
+              <Search className="w-4 h-4 text-slate-400 ml-3.5 shrink-0" />
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      filterForm.setFieldValue('onlyWatchlist', !formValues.onlyWatchlist);
-                      filterForm.setFieldValue('searchMode', 'players');
-                    }}
-                    className={`flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg sm:rounded-full text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all border flex items-center gap-1.5 ${
-                      formValues.onlyWatchlist
-                        ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 border-amber-500'
-                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-amber-500'
-                    }`}
-                  >
-                    <Bookmark className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${formValues.onlyWatchlist ? 'fill-amber-600' : ''}`} />
-                    Lista({watchlistIds.length})
-                  </button>
+              <filterForm.Field name="searchTerm">
+                {(field) => (
+                  <input
+                    type="text"
+                    placeholder={formValues.searchMode === 'players' ? "Caută după nume (ex: Olaru, Drăgușin, Baena)..." : "Caută echipă (ex: FCSB, CFR Cluj, Rapid)..."}
+                    className="w-full py-3 px-3 text-sm bg-transparent border-0 focus:ring-0 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-white"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  />
+                )}
+              </filterForm.Field>
+
+              {formValues.searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => filterForm.setFieldValue('searchTerm', '')}
+                  className="p-1.5 mr-2 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Acțiuni Filtre & Watchlist */}
+            {formValues.searchMode === 'players' && (
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProFilters(!showProFilters);
+                    if (formValues.onlyWatchlist) filterForm.setFieldValue('onlyWatchlist', false);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border flex items-center gap-1.5 cursor-pointer ${
+                    showProFilters || hasActiveProFilters
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                      : 'bg-white dark:bg-[#11161D] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.07] hover:border-slate-300 dark:hover:border-white/[0.15]'
+                  }`}
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  Filtre avansate
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    filterForm.setFieldValue('onlyWatchlist', !formValues.onlyWatchlist);
+                    filterForm.setFieldValue('searchMode', 'players');
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border flex items-center gap-1.5 cursor-pointer ${
+                    formValues.onlyWatchlist
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                      : 'bg-white dark:bg-[#11161D] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.07] hover:border-slate-300 dark:hover:border-white/[0.15]'
+                  }`}
+                >
+                  <Bookmark className={`w-3.5 h-3.5 ${formValues.onlyWatchlist ? 'fill-current' : ''}`} />
+                  Listă scouting ({watchlistIds.length})
+                </button>
               </div>
             )}
           </div>
-          
+
+          {/* Panou Filtre Avansate */}
           {formValues.searchMode === 'players' && showProFilters && (
-            <div className="mt-4 sm:mt-8 max-w-4xl mx-auto bg-slate-900 border-2 border-emerald-600/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl text-left animate-in fade-in duration-300 relative overflow-hidden">
-              <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 pb-3 sm:pb-4 mb-4 sm:mb-5 border-b border-slate-700/50">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
-                  <span className="font-black text-[10px] sm:text-sm uppercase tracking-widest text-white">
-                    Setări Căutare Avansată
+            <div className="mt-4 max-w-4xl mx-auto bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.07] rounded-xl p-4 sm:p-5 text-left">
+              <div className="flex items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-200 dark:border-white/[0.07]">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="font-semibold text-xs text-slate-900 dark:text-white">
+                    Filtre scouting
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={resetProFilters}
-                  className="text-[9px] sm:text-xs font-black uppercase tracking-widest text-rose-400 hover:text-rose-300 flex items-center gap-1 bg-rose-500/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded border border-rose-500/20 transition-colors"
+                  className="text-xs font-medium text-rose-500 hover:text-rose-400 flex items-center gap-1 px-2 py-1 rounded-md hover:bg-rose-500/10 transition-colors cursor-pointer"
                 >
-                  <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Reset
+                  <RotateCcw className="w-3 h-3" /> Resetează
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 relative z-10">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
-                  { name: "positionFilter", label: "Poziție în Teren", opts: [["Toate", "Toate"], ["Portari", "Portari"], ["Fundași", "Fundași"], ["Mijlocași", "Mijlocași"], ["Atacanți", "Atacanți"]] },
-                  { name: "nationalityFilter", label: "Naționalitate", opts: [["Toate", "Oricare"], ["Romania", "România 🇷🇴"], ["England", "Anglia 🏴󠁧󠁢󠁥󠁮󠁧󠁿"], ["Spain", "Spania 🇪🇸"], ["Italy", "Italia 🇮🇹"], ["Germany", "Germania 🇩🇪"], ["France", "Franța 🇫🇷"], ["Brazil", "Brazilia 🇧🇷"], ["Argentina", "Argentina 🇦🇷"]] },
-                  { name: "leagueFilter", label: "Campionat", opts: [["Toate", "Oricare"], ["283", "Superliga RO 🇷🇴"], ["39", "Premier L. 🏴󠁧󠁢󠁥󠁮󠁧󠁿"], ["140", "La Liga 🇪🇸"], ["135", "Serie A 🇮🇹"], ["78", "Bundesliga 🇩🇪"], ["61", "Ligue 1 🇫🇷"]] },
-                  { name: "maxAgeFilter", label: "Vârstă Max", opts: [["", "Oricare"], ["19", "Sub 19 ani"], ["21", "Sub 21 ani"], ["23", "Sub 23 ani"], ["26", "Sub 26 ani"], ["30", "Sub 30 ani"]] },
-                  { name: "minMinutesFilter", label: "Minutaj Min", opts: [["0", "Oricare"], ["180", "180'"], ["450", "450'"], ["900", "900'"], ["1500", "1500'"]] },
-                  { name: "minRatingFilter", label: "Rating Sofa", opts: [["0", "Oricare"], ["6.5", "> 6.50"], ["6.8", "> 6.80"], ["7.0", "> 7.00"], ["7.3", "> 7.30"]] },
-                  { name: "minHeightFilter", label: "Înălțime Min", opts: [["0", "Oricare"], ["175", "175 cm"], ["180", "180 cm"], ["185", "185 cm"], ["190", "190 cm"]] },
-                  { name: "sortBy", label: "Ordonează", opts: [["rating", "⭐ Rating"], ["per90", "⚡ G+A/90'"], ["goals", "⚽ Goluri"], ["assists", "🎯 Pase"], ["minutes", "⏱️ Minute"]] }
+                  { name: "positionFilter", label: "Poziție", opts: [["Toate", "Toate"], ["Portari", "Portari"], ["Fundași", "Fundași"], ["Mijlocași", "Mijlocași"], ["Atacanți", "Atacanți"]] },
+                  { name: "nationalityFilter", label: "Naționalitate", opts: [["Toate", "Oricare"], ["Romania", "România"], ["England", "Anglia"], ["Spain", "Spania"], ["Italy", "Italia"], ["Germany", "Germania"], ["France", "Franța"], ["Brazil", "Brazilia"], ["Argentina", "Argentina"]] },
+                  { name: "leagueFilter", label: "Campionat", opts: [["Toate", "Oricare"], ["283", "Superliga RO"], ["39", "Premier League"], ["140", "La Liga"], ["135", "Serie A"], ["78", "Bundesliga"], ["61", "Ligue 1"]] },
+                  { name: "maxAgeFilter", label: "Vârstă max", opts: [["", "Oricare"], ["19", "Sub 19 ani"], ["21", "Sub 21 ani"], ["23", "Sub 23 ani"], ["26", "Sub 26 ani"], ["30", "Sub 30 ani"]] },
+                  { name: "minMinutesFilter", label: "Minute min", opts: [["0", "Oricare"], ["180", "180'"], ["450", "450'"], ["900", "900'"], ["1500", "1500'"]] },
+                  { name: "minRatingFilter", label: "Rating min", opts: [["0", "Oricare"], ["6.5", "> 6.50"], ["6.8", "> 6.80"], ["7.0", "> 7.00"], ["7.3", "> 7.30"]] },
+                  { name: "minHeightFilter", label: "Înălțime min", opts: [["0", "Oricare"], ["175", "175 cm"], ["180", "180 cm"], ["185", "185 cm"], ["190", "190 cm"]] },
+                  { name: "sortBy", label: "Ordonează după", opts: [["rating", "Rating"], ["per90", "G+A / 90'"], ["goals", "Goluri"], ["assists", "Pase decisive"], ["minutes", "Minute"]] }
                 ].map((field, i) => (
                   <filterForm.Field key={i} name={field.name as any}>
-                     {(api) => (
-                        <div className="bg-slate-800 p-2 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-700 focus-within:border-emerald-500 transition-colors">
-                          <label className="block text-[8px] sm:text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 sm:mb-1.5 pl-1 truncate">{field.label}</label>
-                          <select
-                            value={String(api.state.value)}
-                            onChange={(e) => api.handleChange(e.target.value as any)}
-                            className="w-full bg-slate-900 rounded-md sm:rounded-lg px-1.5 sm:px-2.5 py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold text-white outline-none cursor-pointer border border-transparent focus:border-slate-600 truncate"
-                          >
-                            {field.opts.map(([val, text]) => (
-                              <option key={String(val)} value={String(val)}>{text}</option>
-                            ))}
-                          </select>
-                        </div>
-                     )}
+                    {(api) => (
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">{field.label}</label>
+                        <select
+                          value={String(api.state.value)}
+                          onChange={(e) => api.handleChange(e.target.value as any)}
+                          className="w-full bg-slate-50 dark:bg-[#0B0F14] rounded-lg px-2.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 outline-none cursor-pointer border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60"
+                        >
+                          {field.opts.map(([val, text]) => (
+                            <option key={String(val)} value={String(val)}>{text}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </filterForm.Field>
                 ))}
               </div>
@@ -741,59 +722,60 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
           )}
         </section>
 
-        <section className="px-2 sm:px-4 container mx-auto pb-10 sm:pb-24 relative z-10">
-          
+        {/* Rezultate */}
+        <section className="pb-10">
           {loading && formValues.searchMode === 'players' && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
               {[...Array(10)].map((_, i) => (
-                <div key={i} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col items-center animate-pulse h-[200px] sm:h-[260px]">
-                  <div className="w-full h-8 sm:h-12 bg-slate-200 dark:bg-slate-800 border-b-2 border-slate-300 dark:border-slate-700"></div>
-                  <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-slate-300 dark:bg-slate-700 -mt-6 sm:-mt-8 mb-2 sm:mb-4 border-2 sm:border-4 border-white dark:border-slate-900"></div>
-                  <div className="w-3/4 h-3 sm:h-4 bg-slate-200 dark:bg-slate-800 rounded mb-2"></div>
-                  <div className="w-1/2 h-2 sm:h-3 bg-slate-200 dark:bg-slate-800 rounded mb-auto"></div>
-                  <div className="w-full h-8 sm:h-10 bg-slate-100 dark:bg-slate-800 mt-2 sm:mt-4 flex justify-between p-1.5 sm:p-2 gap-2">
-                    <div className="w-1/2 h-full bg-slate-200 dark:bg-slate-700 rounded"></div>
-                    <div className="w-1/2 h-full bg-slate-200 dark:bg-slate-700 rounded"></div>
-                  </div>
+                <div key={i} className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.07] rounded-xl p-4 flex flex-col items-center animate-pulse h-[210px]">
+                  <div className="w-14 h-14 rounded-full bg-slate-200 dark:bg-white/[0.06] mb-3 mt-2" />
+                  <div className="w-3/4 h-3.5 bg-slate-200 dark:bg-white/[0.06] rounded mb-2" />
+                  <div className="w-1/2 h-3 bg-slate-100 dark:bg-white/[0.04] rounded mb-auto" />
+                  <div className="w-full h-7 bg-slate-100 dark:bg-white/[0.04] rounded-md mt-3" />
                 </div>
               ))}
             </div>
           )}
 
           {loading && formValues.searchMode === 'teams' && (
-            <div className="flex justify-center items-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-t-4 border-b-4 border-emerald-500"></div>
+            <div className="flex justify-center items-center py-16">
+              <div className="w-7 h-7 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
-          {loadingRoster && (
-            <div className="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 sm:border-8 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_20px_rgba(16,185,129,0.5)]"></div>
-              <h3 className="text-lg sm:text-2xl font-black uppercase tracking-widest text-emerald-400 animate-pulse">Analizăm Lotul...</h3>
+          {loadingRoster && createPortal(
+            <div className="fixed inset-0 z-[100000] bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+              <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs font-medium text-slate-300">Se încarcă lotul echipei...</span>
+            </div>,
+            document.body
+          )}
+
+          {error && (
+            <div className="text-center text-rose-500 font-medium border border-rose-500/25 bg-rose-500/10 py-3 px-5 rounded-xl max-w-md mx-auto text-xs">
+              {error}
             </div>
           )}
-          
-          {error && <div className="text-center text-rose-500 font-black border-2 sm:border-4 border-rose-500 bg-rose-950/50 py-4 sm:py-6 px-4 sm:px-10 rounded-xl sm:rounded-2xl uppercase tracking-widest max-w-lg mx-auto text-[10px] sm:text-base">{error}</div>}
-          
+
           {!showResults && !loading && (
-            <div className="text-center py-10 sm:py-20 mx-2">
-              <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6 opacity-30 text-emerald-600 dark:text-emerald-500">
-                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C14.07 4 15.95 4.8 17.38 6.13L15.22 8.3C14.33 7.84 13.26 7.56 12 7.56C10.74 7.56 9.67 7.84 8.78 8.3L6.62 6.13C8.05 4.8 9.93 4 12 4ZM5.6 7.42L7.75 9.58C6.9 10.71 6.36 12.1 6.36 13.62C6.36 14.54 6.54 15.42 6.86 16.23L4.61 17.9C4.22 16.7 4 15.39 4 14C4 11.59 4.61 9.32 5.6 7.42ZM7.92 18.52L10.15 16.85C10.66 17.15 11.23 17.36 11.83 17.47V20C10.37 19.78 9.04 19.26 7.92 18.52ZM12.17 20V17.47C12.77 17.36 13.34 17.15 13.85 16.85L16.08 18.52C14.96 19.26 13.63 19.78 12.17 20ZM17.14 16.23C17.46 15.42 17.64 14.54 17.64 13.62C17.64 12.1 17.1 10.71 16.25 9.58L18.4 7.42C19.39 9.32 20 11.59 20 14C20 15.39 19.78 16.7 19.39 17.9L17.14 16.23ZM15.22 10.13L16.75 8.6C17.53 9.77 18 11.16 18 12.62C18 13.78 17.7 14.86 17.18 15.82L15.65 14.3C15.88 13.78 16 13.22 16 12.62C16 11.71 15.71 10.87 15.22 10.13Z" />
-                </svg>
+            <div className="text-center py-14 max-w-md mx-auto">
+              <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] flex items-center justify-center mx-auto mb-3">
+                <Search className="w-5 h-5 text-slate-400" />
               </div>
-              <h3 className="text-lg sm:text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 mb-1 sm:mb-2">Așteptăm Startul...</h3>
-              <p className="text-slate-500 font-bold uppercase text-[10px] sm:text-sm">
-                Caută {formValues.searchMode === 'players' ? 'un jucător' : 'o echipă'} sau setează o tactică din Filtre.
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                Începe căutarea
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Introdu numele {formValues.searchMode === 'players' ? 'unui jucător' : 'unei echipe'} sau folosește filtrele avansate.
               </p>
             </div>
           )}
 
+          {/* Grid Jucători */}
           {showResults && !loading && formValues.searchMode === 'players' && displayedPlayers.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 animate-in slide-in-from-bottom-8 duration-700">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
               {displayedPlayers.map((player) => {
-                const teamNameStr = sanitizeTeamName(player, "Club Necunoscut");
-                const isNationalOnly = teamNameStr.toLowerCase().includes("nationala") || teamNameStr.toLowerCase() === "romania";
+                const teamNameStr = sanitizeTeamName(player, "Club necunoscut");
                 const metrics = computeScoutingMetrics(player);
                 const isWatched = watchlistIds.includes(player._id);
                 const isSelectedForCompare = compareList.some(item => item._id === player._id);
@@ -802,77 +784,72 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                   <div
                     key={player._id}
                     onClick={() => setSelectedPlayer(player)}
-                    className="relative group bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col items-center cursor-pointer hover:shadow-2xl sm:hover:-translate-y-1 transition-all duration-300"
+                    className="group bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/40 rounded-xl p-3.5 flex flex-col cursor-pointer transition-colors"
                   >
-                    <div className="w-full h-10 sm:h-12 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex justify-between px-1.5 sm:px-2 pt-1.5 sm:pt-2 border-b-2 border-emerald-500">
-                       <button
+                    <div className="flex items-center justify-between mb-2">
+                      <button
                         type="button"
                         onClick={(e) => toggleWatchlist(e, player)}
-                        className={`p-1 sm:p-1.5 rounded-md sm:rounded-lg border-2 h-fit transition z-10 bg-white dark:bg-slate-900 ${
+                        className={`p-1.5 rounded-md border transition-colors cursor-pointer ${
                           isWatched
-                            ? 'border-amber-500 text-amber-500'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:text-amber-500 hover:border-amber-500'
+                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                            : 'bg-slate-50 dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.07] text-slate-400 hover:text-amber-500'
                         }`}
+                        title="Listă scouting"
                       >
-                        <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 ${isWatched ? 'fill-current' : ''}`} />
+                        <Bookmark className={`w-3.5 h-3.5 ${isWatched ? 'fill-current' : ''}`} />
                       </button>
+
+                      {metrics.rating > 0 && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[11px] font-semibold tabular-nums">
+                          <Star className="w-2.5 h-2.5 fill-current" /> {metrics.rating.toFixed(1)}
+                        </span>
+                      )}
+
                       <button
                         type="button"
                         onClick={(e) => toggleComparePlayer(e, player)}
-                        className={`p-1 sm:p-1.5 rounded-md sm:rounded-lg border-2 h-fit transition z-10 bg-white dark:bg-slate-900 ${
+                        className={`p-1.5 rounded-md border transition-colors cursor-pointer ${
                           isSelectedForCompare
-                            ? 'border-emerald-600 text-emerald-600'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:text-emerald-600 hover:border-emerald-600'
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : 'bg-slate-50 dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.07] text-slate-400 hover:text-emerald-500'
                         }`}
+                        title="Compară"
                       >
-                        {isSelectedForCompare ? <Check className="w-3 h-3 sm:w-4 sm:h-4" /> : <Scale className="w-3 h-3 sm:w-4 sm:h-4" />}
+                        {isSelectedForCompare ? <Check className="w-3.5 h-3.5" /> : <Scale className="w-3.5 h-3.5" />}
                       </button>
                     </div>
 
-                    <div className="relative -mt-6 sm:-mt-8 mb-2 sm:mb-2 z-10">
+                    <div className="flex flex-col items-center text-center flex-1">
                       <img
                         src={player.image || GENERIC_USER_IMAGE}
                         alt={player.name}
-                        className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover border-2 sm:border-4 border-white dark:border-slate-900 shadow-md bg-white dark:bg-slate-800"
+                        className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border border-slate-200 dark:border-white/[0.1] bg-white mb-2.5"
                         onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                       />
-                      {isNationalOnly && (
-                        <div className="absolute bottom-0 right-0 bg-yellow-400 text-[8px] sm:text-xs rounded-full w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center shadow-md border border-white dark:border-slate-900">
-                          🇷🇴
-                        </div>
-                      )}
-                      {metrics.rating > 0 && (
-                        <div className="absolute -bottom-1 -left-1 sm:-left-2 bg-slate-900 text-amber-400 text-[8px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg shadow-md border sm:border-2 border-white dark:border-slate-900 flex items-center gap-0.5">
-                          <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-amber-400" /> {metrics.rating.toFixed(1)}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="px-2 sm:px-3 pb-2 sm:pb-3 w-full text-center flex-1 flex flex-col justify-between">
-                      <div>
-                        <h3 className="text-[11px] sm:text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-0.5 sm:mb-1 truncate w-full" title={player.name}>
-                          {player.name}
-                        </h3>
-                        
-                        <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold truncate w-full uppercase mb-1 sm:mb-2">
-                          {hasValidImageUrl(player.team_logo) ? (
-                            <img src={player.team_logo} alt={teamNameStr} className="w-3 h-3 sm:w-4 sm:h-4 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                          ) : (
-                            <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                          )}
-                          <span className="truncate">{teamNameStr}</span>
-                        </div>
+
+                      <h3 className="text-xs sm:text-[13px] font-semibold text-slate-900 dark:text-slate-100 truncate w-full group-hover:text-emerald-500 transition-colors" title={player.name}>
+                        {player.name}
+                      </h3>
+
+                      <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate w-full mt-1">
+                        {hasValidImageUrl(player.team_logo) ? (
+                          <img src={player.team_logo} alt={teamNameStr} className="w-3.5 h-3.5 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        ) : (
+                          <Shield className="w-3 h-3 shrink-0" />
+                        )}
+                        <span className="truncate">{teamNameStr}</span>
                       </div>
-                      
-                      <div className="mt-auto pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800 w-full flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-0">
-                        <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded border border-emerald-100 dark:border-emerald-800">
-                          {player.position || "N/A"}
-                        </span>
-                        
-                        <div className="flex text-[8px] sm:text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 divide-x divide-slate-200 dark:divide-slate-700">
-                           <div className="px-1.5 sm:px-2 py-0.5 sm:py-1 text-emerald-600 dark:text-emerald-400" title="Goluri">{metrics.goals}G</div>
-                           <div className="px-1.5 sm:px-2 py-0.5 sm:py-1 text-blue-600 dark:text-blue-400" title="Pase Decisive">{metrics.assists}A</div>
-                        </div>
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between gap-1 text-[11px]">
+                      <span className="font-medium text-emerald-600 dark:text-emerald-400 truncate">
+                        {player.position || "N/A"}
+                      </span>
+                      <div className="flex items-center gap-1.5 font-semibold tabular-nums shrink-0">
+                        <span className="text-emerald-600 dark:text-emerald-400" title="Goluri">{metrics.goals}G</span>
+                        <span className="text-slate-300 dark:text-slate-600">/</span>
+                        <span className="text-blue-500" title="Pase decisive">{metrics.assists}A</span>
                       </div>
                     </div>
                   </div>
@@ -881,250 +858,247 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
             </div>
           )}
 
+          {/* Grid Echipe */}
           {showResults && !loading && formValues.searchMode === 'teams' && teams.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
               {teams.map((team, idx) => {
                 const displayTeamName = sanitizeTeamName(team.team_name, "Echipă");
                 const showLogo = hasValidImageUrl(team.team_logo);
                 return (
-                  <div key={idx} onClick={() => handleTeamClick(displayTeamName)} className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-md sm:shadow-lg hover:shadow-2xl border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all cursor-pointer group flex flex-col items-center text-center">
-                    <div className="w-16 h-16 sm:w-20 sm:h-28 mb-3 sm:mb-4 bg-slate-50 dark:bg-slate-800 rounded-xl sm:rounded-2xl p-2 sm:p-4 shadow-inner group-hover:scale-110 transition-transform flex items-center justify-center">
+                  <div
+                    key={idx}
+                    onClick={() => handleTeamClick(displayTeamName)}
+                    className="bg-white dark:bg-[#11161D] p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/40 transition-colors cursor-pointer group flex flex-col items-center text-center"
+                  >
+                    <div className="w-14 h-14 mb-3 bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06] rounded-xl p-2.5 flex items-center justify-center">
                       {showLogo ? (
                         <img
                           src={team.team_logo}
                           alt={displayTeamName}
-                          className="w-full h-full object-contain drop-shadow-md"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
+                          className="w-full h-full object-contain"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : (
-                        <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-500" />
+                        <Shield className="w-6 h-6 text-emerald-500" />
                       )}
                     </div>
-                    <h4 className="font-black text-[11px] sm:text-sm md:text-lg text-slate-900 dark:text-white uppercase tracking-tight break-words">{displayTeamName}</h4>
-                    <div className="mt-1.5 sm:mt-2 w-6 sm:w-8 h-1 bg-emerald-500 rounded-full group-hover:w-12 sm:group-hover:w-16 transition-all"></div>
+                    <h4 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 group-hover:text-emerald-500 transition-colors line-clamp-2">
+                      {displayTeamName}
+                    </h4>
                   </div>
                 );
               })}
             </div>
           )}
 
+          {/* Empty State */}
           {showResults && !loading && ((formValues.searchMode === 'players' && displayedPlayers.length === 0) || (formValues.searchMode === 'teams' && teams.length === 0)) && (
-            <div className="text-center py-12 sm:py-20 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-sm border-2 border-dashed border-slate-300 dark:border-slate-800 max-w-2xl mx-auto relative overflow-hidden mx-2">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.05),transparent_50%)]"></div>
-              
-              <div className="relative z-10 flex justify-center items-center mb-4 sm:mb-6">
-                <div className="w-16 h-16 sm:w-24 sm:h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center relative shadow-inner border-4 border-white dark:border-slate-900 z-10">
-                  {formValues.searchMode === 'players' ? <UserIcon className="w-6 h-6 sm:w-10 sm:h-10 text-slate-400" /> : <Shield className="w-6 h-6 sm:w-10 sm:h-10 text-slate-400" />}
-                </div>
-                <div className="absolute w-24 h-24 sm:w-32 sm:h-32 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-full animate-[spin_10s_linear_infinite]"></div>
-                <div className="absolute w-6 h-6 sm:w-10 sm:h-10 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center -right-1 sm:-right-2 top-0 z-20">
-                  <AlertTriangle className="w-3 h-3 sm:w-5 sm:h-5 text-rose-500" />
-                </div>
+            <div className="text-center py-14 bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] max-w-md mx-auto p-6">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-white/[0.04] flex items-center justify-center mx-auto mb-3">
+                <AlertTriangle className="w-5 h-5 text-slate-400" />
               </div>
-              
-              <h3 className="text-lg sm:text-2xl font-black uppercase tracking-widest text-slate-800 dark:text-white mb-1 sm:mb-2 relative z-10">
-                {formValues.searchMode === 'players' ? 'Niciun Jucător' : 'Nicio Echipă'}
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+                {formValues.searchMode === 'players' ? 'Niciun jucător găsit' : 'Nicio echipă găsită'}
               </h3>
-              <p className="text-slate-500 font-bold text-[10px] sm:text-xs max-w-xs sm:max-w-sm mx-auto relative z-10">
-                Resetează filtrele din tabla tactică sau verifică dacă numele este scris corect.
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Resetează filtrele sau verifică ortografia numelui.
               </p>
             </div>
           )}
         </section>
       </div>
 
+      {/* Bară plutitoare Comparare */}
       {compareList.length > 0 && (
-        <div className="fixed bottom-[75px] sm:bottom-8 left-1/2 -translate-x-1/2 z-[99998] bg-slate-950 px-2 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 border-emerald-500 flex items-center gap-2 sm:gap-4 max-w-xl w-[95%] justify-between animate-in slide-in-from-bottom-5">          
-          <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
-            <Scale className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-400 shrink-0 animate-pulse" />
-            <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+        <div className="fixed bottom-[72px] sm:bottom-6 left-1/2 -translate-x-1/2 z-[99998] bg-white dark:bg-[#11161D] px-3 py-2.5 rounded-xl shadow-xl border border-slate-200 dark:border-white/[0.1] flex items-center gap-3 max-w-lg w-[94%] justify-between">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <Scale className="w-4 h-4 text-emerald-500 shrink-0" />
+            <div className="flex items-center gap-1.5 overflow-hidden">
               {compareList.map((p) => (
-                <div key={p._id} className="flex items-center gap-1 sm:gap-2 bg-slate-800 border border-slate-600 pl-1 pr-1.5 sm:pr-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
-                  <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-4 h-4 sm:w-6 sm:h-6 rounded object-cover shrink-0" />
-                  <span className="truncate max-w-[60px] sm:max-w-[120px]">{p.name}</span>
+                <div key={p._id} className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] pl-1 pr-1.5 py-1 rounded-lg text-xs font-medium text-slate-900 dark:text-white truncate">
+                  <img src={p.image || GENERIC_USER_IMAGE} alt={p.name} className="w-5 h-5 rounded object-cover shrink-0" />
+                  <span className="truncate max-w-[75px] sm:max-w-[110px]">{p.name}</span>
                   <button
                     type="button"
                     onClick={(e) => toggleComparePlayer(e, p)}
-                    className="text-slate-400 hover:text-rose-400 ml-0.5 sm:ml-1 bg-slate-900 p-0.5 rounded shrink-0"
+                    className="text-slate-400 hover:text-rose-500 p-0.5 rounded shrink-0 cursor-pointer"
                   >
-                    <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <X className="w-3 h-3" />
                   </button>
                 </div>
               ))}
               {compareList.length === 1 && (
-                <span className="text-[8px] sm:text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-widest hidden sm:inline border border-dashed border-emerald-500/50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg shrink-0">
-                  + Selectează Adversar
+                <span className="text-[11px] text-slate-500 hidden sm:inline">
+                  Alege încă un jucător
                 </span>
               )}
             </div>
           </div>
 
-          <div className="flex items-center shrink-0">
-            <button
-              type="button"
-              disabled={compareList.length < 2}
-              onClick={() => setShowCompareModal(true)}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition border-b-2 sm:border-b-4 ${
-                compareList.length === 2
-                  ? 'bg-emerald-500 border-emerald-700 text-slate-950 hover:bg-emerald-400 sm:hover:translate-y-[2px] sm:hover:border-b-2'
-                  : 'bg-slate-800 border-slate-900 text-slate-500 cursor-not-allowed'
-              }`}
-            >
-              VS ({compareList.length}/2)
-            </button>
-          </div>
+          <button
+            type="button"
+            disabled={compareList.length < 2}
+            onClick={() => setShowCompareModal(true)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 ${
+              compareList.length === 2
+                ? 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
+                : 'bg-slate-100 dark:bg-white/[0.05] text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            Compară ({compareList.length}/2)
+          </button>
         </div>
       )}
 
-      {/* FEREASTRĂ SEPARATĂ FIȘĂ JUCĂTOR (DEASUPRA BARELOR) */}
+      {/* Modal Fișă Jucător */}
       {selectedPlayer && createPortal(
         <div
-          className="fixed inset-0 z-[9999999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-[9999999] flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm"
           onClick={() => setSelectedPlayer(null)}
         >
           <div
-            className="bg-white dark:bg-slate-900 w-full h-[96dvh] sm:h-auto sm:max-w-3xl sm:max-h-[92vh] rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.65)] overflow-hidden flex flex-col border-2 sm:border-4 border-emerald-600/40 relative"
+            className="bg-white dark:bg-[#0B0F14] w-full h-[94dvh] sm:h-auto sm:max-w-2xl sm:max-h-[90vh] rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-white/[0.08]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative bg-slate-900 shrink-0 px-3 sm:px-8 py-4 sm:py-7 border-b-2 sm:border-b-4 border-emerald-500 overflow-hidden pt-safe">
-              <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#10b981_20px,#10b981_22px),repeating-linear-gradient(90deg,transparent,transparent_20px,#10b981_20px,#10b981_22px)]"></div>
-              
+            <div className="bg-slate-50 dark:bg-[#11161D] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/[0.07] shrink-0 relative">
               <button
                 type="button"
                 onClick={() => setSelectedPlayer(null)}
                 aria-label="Închide fișa jucătorului"
-                className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-slate-950/80 border border-white/25 hover:bg-rose-600 hover:border-rose-500 rounded-xl sm:rounded-full p-2 text-white transition-colors z-30 shadow-lg cursor-pointer"
+                className="absolute top-3 right-3 sm:static p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors shrink-0 order-3 sm:order-none cursor-pointer"
               >
-                <X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" />
+                <X className="w-4 h-4" />
               </button>
-              
-              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-3 sm:gap-6 relative z-10 pr-0 sm:pr-10">
+
+              <div className="flex items-center gap-3.5 min-w-0 pr-8 sm:pr-0">
                 <img
                   src={selectedPlayer.image || GENERIC_USER_IMAGE}
                   alt={selectedPlayer.name}
-                  className="w-20 h-20 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-xl sm:rounded-2xl object-cover border-2 sm:border-4 border-white shadow-xl sm:shadow-2xl bg-slate-800 shrink-0 mt-2 sm:mt-0"
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover border border-slate-200 dark:border-white/[0.1] bg-white shrink-0"
                   onError={(e) => { e.currentTarget.src = GENERIC_USER_IMAGE; }}
                 />
-                
-                <div className="text-white text-center sm:text-left flex-1 min-w-0 px-2 sm:px-0">
-                  <h2 className="text-xl sm:text-3xl md:text-4xl font-black uppercase tracking-tighter break-words whitespace-normal leading-tight sm:drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">{selectedPlayer.name}</h2>
-                  <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 mt-1 sm:mt-2">
+
+                <div className="min-w-0">
+                  <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 block">
+                    Fișă Scouting
+                  </span>
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white leading-tight truncate">
+                    {selectedPlayer.name}
+                  </h2>
+                  <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500 dark:text-slate-400">
                     {hasValidImageUrl(selectedPlayer.team_logo) && (
-                      <img src={selectedPlayer.team_logo} alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-md p-0.5 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <img src={selectedPlayer.team_logo} alt="logo" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                     )}
-                    <span className="font-bold text-xs sm:text-base md:text-lg text-emerald-400 uppercase tracking-widest truncate max-w-[220px]">{sanitizeTeamName(selectedPlayer, "Club Necunoscut")}</span>
+                    <span className="truncate">{sanitizeTeamName(selectedPlayer, "Club necunoscut")}</span>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex flex-row sm:flex-col gap-2 shrink-0 mt-1 sm:mt-0 w-full sm:w-auto px-2 sm:px-0">
-                  <button
-                    type="button"
-                    onClick={(e) => toggleWatchlist(e, selectedPlayer)}
-                    className={`flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1.5 sm:gap-2 border-b-2 sm:border-b-4 transition cursor-pointer ${
-                      watchlistIds.includes(selectedPlayer._id)
-                        ? 'bg-amber-500 border-amber-700 text-slate-950'
-                        : 'bg-white border-slate-300 text-slate-900 hover:bg-emerald-50'
-                    }`}
-                  >
-                    <Bookmark className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
-                    {watchlistIds.includes(selectedPlayer._id) ? 'În Listă' : 'Listă'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      toggleComparePlayer(e, selectedPlayer);
-                      setSelectedPlayer(null);
-                    }}
-                    className="flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest bg-slate-800 border-b-2 sm:border-b-4 border-slate-950 hover:bg-slate-700 text-white flex items-center gap-1.5 sm:gap-2 transition cursor-pointer"
-                  >
-                    <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Compară
-                  </button>
-                </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => toggleWatchlist(e, selectedPlayer)}
+                  className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                    watchlistIds.includes(selectedPlayer._id)
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-white dark:bg-white/[0.04] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/[0.08] hover:border-emerald-500/50'
+                  }`}
+                >
+                  <Bookmark className={`w-3.5 h-3.5 ${watchlistIds.includes(selectedPlayer._id) ? 'fill-current' : ''}`} />
+                  {watchlistIds.includes(selectedPlayer._id) ? 'Salvat' : 'Listă'}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    toggleComparePlayer(e, selectedPlayer);
+                    setSelectedPlayer(null);
+                  }}
+                  className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] text-slate-700 dark:text-slate-200 hover:border-emerald-500/50 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Scale className="w-3.5 h-3.5" /> Compară
+                </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 sm:p-8 bg-slate-50 dark:bg-slate-950 pb-safe-bottom">
-              
-              <div className="flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3 mb-6 sm:mb-8">
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                  <Globe className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500" />
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-xs text-slate-700 dark:text-slate-300">
+                  <Globe className="w-3.5 h-3.5 text-slate-400" />
                   {selectedPlayer.nationality || "N/A"}
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                  <UserIcon className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500" />
-                  {selectedPlayer.age ? `${selectedPlayer.age} ANI` : "N/A"}
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                  <Activity className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500" />
-                  {selectedPlayer.height || "-"} / {selectedPlayer.weight || "-"}
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-emerald-100 dark:bg-emerald-900/40 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border sm:border-2 border-emerald-300 dark:border-emerald-700 text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-xs text-slate-700 dark:text-slate-300 tabular-nums">
+                  {selectedPlayer.age ? `${selectedPlayer.age} ani` : "N/A"}
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-xs text-slate-700 dark:text-slate-300 tabular-nums">
+                  {selectedPlayer.height || "—"} / {selectedPlayer.weight || "—"}
+                </span>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                   {selectedPlayer.position || "N/A"}
-                </div>
+                </span>
               </div>
 
-              <h3 className="text-sm sm:text-lg font-black uppercase tracking-widest text-slate-800 dark:text-white mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2 border-b-2 border-emerald-500/20 pb-1.5 sm:pb-2">
-                <Trophy className="w-4 h-4 sm:w-6 sm:h-6 text-amber-500" /> Cifrele Sezonului
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4 mb-6 sm:mb-10">
-                <div className="bg-white dark:bg-slate-900 p-2 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center">
-                  <span className="block text-xl sm:text-3xl font-black text-slate-900 dark:text-white">{selectedPlayer.statistics_summary?.total_appearances || 0}</span>
-                  <span className="text-[8px] sm:text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-0.5 sm:mt-1">Meciuri</span>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-2 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center border-b-2 sm:border-b-4 border-b-emerald-500">
-                  <span className="block text-xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">{selectedPlayer.statistics_summary?.total_goals || 0}</span>
-                  <span className="text-[8px] sm:text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-0.5 sm:mt-1">Goluri</span>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-2 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center border-b-2 sm:border-b-4 border-b-blue-500">
-                  <span className="block text-xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">{selectedPlayer.statistics_summary?.total_assists || 0}</span>
-                  <span className="text-[8px] sm:text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-0.5 sm:mt-1">Pase Decisive</span>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-2 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center">
-                  <span className="block text-xl sm:text-3xl font-black text-slate-900 dark:text-white">{selectedPlayer.statistics_summary?.minutes_played || 0}'</span>
-                  <span className="text-[8px] sm:text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-0.5 sm:mt-1">Minute</span>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-2 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-amber-300 dark:border-amber-700 text-center flex flex-col justify-center bg-amber-50/50 dark:bg-amber-900/10 col-span-2 md:col-span-1">
-                  <span className="block text-xl sm:text-3xl font-black text-amber-500 flex items-center justify-center gap-1">
-                    {selectedPlayer.statistics_summary?.rating ? parseFloat(selectedPlayer.statistics_summary.rating).toFixed(2) : "-"}
-                  </span>
-                  <span className="text-[8px] sm:text-[10px] uppercase tracking-widest text-amber-600/80 font-bold mt-0.5 sm:mt-1">Rating SofaScore</span>
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-emerald-500" /> Cifrele sezonului
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div className="bg-slate-50 dark:bg-[#11161D] p-3 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
+                    <span className="block text-lg font-semibold text-slate-900 dark:text-white tabular-nums">{selectedPlayer.statistics_summary?.total_appearances || 0}</span>
+                    <span className="text-[11px] text-slate-500">Meciuri</span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-[#11161D] p-3 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
+                    <span className="block text-lg font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{selectedPlayer.statistics_summary?.total_goals || 0}</span>
+                    <span className="text-[11px] text-slate-500">Goluri</span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-[#11161D] p-3 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
+                    <span className="block text-lg font-semibold text-blue-500 tabular-nums">{selectedPlayer.statistics_summary?.total_assists || 0}</span>
+                    <span className="text-[11px] text-slate-500">Pase decisive</span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-[#11161D] p-3 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
+                    <span className="block text-lg font-semibold text-slate-900 dark:text-white tabular-nums">{selectedPlayer.statistics_summary?.minutes_played || 0}'</span>
+                    <span className="text-[11px] text-slate-500">Minute</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1 bg-slate-50 dark:bg-[#11161D] p-3 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
+                    <span className="block text-lg font-semibold text-amber-500 tabular-nums">
+                      {selectedPlayer.statistics_summary?.rating ? parseFloat(selectedPlayer.statistics_summary.rating).toFixed(2) : "—"}
+                    </span>
+                    <span className="text-[11px] text-slate-500">Rating</span>
+                  </div>
                 </div>
               </div>
 
               {(() => {
                 const m = computeScoutingMetrics(selectedPlayer);
                 return (
-                  <div className="flex flex-col lg:grid lg:grid-cols-2 gap-4 sm:gap-6 bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xl mb-6 sm:mb-10 border-2 sm:border-4 border-emerald-600/30">
-                    <div className="flex flex-col items-center lg:items-start w-full">
-                      <h4 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-400 mb-2 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
-                        <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Analiza Scouter (Radar)
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50 dark:bg-[#11161D] p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] items-center">
+                    <div className="flex flex-col items-center">
+                      <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-emerald-500" /> Profil radar
                       </h4>
                       <PlayerRadarChart primaryPlayer={selectedPlayer} />
                     </div>
 
-                    <div className="space-y-3 sm:space-y-4 flex flex-col justify-center w-full">
-                      <h4 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center justify-center lg:justify-start gap-1.5 sm:gap-2 text-center lg:text-left mt-2 lg:mt-0">
-                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Randament / 90 Minute
+                    <div className="space-y-2.5">
+                      <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> Randament / 90 min
                       </h4>
-                      <div className="grid grid-cols-2 gap-2 sm:gap-4">
-                        <div className="bg-slate-800 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-emerald-500/30 text-center">
-                          <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-400">Goluri / 90'</span>
-                          <p className="text-xl sm:text-3xl font-black text-white mt-0.5 sm:mt-1">{m.goalsPer90}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-white dark:bg-[#0B0F14] p-3 rounded-lg border border-slate-200 dark:border-white/[0.06]">
+                          <span className="text-[11px] text-slate-500 block">Goluri / 90'</span>
+                          <p className="text-base font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{m.goalsPer90}</p>
                         </div>
-                        <div className="bg-slate-800 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-blue-500/30 text-center">
-                          <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-blue-400">Assist / 90'</span>
-                          <p className="text-xl sm:text-3xl font-black text-white mt-0.5 sm:mt-1">{m.assistsPer90}</p>
+                        <div className="bg-white dark:bg-[#0B0F14] p-3 rounded-lg border border-slate-200 dark:border-white/[0.06]">
+                          <span className="text-[11px] text-slate-500 block">Assist / 90'</span>
+                          <p className="text-base font-semibold text-blue-500 tabular-nums">{m.assistsPer90}</p>
                         </div>
-                        <div className="bg-slate-800 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-amber-500/30 text-center">
-                          <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-amber-400">Contribuții/90'</span>
-                          <p className="text-xl sm:text-3xl font-black text-amber-400 mt-0.5 sm:mt-1">{m.contributionsPer90}</p>
+                        <div className="bg-white dark:bg-[#0B0F14] p-3 rounded-lg border border-slate-200 dark:border-white/[0.06]">
+                          <span className="text-[11px] text-slate-500 block">Contribuții / 90'</span>
+                          <p className="text-base font-semibold text-amber-500 tabular-nums">{m.contributionsPer90}</p>
                         </div>
-                        <div className="bg-slate-800 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border sm:border-2 border-slate-700 text-center">
-                          <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400">Min/Contribuție</span>
-                          <p className="text-xl sm:text-3xl font-black text-white mt-0.5 sm:mt-1">
-                            {m.minsPerContribution > 0 ? `${m.minsPerContribution}'` : '-'}
+                        <div className="bg-white dark:bg-[#0B0F14] p-3 rounded-lg border border-slate-200 dark:border-white/[0.06]">
+                          <span className="text-[11px] text-slate-500 block">Min / Contribuție</span>
+                          <p className="text-base font-semibold text-slate-900 dark:text-white tabular-nums">
+                            {m.minsPerContribution > 0 ? `${m.minsPerContribution}'` : '—'}
                           </p>
                         </div>
                       </div>
@@ -1133,79 +1107,76 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
                 );
               })()}
 
-              <h3 className="text-sm sm:text-lg font-black uppercase tracking-widest text-slate-800 dark:text-white mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2 border-b-2 border-emerald-500/20 pb-1.5 sm:pb-2">
-                <MapPin className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-500" /> Situație Competițională
-              </h3>
-              
-              {(!selectedPlayer.detailed_stats || selectedPlayer.detailed_stats.length === 0) ? (
-                <div className="text-center p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-sm">
-                  DATE COMPETIȚIONALE INDISPONIBILE 🚫
-                </div>
-              ) : (
-                <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border sm:border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto scrollbar-hide">
-                    <table className="w-full text-[10px] sm:text-sm text-left min-w-[320px]">
-                      <thead className="text-[8px] sm:text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800/80 border-b sm:border-b-2 border-slate-200 dark:border-slate-700">
-                        <tr>
-                          <th className="px-2 py-2 sm:px-4 sm:py-4 font-black">Competiție</th>
-                          <th className="px-2 py-2 sm:px-4 sm:py-4 font-black text-center">Meciuri</th>
-                          <th className="px-2 py-2 sm:px-4 sm:py-4 font-black text-center">Goluri</th>
-                          <th className="px-2 py-2 sm:px-4 sm:py-4 font-black text-center">Pase</th>
-                          <th className="px-2 py-2 sm:px-4 sm:py-4 font-black text-center hidden sm:table-cell">Minute</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {selectedPlayer.detailed_stats.map((stat, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <td className="px-2 py-3 sm:px-4 sm:py-4 font-bold text-slate-900 dark:text-white flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-3 uppercase">
-                              <span className="truncate max-w-[100px] sm:max-w-none">{stat.competition}</span>
-                              <span className="text-[7px] sm:text-[9px] font-black px-1.5 py-0.5 sm:px-2 sm:py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded tracking-widest w-fit mt-0.5 sm:mt-0">
-                                {stat.type}
-                              </span>
-                            </td>
-                            <td className="px-2 py-3 sm:px-4 sm:py-4 text-center font-black text-slate-800 dark:text-slate-200">{stat.appearances}</td>
-                            <td className="px-2 py-3 sm:px-4 sm:py-4 text-center font-black text-emerald-600 dark:text-emerald-400">{stat.goals}</td>
-                            <td className="px-2 py-3 sm:px-4 sm:py-4 text-center font-black text-blue-600 dark:text-blue-400">{stat.assists}</td>
-                            <td className="px-2 py-3 sm:px-4 sm:py-4 text-center font-bold text-slate-500 hidden sm:table-cell">{stat.minutes}'</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-500" /> Situație competițională
+                </h3>
 
+                {(!selectedPlayer.detailed_stats || selectedPlayer.detailed_stats.length === 0) ? (
+                  <div className="text-center p-6 bg-slate-50 dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] text-slate-500 text-xs">
+                    Date competiționale indisponibile.
+                  </div>
+                ) : (
+                  <div className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] overflow-hidden">
+                    <div className="overflow-x-auto scrollbar-hide">
+                      <table className="w-full text-xs text-left min-w-[300px]">
+                        <thead className="text-[11px] text-slate-500 bg-slate-50 dark:bg-white/[0.02] border-b border-slate-200 dark:border-white/[0.06]">
+                          <tr>
+                            <th className="px-3 py-2.5 font-medium">Competiție</th>
+                            <th className="px-2 py-2.5 font-medium text-center">MJ</th>
+                            <th className="px-2 py-2.5 font-medium text-center">Goluri</th>
+                            <th className="px-2 py-2.5 font-medium text-center">Pase</th>
+                            <th className="px-2 py-2.5 font-medium text-center hidden sm:table-cell">Minute</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05] tabular-nums">
+                          {selectedPlayer.detailed_stats.map((stat, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                              <td className="px-3 py-2.5 font-medium text-slate-900 dark:text-slate-100">
+                                <span className="truncate block max-w-[140px] sm:max-w-none">{stat.competition}</span>
+                              </td>
+                              <td className="px-2 py-2.5 text-center text-slate-600 dark:text-slate-300">{stat.appearances}</td>
+                              <td className="px-2 py-2.5 text-center font-semibold text-emerald-600 dark:text-emerald-400">{stat.goals}</td>
+                              <td className="px-2 py-2.5 text-center font-semibold text-blue-500">{stat.assists}</td>
+                              <td className="px-2 py-2.5 text-center text-slate-500 hidden sm:table-cell">{stat.minutes}'</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>,
         document.body
       )}
 
+      {/* Modal Comparare */}
       {showCompareModal && compareList.length === 2 && createPortal(
         <div
-          className="fixed inset-0 z-[9999999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-[9999999] flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm"
           onClick={() => setShowCompareModal(false)}
         >
           <div
-            className="bg-slate-900 w-full h-[96dvh] sm:h-auto sm:max-w-4xl sm:max-h-[95vh] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col border-2 sm:border-4 border-emerald-600/50 relative"
+            className="bg-white dark:bg-[#0B0F14] w-full h-[94dvh] sm:h-auto sm:max-w-3xl sm:max-h-[90vh] rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-white/[0.08]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-slate-950 text-white p-3 sm:p-6 flex items-center justify-between border-b-2 border-emerald-600/30 pt-safe shrink-0">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 bg-emerald-500/20 rounded-lg">
-                  <Scale className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-400" />
-                </div>
-                <h2 className="text-xs sm:text-2xl font-black uppercase tracking-widest">
-                  MECI DIRECT: <span className="text-emerald-400">Analiză</span>
+            <div className="bg-slate-50 dark:bg-[#11161D] px-4 py-3.5 flex items-center justify-between border-b border-slate-200 dark:border-white/[0.07] shrink-0">
+              <div className="flex items-center gap-2">
+                <Scale className="w-4 h-4 text-emerald-500" />
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Comparare jucători
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCompareModal(false)}
                 aria-label="Închide comparația"
-                className="p-2 sm:p-2.5 bg-slate-800 hover:bg-rose-500 hover:border-rose-500 border border-slate-700 rounded-full transition text-white cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -1216,81 +1187,69 @@ export function HomeSection({ user, onNavigate }: HomeProps) {
               const m2 = computeScoutingMetrics(p2);
 
               const rows = [
-                { label: "Rating", v1: m1.rating, v2: m2.rating, format: (v: number) => (v > 0 ? v.toFixed(2) : "-") },
+                { label: "Rating", v1: m1.rating, v2: m2.rating, format: (v: number) => (v > 0 ? v.toFixed(2) : "—") },
                 { label: "Meciuri", v1: m1.apps, v2: m2.apps, format: (v: number) => String(v) },
                 { label: "Minute", v1: m1.minutes, v2: m2.minutes, format: (v: number) => `${v}'` },
                 { label: "Goluri", v1: m1.goals, v2: m2.goals, format: (v: number) => String(v) },
-                { label: "Pase", v1: m1.assists, v2: m2.assists, format: (v: number) => String(v) },
-                { label: "Gol / 90'", v1: m1.goalsPer90, v2: m2.goalsPer90, format: (v: number) => String(v) },
+                { label: "Pase decisive", v1: m1.assists, v2: m2.assists, format: (v: number) => String(v) },
+                { label: "Goluri / 90'", v1: m1.goalsPer90, v2: m2.goalsPer90, format: (v: number) => String(v) },
                 { label: "G+A / 90'", v1: m1.contributionsPer90, v2: m2.contributionsPer90, format: (v: number) => String(v) }
               ];
 
               return (
-                <div className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-8 bg-slate-900 space-y-3 sm:space-y-6 pb-safe-bottom">
-                  <div className="grid grid-cols-[1fr_auto_1fr] gap-1 sm:gap-4 items-center bg-slate-800 p-3 sm:p-6 rounded-2xl sm:rounded-3xl border sm:border-2 border-slate-700 relative overflow-hidden">
-                     <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 sm:w-1 bg-slate-700/50 skew-x-[-15deg]"></div>
-
-                    <div className="flex flex-col items-center text-center relative z-10 px-1">
-                      <img src={p1.image || GENERIC_USER_IMAGE} alt={p1.name} className="w-14 h-14 sm:w-28 sm:h-28 rounded-xl sm:rounded-2xl object-cover border-2 sm:border-4 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)] mb-2 sm:mb-3 bg-white" />
-                      <h3 className="font-black text-[10px] sm:text-xl text-white uppercase tracking-tight line-clamp-1">{p1.name}</h3>
-                      <span className="text-[7px] sm:text-xs font-black tracking-widest text-emerald-400 mt-0.5 sm:mt-1 uppercase bg-emerald-900/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded line-clamp-1">{sanitizeTeamName(p1, "Club Necunoscut")}</span>
-                    </div>
-                    
-                    <div className="relative z-10 flex flex-col items-center justify-center px-1 sm:px-4">
-                       <span className="text-xl sm:text-5xl font-black italic text-slate-700 tracking-tighter">VS</span>
+                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+                  <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center bg-slate-50 dark:bg-[#11161D] p-4 rounded-xl border border-slate-200 dark:border-white/[0.07]">
+                    <div className="flex flex-col items-center text-center min-w-0">
+                      <img src={p1.image || GENERIC_USER_IMAGE} alt={p1.name} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover border-2 border-emerald-500 mb-2 bg-white" />
+                      <h3 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white truncate max-w-full">{p1.name}</h3>
+                      <span className="text-[11px] text-emerald-600 dark:text-emerald-400 truncate max-w-full">{sanitizeTeamName(p1, "Club necunoscut")}</span>
                     </div>
 
-                    <div className="flex flex-col items-center text-center relative z-10 px-1">
-                      <img src={p2.image || GENERIC_USER_IMAGE} alt={p2.name} className="w-14 h-14 sm:w-28 sm:h-28 rounded-xl sm:rounded-2xl object-cover border-2 sm:border-4 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)] mb-2 sm:mb-3 bg-white" />
-                      <h3 className="font-black text-[10px] sm:text-xl text-white uppercase tracking-tight line-clamp-1">{p2.name}</h3>
-                      <span className="text-[7px] sm:text-xs font-black tracking-widest text-blue-400 mt-0.5 sm:mt-1 uppercase bg-blue-900/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded line-clamp-1">{sanitizeTeamName(p2, "Club Necunoscut")}</span>
+                    <span className="text-xs font-semibold text-slate-400 px-2">vs</span>
+
+                    <div className="flex flex-col items-center text-center min-w-0">
+                      <img src={p2.image || GENERIC_USER_IMAGE} alt={p2.name} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover border-2 border-blue-500 mb-2 bg-white" />
+                      <h3 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white truncate max-w-full">{p2.name}</h3>
+                      <span className="text-[11px] text-blue-500 truncate max-w-full">{sanitizeTeamName(p2, "Club necunoscut")}</span>
                     </div>
                   </div>
 
-                  <div className="bg-slate-800 p-2 sm:p-6 rounded-2xl sm:rounded-3xl border sm:border-2 border-slate-700 flex flex-col items-center overflow-hidden">
-                    <div className="flex items-center justify-center gap-2 sm:gap-6 text-[8px] sm:text-xs font-black uppercase tracking-widest mb-2 sm:mb-4 flex-wrap">
-                      <span className="flex items-center gap-1 sm:gap-2 text-yellow-400 truncate max-w-[120px] sm:max-w-none">
-                        <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-sm bg-yellow-400 inline-block shadow-[0_0_10px_#facc15] shrink-0"></span> <span className="truncate">{p1.name}</span>
+                  <div className="bg-slate-50 dark:bg-[#11161D] p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] flex flex-col items-center">
+                    <div className="flex items-center justify-center gap-4 text-xs font-medium mb-3 flex-wrap">
+                      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" /> {p1.name}
                       </span>
-                      <span className="flex items-center gap-1 sm:gap-2 text-blue-400 truncate max-w-[120px] sm:max-w-none">
-                        <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-sm bg-blue-500 inline-block shadow-[0_0_10px_#3b82f6] shrink-0"></span> <span className="truncate">{p2.name}</span>
+                      <span className="flex items-center gap-1.5 text-blue-500">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" /> {p2.name}
                       </span>
                     </div>
-                    <div className="scale-90 sm:scale-100 origin-top">
-                        <PlayerRadarChart primaryPlayer={p1} secondaryPlayer={p2} />
-                    </div>
+                    <PlayerRadarChart primaryPlayer={p1} secondaryPlayer={p2} />
                   </div>
 
-                  <div className="bg-slate-800 p-3 sm:p-8 rounded-2xl sm:rounded-3xl border sm:border-2 border-slate-700 space-y-3 sm:space-y-5">
+                  <div className="bg-slate-50 dark:bg-[#11161D] p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-3">
                     {rows.map((r, idx) => {
                       const total = r.v1 + r.v2;
                       const p1Pct = total > 0 ? Math.round((r.v1 / total) * 100) : 50;
                       const p2Pct = 100 - p1Pct;
                       const p1Wins = r.v1 > r.v2;
                       const p2Wins = r.v2 > r.v1;
-                      const isTie = r.v1 === r.v2;
 
                       return (
-                        <div key={idx} className="space-y-1 sm:space-y-2">
-                          <div className="flex justify-between items-center text-[9px] sm:text-sm font-black uppercase tracking-widest">
-                            <span className={`w-8 sm:w-12 text-left ${p1Wins ? "text-yellow-400" : (isTie ? "text-slate-400" : "text-slate-500")}`}>
+                        <div key={idx} className="space-y-1">
+                          <div className="flex justify-between items-center text-xs tabular-nums">
+                            <span className={`w-12 text-left font-semibold ${p1Wins ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500"}`}>
                               {r.format(r.v1)}
                             </span>
-                            <span className="text-slate-300 text-center flex-1">
+                            <span className="text-slate-500 dark:text-slate-400 text-center flex-1 font-medium">
                               {r.label}
                             </span>
-                            <span className={`w-8 sm:w-12 text-right ${p2Wins ? "text-blue-400" : (isTie ? "text-slate-400" : "text-slate-500")}`}>
+                            <span className={`w-12 text-right font-semibold ${p2Wins ? "text-blue-500" : "text-slate-500"}`}>
                               {r.format(r.v2)}
                             </span>
                           </div>
-                          
-                          <div className="w-full h-2 sm:h-4 bg-slate-900 rounded-sm overflow-hidden flex border border-slate-700">
-                            <div style={{ width: `${p1Pct}%` }} className="bg-gradient-to-r from-yellow-600 to-yellow-400 h-full transition-all relative">
-                               {p1Wins && <div className="absolute right-0 top-0 bottom-0 w-0.5 sm:w-1 bg-white"></div>}
-                            </div>
-                            <div style={{ width: `${p2Pct}%` }} className="bg-gradient-to-l from-blue-700 to-blue-500 h-full transition-all relative">
-                               {p2Wins && <div className="absolute left-0 top-0 bottom-0 w-0.5 sm:w-1 bg-white"></div>}
-                            </div>
+                          <div className="w-full h-1.5 bg-slate-200 dark:bg-white/[0.06] rounded-full overflow-hidden flex">
+                            <div style={{ width: `${p1Pct}%` }} className="bg-emerald-500 h-full transition-all" />
+                            <div style={{ width: `${p2Pct}%` }} className="bg-blue-500 h-full transition-all" />
                           </div>
                         </div>
                       );

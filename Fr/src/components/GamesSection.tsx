@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw, Swords, Play, Activity, Globe, Users, Share2, Copy, Crown, Timer, Heart, Volume2, VolumeX, ListOrdered, Share, Shirt } from 'lucide-react';
+import {
+    Trophy, ArrowUp, ArrowDown, Search, X, AlertTriangle, RotateCcw,
+    Swords, Play, Activity, Globe, Users, Share2, Copy, Crown, Timer,
+    Heart, Volume2, VolumeX, ListOrdered, Share, Shirt, ChevronLeft, ChevronRight
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client';
 import { useQuery } from '@tanstack/react-query';
@@ -193,8 +197,8 @@ export function GamesSection({ user }: GamesProps) {
     const { data: allPlayers = [], isLoading, isError } = useQuery<Player[]>({
         queryKey: ['sport-players-games'],
         initialData: initialCached,
-        staleTime: 1000 * 60 * 10, // 10 minute fără re-fetch inutil
-        gcTime: 1000 * 60 * 30,    // păstrează 30 minute în memorie
+        staleTime: 1000 * 60 * 10,
+        gcTime: 1000 * 60 * 30,
         refetchOnWindowFocus: false,
         queryFn: async () => {
             const res = await fetch(`${API_URL}/api/sport/players?limit=10000`);
@@ -215,67 +219,90 @@ export function GamesSection({ user }: GamesProps) {
 
     if (isLoading && allPlayers.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
-                <h3 className="text-sm sm:text-xl font-black tracking-widest text-slate-400 uppercase">Se pregătesc jocurile...</h3>
+            <div className="flex flex-col items-center justify-center min-h-[55vh] gap-3">
+                <div className="w-7 h-7 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Se pregătesc jocurile...
+                </span>
             </div>
         );
     }
 
     return (
-        <div className="w-full max-w-5xl mx-auto py-6 sm:py-8 px-2 sm:px-4 min-h-[80vh] relative z-0 animate-in fade-in duration-500 pb-24 sm:pb-20 mt-4 sm:mt-0">
+        <div className="w-full max-w-5xl mx-auto min-h-[75vh] relative pb-16">
             {activeGame !== 'menu' && (
                 <button
                     onClick={() => setIsMuted(!isMuted)}
-                    className="absolute top-2 right-2 sm:top-0 sm:right-6 z-50 bg-slate-800 p-2 rounded-full border border-slate-700 text-slate-400 hover:text-white transition-colors shadow-lg"
-                    title={isMuted ? "Activează Sunetul" : "Dezactivează Sunetul"}
+                    className="fixed bottom-20 left-4 lg:bottom-6 lg:left-6 z-40 bg-white dark:bg-[#11161D] p-2.5 rounded-lg border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
+                    title={isMuted ? "Activează sunetul" : "Dezactivează sunetul"}
                 >
-                    {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>
             )}
 
             {activeGame === 'menu' && (
-                <div className="space-y-6 sm:space-y-8">
-                    <div className="text-center space-y-3 sm:space-y-4 mb-8 sm:mb-12">
-                        <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-500 font-black text-[9px] sm:text-[10px] uppercase tracking-widest">
-                            <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Zona de Divertisment
-                        </div>
-                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter text-slate-900 dark:text-white drop-shadow-sm px-2">
-                            Games <span className="text-blue-500">Hub</span>
+                <div className="space-y-6">
+                    <div className="text-center space-y-1.5 pt-2 sm:pt-4">
+                        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                            Games Hub
                         </h1>
-                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs sm:text-sm max-w-lg mx-auto px-4">
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
                             Testează-ți cunoștințele fotbalistice folosind baza de date oficială a platformei.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto px-2 sm:px-0">
-                        <div onClick={() => setActiveGame('grid')} className="bg-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 border-4 border-slate-800 hover:border-emerald-500 cursor-pointer transition-all sm:hover:-translate-y-2 group relative overflow-hidden shadow-xl flex flex-col items-start min-h-[220px]">
-                            <div className="absolute top-0 right-0 -mr-4 -mt-4 sm:-mr-8 sm:-mt-8 w-24 h-24 sm:w-32 sm:h-32 bg-emerald-500/20 rounded-full blur-2xl sm:group-hover:bg-emerald-500/40 transition-colors"></div>
-                            <Activity className="w-8 h-8 sm:w-12 sm:h-12 text-emerald-400 mb-4 sm:mb-6 relative z-10" />
-                            <h3 className="text-lg sm:text-xl md:text-2xl font-black text-white uppercase tracking-tighter mb-1.5 sm:mb-2 relative z-10">Grila (X și 0)</h3>
-                            <p className="text-slate-400 font-bold text-[10px] sm:text-xs md:text-sm mb-4 sm:mb-6 line-clamp-3 flex-1 relative z-10 pr-2">Joacă local sau online vs prieteni (Best of 5). Găsește jucătorul perfect care să bifeze intersecția.</p>
-                            <button className="flex items-center gap-1.5 sm:gap-2 bg-emerald-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-emerald-500 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-emerald-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
-                                <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> Joacă
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div
+                            onClick={() => setActiveGame('grid')}
+                            className="bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/40 cursor-pointer transition-colors group flex flex-col items-start"
+                        >
+                            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
+                                <Activity className="w-5 h-5 text-emerald-500" />
+                            </div>
+                            <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">
+                                Grila (X și 0)
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-5 flex-1">
+                                Joacă local sau online împotriva prietenilor (Best of 5). Găsește jucătorul care bifează intersecția.
+                            </p>
+                            <button className="inline-flex items-center gap-1.5 bg-emerald-600 group-hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium text-xs transition-colors w-full sm:w-auto justify-center cursor-pointer">
+                                <Play className="w-3.5 h-3.5 fill-current" /> Joacă
                             </button>
                         </div>
 
-                        <div onClick={() => setActiveGame('hilo')} className="bg-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 border-4 border-slate-800 hover:border-blue-500 cursor-pointer transition-all sm:hover:-translate-y-2 group relative overflow-hidden shadow-xl flex flex-col items-start min-h-[220px]">
-                            <div className="absolute top-0 right-0 -mr-4 -mt-4 sm:-mr-8 sm:-mt-8 w-24 h-24 sm:w-32 sm:h-32 bg-blue-500/20 rounded-full blur-2xl sm:group-hover:bg-blue-500/40 transition-colors"></div>
-                            <Swords className="w-8 h-8 sm:w-12 sm:h-12 text-blue-400 mb-4 sm:mb-6 relative z-10" />
-                            <h3 className="text-lg sm:text-xl md:text-2xl font-black text-white uppercase tracking-tighter mb-1.5 sm:mb-2 relative z-10">Hi-Lo: Cotă</h3>
-                            <p className="text-slate-400 font-bold text-[10px] sm:text-xs md:text-sm mb-4 sm:mb-6 line-clamp-3 flex-1 relative z-10 pr-2">Mai mare sau mai mică? Alege o categorie și ghicește care jucător stă mai bine în statistici.</p>
-                            <button className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-blue-500 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-blue-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
-                                <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> Joacă
+                        <div
+                            onClick={() => setActiveGame('hilo')}
+                            className="bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] hover:border-blue-500/40 cursor-pointer transition-colors group flex flex-col items-start"
+                        >
+                            <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4">
+                                <Swords className="w-5 h-5 text-blue-500" />
+                            </div>
+                            <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">
+                                Hi-Lo: Statistici
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-5 flex-1">
+                                Mai mare sau mai mică? Alege o categorie și ghicește care jucător stă mai bine în cifre.
+                            </p>
+                            <button className="inline-flex items-center gap-1.5 bg-blue-600 group-hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium text-xs transition-colors w-full sm:w-auto justify-center cursor-pointer">
+                                <Play className="w-3.5 h-3.5 fill-current" /> Joacă
                             </button>
                         </div>
 
-                        <div onClick={() => setActiveGame('xi')} className="bg-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 border-4 border-slate-800 hover:border-yellow-500 cursor-pointer transition-all sm:hover:-translate-y-2 group relative overflow-hidden shadow-xl flex flex-col items-start min-h-[220px]">
-                            <div className="absolute top-0 right-0 -mr-4 -mt-4 sm:-mr-8 sm:-mt-8 w-24 h-24 sm:w-32 sm:h-32 bg-yellow-500/20 rounded-full blur-2xl sm:group-hover:bg-yellow-500/40 transition-colors"></div>
-                            <Shirt className="w-8 h-8 sm:w-12 sm:h-12 text-yellow-400 mb-4 sm:mb-6 relative z-10" />
-                            <h3 className="text-lg sm:text-xl md:text-2xl font-black text-white uppercase tracking-tighter mb-1.5 sm:mb-2 relative z-10">Primul 11</h3>
-                            <p className="text-slate-400 font-bold text-[10px] sm:text-xs md:text-sm mb-4 sm:mb-6 line-clamp-3 flex-1 relative z-10 pr-2">Ghicește cei 11 jucători dintr-o partidă istorică. Ai opțiuni limitate, testează-ți memoria!</p>
-                            <button className="flex items-center gap-1.5 sm:gap-2 bg-yellow-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs group-hover:bg-yellow-500 transition-colors mt-auto w-full sm:w-auto justify-center relative z-10 border-b-4 border-yellow-800 group-hover:border-b-2 group-hover:translate-y-[2px]">
-                                <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> Joacă
+                        <div
+                            onClick={() => setActiveGame('xi')}
+                            className="bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] hover:border-amber-500/40 cursor-pointer transition-colors group flex flex-col items-start"
+                        >
+                            <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
+                                <Shirt className="w-5 h-5 text-amber-500" />
+                            </div>
+                            <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">
+                                Primul 11
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-5 flex-1">
+                                Ghicește cei 11 titulari dintr-o partidă memorabilă, literă cu literă, în stil Wordle.
+                            </p>
+                            <button className="inline-flex items-center gap-1.5 bg-amber-600 group-hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-medium text-xs transition-colors w-full sm:w-auto justify-center cursor-pointer">
+                                <Play className="w-3.5 h-3.5 fill-current" /> Joacă
                             </button>
                         </div>
                     </div>
@@ -306,29 +333,33 @@ function LeaderboardTable({ data, currentUserName }: { data: any[], currentUserN
     const columns = useMemo(() => [
         {
             accessorKey: 'rank',
-            header: 'Loc',
+            header: '#',
             cell: (info: any) => {
                 const rank = info.getValue();
-                let colorClass = 'text-slate-600';
-                if (rank === 1) colorClass = 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]';
-                else if (rank === 2) colorClass = 'text-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.6)]';
-                else if (rank === 3) colorClass = 'text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.6)]';
+                let colorClass = 'text-slate-500';
+                if (rank === 1) colorClass = 'text-amber-500 font-semibold';
+                else if (rank === 2) colorClass = 'text-slate-400 font-semibold';
+                else if (rank === 3) colorClass = 'text-amber-700 dark:text-amber-600 font-semibold';
 
-                return <div className={`text-center font-black sm:text-xl ${colorClass}`}>#{rank}</div>;
+                return <div className={`text-center tabular-nums ${colorClass}`}>{rank}</div>;
             }
         },
         {
             accessorKey: 'name',
-            header: 'Nume Jucător',
+            header: 'Jucător',
             cell: (info: any) => {
                 const name = info.getValue();
                 const isMe = name.toLowerCase() === currentUserName.toLowerCase();
                 return (
                     <div className="flex items-center gap-2">
-                        <span className={`font-bold truncate max-w-[120px] sm:max-w-[300px] ${isMe ? 'text-emerald-400' : 'text-white'}`}>
+                        <span className={`font-medium truncate max-w-[140px] sm:max-w-[280px] ${isMe ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-900 dark:text-slate-100'}`}>
                             {name}
                         </span>
-                        {isMe && <span className="bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ml-1">Tu</span>}
+                        {isMe && (
+                            <span className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 text-[10px] font-medium px-1.5 py-0.5 rounded">
+                                Tu
+                            </span>
+                        )}
                     </div>
                 );
             }
@@ -336,7 +367,11 @@ function LeaderboardTable({ data, currentUserName }: { data: any[], currentUserN
         {
             accessorKey: 'score',
             header: 'Scor',
-            cell: (info: any) => <div className="text-right font-black text-emerald-400 sm:text-lg">{info.getValue()} pct</div>
+            cell: (info: any) => (
+                <div className="text-right font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                    {info.getValue()} pct
+                </div>
+            )
         }
     ], [currentUserName]);
 
@@ -350,34 +385,40 @@ function LeaderboardTable({ data, currentUserName }: { data: any[], currentUserN
     });
 
     return (
-        <div className="overflow-x-auto scrollbar-hide max-h-[60vh] sm:max-h-96 pr-1 sm:pr-2">
-            <table className="w-full text-xs sm:text-sm text-left">
-                <thead className="sticky top-0 bg-slate-900 text-slate-400 font-black tracking-widest text-[9px] sm:text-xs border-b-2 border-slate-800 uppercase z-10">
+        <div className="overflow-x-auto scrollbar-hide max-h-[60vh] sm:max-h-96 border border-slate-200 dark:border-white/[0.07] rounded-lg">
+            <table className="w-full text-xs sm:text-[13px] text-left">
+                <thead className="sticky top-0 bg-slate-50 dark:bg-[#0B0F14] text-slate-500 dark:text-slate-400 font-medium text-[11px] border-b border-slate-200 dark:border-white/[0.07] z-10">
                     {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id}>
                             {headerGroup.headers.map(header => (
-                                <th key={header.id} onClick={header.column.getToggleSortingHandler()} className="py-3 px-2 cursor-pointer select-none hover:text-white transition-colors">
+                                <th
+                                    key={header.id}
+                                    onClick={header.column.getToggleSortingHandler()}
+                                    className="py-2.5 px-3 cursor-pointer select-none hover:text-slate-900 dark:hover:text-white transition-colors"
+                                >
                                     <div className={`flex items-center gap-1 ${header.column.id === 'score' ? 'justify-end' : header.column.id === 'rank' ? 'justify-center' : 'justify-start'}`}>
                                         {flexRender(header.column.columnDef.header, header.getContext())}
-                                        <span className="w-3 text-emerald-400">
-                                            {header.column.getIsSorted() === 'asc' ? ' 🔼' : header.column.getIsSorted() === 'desc' ? ' 🔽' : ''}
-                                        </span>
+                                        {header.column.getIsSorted() === 'asc' ? ' ↑' : header.column.getIsSorted() === 'desc' ? ' ↓' : ''}
                                     </div>
                                 </th>
                             ))}
                         </tr>
                     ))}
                 </thead>
-                <tbody className="divide-y divide-slate-800/50 bg-slate-950">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05] bg-white dark:bg-[#11161D]">
                     {table.getRowModel().rows.length === 0 ? (
-                        <tr><td colSpan={3} className="text-slate-500 text-center font-bold uppercase tracking-widest text-xs sm:text-sm py-10">Niciun scor înregistrat încă.</td></tr>
+                        <tr>
+                            <td colSpan={3} className="text-slate-500 text-center text-xs py-10">
+                                Niciun scor înregistrat încă.
+                            </td>
+                        </tr>
                     ) : (
                         table.getRowModel().rows.map(row => {
                             const isMe = row.original.name.toLowerCase() === currentUserName.toLowerCase();
                             return (
-                                <tr key={row.id} className={`transition-colors hover:bg-slate-900 ${isMe ? 'bg-emerald-950/20 border-l-2 border-emerald-500' : ''}`}>
+                                <tr key={row.id} className={`transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.02] ${isMe ? 'bg-emerald-500/[0.06]' : ''}`}>
                                     {row.getVisibleCells().map(cell => (
-                                        <td key={cell.id} className={`py-3 px-2 ${cell.column.id === 'score' ? 'text-right' : ''}`}>
+                                        <td key={cell.id} className={`py-2.5 px-3 ${cell.column.id === 'score' ? 'text-right' : ''}`}>
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </td>
                                     ))}
@@ -392,7 +433,7 @@ function LeaderboardTable({ data, currentUserName }: { data: any[], currentUserN
 }
 
 // ============================================================================
-// GAME 3: STARTING XI (GHICEȘTE PRIMUL 11) - WORDLE STYLE (CU PAGINARE)
+// GAME 3: STARTING XI (GHICEȘTE PRIMUL 11) - WORDLE STYLE
 // ============================================================================
 function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: boolean }) {
     const [allMatches, setAllMatches] = useState<StartingXIData[]>([]);
@@ -461,7 +502,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         const targetClean = removeDiacritics(target).toUpperCase();
         const guessClean = removeDiacritics(guess).toUpperCase().padEnd(targetClean.length, ' ').slice(0, targetClean.length);
 
-        const colors = new Array(targetClean.length).fill('bg-slate-600');
+        const colors = new Array(targetClean.length).fill('bg-slate-600 dark:bg-slate-700');
         const targetCounts: Record<string, number> = {};
 
         for (const char of targetClean) {
@@ -470,13 +511,13 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
 
         for (let i = 0; i < targetClean.length; i++) {
             if (guessClean[i] === targetClean[i]) {
-                colors[i] = 'bg-emerald-500';
+                colors[i] = 'bg-emerald-600';
                 targetCounts[guessClean[i]]--;
             }
         }
 
         for (let i = 0; i < targetClean.length; i++) {
-            if (colors[i] !== 'bg-emerald-500' && guessClean[i] !== ' ' && targetCounts[guessClean[i]] > 0) {
+            if (colors[i] !== 'bg-emerald-600' && guessClean[i] !== ' ' && targetCounts[guessClean[i]] > 0) {
                 colors[i] = 'bg-amber-500';
                 targetCounts[guessClean[i]]--;
             }
@@ -493,13 +534,13 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         const guessText = slotGuess;
 
         if (guessText.length < targetClean.length) {
-            toast.error("Completează toate caracterele!");
+            toast.error("Completează toate caracterele.");
             playSound('wrong', isMuted);
             return;
         }
 
         if (/\d/.test(guessText)) {
-            toast.error("Numele nu poate conține cifre!");
+            toast.error("Numele nu poate conține cifre.");
             playSound('wrong', isMuted);
             return;
         }
@@ -522,7 +563,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 if (noile.size === match.players.length) {
                     setWin(true);
                     playSound('win', isMuted);
-                    toast.success("Felicitări! Ai ghicit tot primul 11!", { icon: '🏆' });
+                    toast.success("Felicitări! Ai ghicit tot primul 11.");
                 }
                 return noile;
             });
@@ -541,26 +582,26 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         setGaveUp(true);
         setActiveSlot(null);
         playSound('wrong', isMuted);
-        toast("Meci încheiat. Iată echipa completă!", { icon: '🏳️' });
+        toast("Meci încheiat. Iată echipa completă.");
     };
 
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <div className="w-7 h-7 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
 
     if (!match) {
         return (
-            <div className="max-w-2xl mx-auto bg-slate-900 rounded-3xl p-6 sm:p-10 border-4 border-slate-800 text-center space-y-4 sm:space-y-6 mt-10 mx-2">
-                <AlertTriangle className="w-12 h-12 sm:w-16 sm:h-16 text-yellow-500 mx-auto" />
-                <h2 className="text-lg sm:text-2xl font-black text-white uppercase tracking-widest">Niciun meci disponibil</h2>
-                <p className="text-[10px] sm:text-sm text-slate-400 font-bold">Nu există meciuri adăugate de admin în baza de date.</p>
-                <div className="flex gap-4 justify-center pt-2 sm:pt-4">
-                    <button onClick={onBack} className="bg-slate-800 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-black uppercase text-[10px] sm:text-xs">Înapoi</button>
-                </div>
+            <div className="max-w-md mx-auto bg-white dark:bg-[#11161D] rounded-xl p-6 border border-slate-200 dark:border-white/[0.07] text-center space-y-4 mt-8">
+                <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">Niciun meci disponibil</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Nu există meciuri adăugate în baza de date.</p>
+                <button onClick={onBack} className="bg-slate-900 dark:bg-white/[0.08] text-white px-4 py-2 rounded-lg font-medium text-xs cursor-pointer">
+                    Înapoi
+                </button>
             </div>
         );
     }
@@ -572,77 +613,82 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
         rows.push(match.players.filter(p => p.gridRow === rowIndex));
     });
 
-    const homeColor = match.teamColor || '#334155';
-    const awayColor = match.opponentColor || '#334155';
+    const homeColor = match.teamColor || '#1e293b';
+    const awayColor = match.opponentColor || '#1e293b';
 
     return (
-        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 relative">
-            <div className="bg-slate-950 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-slate-800 flex flex-col justify-between items-center gap-3 sm:gap-4 shadow-xl">
-                <div className="w-full flex justify-between items-center md:hidden mb-2">
-                    <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[10px] uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
+        <div className="max-w-3xl mx-auto space-y-4">
+            {/* Header Meci */}
+            <div className="bg-white dark:bg-[#11161D] p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-4">
+                <div className="flex items-center justify-between">
+                    <button onClick={onBack} className="text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium text-xs cursor-pointer">
+                        <ChevronLeft className="w-4 h-4" /> Înapoi
+                    </button>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                        {match.date} • {match.formation}
+                    </span>
                 </div>
 
-                <div className="flex-1 text-center flex flex-col items-center w-full">
-                    <div className="flex items-center justify-between sm:justify-center w-full sm:gap-4">
-                        <div className="flex-1 text-[10px] sm:text-3xl font-black uppercase tracking-tighter text-center sm:text-right px-1.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl shadow-md border-2 border-white/10 break-words"
-                            style={{
-                                backgroundColor: match.isHome !== false ? homeColor : awayColor,
-                                color: getContrastTextColor(match.isHome !== false ? homeColor : awayColor)
-                            }}>
-                            {match.isHome !== false ? match.teamName : match.opponent}
-                        </div>
-
-                        <div className="shrink-0 bg-slate-800 px-3 py-1 sm:px-6 sm:py-2 rounded-lg sm:rounded-2xl border-2 border-slate-700 font-black text-emerald-400 text-lg sm:text-3xl tracking-[0.2em] shadow-lg mx-1 sm:mx-2 z-10">
-                            {match.score}
-                        </div>
-
-                        <div className="flex-1 text-[10px] sm:text-3xl font-black uppercase tracking-tighter text-center sm:text-left px-1.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl shadow-md border-2 border-white/10 break-words"
-                            style={{
-                                backgroundColor: match.isHome !== false ? awayColor : homeColor,
-                                color: getContrastTextColor(match.isHome !== false ? awayColor : homeColor)
-                            }}>
-                            {match.isHome !== false ? match.opponent : match.teamName}
-                        </div>
-                    </div>
-                    <div className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] mt-3 sm:mt-4">
-                        {match.date} • FORMAȚIE: {match.formation}
+                <div className="flex items-center justify-between gap-2 sm:gap-4">
+                    <div
+                        className="flex-1 text-xs sm:text-base font-semibold text-center px-3 py-2 rounded-lg border border-black/10 truncate"
+                        style={{
+                            backgroundColor: match.isHome !== false ? homeColor : awayColor,
+                            color: getContrastTextColor(match.isHome !== false ? homeColor : awayColor)
+                        }}
+                    >
+                        {match.isHome !== false ? match.teamName : match.opponent}
                     </div>
 
-                    {allMatches.length > 1 && (
-                        <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4 sm:mt-6 w-full pt-4 border-t border-slate-800">
-                            <button
-                                onClick={handlePrevMatch}
-                                disabled={currentMatchIndex === 0}
-                                className="bg-slate-800 hover:bg-slate-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-xs transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-b-2 border-slate-900 hover:border-b-0 hover:translate-y-[2px]"
-                            >
-                                &laquo; Prev
-                            </button>
-                            <span className="text-[10px] sm:text-sm font-black text-slate-400 tracking-widest">
-                                {currentMatchIndex + 1} / {allMatches.length}
-                            </span>
-                            <button
-                                onClick={handleNextMatch}
-                                disabled={currentMatchIndex === allMatches.length - 1}
-                                className="bg-slate-800 hover:bg-slate-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-xs transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-b-2 border-slate-900 hover:border-b-0 hover:translate-y-[2px]"
-                            >
-                                Next &raquo;
-                            </button>
-                        </div>
-                    )}
+                    <div className="shrink-0 bg-slate-100 dark:bg-white/[0.05] px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] font-bold text-slate-900 dark:text-white text-base sm:text-xl tabular-nums">
+                        {match.score}
+                    </div>
+
+                    <div
+                        className="flex-1 text-xs sm:text-base font-semibold text-center px-3 py-2 rounded-lg border border-black/10 truncate"
+                        style={{
+                            backgroundColor: match.isHome !== false ? awayColor : homeColor,
+                            color: getContrastTextColor(match.isHome !== false ? awayColor : homeColor)
+                        }}
+                    >
+                        {match.isHome !== false ? match.opponent : match.teamName}
+                    </div>
                 </div>
 
-                <div className="hidden md:block absolute top-6 left-6">
-                    <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
-                </div>
+                {allMatches.length > 1 && (
+                    <div className="flex items-center justify-center gap-4 pt-3 border-t border-slate-200 dark:border-white/[0.07]">
+                        <button
+                            onClick={handlePrevMatch}
+                            disabled={currentMatchIndex === 0}
+                            className="inline-flex items-center gap-1 bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors disabled:opacity-35 cursor-pointer"
+                        >
+                            <ChevronLeft className="w-3.5 h-3.5" /> Anterior
+                        </button>
+                        <span className="text-xs font-medium text-slate-500 tabular-nums">
+                            {currentMatchIndex + 1} / {allMatches.length}
+                        </span>
+                        <button
+                            onClick={handleNextMatch}
+                            disabled={currentMatchIndex === allMatches.length - 1}
+                            className="inline-flex items-center gap-1 bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors disabled:opacity-35 cursor-pointer"
+                        >
+                            Următor <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                )}
             </div>
 
-            <div className="bg-[#4ade80] rounded-2xl sm:rounded-3xl border-4 sm:border-8 border-white py-6 px-1.5 sm:p-8 min-h-[450px] sm:min-h-[600px] relative shadow-2xl overflow-hidden flex flex-col-reverse justify-around gap-3 sm:gap-6 mx-1 sm:mx-0">
-                <div className="absolute inset-0 border-4 sm:border-[6px] border-white/40 m-2 sm:m-4 rounded-lg sm:rounded-xl pointer-events-none"></div>
-                <div className="absolute top-1/2 left-0 w-full h-[4px] sm:h-[6px] bg-white/40 -translate-y-1/2 pointer-events-none"></div>
-                <div className="absolute top-1/2 left-1/2 w-20 h-20 sm:w-32 sm:h-32 border-4 sm:border-[6px] border-white/40 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+            {/* Teren tactic mat */}
+            <div
+                className="rounded-xl border border-white/10 py-6 px-2 sm:p-6 min-h-[440px] sm:min-h-[540px] relative overflow-hidden flex flex-col-reverse justify-around gap-3 sm:gap-5 select-none"
+                style={{ backgroundImage: 'repeating-linear-gradient(to bottom, #142820 0px, #142820 44px, #11221b 44px, #11221b 88px)' }}
+            >
+                <div className="absolute inset-2.5 border border-white/15 rounded-lg pointer-events-none" />
+                <div className="absolute top-1/2 inset-x-2.5 h-px bg-white/15 -translate-y-1/2 pointer-events-none" />
+                <div className="absolute top-1/2 left-1/2 w-20 h-20 sm:w-28 sm:h-28 border border-white/15 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
                 {rows.map((rowPlayers, rowIndex) => (
-                    <div key={rowIndex} className="relative z-10 flex justify-center gap-1.5 sm:gap-12 w-full px-0.5 sm:px-1">
+                    <div key={rowIndex} className="relative z-10 flex justify-center gap-1.5 sm:gap-8 w-full px-1">
                         {rowPlayers.map((player, idx) => {
                             const pid = player._id || player.id || player.dbId;
                             const isGuessed = pid ? guessedIds.has(pid) : false;
@@ -652,7 +698,7 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                             return (
                                 <div
                                     key={idx}
-                                    className={`flex flex-col items-center flex-1 max-w-[23%] sm:max-w-none sm:w-auto ${isClickable ? 'cursor-pointer hover:scale-110 transition-transform' : ''}`}
+                                    className={`flex flex-col items-center flex-1 max-w-[23%] sm:max-w-[110px] ${isClickable ? 'cursor-pointer group' : ''}`}
                                     onClick={() => {
                                         if (isClickable) {
                                             setActiveSlot(player);
@@ -660,34 +706,36 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                         }
                                     }}
                                 >
-                                    <div className="w-8 h-8 sm:w-16 sm:h-16 relative flex items-center justify-center mb-1">
+                                    <div className="w-9 h-9 sm:w-12 sm:h-12 relative flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
                                         <Shirt
-                                            className={`w-full h-full drop-shadow-md sm:drop-shadow-lg ${showRed ? 'opacity-50' : ''}`}
+                                            className={`w-full h-full drop-shadow ${showRed ? 'opacity-50' : ''}`}
                                             style={{
-                                                fill: rowIndex === 0 ? '#fbbf24' : (match.teamColor || '#ffffff'),
-                                                stroke: rowIndex === 0 ? '#b45309' : 'rgba(0,0,0,0.3)',
+                                                fill: rowIndex === 0 ? '#f59e0b' : (match.teamColor || '#f1f5f9'),
+                                                stroke: rowIndex === 0 ? '#92400e' : 'rgba(0,0,0,0.35)',
                                                 strokeWidth: 1.5
                                             }}
                                         />
                                         {(isGuessed || showRed) && (
-                                            <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-slate-900 rounded-full w-4 h-4 sm:w-6 sm:h-6 flex items-center justify-center border sm:border-2 border-white shadow-sm sm:shadow-md">
-                                                <span className="text-[7px] sm:text-[10px] font-black text-white">{player.name.substring(0,2).toUpperCase()}</span>
+                                            <div className="absolute -bottom-1 -right-1 bg-[#0B0F14] rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center border border-white/40">
+                                                <span className="text-[7px] sm:text-[9px] font-semibold text-white">
+                                                    {player.name.substring(0, 2).toUpperCase()}
+                                                </span>
                                             </div>
                                         )}
                                         {isClickable && (
-                                            <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-blue-600 rounded-full w-4 h-4 sm:w-6 sm:h-6 flex items-center justify-center border sm:border-2 border-white shadow-sm sm:shadow-md animate-pulse">
-                                                <Search className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                                            <div className="absolute -bottom-1 -right-1 bg-emerald-600 rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center border border-white/60">
+                                                <Search className="w-2.5 h-2.5 text-white" />
                                             </div>
                                         )}
                                     </div>
-                                    <div className="mt-0.5 sm:mt-2 text-center w-full px-0.5">
+                                    <div className="mt-0.5 text-center w-full">
                                         {(isGuessed || showRed) ? (
-                                            <div className={`font-black uppercase text-[7px] sm:text-xs tracking-tighter sm:tracking-tight bg-slate-900 px-1 sm:px-2 py-0.5 rounded sm:rounded-md border sm:border-2 break-words whitespace-normal leading-tight w-full ${showRed ? 'text-rose-400 border-rose-500' : 'text-white border-slate-700'}`}>
+                                            <div className={`font-medium text-[9px] sm:text-[11px] bg-[#0B0F14]/90 px-1.5 py-0.5 rounded border truncate ${showRed ? 'text-rose-400 border-rose-500/40' : 'text-white border-white/15'}`}>
                                                 {player.name}
                                             </div>
                                         ) : (
-                                            <div className="font-black text-slate-800/60 tracking-[0.05em] sm:tracking-[0.2em] bg-white/30 px-1 sm:px-2 rounded sm:rounded-md text-[8px] sm:text-base break-all">
-                                                {"_".repeat(Math.min(player.name.length, 12))}
+                                            <div className="font-mono text-white/70 bg-black/35 px-1.5 py-0.5 rounded text-[9px] sm:text-xs truncate">
+                                                {"_".repeat(Math.min(player.name.length, 10))}
                                             </div>
                                         )}
                                     </div>
@@ -698,37 +746,48 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                 ))}
             </div>
 
-            <div className="bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-slate-800 shadow-xl flex flex-wrap sm:flex-nowrap justify-between items-center gap-3 sm:gap-6 mx-1 sm:mx-0">
-                <div className="text-xl sm:text-3xl font-black text-white tracking-widest bg-slate-950 px-4 sm:px-6 py-2 sm:py-3 rounded-xl sm:rounded-2xl border border-slate-800 text-center flex-1 sm:flex-none">
-                    <span className="text-emerald-400">{guessedIds.size}</span><span className="text-slate-600">/11</span>
+            {/* Footer progres */}
+            <div className="bg-white dark:bg-[#11161D] p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] flex items-center justify-between gap-3">
+                <div className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white bg-slate-100 dark:bg-white/[0.05] px-3 py-1.5 rounded-lg tabular-nums">
+                    <span className="text-emerald-600 dark:text-emerald-400">{guessedIds.size}</span>
+                    <span className="text-slate-400">/11</span>
                 </div>
 
-                <div className="w-full sm:flex-1 text-center font-black text-white uppercase tracking-widest text-[10px] sm:text-lg order-last sm:order-none">
-                    {win ? "🏆 Ai câștigat!" : gaveUp ? "Ai renunțat!" : "Apasă pe un tricou!"}
+                <div className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 text-center flex-1">
+                    {win ? "Ai ghicit tot primul 11!" : gaveUp ? "Meci încheiat" : "Apasă pe un tricou pentru a ghici jucătorul"}
                 </div>
 
                 {!win && !gaveUp ? (
-                    <button onClick={handleGiveUp} className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-500 text-white px-4 sm:px-6 py-2 sm:px-4 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-all border-b-2 sm:border-b-4 border-rose-800 hover:border-b-2 hover:translate-y-[2px]">
-                        Give Up
+                    <button
+                        onClick={handleGiveUp}
+                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 px-3.5 py-1.5 rounded-lg font-medium text-xs transition-colors cursor-pointer"
+                    >
+                        Renunță
                     </button>
-                ) : <div className="flex-1 sm:flex-none sm:w-[120px]"></div>}
+                ) : <div className="w-16" />}
             </div>
 
+            {/* Modal Wordle */}
             {activeSlot && !win && !gaveUp && (
-                <div className="fixed inset-0 z-[100000] flex items-end justify-center bg-slate-950/95 sm:bg-slate-950/90 backdrop-blur-md p-0 sm:p-4 animate-in fade-in">
-                    <div className="bg-slate-900 w-full max-h-[90dvh] sm:h-auto sm:max-w-3xl sm:rounded-3xl sm:border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden rounded-t-3xl">
-                        <div className="p-3 sm:p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950 shrink-0 pt-safe sm:pt-5">
-                            <h3 className="font-black text-white uppercase tracking-widest text-[10px] sm:text-sm flex items-center gap-2">Ghicește Numele</h3>
-                            <button onClick={() => {setActiveSlot(null); setSlotGuess("");}} className="text-slate-400 hover:text-rose-500 bg-slate-800 p-1.5 rounded-md"><X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" /></button>
+                <div className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4">
+                    <div className="bg-white dark:bg-[#11161D] w-full max-h-[88dvh] sm:h-auto sm:max-w-xl sm:rounded-xl border-t sm:border border-slate-200 dark:border-white/[0.08] shadow-2xl flex flex-col overflow-hidden rounded-t-xl">
+                        <div className="px-4 py-3.5 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center shrink-0">
+                            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Ghicește numele</h3>
+                            <button
+                                onClick={() => { setActiveSlot(null); setSlotGuess(""); }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
                         </div>
 
-                        <div className="p-2 sm:p-5 overflow-y-auto flex-1 flex flex-col items-center space-y-1.5 sm:space-y-2 pb-6 sm:pb-5">
+                        <div className="p-4 overflow-y-auto flex-1 flex flex-col items-center space-y-2">
                             {(slotGuessesHistory[activeSlot._id || activeSlot.id || activeSlot.dbId || ''] || []).map((guess, idx) => {
                                 const { chars, colors } = evaluateWordleGuess(guess, activeSlot.name);
                                 return (
-                                    <div key={idx} className="flex gap-0.5 sm:gap-1 flex-wrap justify-center w-full px-1">
+                                    <div key={idx} className="flex gap-1 flex-wrap justify-center w-full">
                                         {chars.map((char, j) => (
-                                            <div key={j} className={`w-5 h-7 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded sm:rounded-md text-[10px] sm:text-xl border sm:border-2 border-transparent ${colors[j]}`}>
+                                            <div key={j} className={`w-6 h-8 sm:w-9 sm:h-10 flex items-center justify-center font-semibold text-white rounded text-xs sm:text-base ${colors[j]}`}>
                                                 {char}
                                             </div>
                                         ))}
@@ -736,26 +795,26 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                 );
                             })}
 
-                            <div className="flex gap-0.5 sm:gap-1 flex-wrap justify-center opacity-50 mt-2 w-full px-1">
+                            <div className="flex gap-1 flex-wrap justify-center opacity-60 mt-1 w-full">
                                 {removeDiacritics(activeSlot.name).toUpperCase().split('').map((char, j) => (
-                                    <div key={`empty-${j}`} className={`w-5 h-7 sm:w-10 sm:h-12 flex items-center justify-center font-black text-white rounded sm:rounded-md text-[10px] sm:text-xl border border-slate-700 bg-slate-800`}>
+                                    <div key={`empty-${j}`} className="w-6 h-8 sm:w-9 sm:h-10 flex items-center justify-center font-semibold text-slate-500 dark:text-slate-400 rounded text-xs sm:text-base border border-slate-200 dark:border-white/[0.1] bg-slate-50 dark:bg-[#0B0F14]">
                                         {char === ' ' ? ' ' : '_'}
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        <form onSubmit={handleSlotGuess} className="p-2 sm:p-5 bg-slate-950 border-t-2 border-slate-800 shrink-0 pb-safe-bottom w-full">
-                            <div className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2 text-center">
-                                Verde: Corect | Portocaliu: Există, altă poziție
-                            </div>
+                        <form onSubmit={handleSlotGuess} className="p-4 bg-slate-50 dark:bg-[#0B0F14] border-t border-slate-200 dark:border-white/[0.07] shrink-0 space-y-2.5">
+                            <p className="text-[11px] text-slate-500 text-center">
+                                Verde: literă corectă • Galben: există în nume, altă poziție
+                            </p>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
                                     autoFocus
                                     maxLength={activeSlot ? removeDiacritics(activeSlot.name).length : undefined}
-                                    placeholder="SCRIE..."
-                                    className="flex-1 bg-slate-900 border-2 border-slate-700 p-2.5 sm:p-4 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors text-xs sm:text-base shrink-0"
+                                    placeholder="Scrie numele..."
+                                    className="flex-1 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-center text-slate-900 dark:text-white font-semibold uppercase tracking-wider outline-none focus:border-emerald-500 text-sm"
                                     value={slotGuess}
                                     onChange={e => {
                                         const val = e.target.value.toUpperCase();
@@ -763,8 +822,8 @@ function StartingXIGame({ onBack, isMuted }: { onBack: () => void, isMuted: bool
                                         setSlotGuess(val);
                                     }}
                                 />
-                                <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 sm:px-6 rounded-lg sm:rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-all border-b-2 sm:border-b-4 border-blue-800 hover:border-b-2 hover:translate-y-[2px]">
-                                    Testează
+                                <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-lg font-medium text-xs transition-colors cursor-pointer">
+                                    Verifică
                                 </button>
                             </div>
                         </form>
@@ -871,7 +930,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
         };
 
         const handleDisconnect = () => {
-            toast("Conexiune instabilă, se reconectează...", { icon: '📡', id: 'grid-socket-status' });
+            toast("Conexiune instabilă, se reconectează...", { id: 'grid-socket-status' });
         };
 
         const handleSocketMessage = (data: any) => {
@@ -883,7 +942,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                         message: JSON.stringify({ action: 'SYNC_GRID', gridRows: gridRowsRef.current, gridCols: gridColsRef.current, hostName: playerName || 'Host' })
                     });
                     setMode('online_playing');
-                    toast.success(`${payload.name || 'Adversarul'} s-a conectat! Începe meciul.`, { icon: '🎮' });
+                    toast.success(`${payload.name || 'Adversarul'} s-a conectat! Începe meciul.`);
                 } else if (payload.action === 'SYNC_GRID') {
                     setGridRows(payload.gridRows);
                     setGridCols(payload.gridCols);
@@ -892,7 +951,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     setWinner(null);
                     setMode('online_playing');
                     setSkipVotes({ X: false, O: false });
-                    if (myRole === 'O') toast.success(`Te-ai conectat la meciul lui ${payload.hostName}!`, { icon: '✅' });
+                    if (myRole === 'O') toast.success(`Te-ai conectat la meciul lui ${payload.hostName}.`);
                 } else if (payload.action === 'MOVE') {
                     if (payload.markedBy !== myRole) {
                         applyMove(payload.r, payload.c, payload.player, payload.markedBy, true);
@@ -902,7 +961,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     setActiveCell(null);
                     setSearchTerm("");
                     if (payload.nextTurn === myRole) {
-                        toast.success(payload.reason === 'timeout' ? "Timpul expirat! E rândul tău." : "Adversarul a greșit! E rândul tău.", { icon: '⏱️' });
+                        toast.success(payload.reason === 'timeout' ? "Timpul a expirat! E rândul tău." : "Adversarul a greșit! E rândul tău.");
                     } else if (payload.reason === 'wrong') {
                         playSound('wrong', isMuted);
                     }
@@ -910,10 +969,10 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     setSkipVotes(prev => {
                         const newVotes = { ...prev, [payload.role]: true };
                         if (newVotes.X && newVotes.O) {
-                            toast("Ambii au renunțat! Se generează altă grilă...", { icon: '🔄' });
+                            toast("Ambii au renunțat! Se generează altă grilă...");
                             if (myRole === 'X') setTimeout(() => generateValidGrid(true), 1000);
                         } else {
-                            toast("Adversarul a votat să schimbe grila (1/2)", { icon: '👀' });
+                            toast("Adversarul a votat să schimbe grila (1/2)");
                         }
                         return newVotes;
                     });
@@ -925,7 +984,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     setWinner(null);
                     setTimeLeft(60);
                     setSkipVotes({ X: false, O: false });
-                    toast("S-a generat o nouă grilă!", { icon: '🔥' });
+                    toast("S-a generat o nouă grilă.");
                 }
             } catch {}
         };
@@ -955,7 +1014,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     };
 
     const startLocal = () => {
-        if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca!"); return; }
+        if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca."); return; }
         setMode('local');
         setMatchScore({ X: 0, O: 0 });
         setSeriesWinner(null);
@@ -963,7 +1022,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     };
 
     const createOnlineRoom = () => {
-        if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca!"); return; }
+        if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca."); return; }
         const code = Math.random().toString(36).substring(2, 7).toUpperCase();
         setRoomCode(code);
         setMyRole('X');
@@ -976,7 +1035,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     };
 
     const joinOnlineRoom = () => {
-        if (joinInput.trim().length < 5) { toast.error("Cod invalid!"); return; }
+        if (joinInput.trim().length < 5) { toast.error("Cod invalid."); return; }
         const code = joinInput.trim().toUpperCase();
         setRoomCode(code);
         setMyRole('O');
@@ -1006,7 +1065,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                     socketRef.current.emit("send_message", { room: roomCode, message: JSON.stringify({ action: 'SKIP_VOTE', role: myRole }) });
                 }
                 if (newVotes.X && newVotes.O && myRole === 'X') {
-                    toast("Ambii jucători au renunțat! Se generează altă grilă...", { icon: '🔄' });
+                    toast("Ambii jucători au renunțat! Se generează altă grilă...");
                     setTimeout(() => generateValidGrid(true), 1000);
                 } else if (!newVotes.X || !newVotes.O) {
                     toast.success("Ai votat pentru schimbarea grilei.");
@@ -1105,7 +1164,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
                 socketRef.current.emit("send_message", { room: roomCode, message: JSON.stringify({ action: 'NEXT_MATCH', gridRows: validRows, gridCols: validCols }) });
             }
         } else {
-            toast.error("Eroare generare grilă.");
+            toast.error("Eroare la generarea grilei.");
         }
     };
 
@@ -1132,7 +1191,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
         if (won && winMark) {
             setWinner(winMark);
             playSound('win', isMuted);
-            toast.success(`Câștigător runda: ${winMark === 'X' ? '❌' : '⚽'} !`, { icon: '🏆' });
+            toast.success(`Câștigător rundă: ${winMark}`);
             setMatchScore(prev => {
                 const newScore = { ...prev, [winMark!]: prev[winMark!] + 1 };
                 if (newScore[winMark!] >= 3) {
@@ -1143,7 +1202,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
             });
         } else if (Object.keys(currentAnswers).length === 9) {
             setWinner('Draw');
-            toast('Egalitate!', { icon: '🤝' });
+            toast('Egalitate!');
         }
     };
 
@@ -1159,7 +1218,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
     const handleSelectPlayer = (player: Player) => {
         if (!activeCell || winner) return;
-        if (mode === 'online_playing' && turn !== myRole) { toast.error("Nu e rândul tău!"); return; }
+        if (mode === 'online_playing' && turn !== myRole) { toast.error("Nu e rândul tău."); return; }
 
         const { r, c } = activeCell;
         const rowCriteria = gridRows[r];
@@ -1170,7 +1229,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
         const alreadyUsed = Object.values(answers).some(ans => ans?.player._id === player._id);
 
-        if (alreadyUsed) { toast.error("Jucător deja folosit!"); return; }
+        if (alreadyUsed) { toast.error("Jucător deja folosit."); return; }
 
         if (matchRow && matchCol) {
             if (mode === 'online_playing' && socketRef.current) {
@@ -1184,7 +1243,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
             setSearchTerm("");
         } else {
             playSound('wrong', isMuted);
-            toast.error("Răspuns Greșit! Ai pierdut rândul.", { icon: '❌' });
+            toast.error("Răspuns greșit! Ai pierdut rândul.");
             if (mode === 'online_playing' && socketRef.current) {
                 socketRef.current.emit("send_message", {
                     room: roomCode,
@@ -1200,18 +1259,15 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     const isMyTurn = mode === 'local' || (mode === 'online_playing' && turn === myRole);
 
     const renderHeader = (item: GridCriteria) => (
-        <div className="bg-slate-100 dark:bg-slate-800 rounded-lg sm:rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center shadow-inner border-2 border-slate-200 dark:border-slate-700 h-full w-full">
+        <div className="bg-slate-50 dark:bg-[#0B0F14] rounded-lg p-1.5 sm:p-2.5 flex flex-col items-center justify-center text-center border border-slate-200 dark:border-white/[0.07] h-full w-full">
             {item.type === 'nationality' ? (
-                <span className="text-xl sm:text-4xl mb-0.5 sm:mb-1 drop-shadow-sm leading-none">{item.image}</span>
+                <span className="text-xl sm:text-3xl mb-1 leading-none">{item.image}</span>
             ) : item.image ? (
-                <img src={item.image} alt={item.value} className="w-5 h-5 sm:w-10 sm:h-10 object-contain mb-0.5 sm:mb-1 drop-shadow-md bg-white rounded sm:rounded-md p-0.5" />
+                <img src={item.image} alt={item.value} className="w-6 h-6 sm:w-9 sm:h-9 object-contain mb-1" />
             ) : (
-                <Globe className="w-4 h-4 sm:w-8 sm:h-8 text-slate-400 mb-0.5 sm:mb-1" />
+                <Globe className="w-5 h-5 sm:w-7 sm:h-7 text-slate-400 mb-1" />
             )}
-            <span className="hidden sm:block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1 mb-0.5">
-                {item.type === 'nationality' ? 'Națiune' : item.type === 'team' ? 'Club' : 'Ligă'}
-            </span>
-            <span className="text-[7px] sm:text-xs font-black text-slate-900 dark:text-white uppercase leading-tight line-clamp-2 w-full truncate px-0.5 sm:px-1" title={item.value}>
+            <span className="text-[9px] sm:text-xs font-medium text-slate-900 dark:text-slate-100 leading-tight line-clamp-2 w-full px-0.5" title={item.value}>
                 {item.value}
             </span>
         </div>
@@ -1224,40 +1280,48 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
     if (mode === 'menu') {
         return (
-            <div className="max-w-2xl mx-auto bg-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 border-2 sm:border-4 border-slate-800 shadow-2xl text-center mt-6 sm:mt-10">
-                <div className="flex justify-between items-center border-b-2 border-slate-800 pb-3 sm:pb-4 mb-6 sm:mb-8">
-                    <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[10px] sm:text-xs uppercase tracking-widest"><X className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> Înapoi</button>
-                    <h2 className="text-sm sm:text-xl font-black text-white uppercase tracking-widest">Grila X & 0</h2>
-                    <div className="w-10 sm:w-16"></div>
+            <div className="max-w-lg mx-auto bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] mt-4 space-y-6">
+                <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/[0.07] pb-3.5">
+                    <button onClick={onBack} className="text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium text-xs cursor-pointer">
+                        <ChevronLeft className="w-4 h-4" /> Înapoi
+                    </button>
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Grila X & 0</h2>
+                    <div className="w-12" />
                 </div>
 
-                <div className="mb-6 sm:mb-8 space-y-2 max-w-sm mx-auto">
-                    <label className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs">Numele tău în joc:</label>
+                <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">Numele tău în joc</label>
                     <input
                         type="text"
                         value={playerName}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlayerName(e.target.value)}
-                        className="w-full bg-slate-950 border-2 border-slate-700 p-2.5 sm:p-3 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-emerald-500 transition-colors text-xs sm:text-base"
-                        placeholder="Cum te numești?"
+                        className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500"
+                        placeholder="Introdu numele..."
                     />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <button onClick={startLocal} className="p-4 sm:p-8 rounded-xl sm:rounded-2xl border-2 sm:border-4 border-slate-800 hover:border-emerald-500 bg-slate-950 flex flex-col items-center gap-2 sm:gap-4 transition-all group">
-                        <Users className="w-8 h-8 sm:w-12 sm:h-12 text-slate-400 group-hover:text-emerald-400 transition-colors" />
-                        <div>
-                            <div className="font-black text-[10px] sm:text-base text-white uppercase tracking-widest mb-1">Ecran Comun</div>
-                            <div className="text-[9px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest">Doi jucători local</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                        onClick={startLocal}
+                        className="p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/50 bg-slate-50 dark:bg-[#0B0F14] flex flex-col items-center gap-2 transition-colors cursor-pointer"
+                    >
+                        <Users className="w-6 h-6 text-emerald-500" />
+                        <div className="text-center">
+                            <div className="font-semibold text-sm text-slate-900 dark:text-white">Ecran comun</div>
+                            <div className="text-xs text-slate-500">Doi jucători local</div>
                         </div>
                     </button>
-                    <button onClick={() => {
-                        if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca online!"); return; }
-                        setMode('online_menu');
-                    }} className="p-4 sm:p-8 rounded-xl sm:rounded-2xl border-2 sm:border-4 border-slate-800 hover:border-blue-500 bg-slate-950 flex flex-col items-center gap-2 sm:gap-4 transition-all group">
-                        <Globe className="w-8 h-8 sm:w-12 sm:h-12 text-slate-400 group-hover:text-blue-400 transition-colors" />
-                        <div>
-                            <div className="font-black text-[10px] sm:text-base text-white uppercase tracking-widest mb-1">Online vs Prieten</div>
-                            <div className="text-[9px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest">Creează Room/Cod</div>
+                    <button
+                        onClick={() => {
+                            if (!playerName.trim()) { toast.error("Introdu un nume pentru a juca online."); return; }
+                            setMode('online_menu');
+                        }}
+                        className="p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] hover:border-blue-500/50 bg-slate-50 dark:bg-[#0B0F14] flex flex-col items-center gap-2 transition-colors cursor-pointer"
+                    >
+                        <Globe className="w-6 h-6 text-blue-500" />
+                        <div className="text-center">
+                            <div className="font-semibold text-sm text-slate-900 dark:text-white">Online vs Prieten</div>
+                            <div className="text-xs text-slate-500">Creează sau intră cu cod</div>
                         </div>
                     </button>
                 </div>
@@ -1267,32 +1331,40 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
     if (mode === 'online_menu') {
         return (
-            <div className="max-w-md mx-auto bg-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 border-2 sm:border-4 border-slate-800 shadow-2xl text-center mt-6 sm:mt-10 space-y-4 sm:space-y-6">
-                <div className="flex justify-between items-center border-b-2 border-slate-800 pb-3 sm:pb-4">
-                    <button onClick={() => setMode('menu')} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[10px] sm:text-xs uppercase tracking-widest"><X className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> Înapoi</button>
-                    <h2 className="text-sm sm:text-xl font-black text-white uppercase tracking-widest">Multiplayer</h2>
-                    <div className="w-10 sm:w-16"></div>
+            <div className="max-w-md mx-auto bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] mt-4 space-y-5">
+                <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/[0.07] pb-3.5">
+                    <button onClick={() => setMode('menu')} className="text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium text-xs cursor-pointer">
+                        <ChevronLeft className="w-4 h-4" /> Înapoi
+                    </button>
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Multiplayer</h2>
+                    <div className="w-12" />
                 </div>
 
-                <button onClick={createOnlineRoom} className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 sm:p-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-xs sm:text-base transition-all border-b-2 sm:border-b-4 border-blue-800 hover:border-b-2 hover:translate-y-[2px] flex items-center justify-center gap-2">
-                    <Share2 className="w-4 h-4 sm:w-5 sm:h-5" /> Cameră Nouă
+                <button
+                    onClick={createOnlineRoom}
+                    className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                    <Share2 className="w-4 h-4" /> Creează cameră nouă
                 </button>
 
-                <div className="flex items-center gap-3 sm:gap-4 py-2 sm:py-4">
-                    <div className="h-px bg-slate-800 flex-1"></div>
-                    <span className="text-slate-500 font-black uppercase tracking-widest text-[9px] sm:text-xs">SAU</span>
-                    <div className="h-px bg-slate-800 flex-1"></div>
+                <div className="flex items-center gap-3">
+                    <div className="h-px bg-slate-200 dark:bg-white/[0.07] flex-1" />
+                    <span className="text-slate-400 text-xs">sau</span>
+                    <div className="h-px bg-slate-200 dark:bg-white/[0.07] flex-1" />
                 </div>
 
-                <div className="bg-slate-950 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-800 space-y-2 sm:space-y-3">
+                <div className="space-y-2.5">
                     <input
                         type="text"
-                        placeholder="Ex: A7B9K"
+                        placeholder="Cod cameră (ex: A7B9K)"
                         value={joinInput}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setJoinInput(e.target.value)}
-                        className="w-full bg-slate-900 border-2 border-slate-700 p-2.5 sm:p-3 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] outline-none focus:border-emerald-500 transition-colors text-xs sm:text-base"
+                        className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-center text-slate-900 dark:text-white font-semibold uppercase tracking-widest outline-none focus:border-emerald-500 text-sm"
                     />
-                    <button onClick={joinOnlineRoom} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-2.5 sm:p-3 rounded-lg sm:rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-all border-b-2 sm:border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px]">
+                    <button
+                        onClick={joinOnlineRoom}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors cursor-pointer"
+                    >
                         Conectează-te
                     </button>
                 </div>
@@ -1302,26 +1374,29 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 
     if (mode === 'online_setup') {
         return (
-            <div className="relative max-w-md mx-auto bg-slate-900 rounded-2xl sm:rounded-3xl p-6 sm:p-8 border-2 sm:border-4 border-slate-800 shadow-2xl text-center mt-6 sm:mt-10 space-y-4 sm:space-y-6">
+            <div className="relative max-w-md mx-auto bg-white dark:bg-[#11161D] rounded-xl p-6 border border-slate-200 dark:border-white/[0.07] text-center mt-4 space-y-5">
                 <button
                     onClick={() => {
                         if (socketRef.current) socketRef.current.disconnect();
                         setMode('online_menu');
                     }}
-                    className="absolute top-3 left-3 sm:top-4 sm:left-4 text-slate-400 hover:text-rose-500 transition-colors p-1.5 sm:p-2"
+                    className="absolute top-3.5 left-3.5 text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg cursor-pointer"
                 >
-                    <X className="w-5 h-5 sm:w-6 sm:h-6 font-bold" />
+                    <X className="w-4 h-4" />
                 </button>
 
-                <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3 sm:mb-4 mt-2"></div>
-                <h3 className="text-lg sm:text-2xl font-black text-white uppercase tracking-tighter">Așteptăm jucătorul...</h3>
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mt-2" />
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Așteptăm adversarul...</h3>
 
                 {myRole === 'X' && (
-                    <div className="bg-slate-950 p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 border-slate-800 space-y-3 sm:space-y-4">
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px] sm:text-xs">Trimite acest cod:</p>
-                        <div className="text-3xl sm:text-5xl font-black text-emerald-400 tracking-[0.1em] sm:tracking-[0.2em]">{roomCode}</div>
-                        <button onClick={() => { navigator.clipboard.writeText(roomCode); toast.success("Cod copiat!"); }} className="flex items-center justify-center gap-1.5 sm:gap-2 mx-auto text-slate-300 hover:text-white font-bold uppercase tracking-widest text-[9px] sm:text-xs mt-1 sm:mt-2">
-                            <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Copiază
+                    <div className="bg-slate-50 dark:bg-[#0B0F14] p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-3">
+                        <p className="text-slate-500 text-xs">Trimite acest cod prietenului tău:</p>
+                        <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 tracking-[0.2em] tabular-nums">{roomCode}</div>
+                        <button
+                            onClick={() => { navigator.clipboard.writeText(roomCode); toast.success("Cod copiat!"); }}
+                            className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium text-xs cursor-pointer"
+                        >
+                            <Copy className="w-3.5 h-3.5" /> Copiază codul
                         </button>
                     </div>
                 )}
@@ -1330,170 +1405,185 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
     }
 
     return (
-        <div className="space-y-3 sm:space-y-4">
+        <div className="max-w-2xl mx-auto space-y-4">
             {seriesWinner && (
-                <div className="fixed inset-0 z-[200000] bg-slate-950/90 backdrop-blur-lg flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in duration-500">
-                    <Crown className="w-24 h-24 sm:w-32 sm:h-32 text-yellow-400 animate-bounce mb-4 sm:mb-6 drop-shadow-[0_0_30px_rgba(250,204,21,0.5)]" />
-                    <h2 className="text-4xl sm:text-7xl font-black uppercase tracking-tighter text-white mb-2 text-center">Câștigător!</h2>
-                    <p className="text-lg sm:text-2xl text-slate-300 font-black uppercase tracking-widest mb-8 sm:mb-10 text-center">Seria: {seriesWinner === 'X' ? '❌' : '⚽'}</p>
+                <div className="fixed inset-0 z-[200000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] rounded-xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
+                        <Crown className="w-10 h-10 text-amber-500 mx-auto" />
+                        <div>
+                            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Câștigător serie!</h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                A câștigat jucătorul <span className="font-semibold text-emerald-500">{seriesWinner}</span>
+                            </p>
+                        </div>
+                        <button onClick={quitGame} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-medium text-sm cursor-pointer">
+                            Înapoi la meniu
+                        </button>
+                    </div>
+                </div>
+            )}
 
-                    <button onClick={quitGame} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 sm:px-10 sm:py-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest transition-all shadow-2xl border-b-2 sm:border-b-4 border-blue-800 text-xs sm:text-base">
-                        Ieși din Joc
+            {/* Bara Scor & Status */}
+            <div className="bg-white dark:bg-[#11161D] p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                    <button onClick={quitGame} className="text-slate-500 hover:text-rose-500 flex items-center gap-1 font-medium text-xs cursor-pointer">
+                        <X className="w-4 h-4" /> Ieșire
                     </button>
-                </div>
-            )}
 
-            {(mode === 'online_playing' || mode === 'local') && (
-                <div className="max-w-3xl mx-auto flex justify-between items-center bg-slate-900 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-800 shadow-xl">
-                    <div className="flex flex-col">
-                        <span className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest">BEST OF 5</span>
-                        <span className="text-white font-black uppercase text-[10px] sm:text-sm tracking-widest">Scor General</span>
+                    <div className="flex items-center gap-3 text-sm font-semibold bg-slate-100 dark:bg-white/[0.05] px-3 py-1 rounded-lg tabular-nums">
+                        <span className={myRole === 'X' || mode === 'local' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}>X: {matchScore.X}</span>
+                        <span className="text-slate-400">–</span>
+                        <span className={myRole === 'O' || mode === 'local' ? 'text-blue-500' : 'text-slate-400'}>O: {matchScore.O}</span>
                     </div>
-                    <div className="flex items-center gap-3 sm:gap-6 text-xl sm:text-3xl font-black bg-slate-950 px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-slate-800">
-                        <span className={`${myRole === 'X' || mode === 'local' ? 'text-white' : 'text-slate-600'} drop-shadow-md`}>❌ {matchScore.X}</span>
-                        <span className="text-slate-700">-</span>
-                        <span className={`${myRole === 'O' || mode === 'local' ? 'text-white' : 'text-slate-600'} drop-shadow-md`}>⚽ {matchScore.O}</span>
-                    </div>
-                </div>
-            )}
 
-            <div className="flex flex-wrap sm:flex-nowrap items-center justify-between bg-slate-900 p-3 sm:p-4 rounded-xl sm:rounded-3xl border-2 border-slate-800 shadow-xl gap-2 sm:gap-0">
-                <button onClick={quitGame} className="text-slate-400 hover:text-rose-500 flex items-center gap-1 font-bold text-[9px] sm:text-xs uppercase tracking-widest"><X className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> Ieșire</button>
-
-                <div className="flex flex-col items-center w-full sm:w-auto order-last sm:order-none mt-2 sm:mt-0">
                     {winner ? (
-                        <div className="text-emerald-400 font-black uppercase tracking-widest text-[10px] sm:text-sm animate-pulse text-center">
-                            {winner === 'Draw' ? 'Egalitate!' : `Runda pentru: ${winner === 'X' ? '❌' : '⚽'}`}
-                        </div>
-                    ) : (
-                        <div className="flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-2 w-full">
-                            <div className="text-blue-400 font-black uppercase tracking-widest text-[9px] sm:text-sm flex items-center gap-1.5 sm:gap-2">
-                                Muta: <span className="text-lg sm:text-2xl leading-none">{turn === 'X' ? '❌' : '⚽'}</span>
-                            </div>
-                            <div className={`flex items-center gap-1 sm:gap-1.5 text-sm sm:text-xl font-black tabular-nums tracking-widest px-2 sm:px-3 py-0.5 rounded-md sm:rounded-lg border-2 transition-colors ${timeLeft <= 10 ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-950 border-slate-800 text-white'}`}>
-                                <Timer className="w-3 h-3 sm:w-4 sm:h-4" /> 00:{timeLeft.toString().padStart(2, '0')}
-                            </div>
-                            <button
-                                onClick={handleSkipVote}
-                                disabled={mode === 'online_playing' && myRole ? skipVotes[myRole] : false}
-                                className="text-[8px] sm:text-[10px] uppercase font-bold tracking-widest bg-slate-800 hover:bg-slate-700 px-2 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-slate-300 transition-colors disabled:opacity-50 border border-slate-700 whitespace-nowrap"
-                            >
-                                {mode === 'local' ? 'Schimbă Grilă' : `Renunță (${(skipVotes.X ? 1 : 0) + (skipVotes.O ? 1 : 0)}/2)`}
+                        (mode === 'local' || (mode === 'online_playing' && myRole === 'X')) ? (
+                            <button onClick={() => generateValidGrid(true)} className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium text-xs cursor-pointer">
+                                <RotateCcw className="w-3.5 h-3.5" /> Următoarea
                             </button>
-                        </div>
+                        ) : (
+                            <span className="text-xs text-slate-500">Așteaptă host...</span>
+                        )
+                    ) : (
+                        <button
+                            onClick={handleSkipVote}
+                            disabled={mode === 'online_playing' && myRole ? skipVotes[myRole] : false}
+                            className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 cursor-pointer"
+                        >
+                            {mode === 'local' ? 'Schimbă grila' : `Skip (${(skipVotes.X ? 1 : 0) + (skipVotes.O ? 1 : 0)}/2)`}
+                        </button>
                     )}
                 </div>
 
-                {winner ? (
-                    (mode === 'local' || (mode === 'online_playing' && myRole === 'X')) ? (
-                        <button onClick={() => generateValidGrid(true)} className="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-black text-[9px] sm:text-xs uppercase tracking-widest bg-emerald-950 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-emerald-800"><RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> Următoarea</button>
+                <div className="flex items-center justify-between pt-2.5 border-t border-slate-200 dark:border-white/[0.07] text-xs">
+                    {winner ? (
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                            {winner === 'Draw' ? 'Egalitate!' : `Runda câștigată de ${winner}`}
+                        </span>
                     ) : (
-                        <div className="text-slate-500 text-[8px] sm:text-xs font-bold uppercase">Așteaptă Host...</div>
-                    )
-                ) : (
-                    <div className="w-[50px] sm:w-20 hidden sm:block"></div>
-                )}
+                        <span className="text-slate-600 dark:text-slate-300">
+                            Rândul lui: <strong className={turn === 'X' ? 'text-emerald-500' : 'text-blue-500'}>{turn}</strong>
+                        </span>
+                    )}
+                    {!winner && (
+                        <span className={`inline-flex items-center gap-1 font-semibold tabular-nums px-2 py-0.5 rounded ${
+                            timeLeft <= 10 ? 'bg-rose-500/15 text-rose-500' : 'bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-slate-200'
+                        }`}>
+                            <Timer className="w-3.5 h-3.5" /> 00:{timeLeft.toString().padStart(2, '0')}
+                        </span>
+                    )}
+                </div>
             </div>
 
+            {/* Grila 3x3 */}
             {gridRows.length > 0 && (
-                <div className="max-w-3xl mx-auto p-2 sm:p-6 bg-white dark:bg-slate-900 rounded-xl sm:rounded-3xl border-2 sm:border-4 border-slate-200 dark:border-slate-800 shadow-2xl relative overflow-hidden">
-                    <div className="overflow-x-auto scrollbar-hide w-full pb-1">
-                        {!isMyTurn && !winner && (
-                            <div className="absolute inset-0 z-50 bg-transparent cursor-not-allowed" onClick={() => toast.error("Nu este rândul tău!")} title="Așteaptă mutarea adversarului"></div>
-                        )}
+                <div className="p-3 sm:p-5 bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] relative overflow-hidden">
+                    {!isMyTurn && !winner && (
+                        <div className="absolute inset-0 z-50 bg-transparent cursor-not-allowed" onClick={() => toast.error("Nu este rândul tău.")} />
+                    )}
 
-                        <div className="grid grid-cols-[minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)_minmax(60px,1fr)] sm:grid-cols-[minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)] gap-1.5 sm:gap-4 w-full min-w-[280px]">
-                            <div className="flex items-center justify-center p-1 sm:p-2">
-                                <Trophy className="w-6 h-6 sm:w-10 sm:h-10 text-slate-200 dark:text-slate-800" />
-                            </div>
-
-                            {gridCols.map((col: GridCriteria, idx: number) => (
-                                <div key={`col-${idx}`}>{renderHeader(col)}</div>
-                            ))}
-
-                            {gridRows.map((row: GridCriteria, rIdx: number) => (
-                                <React.Fragment key={`row-${rIdx}`}>
-                                    <div>{renderHeader(row)}</div>
-                                    {[0, 1, 2].map((cIdx: number) => {
-                                        const ans = answers[`${rIdx}-${cIdx}`];
-                                        return (
-                                            <div
-                                                key={`cell-${rIdx}-${cIdx}`}
-                                                onClick={() => {
-                                                    if (winner) return;
-                                                    if (!isMyTurn) {
-                                                        if (mode === 'online_playing') toast.error("Așteaptă rândul tău!");
-                                                        return;
-                                                    }
-                                                    if (!ans) setActiveCell({ r: rIdx, c: cIdx });
-                                                }}
-                                                className={`aspect-square rounded-lg sm:rounded-2xl border-2 sm:border-4 flex flex-col items-center justify-center transition-all p-0.5 sm:p-1 ${
-                                                    ans
-                                                    ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                                                    : 'bg-white dark:bg-slate-950 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                                                } ${winner || (!isMyTurn && !ans) ? 'cursor-not-allowed' : 'cursor-pointer'} ${winner && !ans ? 'opacity-50' : ''}`}
-                                            >
-                                                {ans ? (
-                                                    <div className="flex flex-col items-center justify-center w-full h-full space-y-0.5 sm:space-y-1">
-                                                        <span className="text-xl sm:text-4xl drop-shadow-md leading-none mb-0.5 sm:mb-1">
-                                                            {ans.markedBy === 'X' ? '❌' : '⚽'}
-                                                        </span>
-                                                        <span className="text-[6px] sm:text-[10px] font-black uppercase text-center text-slate-900 dark:text-white tracking-tighter sm:tracking-tight leading-none px-0.5 sm:px-1 line-clamp-2">
-                                                            {ans.player.name}
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <Search className="w-4 h-4 sm:w-8 sm:h-8 text-slate-300 dark:text-slate-600" />
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </React.Fragment>
-                            ))}
+                    <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                        <div className="flex items-center justify-center">
+                            <Trophy className="w-6 h-6 text-slate-300 dark:text-slate-700" />
                         </div>
+
+                        {gridCols.map((col: GridCriteria, idx: number) => (
+                            <div key={`col-${idx}`}>{renderHeader(col)}</div>
+                        ))}
+
+                        {gridRows.map((row: GridCriteria, rIdx: number) => (
+                            <React.Fragment key={`row-${rIdx}`}>
+                                <div>{renderHeader(row)}</div>
+                                {[0, 1, 2].map((cIdx: number) => {
+                                    const ans = answers[`${rIdx}-${cIdx}`];
+                                    return (
+                                        <div
+                                            key={`cell-${rIdx}-${cIdx}`}
+                                            onClick={() => {
+                                                if (winner) return;
+                                                if (!isMyTurn) {
+                                                    if (mode === 'online_playing') toast.error("Așteaptă rândul tău.");
+                                                    return;
+                                                }
+                                                if (!ans) setActiveCell({ r: rIdx, c: cIdx });
+                                            }}
+                                            className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-colors p-1.5 ${
+                                                ans
+                                                    ? ans.markedBy === 'X'
+                                                        ? 'bg-emerald-500/10 border-emerald-500/35'
+                                                        : 'bg-blue-500/10 border-blue-500/35'
+                                                    : 'bg-slate-50 dark:bg-[#0B0F14] border-dashed border-slate-300 dark:border-white/[0.12] hover:border-emerald-500/50'
+                                            } ${winner || (!isMyTurn && !ans) ? 'cursor-not-allowed' : 'cursor-pointer'} ${winner && !ans ? 'opacity-40' : ''}`}
+                                        >
+                                            {ans ? (
+                                                <div className="flex flex-col items-center justify-center text-center space-y-1">
+                                                    <span className={`text-lg sm:text-2xl font-bold leading-none ${ans.markedBy === 'X' ? 'text-emerald-500' : 'text-blue-500'}`}>
+                                                        {ans.markedBy}
+                                                    </span>
+                                                    <span className="text-[9px] sm:text-[11px] font-medium text-slate-900 dark:text-slate-100 leading-tight line-clamp-2">
+                                                        {ans.player.name}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300 dark:text-slate-600" />
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </React.Fragment>
+                        ))}
                     </div>
                 </div>
             )}
 
+            {/* Modal căutare jucător */}
             {activeCell && !winner && isMyTurn && (
-                <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in">
-                    <div className="bg-slate-900 w-full h-[100dvh] sm:h-auto sm:max-w-lg sm:rounded-3xl sm:border-4 border-blue-600/50 shadow-2xl flex flex-col overflow-hidden max-h-[100dvh]">
-                        <div className="p-3 sm:p-5 border-b-2 border-slate-800 flex justify-between items-center bg-slate-950 mt-safe-top shrink-0">
-                            <h3 className="font-black text-white uppercase tracking-widest text-[10px] sm:text-sm flex items-center gap-1 sm:gap-2">
-                                Răspunde pt {turn === 'X' ? '❌' : '⚽'}
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+                    <div className="bg-white dark:bg-[#11161D] w-full max-w-md rounded-xl border border-slate-200 dark:border-white/[0.08] shadow-2xl flex flex-col overflow-hidden max-h-[85dvh]">
+                        <div className="px-4 py-3.5 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center shrink-0">
+                            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
+                                Răspunde pentru <span className={turn === 'X' ? 'text-emerald-500' : 'text-blue-500'}>{turn}</span>
                             </h3>
-                            <button onClick={() => {setActiveCell(null); setSearchTerm("");}} className="text-slate-400 hover:text-rose-500 bg-slate-800 p-1.5 sm:p-2 rounded-md"><X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" /></button>
+                            <button
+                                onClick={() => { setActiveCell(null); setSearchTerm(""); }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
                         </div>
-                        <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 flex-1 overflow-hidden flex flex-col pb-safe-bottom">
-                            <div className="text-center text-[9px] sm:text-xs font-bold uppercase tracking-widest text-slate-400 mb-1 sm:mb-4 bg-slate-800 p-2 sm:p-3 rounded-lg sm:rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-center px-3 sm:px-4 gap-2 sm:gap-0 shrink-0">
-                                <div>
-                                    Intersecția: <span className="text-white block sm:inline">{gridRows[activeCell.r].value} + {gridCols[activeCell.c].value}</span>
-                                </div>
-                                <div className={`text-[10px] sm:text-sm font-black tabular-nums ${timeLeft <= 10 ? 'text-rose-500 animate-pulse' : 'text-blue-400'}`}>
+
+                        <div className="p-4 space-y-3 flex-1 overflow-hidden flex flex-col">
+                            <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-[#0B0F14] px-3 py-2 rounded-lg border border-slate-200 dark:border-white/[0.07] shrink-0">
+                                <span className="text-slate-600 dark:text-slate-300 font-medium truncate">
+                                    {gridRows[activeCell.r].value} + {gridCols[activeCell.c].value}
+                                </span>
+                                <span className={`font-semibold tabular-nums ml-2 ${timeLeft <= 10 ? 'text-rose-500' : 'text-emerald-500'}`}>
                                     {timeLeft}s
-                                </div>
+                                </span>
                             </div>
+
                             <input
                                 type="text"
                                 autoFocus
-                                placeholder="Caută (ex: Mbappe)..."
-                                className="w-full bg-slate-950 border-2 border-slate-700 p-3 sm:p-4 rounded-lg sm:rounded-xl text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors text-xs sm:text-base shrink-0"
+                                placeholder="Caută jucător (ex: Mbappe)..."
+                                className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500 shrink-0"
                                 value={searchTerm}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                             />
-                            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+
+                            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
                                 {searchResults.map((p: Player) => (
                                     <button
                                         key={p._id}
                                         onClick={() => handleSelectPlayer(p)}
-                                        className="w-full flex items-center justify-center p-3 sm:p-4 rounded-lg sm:rounded-xl transition-colors border border-slate-700 hover:border-blue-500 bg-slate-800 hover:bg-blue-600 group"
+                                        className="w-full text-left px-3 py-2.5 rounded-lg border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/50 bg-slate-50 dark:bg-[#0B0F14] hover:bg-emerald-500/10 text-slate-900 dark:text-slate-100 font-medium text-sm transition-colors cursor-pointer"
                                     >
-                                        <div className="font-black text-white uppercase tracking-tight truncate text-center text-[10px] sm:text-lg">{p.name}</div>
+                                        {p.name}
                                     </button>
                                 ))}
-                                {searchTerm.length > 1 && searchResults.length === 0 ? (
-                                    <div className="text-center p-4 text-slate-500 font-bold uppercase tracking-widest text-[10px] sm:text-xs">Nu a fost găsit.</div>
-                                ) : null}
+                                {searchTerm.length > 1 && searchResults.length === 0 && (
+                                    <div className="text-center py-6 text-slate-500 text-xs">Niciun jucător găsit.</div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1504,7 +1594,7 @@ function GridGame({ players, onBack, isMuted, user }: { players: Player[], onBac
 }
 
 // ============================================================================
-// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ) - OPTIMIZAT MOBILE (SPLIT VERTICAL)
+// GAME 2: HI-LO (MAI MARE SAU MAI MICĂ)
 // ============================================================================
 function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBack: () => void, user: any, isMuted: boolean }) {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'gameover'>('setup');
@@ -1520,7 +1610,7 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
     const [revealResult, setRevealResult] = useState<'correct' | 'wrong' | null>(null);
 
     const [showLeaderboard, setShowLeaderboard] = useState(false);
-    const [leaderboard, setLeaderboard] = useState<{name: string, score: number, date: string}[]>([]);
+    const [leaderboard, setLeaderboard] = useState<{ name: string, score: number, date: string }[]>([]);
 
     useEffect(() => {
         const fetchLeaderboard = async () => {
@@ -1603,24 +1693,24 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
     }, [players, category]);
 
     const getStatFormat = (val: number, cat: string) => {
-        if (cat === 'age') return `${val} Ani`;
+        if (cat === 'age') return `${val} ani`;
         if (cat === 'height') return `${val} cm`;
-        if (cat === 'rating') return `${val.toFixed(2)} ⭐`;
-        if (cat === 'market_value') return `${(val / 1000000).toFixed(1)} Mil. €`;
+        if (cat === 'rating') return `${val.toFixed(2)}`;
+        if (cat === 'market_value') return `${(val / 1000000).toFixed(1)} mil. €`;
         return val;
     };
 
     const startGame = () => {
         const finalName = playerName.trim();
         if (finalName.length < 2) {
-            toast.error("Te rog să introduci un nume de minim 2 caractere.");
+            toast.error("Introdu un nume de minim 2 caractere.");
             return;
         }
 
         if (finalName.toLowerCase() !== sessionName.toLowerCase()) {
             const nameExists = leaderboard.some(entry => entry.name.toLowerCase() === finalName.toLowerCase());
             if (nameExists) {
-                toast.error("Numele există deja în clasament! Alege altul.");
+                toast.error("Numele există deja în clasament. Alege altul.");
                 return;
             }
         }
@@ -1671,19 +1761,23 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
     };
 
     const shareScore = () => {
-        const text = `⚽ Football Games Hub - Hi-Lo\n👤 ${playerName.trim()}\n🔥 Categoria: ${category.replace('_', ' ')}\n🏆 Scor final: ${score}\nJoci mai bine? Încearcă și tu!`;
+        const text = `România Scout - Hi-Lo\nJucător: ${playerName.trim()}\nCategorie: ${category.replace('_', ' ')}\nScor final: ${score}`;
         navigator.clipboard.writeText(text);
-        toast.success("Scorul a fost copiat! Dă-i Paste prietenilor.", { icon: '📋' });
+        toast.success("Scorul a fost copiat în clipboard.");
     };
 
     if (gameState === 'setup') {
         if (showLeaderboard) {
             return (
-                <div className="max-w-2xl mx-auto bg-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 border-2 sm:border-4 border-slate-800 shadow-2xl mt-6 sm:mt-10 mx-2 sm:mx-auto">
-                    <div className="flex justify-between items-center border-b-2 border-slate-800 pb-3 sm:pb-4 mb-4 sm:mb-6">
-                        <button onClick={() => setShowLeaderboard(false)} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[10px] sm:text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
-                        <h2 className="text-sm sm:text-xl font-black text-white uppercase tracking-widest flex items-center gap-1.5 sm:gap-2"><Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" /> Top Hi-Lo</h2>
-                        <div className="w-10 sm:w-16"></div>
+                <div className="max-w-xl mx-auto bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] mt-4 space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/[0.07] pb-3.5">
+                        <button onClick={() => setShowLeaderboard(false)} className="text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium text-xs cursor-pointer">
+                            <ChevronLeft className="w-4 h-4" /> Înapoi
+                        </button>
+                        <h2 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <Trophy className="w-4 h-4 text-amber-500" /> Top Hi-Lo
+                        </h2>
+                        <div className="w-12" />
                     </div>
                     <LeaderboardTable data={leaderboard} currentUserName={playerName.trim()} />
                 </div>
@@ -1691,138 +1785,179 @@ function HiLoGame({ players, onBack, user, isMuted }: { players: Player[], onBac
         }
 
         return (
-            <div className="max-w-2xl mx-auto bg-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 border-2 sm:border-4 border-slate-800 shadow-2xl text-center mt-6 sm:mt-10 mx-2 sm:mx-auto">
-                <div className="flex justify-between items-center border-b-2 border-slate-800 pb-3 sm:pb-4 mb-6 sm:mb-8">
-                    <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[10px] sm:text-xs uppercase tracking-widest"><X className="w-4 h-4"/> Înapoi</button>
-                    <h2 className="text-sm sm:text-xl font-black text-white uppercase tracking-widest">Setup: Hi-Lo</h2>
-                    <button onClick={() => setShowLeaderboard(true)} className="text-yellow-500 hover:text-yellow-400 flex items-center gap-1 font-bold text-[10px] sm:text-xs uppercase tracking-widest"><ListOrdered className="w-4 h-4"/> Top 50</button>
+            <div className="max-w-lg mx-auto bg-white dark:bg-[#11161D] rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-white/[0.07] mt-4 space-y-5">
+                <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/[0.07] pb-3.5">
+                    <button onClick={onBack} className="text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium text-xs cursor-pointer">
+                        <ChevronLeft className="w-4 h-4" /> Înapoi
+                    </button>
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Hi-Lo: Statistici</h2>
+                    <button onClick={() => setShowLeaderboard(true)} className="text-amber-500 hover:text-amber-400 flex items-center gap-1 font-medium text-xs cursor-pointer">
+                        <ListOrdered className="w-3.5 h-3.5" /> Top 50
+                    </button>
                 </div>
 
-                <div className="mb-6 sm:mb-8 space-y-2 max-w-sm mx-auto">
-                    <label className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs">Nume Jucător (Clasament):</label>
+                <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">Nume jucător (clasament)</label>
                     <input
                         type="text"
                         value={playerName}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlayerName(e.target.value)}
-                        className="w-full bg-slate-950 border-2 border-slate-700 p-2.5 sm:p-3 rounded-lg sm:rounded-xl text-center text-white font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-colors text-xs sm:text-base"
-                        placeholder="Alege un nume unic..."
+                        className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500"
+                        placeholder="Alege un nume..."
                     />
                 </div>
 
-                <div className="space-y-4 sm:space-y-6">
-                    <h3 className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs">Alege criteriul de departajare:</h3>
-                    <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                <div className="space-y-2.5">
+                    <span className="block text-xs font-medium text-slate-600 dark:text-slate-400">Criteriu de comparație</span>
+                    <div className="grid grid-cols-2 gap-2.5">
                         {[
-                            { id: 'market_value', label: 'Cotă de Piață' },
-                            { id: 'rating', label: 'Rating SofaScore' },
+                            { id: 'market_value', label: 'Cotă de piață' },
+                            { id: 'rating', label: 'Rating' },
                             { id: 'age', label: 'Vârstă' },
                             { id: 'height', label: 'Înălțime' },
                         ].map(c => (
-                            <button key={c.id} onClick={() => setCategory(c.id as any)} className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 font-black uppercase tracking-tighter sm:tracking-widest transition-all text-[10px] sm:text-sm ${category === c.id ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] sm:scale-105' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+                            <button
+                                key={c.id}
+                                onClick={() => setCategory(c.id as any)}
+                                className={`py-2.5 px-3 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
+                                    category === c.id
+                                        ? 'bg-emerald-600 border-emerald-600 text-white'
+                                        : 'bg-slate-50 dark:bg-[#0B0F14] border-slate-200 dark:border-white/[0.07] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/[0.15]'
+                                }`}
+                            >
                                 {c.label}
                             </button>
                         ))}
                     </div>
-                    <button onClick={startGame} className="w-full bg-emerald-600 text-white p-3 sm:p-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-xs sm:text-lg hover:bg-emerald-500 transition-colors border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px]">Începe Jocul (Ai 3 vieți ❤️)</button>
                 </div>
+
+                <button
+                    onClick={startGame}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors cursor-pointer"
+                >
+                    Începe jocul (3 vieți)
+                </button>
             </div>
         );
     }
 
     if (gameState === 'gameover') {
         return (
-            <div className="max-w-lg mx-auto bg-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 border-2 sm:border-4 border-rose-600/50 shadow-2xl text-center space-y-4 sm:space-y-6 mt-6 sm:mt-10 mx-2 sm:mx-auto">
-                <AlertTriangle className="w-12 h-12 sm:w-16 sm:h-16 text-rose-500 mx-auto mb-1 sm:mb-2" />
-                <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white">Fără Vieți Ramase</h2>
-                <div className="bg-slate-950 rounded-xl sm:rounded-2xl p-4 sm:p-6 border-2 border-slate-800">
-                    <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2">Scorul Tău Final</p>
-                    <p className="text-4xl sm:text-6xl font-black text-blue-500 drop-shadow-md">{score}</p>
+            <div className="max-w-md mx-auto bg-white dark:bg-[#11161D] rounded-xl p-6 border border-slate-200 dark:border-white/[0.07] text-center space-y-5 mt-6">
+                <div className="w-11 h-11 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-5 h-5 text-rose-500" />
+                </div>
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Joc încheiat</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Nu mai ai vieți rămase.</p>
                 </div>
 
-                <button onClick={shareScore} className="w-full bg-[#1DA1F2] hover:bg-[#1a91da] text-white p-3 sm:p-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-colors border-b-4 border-[#147bba] hover:border-b-2 hover:translate-y-[2px] flex items-center justify-center gap-2">
-                    <Share className="w-4 h-4 sm:w-5 sm:h-5" /> Trimite Rezultatul
+                <div className="bg-slate-50 dark:bg-[#0B0F14] rounded-xl p-4 border border-slate-200 dark:border-white/[0.07]">
+                    <p className="text-xs text-slate-500 mb-1">Scor final</p>
+                    <p className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{score}</p>
+                </div>
+
+                <button
+                    onClick={shareScore}
+                    className="w-full bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-900 dark:text-white py-2.5 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                    <Share className="w-3.5 h-3.5" /> Copiază rezultatul
                 </button>
 
-                <div className="flex gap-3 sm:gap-4">
-                    <button onClick={startGame} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white p-3 sm:p-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-colors border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px]">Din nou</button>
-                    <button onClick={() => setGameState('setup')} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white p-3 sm:p-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-sm transition-colors border-b-4 border-slate-950 hover:border-b-2 hover:translate-y-[2px]">Meniu</button>
+                <div className="flex gap-2.5">
+                    <button onClick={startGame} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-medium text-xs transition-colors cursor-pointer">
+                        Joacă din nou
+                    </button>
+                    <button onClick={() => setGameState('setup')} className="flex-1 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 py-2.5 rounded-lg font-medium text-xs transition-colors cursor-pointer">
+                        Meniu
+                    </button>
                 </div>
             </div>
         );
     }
 
     const valA = playerA ? getStatValue(playerA, category) : 0;
-    const catLabel = { 'age': 'Vârsta', 'height': 'Înălțimea', 'market_value': 'Cota de Piață', 'rating': 'Rating-ul' }[category];
+    const catLabel = { 'age': 'Vârstă', 'height': 'Înălțime', 'market_value': 'Cotă de piață', 'rating': 'Rating' }[category];
 
     return (
-        <div className="space-y-4 sm:space-y-6">
-            <div className="flex items-center justify-between bg-slate-900 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border-2 border-slate-800 shadow-lg mx-1 sm:mx-0">
-                <button onClick={() => {saveScore(score); setGameState('setup')}} className="text-slate-400 hover:text-rose-500 flex items-center gap-1 font-bold text-[9px] sm:text-xs uppercase tracking-widest"><X className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> Renunță</button>
-                <div className="flex items-center gap-2 sm:gap-4">
-                    <div className="text-white font-black uppercase tracking-widest text-xs sm:text-sm hidden sm:flex items-center gap-2">
-                        Jucător: <span className="text-blue-400">{playerName.trim() || 'Anonim'}</span>
-                    </div>
-                    <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-950 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-slate-800">
-                        {[1, 2, 3].map((i: number) => (
-                            <Heart key={i} className={`w-3.5 h-3.5 sm:w-5 sm:h-5 transition-all ${lives >= i ? 'fill-rose-500 text-rose-500 animate-pulse' : 'fill-transparent text-slate-700'}`} />
-                        ))}
-                    </div>
+        <div className="max-w-4xl mx-auto space-y-4">
+            <div className="flex items-center justify-between bg-white dark:bg-[#11161D] px-4 py-3 rounded-xl border border-slate-200 dark:border-white/[0.07]">
+                <button
+                    onClick={() => { saveScore(score); setGameState('setup'); }}
+                    className="text-slate-500 hover:text-rose-500 flex items-center gap-1 font-medium text-xs cursor-pointer"
+                >
+                    <X className="w-4 h-4" /> Renunță
+                </button>
+
+                <div className="flex items-center gap-1.5">
+                    {[1, 2, 3].map((i: number) => (
+                        <Heart
+                            key={i}
+                            className={`w-4 h-4 transition-colors ${lives >= i ? 'fill-rose-500 text-rose-500' : 'text-slate-300 dark:text-slate-700'}`}
+                        />
+                    ))}
                 </div>
-                <div className="text-emerald-400 font-black uppercase tracking-widest text-[10px] sm:text-sm bg-emerald-950/30 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-emerald-900/50">
+
+                <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md tabular-nums">
                     Scor: {score}
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-2 sm:gap-4 h-[75vh] md:h-[60vh] min-h-[500px] mx-1 sm:mx-0">
-                <div className="flex-1 bg-slate-900 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-slate-800 flex flex-col items-center justify-center p-4 sm:p-8 text-center relative overflow-hidden shadow-xl sm:shadow-2xl">
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950/80 z-0"></div>
-                    <div className="relative z-10 flex flex-col items-center w-full">
-                        <img src={playerA?.image || GENERIC_USER_IMAGE} className="w-20 h-20 sm:w-40 sm:h-40 rounded-full object-cover border-2 sm:border-4 border-white shadow-xl mb-3 sm:mb-6 bg-white" />
-                        <h2 className="text-lg sm:text-3xl font-black text-white uppercase tracking-tight mb-1 sm:mb-2 line-clamp-1">{playerA?.name}</h2>
-                        <p className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-3 sm:mb-6 line-clamp-1">{playerA?.team_name || playerA?.team}</p>
-                        <p className="text-[8px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1.5 sm:mb-2">Are {catLabel}</p>
-                        <div className="text-2xl sm:text-5xl font-black text-white drop-shadow-md bg-white/10 px-4 sm:px-6 py-1.5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/20 whitespace-nowrap">
-                            {getStatFormat(valA, category)}
-                        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
+                {/* Jucător A */}
+                <div className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] flex flex-col items-center justify-center p-6 sm:p-8 text-center">
+                    <img
+                        src={playerA?.image || GENERIC_USER_IMAGE}
+                        alt={playerA?.name}
+                        className="w-20 h-20 sm:w-28 sm:h-28 rounded-full object-cover border border-slate-200 dark:border-white/[0.1] mb-4 bg-white"
+                    />
+                    <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white line-clamp-1">{playerA?.name}</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 line-clamp-1">{playerA?.team_name || playerA?.team}</p>
+                    <span className="text-[11px] font-medium text-slate-500 mb-1.5">{catLabel}</span>
+                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-white/[0.05] px-4 py-2 rounded-lg tabular-nums">
+                        {getStatFormat(valA, category)}
                     </div>
                 </div>
 
-                <div className="md:w-24 flex items-center justify-center -my-6 md:my-0 md:-mx-12 z-20 shrink-0">
-                    <div className="w-10 h-10 sm:w-16 sm:h-16 bg-rose-600 rounded-full flex items-center justify-center text-white font-black italic text-sm sm:text-2xl border-2 sm:border-4 border-slate-950 shadow-[0_0_15px_rgba(225,29,72,0.5)]">VS</div>
-                </div>
-
-                <div className={`flex-1 rounded-2xl sm:rounded-3xl border-2 sm:border-4 flex flex-col items-center justify-center p-4 sm:p-8 text-center relative overflow-hidden shadow-xl sm:shadow-2xl transition-colors duration-300 ${
-                    revealResult === 'correct' ? 'bg-emerald-900 border-emerald-500' :
-                    revealResult === 'wrong' ? 'bg-rose-900 border-rose-500' : 'bg-slate-900 border-slate-800'
+                {/* Jucător B */}
+                <div className={`rounded-xl border flex flex-col items-center justify-center p-6 sm:p-8 text-center transition-colors ${
+                    revealResult === 'correct'
+                        ? 'bg-emerald-500/10 border-emerald-500/40'
+                        : revealResult === 'wrong'
+                        ? 'bg-rose-500/10 border-rose-500/40'
+                        : 'bg-white dark:bg-[#11161D] border-slate-200 dark:border-white/[0.07]'
                 }`}>
-                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-b from-transparent to-slate-950/80 z-0"></div>
-                    <div className="relative z-10 flex flex-col items-center w-full h-full justify-center">
-                        <img src={playerB?.image || GENERIC_USER_IMAGE} className="w-20 h-20 sm:w-40 sm:h-40 rounded-full object-cover border-2 sm:border-4 border-white shadow-xl mb-3 sm:mb-6 bg-white mt-4 sm:mt-0" />
-                        <h2 className="text-lg sm:text-3xl font-black text-white uppercase tracking-tight mb-1 sm:mb-2 line-clamp-1">{playerB?.name}</h2>
-                        <p className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-3 sm:mb-6 line-clamp-1">{playerB?.team_name || playerB?.team}</p>
-                        <p className={`text-[8px] sm:text-xs font-black uppercase tracking-widest mb-2 sm:mb-4 ${
-                            revealResult === 'correct' ? 'text-emerald-300' : revealResult === 'wrong' ? 'text-rose-300' : 'text-emerald-400'
-                        }`}>Are {catLabel}</p>
+                    <img
+                        src={playerB?.image || GENERIC_USER_IMAGE}
+                        alt={playerB?.name}
+                        className="w-20 h-20 sm:w-28 sm:h-28 rounded-full object-cover border border-slate-200 dark:border-white/[0.1] mb-4 bg-white"
+                    />
+                    <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white line-clamp-1">{playerB?.name}</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 line-clamp-1">{playerB?.team_name || playerB?.team}</p>
+                    <span className="text-[11px] font-medium text-slate-500 mb-2">{catLabel}</span>
 
-                        {revealResult ? (
-                            <div className="animate-in fade-in zoom-in duration-300">
-                                <div className={`text-2xl sm:text-5xl font-black drop-shadow-md bg-white/10 px-4 sm:px-6 py-1.5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/20 whitespace-nowrap ${
-                                    revealResult === 'correct' ? 'text-emerald-400' : 'text-rose-400'
-                                }`}>
-                                    {playerB && getStatFormat(getStatValue(playerB, category), category)}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex flex-row md:flex-col gap-2 sm:gap-3 w-full max-w-[280px] sm:max-w-xs animate-in fade-in duration-300 mt-auto md:mt-0">
-                                <button onClick={() => handleGuess('higher')} className="flex-1 md:w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 sm:p-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-lg transition-all border-b-4 border-emerald-800 hover:border-b-2 hover:translate-y-[2px] flex items-center justify-center gap-1 sm:gap-2 shadow-lg">
-                                    <ArrowUp className="w-4 h-4 sm:w-6 sm:h-6" /> <span className="hidden sm:inline">Mai </span>Mare
-                                </button>
-                                <button onClick={() => handleGuess('lower')} className="flex-1 md:w-full bg-rose-600 hover:bg-rose-500 text-white py-3 sm:p-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-lg transition-all border-b-4 border-rose-800 hover:border-b-2 hover:translate-y-[2px] flex items-center justify-center gap-1 sm:gap-2 shadow-lg">
-                                    <ArrowDown className="w-4 h-4 sm:w-6 sm:h-6" /> <span className="hidden sm:inline">Mai </span>Mică
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    {revealResult ? (
+                        <div className={`text-2xl sm:text-3xl font-bold px-4 py-2 rounded-lg tabular-nums ${
+                            revealResult === 'correct' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'
+                        }`}>
+                            {playerB && getStatFormat(getStatValue(playerB, category), category)}
+                        </div>
+                    ) : (
+                        <div className="flex gap-2.5 w-full max-w-[260px]">
+                            <button
+                                onClick={() => handleGuess('higher')}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-3 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                                <ArrowUp className="w-4 h-4" /> Mai mare
+                            </button>
+                            <button
+                                onClick={() => handleGuess('lower')}
+                                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 px-3 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                                <ArrowDown className="w-4 h-4" /> Mai mică
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

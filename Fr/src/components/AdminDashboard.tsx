@@ -1,74 +1,113 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { ShieldCheck, Users, Newspaper, Ban, CheckCircle, Search, Loader2, Plus, Trash2, ShoppingBag, X, Save, FileText, Edit, Flag, AlertTriangle, Shirt, LayoutDashboard } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  ShieldCheck, Users, Newspaper, Ban, Search, Plus, Trash2,
+  ShoppingBag, X, Save, Edit, Flag, AlertTriangle, Shirt
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from '@tanstack/react-form';
 
-interface UserData { _id: string; name: string; email: string; role: string; isBanned: boolean; avatar?: string; strikes?: number; }
-interface ListingData { _id: string; title: string; category: string; price: string; seller: string; sellerEmail: string; images: string[]; posted: string; reportedBy?: string[]; }
-interface StoryData { _id: string; title: string; role: string; organization: string; excerpt: string; content: string; date: string; postedAt: string; }
-interface ReportedMessage { _id: string; author: string; message: string; imageUrl?: string; room: string; reportedBy: string[]; timestamp: string; }
+interface UserData {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  isBanned: boolean;
+  avatar?: string;
+  strikes?: number;
+}
+
+interface ListingData {
+  _id: string;
+  title: string;
+  category: string;
+  price: string;
+  seller: string;
+  sellerEmail: string;
+  images: string[];
+  posted: string;
+  reportedBy?: string[];
+}
+
+interface StoryData {
+  _id: string;
+  title: string;
+  role: string;
+  organization: string;
+  excerpt: string;
+  content: string;
+  date: string;
+  postedAt: string;
+}
+
+interface ReportedMessage {
+  _id: string;
+  author: string;
+  message: string;
+  imageUrl?: string;
+  room: string;
+  reportedBy: string[];
+  timestamp: string;
+}
 
 // --- INTERFEȚE STARTING XI ---
 interface XIPlayer {
-    _id?: string;
-    id?: string; 
-    name: string;
-    gridRow: number; 
+  _id?: string;
+  id?: string;
+  name: string;
+  gridRow: number;
 }
 
 interface StartingXIData {
-    _id?: string;
-    id?: string;
-    teamName: string;
-    opponent: string;
-    date: string;
-    score: string;
-    formation: string; 
-    teamColor?: string;     
-    opponentColor?: string; 
-    isHome?: boolean;       
-    players: XIPlayer[];
+  _id?: string;
+  id?: string;
+  teamName: string;
+  opponent: string;
+  date: string;
+  score: string;
+  formation: string;
+  teamColor?: string;
+  opponentColor?: string;
+  isHome?: boolean;
+  players: XIPlayer[];
 }
 
-// --- CONEXIUNE STANDARDIZATĂ LA SERVER ---
-const API_BASE = window.location.hostname === "localhost" 
-    ? "http://localhost:3000" 
-    : "https://football-backend-m2a4.onrender.com";
+const API_BASE =
+  (import.meta as any).env?.VITE_API_URL ||
+  (window.location.hostname === "localhost"
+    ? "http://localhost:3000"
+    : "https://football-backend-m2a4.onrender.com");
 const API_URL = `${API_BASE}/api`;
 
-// --- FUNCȚIE CONTRAST CULORI PENTRU NUME ECHIPE ---
 const getContrastTextColor = (hexColor: string) => {
-    if (!hexColor) return '#ffffff';
-    const hex = hexColor.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16) || 0;
-    const g = parseInt(hex.substring(2, 4), 16) || 0;
-    const b = parseInt(hex.substring(4, 6), 16) || 0;
-    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-    return yiq >= 128 ? '#0f172a' : '#ffffff'; 
+  if (!hexColor) return '#ffffff';
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16) || 0;
+  const g = parseInt(hex.substring(2, 4), 16) || 0;
+  const b = parseInt(hex.substring(4, 6), 16) || 0;
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 128 ? '#0f172a' : '#ffffff';
 };
 
 export function AdminDashboard({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState<'users' | 'listings' | 'news' | 'reports' | 'xi'>('users');
-  
+
   const [users, setUsers] = useState<UserData[]>([]);
   const [listings, setListings] = useState<ListingData[]>([]);
   const [stories, setStories] = useState<StoryData[]>([]);
   const [reportedMessages, setReportedMessages] = useState<ReportedMessage[]>([]);
   const [reportedListings, setReportedListings] = useState<ListingData[]>([]);
-  
+
   // Stări pentru Primul 11 (Starting XI)
   const [xis, setXis] = useState<StartingXIData[]>([]);
-  
-  // Editare
   const [editingXiId, setEditingXiId] = useState<string | null>(null);
-  
+
   const [teamName, setTeamName] = useState("");
   const [opponent, setOpponent] = useState("");
   const [score, setScore] = useState("");
   const [date, setDate] = useState("");
   const [formation, setFormation] = useState("4-3-3");
-  const [teamColor, setTeamColor] = useState("#3b82f6"); 
-  const [opponentColor, setOpponentColor] = useState("#ef4444"); 
+  const [teamColor, setTeamColor] = useState("#3b82f6");
+  const [opponentColor, setOpponentColor] = useState("#ef4444");
   const [isHome, setIsHome] = useState(true);
   const [slotPlayers, setSlotPlayers] = useState<(XIPlayer | null)[]>(Array(11).fill(null));
 
@@ -81,214 +120,253 @@ export function AdminDashboard({ user }: { user: any }) {
   // === TANSTACK FORM PENTRU STORY ===
   const storyForm = useForm({
     defaultValues: {
-        title: '',
-        role: '',
-        organization: '',
-        excerpt: '',
-        content: '',
-        date: ''
+      title: '',
+      role: '',
+      organization: '',
+      excerpt: '',
+      content: '',
+      date: ''
     },
     onSubmit: async ({ value }) => {
-        try {
-            let res;
-            if (editingId) {
-                res = await fetch(`${API_URL}/admin/stories/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
-            } else {
-                res = await fetch(`${API_URL}/admin/stories`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
-            }
+      try {
+        let res;
+        if (editingId) {
+          res = await fetch(`${API_URL}/admin/stories/${editingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(value)
+          });
+        } else {
+          res = await fetch(`${API_URL}/admin/stories`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(value)
+          });
+        }
 
-            if(res.ok) {
-                const savedStory = await res.json();
-                if (editingId) {
-                    setStories(prev => prev.map(s => s._id === editingId ? savedStory : s));
-                    toast.success("Erou actualizat!");
-                } else {
-                    setStories([savedStory, ...stories]);
-                    toast.success("Erou adăugat!");
-                }
-                setShowStoryModal(false);
-                storyForm.reset();
-            } else {
-                toast.error("A apărut o problemă la salvarea datelor.");
-            }
-        } catch(err) { toast.error("Eroare de conexiune la salvare."); }
+        if (res.ok) {
+          const savedStory = await res.json();
+          if (editingId) {
+            setStories(prev => prev.map(s => (s._id === editingId ? savedStory : s)));
+            toast.success("Articol actualizat.");
+          } else {
+            setStories([savedStory, ...stories]);
+            toast.success("Articol adăugat.");
+          }
+          setShowStoryModal(false);
+          storyForm.reset();
+        } else {
+          toast.error("A apărut o problemă la salvarea datelor.");
+        }
+      } catch {
+        toast.error("Eroare de conexiune la salvare.");
+      }
     }
   });
 
-  // Citim starea formulariului direct, fara useStore 
   const { isSubmitting, canSubmit } = storyForm.state;
 
-  useEffect(() => { fetchInitialData(); }, []);
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
 
   const fetchInitialData = async () => {
     try {
-        setLoading(true);
-        const resUsers = await fetch(`${API_URL}/admin/users`);
-        if (resUsers.ok) setUsers(await resUsers.json());
-        
-        const resListings = await fetch(`${API_URL}/listings`);
-        if (resListings.ok) setListings(await resListings.json());
-        
-        const resStories = await fetch(`${API_URL}/stories`);
-        if (resStories.ok) setStories(await resStories.json());
+      setLoading(true);
+      const resUsers = await fetch(`${API_URL}/admin/users`);
+      if (resUsers.ok) setUsers(await resUsers.json());
 
-        const resReports = await fetch(`${API_URL}/admin/reported-messages`);
-        if (resReports.ok) setReportedMessages(await resReports.json());
+      const resListings = await fetch(`${API_URL}/listings`);
+      if (resListings.ok) setListings(await resListings.json());
 
-        const resRepListings = await fetch(`${API_URL}/admin/reported-listings`);
-        if (resRepListings.ok) setReportedListings(await resRepListings.json());
+      const resStories = await fetch(`${API_URL}/stories`);
+      if (resStories.ok) setStories(await resStories.json());
 
-        const resXi = await fetch(`${API_URL}/sport/starting-xi`);
-        if (resXi.ok) {
-            setXis(await resXi.json());
-        }
+      const resReports = await fetch(`${API_URL}/admin/reported-messages`);
+      if (resReports.ok) setReportedMessages(await resReports.json());
 
-    } catch (err) { toast.error("Eroare la încărcarea datelor din baza de date."); } 
-    finally { setLoading(false); }
+      const resRepListings = await fetch(`${API_URL}/admin/reported-listings`);
+      if (resRepListings.ok) setReportedListings(await resRepListings.json());
+
+      const resXi = await fetch(`${API_URL}/sport/starting-xi`);
+      if (resXi.ok) {
+        setXis(await resXi.json());
+      }
+    } catch {
+      toast.error("Eroare la încărcarea datelor din baza de date.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleToggleBan = async (id: string, currentStatus: boolean, name: string) => {
     if (!window.confirm(`Schimbi statusul pentru ${name}?`)) return;
     try {
-        const res = await fetch(`${API_URL}/admin/users/${id}/ban`, { method: 'PUT', headers: { 'Content-Type': 'application/json' } });
-        if (res.ok) {
-            setUsers(prev => prev.map(u => u._id === id ? { ...u, isBanned: !u.isBanned } : u));
-            toast.success("Status actualizat!");
-        }
-    } catch (err) { toast.error("Eroare server."); }
+      const res = await fetch(`${API_URL}/admin/users/${id}/ban`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => (u._id === id ? { ...u, isBanned: !u.isBanned } : u)));
+        toast.success("Status actualizat.");
+      }
+    } catch {
+      toast.error("Eroare server.");
+    }
   };
 
   const handleDeleteListing = async (id: string, title: string) => {
-      if(!window.confirm(`Ștergi anunțul "${title}"?`)) return;
-      try {
-          const res = await fetch(`${API_URL}/listings/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email }) });
-          if(res.ok) {
-              setListings(prev => prev.filter(l => l._id !== id));
-              setReportedListings(prev => prev.filter(l => l._id !== id));
-              toast.success("Anunț șters.");
-          }
-      } catch (err) { toast.error("Eroare server."); }
+    if (!window.confirm(`Ștergi anunțul "${title}"?`)) return;
+    try {
+      const res = await fetch(`${API_URL}/listings/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email })
+      });
+      if (res.ok) {
+        setListings(prev => prev.filter(l => l._id !== id));
+        setReportedListings(prev => prev.filter(l => l._id !== id));
+        toast.success("Anunț șters.");
+      }
+    } catch {
+      toast.error("Eroare server.");
+    }
   };
 
   const handleAddStrike = async (authorName: string) => {
-      if(!window.confirm(`Adaugi o abatere permanentă pentru ${authorName}?`)) return;
-      try {
-          const res = await fetch(`${API_URL}/admin/users/strike`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ name: authorName })
-          });
-          if(res.ok) {
-              toast.success(`Abatere adăugată pentru ${authorName}!`);
-              fetchInitialData();
-          }
-      } catch (err) { toast.error("Eroare la adăugarea abaterii."); }
+    if (!window.confirm(`Adaugi o abatere permanentă pentru ${authorName}?`)) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/users/strike`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: authorName })
+      });
+      if (res.ok) {
+        toast.success(`Abatere adăugată pentru ${authorName}.`);
+        fetchInitialData();
+      }
+    } catch {
+      toast.error("Eroare la adăugarea abaterii.");
+    }
   };
 
   const handleDeleteReportedMessage = async (id: string) => {
-      if(!window.confirm("Ștergi definitiv acest mesaj?")) return;
-      try {
-          const res = await fetch(`${API_URL}/messages/${id}`, { 
-              method: 'DELETE', 
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ user: user.name, userRole: user.role, email: user.email })
-          });
-          if(res.ok) {
-              setReportedMessages(prev => prev.filter(m => m._id !== id));
-              toast.success("Mesaj șters!");
-          }
-      } catch (err) { toast.error("Eroare la ștergerea mesajului."); }
+    if (!window.confirm("Ștergi definitiv acest mesaj?")) return;
+    try {
+      const res = await fetch(`${API_URL}/messages/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: user.name, userRole: user.role, email: user.email })
+      });
+      if (res.ok) {
+        setReportedMessages(prev => prev.filter(m => m._id !== id));
+        toast.success("Mesaj șters.");
+      }
+    } catch {
+      toast.error("Eroare la ștergerea mesajului.");
+    }
   };
 
   const handleDismissReport = async (id: string) => {
-      try {
-          const res = await fetch(`${API_URL}/messages/${id}/dismiss-report`, { method: 'POST' });
-          if(res.ok) {
-              setReportedMessages(prev => prev.filter(m => m._id !== id));
-              toast.success("Avantaj lăsat.");
-          }
-      } catch (err) { toast.error("Eroare la procesare."); }
+    try {
+      const res = await fetch(`${API_URL}/messages/${id}/dismiss-report`, { method: 'POST' });
+      if (res.ok) {
+        setReportedMessages(prev => prev.filter(m => m._id !== id));
+        toast.success("Raport ignorat.");
+      }
+    } catch {
+      toast.error("Eroare la procesare.");
+    }
   };
 
   const handleDismissListingReport = async (id: string) => {
-      try {
-          const res = await fetch(`${API_URL}/listings/${id}/dismiss-report`, { method: 'POST' });
-          if(res.ok) {
-              setReportedListings(prev => prev.filter(l => l._id !== id));
-              toast.success("Avantaj lăsat.");
-          }
-      } catch (err) { toast.error("Eroare la procesare."); }
+    try {
+      const res = await fetch(`${API_URL}/listings/${id}/dismiss-report`, { method: 'POST' });
+      if (res.ok) {
+        setReportedListings(prev => prev.filter(l => l._id !== id));
+        toast.success("Raport ignorat.");
+      }
+    } catch {
+      toast.error("Eroare la procesare.");
+    }
   };
 
   const openAddModal = () => {
-      setEditingId(null);
-      storyForm.reset();
-      setShowStoryModal(true);
+    setEditingId(null);
+    storyForm.reset();
+    setShowStoryModal(true);
   };
 
   const openEditModal = (story: StoryData) => {
-      setEditingId(story._id);
-      storyForm.setFieldValue('title', story.title);
-      storyForm.setFieldValue('role', story.role);
-      storyForm.setFieldValue('organization', story.organization);
-      storyForm.setFieldValue('excerpt', story.excerpt);
-      storyForm.setFieldValue('content', story.content);
-      storyForm.setFieldValue('date', story.date);
-      setShowStoryModal(true);
+    setEditingId(story._id);
+    storyForm.setFieldValue('title', story.title);
+    storyForm.setFieldValue('role', story.role);
+    storyForm.setFieldValue('organization', story.organization);
+    storyForm.setFieldValue('excerpt', story.excerpt);
+    storyForm.setFieldValue('content', story.content);
+    storyForm.setFieldValue('date', story.date);
+    setShowStoryModal(true);
   };
 
   const handleDeleteStory = async (id: string) => {
-      if(!window.confirm("Ștergi acest erou de pe teren?")) return;
-      try {
-          const res = await fetch(`${API_URL}/admin/stories/${id}`, { method: 'DELETE' });
-          if(res.ok) {
-              setStories(prev => prev.filter(s => s._id !== id));
-              toast.success("Erou retras.");
-          }
-      } catch(err) { toast.error("Eroare."); }
+    if (!window.confirm("Ștergi acest articol din arhivă?")) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/stories/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setStories(prev => prev.filter(s => s._id !== id));
+        toast.success("Articol șters.");
+      }
+    } catch {
+      toast.error("Eroare.");
+    }
   };
 
   const getGridRowForSlot = (index: number, form: string) => {
-    if (index === 0) return 0; 
-    const parts = form.split('-').map(Number); 
+    if (index === 0) return 0;
+    const parts = form.split('-').map(Number);
     let sum = 0;
     for (let r = 0; r < parts.length; r++) {
-        sum += parts[r];
-        if (index <= sum) return r + 1;
+      sum += parts[r];
+      if (index <= sum) return r + 1;
     }
     return 1;
   };
 
   const getSlotLabel = (index: number, form: string) => {
-      if (index === 0) return "GK (Portar)";
-      const row = getGridRowForSlot(index, form);
-      const parts = form.split('-').length;
-      
-      if (parts === 3) {
-          if (row === 1) return `DEF ${index}`;
-          if (row === 2) return `MID ${index}`;
-          if (row === 3) return `ATT ${index}`;
-      }
-      if (parts === 4) {
-          if (row === 1) return `DEF ${index}`;
-          if (row === 2) return `CDM/MID ${index}`;
-          if (row === 3) return `CAM/MID ${index}`;
-          if (row === 4) return `ATT ${index}`;
-      }
-      if (parts === 5) {
-          if (row === 1) return `DEF ${index}`;
-          if (row === 2) return `CDM ${index}`;
-          if (row === 3) return `MID ${index}`;
-          if (row === 4) return `CAM ${index}`;
-          if (row === 5) return `ATT ${index}`;
-      }
-      return `Jucător ${index}`;
+    if (index === 0) return "GK (Portar)";
+    const row = getGridRowForSlot(index, form);
+    const parts = form.split('-').length;
+
+    if (parts === 3) {
+      if (row === 1) return `DEF ${index}`;
+      if (row === 2) return `MID ${index}`;
+      if (row === 3) return `ATT ${index}`;
+    }
+    if (parts === 4) {
+      if (row === 1) return `DEF ${index}`;
+      if (row === 2) return `CDM/MID ${index}`;
+      if (row === 3) return `CAM/MID ${index}`;
+      if (row === 4) return `ATT ${index}`;
+    }
+    if (parts === 5) {
+      if (row === 1) return `DEF ${index}`;
+      if (row === 2) return `CDM ${index}`;
+      if (row === 3) return `MID ${index}`;
+      if (row === 4) return `CAM ${index}`;
+      if (row === 5) return `ATT ${index}`;
+    }
+    return `Jucător ${index}`;
   };
 
   const resetXiForm = () => {
     setEditingXiId(null);
-    setTeamName(""); setOpponent(""); setScore(""); setDate("");
-    setTeamColor("#3b82f6"); setOpponentColor("#ef4444"); setIsHome(true);
+    setTeamName("");
+    setOpponent("");
+    setScore("");
+    setDate("");
+    setTeamColor("#3b82f6");
+    setOpponentColor("#ef4444");
+    setIsHome(true);
     setFormation("4-3-3");
     setSlotPlayers(Array(11).fill(null));
   };
@@ -296,8 +374,8 @@ export function AdminDashboard({ user }: { user: any }) {
   const handleEditXI = (match: StartingXIData) => {
     const validId = match._id || match.id;
     if (!validId) {
-        toast.error("Meciul nu are un ID valid.");
-        return;
+      toast.error("Meciul nu are un ID valid.");
+      return;
     }
     setEditingXiId(validId);
     setTeamName(match.teamName || "");
@@ -308,669 +386,794 @@ export function AdminDashboard({ user }: { user: any }) {
     setTeamColor(match.teamColor || "#3b82f6");
     setOpponentColor(match.opponentColor || "#ef4444");
     setIsHome(match.isHome !== false);
-    
-    // Populam cu grijă jucătorii pe pozițiile lor (până la 11 max)
+
     const newSlots = Array(11).fill(null);
     if (match.players && Array.isArray(match.players)) {
-        match.players.forEach((p, idx) => {
-            if (idx < 11) newSlots[idx] = p;
-        });
+      match.players.forEach((p, idx) => {
+        if (idx < 11) newSlots[idx] = p;
+      });
     }
     setSlotPlayers(newSlots);
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll sus pentru a edita
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSaveXI = async () => {
     if (!teamName || !opponent || !score || !date) {
-        toast.error("Completează toate detaliile meciului!"); return;
+      toast.error("Completează toate detaliile meciului.");
+      return;
     }
-    
+
     const isValid = slotPlayers.every(p => p !== null && p.name.trim().length > 0);
     if (!isValid) {
-        toast.error("Trebuie să scrii numele pentru toți cei 11 jucători!"); return;
+      toast.error("Completează numele pentru toți cei 11 jucători.");
+      return;
     }
 
     const cleanPlayers = slotPlayers.map(p => ({
-        name: p!.name,
-        gridRow: p!.gridRow
+      name: p!.name,
+      gridRow: p!.gridRow
     }));
 
     const newXI = {
-        teamName, opponent, score, date, formation,
-        teamColor, opponentColor, isHome,
-        players: cleanPlayers
+      teamName,
+      opponent,
+      score,
+      date,
+      formation,
+      teamColor,
+      opponentColor,
+      isHome,
+      players: cleanPlayers
     };
 
     try {
-        // Dacă suntem în modul editare, ștergem mai întâi meciul vechi
-        if (editingXiId) {
-            console.log(`Ștergem meciul vechi: ${API_URL}/sport/starting-xi/${editingXiId}`);
-            const deleteRes = await fetch(`${API_URL}/sport/starting-xi/${editingXiId}`, {
-                method: 'DELETE'
-            });
-            
-            if (!deleteRes.ok) {
-                 toast.error("Eroare la ștergerea meciului vechi pentru suprascriere.");
-                 return;
-            }
-            // Scoatem meciul vechi din starea locală
-            setXis(prev => prev.filter(x => (x._id || x.id) !== editingXiId));
-        }
-
-        // Creăm meciul nou (sau cel modificat) cu metoda POST, care știm sigur că funcționează
-        console.log(`Salvăm noul meci: ${API_URL}/sport/starting-xi`);
-        const postRes = await fetch(`${API_URL}/sport/starting-xi`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newXI)
+      if (editingXiId) {
+        const deleteRes = await fetch(`${API_URL}/sport/starting-xi/${editingXiId}`, {
+          method: 'DELETE'
         });
 
-        if (postRes.ok) {
-            const savedXI = await postRes.json();
-            
-            setXis(prev => [...prev, savedXI]);
-            toast.success(editingXiId ? "Meci actualizat cu succes!" : "Meci salvat cu succes!");
-            resetXiForm();
-        } else {
-            let errorMsg = `Eroare ${postRes.status}: ${postRes.statusText}`;
-            try {
-                const errData = await postRes.json();
-                errorMsg = errData.error || errData.message || errorMsg;
-            } catch (jsonError) {
-                console.error("Eroare parsare JSON", jsonError);
-            }
-            toast.error(errorMsg);
+        if (!deleteRes.ok) {
+          toast.error("Eroare la actualizarea meciului vechi.");
+          return;
         }
-    } catch (e: any) {
-        console.error("Eroare de rețea:", e);
-        toast.error("Eroare de rețea. Verifică conexiunea.");
+        setXis(prev => prev.filter(x => (x._id || x.id) !== editingXiId));
+      }
+
+      const postRes = await fetch(`${API_URL}/sport/starting-xi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newXI)
+      });
+
+      if (postRes.ok) {
+        const savedXI = await postRes.json();
+        setXis(prev => [...prev, savedXI]);
+        toast.success(editingXiId ? "Meci actualizat." : "Meci salvat.");
+        resetXiForm();
+      } else {
+        let errorMsg = `Eroare ${postRes.status}: ${postRes.statusText}`;
+        try {
+          const errData = await postRes.json();
+          errorMsg = errData.error || errData.message || errorMsg;
+        } catch {}
+        toast.error(errorMsg);
+      }
+    } catch {
+      toast.error("Eroare de rețea. Verifică conexiunea.");
     }
   };
 
   const handleDeleteXI = async (id: string) => {
-    if(window.confirm("Ești sigur că vrei să ștergi acest meci?")) {
-        try {
-            const res = await fetch(`${API_URL}/sport/starting-xi/${id}`, {
-                method: 'DELETE'
-            });
-            if (res.ok) {
-                setXis(xis.filter(x => (x._id || x.id) !== id));
-                if (editingXiId === id) resetXiForm(); // Resetam form-ul dacă ștergem meciul editat curent
-                toast.success("Meci șters.");
-            } else {
-                toast.error("Problemă la ștergere.");
-            }
-        } catch (e) {
-            toast.error("Eroare conexiune DB.");
+    if (window.confirm("Ești sigur că vrei să ștergi acest meci?")) {
+      try {
+        const res = await fetch(`${API_URL}/sport/starting-xi/${id}`, {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          setXis(xis.filter(x => (x._id || x.id) !== id));
+          if (editingXiId === id) resetXiForm();
+          toast.success("Meci șters.");
+        } else {
+          toast.error("Problemă la ștergere.");
         }
+      } catch {
+        toast.error("Eroare conexiune DB.");
+      }
     }
   };
 
-  const filteredUsers = users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()));
-  const filteredListings = listings.filter(l => l.title.toLowerCase().includes(searchTerm.toLowerCase()) || l.seller.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredUsers = users.filter(
+    u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const filteredListings = listings.filter(
+    l => l.title.toLowerCase().includes(searchTerm.toLowerCase()) || l.seller.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   const filteredStories = stories.filter(s => s.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const totalReports = reportedMessages.length + reportedListings.length;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 animate-in fade-in duration-500 pb-20 relative px-2 sm:px-4 mt-4">
-        
-        {/* FUNDAL SPORTIV */}
-        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none rounded-3xl opacity-[0.03] dark:opacity-[0.05]">
-           <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,#000_20px,#000_22px)]"></div>
+    <div className="max-w-5xl mx-auto space-y-5 pb-16">
+      {/* Header Admin */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.07] p-4 sm:p-5 rounded-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-5 h-5 text-rose-500" />
+          </div>
+          <div>
+            <h1 className="text-base font-semibold text-slate-900 dark:text-white leading-tight">
+              Panou Administrare
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Moderare utilizatori, anunțuri, articole și meciuri Primul 11.
+            </p>
+          </div>
         </div>
 
-        {/* HEADER TACTIC */}
-        <div className="flex flex-col md:flex-row justify-between items-center bg-slate-900 border-b-4 border-rose-600 text-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl relative overflow-hidden">
-            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,rgba(225,29,72,0.3),transparent_70%)]"></div>
-            
-            <div className="relative z-10 text-center md:text-left">
-                <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter mb-2 flex items-center justify-center md:justify-start gap-2 sm:gap-3 drop-shadow-md">
-                    <ShieldCheck className="h-6 w-6 sm:h-10 sm:w-10 text-rose-500" /> 
-                    Comisia <span className="text-rose-500">Centrală</span>
-                </h1>
-                <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-sm">
-                    Panoul de control / Arbitraj
-                </p>
+        <div className="grid grid-cols-4 gap-2 w-full md:w-auto tabular-nums">
+          <div className="bg-slate-50 dark:bg-[#0B0F14] px-3 py-2 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
+            <div className="text-sm font-semibold text-slate-900 dark:text-white">{users.length}</div>
+            <div className="text-[10px] text-slate-500">Useri</div>
+          </div>
+          <div className="bg-slate-50 dark:bg-[#0B0F14] px-3 py-2 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
+            <div className="text-sm font-semibold text-blue-500">{listings.length}</div>
+            <div className="text-[10px] text-slate-500">Anunțuri</div>
+          </div>
+          <div className="bg-slate-50 dark:bg-[#0B0F14] px-3 py-2 rounded-lg border border-slate-200 dark:border-white/[0.07] text-center">
+            <div className="text-sm font-semibold text-emerald-500">{stories.length}</div>
+            <div className="text-[10px] text-slate-500">Articole</div>
+          </div>
+          <div className={`px-3 py-2 rounded-lg border text-center ${
+            totalReports > 0
+              ? 'bg-rose-500/10 border-rose-500/25'
+              : 'bg-slate-50 dark:bg-[#0B0F14] border-slate-200 dark:border-white/[0.07]'
+          }`}>
+            <div className={`text-sm font-semibold ${totalReports > 0 ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
+              {totalReports}
             </div>
-
-            <div className="flex gap-2 sm:gap-3 flex-wrap mt-4 md:mt-0 justify-center relative z-10 w-full md:w-auto">
-                <div className="flex-1 md:flex-none bg-slate-950 p-2 sm:p-3 rounded-xl sm:rounded-2xl border-2 border-slate-800 text-center min-w-[70px] shadow-inner">
-                    <div className="text-lg sm:text-2xl font-black">{users.length}</div>
-                    <div className="text-[8px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">Useri</div>
-                </div>
-                <div className="flex-1 md:flex-none bg-slate-950 p-2 sm:p-3 rounded-xl sm:rounded-2xl border-2 border-slate-800 text-center min-w-[70px] shadow-inner">
-                    <div className="text-lg sm:text-2xl font-black text-blue-500">{listings.length}</div>
-                    <div className="text-[8px] sm:text-[10px] font-black text-blue-500/70 uppercase tracking-widest mt-1">Anunțuri</div>
-                </div>
-                <div className="flex-1 md:flex-none bg-slate-950 p-2 sm:p-3 rounded-xl sm:rounded-2xl border-2 border-slate-800 text-center min-w-[70px] shadow-inner">
-                    <div className="text-lg sm:text-2xl font-black text-emerald-500">{stories.length}</div>
-                    <div className="text-[8px] sm:text-[10px] font-black text-emerald-500/70 uppercase tracking-widest mt-1">Articole</div>
-                </div>
-                <div className="flex-1 md:flex-none bg-rose-950/40 p-2 sm:p-3 rounded-xl sm:rounded-2xl border-2 border-rose-900/50 text-center min-w-[70px] relative shadow-inner">
-                    {totalReports > 0 && <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-rose-600 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-black animate-pulse shadow-[0_0_10px_rgba(225,29,72,0.8)] border border-rose-400">{totalReports}</span>}
-                    <div className="text-lg sm:text-2xl font-black text-amber-500">{totalReports}</div>
-                    <div className="text-[8px] sm:text-[10px] font-black text-amber-500/70 uppercase tracking-widest mt-1">VAR</div>
-                </div>
-            </div>
+            <div className="text-[10px] text-slate-500">Raportări</div>
+          </div>
         </div>
+      </div>
 
-        {/* MENIU TACTIC - S-a adăugat scrolling orizontal neted pentru mobil */}
-        <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-3 -mx-2 px-2 sm:mx-0 sm:px-0 border-b-2 border-slate-200 dark:border-slate-800 scrollbar-hide snap-x">
-            {[
-                { id: 'users', label: 'Echipe / Lot', icon: Users },
-                { id: 'listings', label: 'Mercato', icon: ShoppingBag },
-                { id: 'news', label: 'Trofee', icon: Newspaper },
-                { id: 'reports', label: `VAR (${totalReports})`, icon: AlertTriangle },
-                { id: 'xi', label: 'Joc 11', icon: Shirt }
-            ].map(tab => {
-                const isActive = activeTab === tab.id;
-                return (
-                    <button 
-                        key={tab.id} 
-                        onClick={() => setActiveTab(tab.id as any)} 
-                        className={`snap-center px-4 py-2.5 sm:px-6 sm:py-3 font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 whitespace-nowrap text-[10px] sm:text-sm border-2 flex-1 md:flex-none ${
-                            isActive 
-                            ? 'bg-rose-600 border-rose-500 text-white shadow-md sm:translate-y-[-2px]' 
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-rose-500/50 hover:text-rose-500'
-                        }`}
-                    >
-                        <tab.icon className={`w-3.5 h-3.5 sm:w-5 sm:h-5 ${isActive ? 'text-white' : (tab.id === 'reports' && totalReports > 0 ? 'text-amber-500 animate-pulse' : '')}`}/>
-                        {tab.label}
-                    </button>
-                )
-            })}
-        </div>
+      {/* Tab-uri */}
+      <div className="flex gap-1 overflow-x-auto bg-slate-200/70 dark:bg-white/[0.04] p-1 rounded-lg border border-slate-200 dark:border-white/[0.06] scrollbar-hide">
+        {[
+          { id: 'users', label: 'Utilizatori', icon: Users },
+          { id: 'listings', label: 'Fanshop', icon: ShoppingBag },
+          { id: 'news', label: 'Articole', icon: Newspaper },
+          { id: 'reports', label: `Raportări (${totalReports})`, icon: AlertTriangle },
+          { id: 'xi', label: 'Primul 11', icon: Shirt }
+        ].map(tab => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 md:flex-none px-3.5 py-2 font-medium rounded-md transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap text-xs cursor-pointer ${
+                isActive
+                  ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <tab.icon className={`w-3.5 h-3.5 ${tab.id === 'reports' && totalReports > 0 && !isActive ? 'text-rose-500' : ''}`} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-        {/* CONTENT */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-lg border-2 border-slate-200 dark:border-slate-800 p-3 sm:p-6 min-h-[500px]">
-            {activeTab !== 'reports' && activeTab !== 'xi' && (
-                <div className="relative w-full mb-4 sm:mb-6">
-                    <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
-                        <Search className="text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
-                    </div>
-                    <input 
-                        type="text" 
-                        placeholder="CAUTĂ..." 
-                        className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-4 rounded-lg sm:rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:border-rose-500 dark:focus:border-rose-500 transition-colors font-black uppercase tracking-widest text-[10px] sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400"
-                        value={searchTerm} 
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
+      {/* Conținut */}
+      <div className="bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] p-4 sm:p-5 min-h-[460px]">
+        {activeTab !== 'reports' && activeTab !== 'xi' && (
+          <div className="relative bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] focus-within:border-emerald-500/60 rounded-lg flex items-center mb-4 transition-colors">
+            <Search className="text-slate-400 w-4 h-4 ml-3 shrink-0" />
+            <input
+              type="text"
+              placeholder="Caută..."
+              className="w-full py-2 px-2.5 bg-transparent outline-none text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="p-1.5 mr-1 text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             )}
+          </div>
+        )}
 
-            {loading ? (
-                <div className="flex flex-col justify-center items-center py-20 gap-4">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="font-black uppercase tracking-widest text-[10px] sm:text-xs text-slate-500">Se preiau datele...</p>
-                </div>
-            ) : (
-                <>
-                {/* 1. USERS TAB */}
-                {activeTab === 'users' && (
-                    <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-4">
-                        <div className="min-w-[500px] rounded-xl sm:rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[9px] sm:text-xs">
-                                    <tr>
-                                        <th className="p-3 sm:p-5">Cont</th>
-                                        <th className="p-3 sm:p-5 hidden md:table-cell">Contact</th>
-                                        <th className="p-3 sm:p-5 text-center">Cartonașe</th>
-                                        <th className="p-3 sm:p-5">Status</th>
-                                        <th className="p-3 sm:p-5 text-right">Ban</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y-2 divide-slate-100 dark:divide-slate-800">
-                                    {filteredUsers.map(u => (
-                                        <tr key={u._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                            <td className="p-3 sm:p-5">
-                                                <div className="flex items-center gap-2 sm:gap-3">
-                                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-black text-slate-600 dark:text-slate-300 overflow-hidden shrink-0 text-xs sm:text-base">
-                                                        {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover"/> : u.name[0].toUpperCase()}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-[10px] sm:text-sm line-clamp-1">{u.name}</span>
-                                                        <span className="text-[8px] text-slate-500 font-bold md:hidden line-clamp-1">{u.email}</span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="p-3 sm:p-5 text-slate-500 font-bold text-xs hidden md:table-cell">{u.email}</td>
-                                            <td className="p-3 sm:p-5 text-center">
-                                                <span className={`inline-flex items-center justify-center w-5 h-6 sm:w-6 sm:h-8 rounded-sm font-black shadow-sm border text-[10px] sm:text-xs ${u.strikes && u.strikes > 0 ? 'bg-amber-400 text-slate-900 border-amber-500' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-transparent'}`}>
-                                                    {u.strikes || 0}
-                                                </span>
-                                            </td>
-                                            <td className="p-3 sm:p-5">
-                                                {u.isBanned 
-                                                ? <span className="text-rose-600 bg-rose-100 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 px-2 py-1 rounded text-[8px] sm:text-[10px] font-black uppercase tracking-widest">Ban</span> 
-                                                : <span className="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 px-2 py-1 rounded text-[8px] sm:text-[10px] font-black uppercase tracking-widest">OK</span>}
-                                            </td>
-                                            <td className="p-3 sm:p-5 text-right">
-                                                {u.email !== user.email && (
-                                                    <button 
-                                                        onClick={() => handleToggleBan(u._id, u.isBanned, u.name)} 
-                                                        className="p-1.5 sm:p-2.5 rounded-md sm:rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-600 hover:border-rose-500 transition-colors shadow-sm"
-                                                    >
-                                                        <Ban className="w-3.5 h-3.5 sm:w-5 sm:h-5"/>
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* 2. LISTINGS TAB */}
-                {activeTab === 'listings' && (
-                     <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-4">
-                        <div className="min-w-[500px] rounded-xl sm:rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[9px] sm:text-xs">
-                                    <tr>
-                                        <th className="p-3 sm:p-5">Articol</th>
-                                        <th className="p-3 sm:p-5">Preț</th>
-                                        <th className="p-3 sm:p-5 hidden sm:table-cell">Impresar</th>
-                                        <th className="p-3 sm:p-5 text-right">Șterge</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y-2 divide-slate-100 dark:divide-slate-800">
-                                    {filteredListings.map(l => (
-                                        <tr key={l._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                            <td className="p-3 sm:p-5">
-                                                <div className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-[10px] sm:text-sm line-clamp-1">{l.title}</div>
-                                                <div className="text-[8px] sm:text-[10px] font-black text-blue-500 mt-1 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded w-fit border border-blue-200 dark:border-blue-800">{l.category}</div>
-                                                <div className="text-[9px] text-slate-500 font-bold mt-1 sm:hidden">de {l.seller}</div>
-                                            </td>
-                                            <td className="p-3 sm:p-5 font-black text-emerald-600 dark:text-emerald-400 text-[11px] sm:text-base">{l.price}</td>
-                                            <td className="p-3 sm:p-5 text-slate-500 font-bold text-[10px] sm:text-xs hidden sm:table-cell uppercase">{l.seller}</td>
-                                            <td className="p-3 sm:p-5 text-right">
-                                                <button 
-                                                    onClick={() => handleDeleteListing(l._id, l.title)} 
-                                                    className="p-1.5 sm:p-2.5 rounded-md sm:rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-600 hover:border-rose-500 transition-colors shadow-sm"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5 sm:w-5 sm:h-5"/>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* 3. NEWS / HEROES TAB */}
-                {activeTab === 'news' && (
-                    <div>
-                        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 gap-3 sm:gap-4 border-b-2 border-slate-100 dark:border-slate-800 pb-4">
-                            <h3 className="font-black text-sm sm:text-xl uppercase tracking-widest text-slate-900 dark:text-white">Lista Legendelor</h3>
-                            <button 
-                                onClick={openAddModal} 
-                                className="w-full sm:w-auto bg-emerald-600 text-white px-4 py-2.5 sm:px-5 sm:py-3 rounded-lg sm:rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 border-b-4 border-emerald-800 hover:bg-emerald-500 transition-all"
+        {loading ? (
+          <div className="flex flex-col justify-center items-center py-20 gap-3">
+            <div className="w-7 h-7 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-medium text-slate-500">Se încarcă datele...</p>
+          </div>
+        ) : (
+          <>
+            {/* 1. USERS TAB */}
+            {activeTab === 'users' && (
+              <div className="overflow-x-auto border border-slate-200 dark:border-white/[0.07] rounded-lg">
+                <table className="w-full text-left text-xs sm:text-[13px] min-w-[480px]">
+                  <thead className="bg-slate-50 dark:bg-white/[0.02] text-slate-500 dark:text-slate-400 font-medium text-[11px] border-b border-slate-200 dark:border-white/[0.07]">
+                    <tr>
+                      <th className="py-2.5 px-3">Utilizator</th>
+                      <th className="py-2.5 px-3 hidden md:table-cell">Email</th>
+                      <th className="py-2.5 px-3 text-center">Abateri</th>
+                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3 text-right">Acțiune</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05]">
+                    {filteredUsers.map(u => (
+                      <tr key={u._id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/[0.06] flex items-center justify-center font-semibold text-slate-600 dark:text-slate-300 overflow-hidden shrink-0 text-xs">
+                              {u.avatar ? <img src={u.avatar} alt="" className="w-full h-full object-cover" /> : u.name[0]?.toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-medium text-slate-900 dark:text-slate-100 truncate">{u.name}</div>
+                              <div className="text-[11px] text-slate-500 md:hidden truncate">{u.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-500 hidden md:table-cell">{u.email}</td>
+                        <td className="py-2.5 px-3 text-center tabular-nums">
+                          <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded text-xs font-semibold ${
+                            u.strikes && u.strikes > 0
+                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25'
+                              : 'bg-slate-100 dark:bg-white/[0.04] text-slate-400'
+                          }`}>
+                            {u.strikes || 0}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          {u.isBanned ? (
+                            <span className="text-rose-500 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded text-[11px] font-medium">
+                              Blocat
+                            </span>
+                          ) : (
+                            <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded text-[11px] font-medium">
+                              Activ
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          {u.email !== user.email && (
+                            <button
+                              onClick={() => handleToggleBan(u._id, u.isBanned, u.name)}
+                              title={u.isBanned ? "Deblochează" : "Blochează"}
+                              className="p-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
                             >
-                                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Adaugă Erou
+                              <Ban className="w-4 h-4" />
                             </button>
-                        </div>
-
-                        <div className="grid gap-3 sm:gap-4">
-                            {filteredStories.map(story => (
-                                <div key={story._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50 dark:bg-slate-800 p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-500 transition-colors gap-3 sm:gap-4">
-                                    <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
-                                        <div className="hidden sm:flex bg-white dark:bg-slate-900 text-emerald-500 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
-                                            <Newspaper className="w-6 h-6 sm:w-8 sm:h-8"/>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-black text-xs sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight truncate">{story.title}</div>
-                                            <div className="text-[10px] sm:text-xs text-slate-500 font-bold line-clamp-2 sm:line-clamp-1 mt-0.5 sm:mt-1 leading-tight">{story.excerpt}</div>
-                                            <div className="flex flex-wrap gap-1.5 mt-2 text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                                                <span className="bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">{story.role}</span>
-                                                <span className="bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">{story.organization}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2 w-full sm:w-auto justify-end border-t-2 sm:border-0 border-slate-200 dark:border-slate-700 pt-2 sm:pt-0 mt-1 sm:mt-0">
-                                        <button onClick={() => openEditModal(story)} className="p-2 sm:p-3 bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-600 transition shadow-sm">
-                                            <Edit className="w-3.5 h-3.5 sm:w-5 sm:h-5"/>
-                                        </button>
-                                        <button onClick={() => handleDeleteStory(story._id)} className="p-2 sm:p-3 bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-600 transition shadow-sm">
-                                            <Trash2 className="w-3.5 h-3.5 sm:w-5 sm:h-5"/>
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* 4. TAB VAR (RAPORTĂRI) */}
-                {activeTab === 'reports' && (
-                    <div>
-                        <div className="mb-4 sm:mb-6">
-                            <h3 className="font-black text-sm sm:text-xl flex items-center gap-2 uppercase tracking-widest text-slate-900 dark:text-white">
-                                <Flag className="text-amber-500 w-4 h-4 sm:w-6 sm:h-6"/> Incidente Chat
-                            </h3>
-                        </div>
-
-                        <div className="grid gap-3 sm:gap-5 mb-8 sm:mb-12">
-                            {reportedMessages.map(msg => (
-                                <div key={msg._id} className="bg-rose-50/50 dark:bg-rose-900/10 p-3 sm:p-6 rounded-2xl sm:rounded-3xl border-2 border-rose-200 dark:border-rose-900/50 flex flex-col lg:flex-row justify-between gap-4 relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-1.5 sm:w-2 h-full bg-rose-500"></div>
-                                    <div className="flex-1 pl-2">
-                                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                                            <span className="font-black text-[8px] sm:text-[10px] bg-slate-900 text-white px-2 py-0.5 sm:py-1 rounded uppercase">{msg.room === 'general_chat' ? 'Tribună' : 'Peluză'}</span>
-                                            <span className="font-black text-[11px] sm:text-sm text-slate-900 dark:text-white uppercase">{msg.author}</span>
-                                        </div>
-                                        
-                                        <div className="p-3 sm:p-4 bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative">
-                                            {msg.message && <div className="italic font-bold text-[11px] sm:text-sm text-slate-700 dark:text-slate-300 relative z-10">{msg.message}</div>}
-                                            {msg.imageUrl && (
-                                                <div className="mt-3 relative z-10">
-                                                    <img src={msg.imageUrl} alt="VAR" className="max-w-[150px] sm:max-w-[300px] max-h-32 sm:max-h-48 rounded-lg object-cover border border-slate-200" />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="mt-3 text-[9px] sm:text-xs font-black text-amber-600 uppercase flex items-center gap-1">
-                                            <Users className="w-3 h-3 sm:w-4 sm:h-4"/> {msg.reportedBy.length} Reports
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-row lg:flex-col gap-2 justify-center shrink-0">
-                                        <button onClick={() => handleAddStrike(msg.author)} className="flex-1 bg-white dark:bg-slate-800 text-amber-600 hover:text-amber-500 font-black uppercase text-[9px] sm:text-xs py-2 sm:py-3 px-2 sm:px-4 rounded-lg sm:rounded-xl border-2 border-amber-200 dark:border-amber-900/50 shadow-sm transition">
-                                            Galben (+1)
-                                        </button>
-                                        <button onClick={() => handleDismissReport(msg._id)} className="flex-1 bg-white dark:bg-slate-800 text-emerald-600 hover:text-emerald-500 font-black uppercase text-[9px] sm:text-xs py-2 sm:py-3 px-2 sm:px-4 rounded-lg sm:rounded-xl border-2 border-emerald-200 dark:border-emerald-900/50 shadow-sm transition">
-                                            Ignoră
-                                        </button>
-                                        <button onClick={() => handleDeleteReportedMessage(msg._id)} className="flex-1 bg-rose-600 text-white font-black uppercase text-[9px] sm:text-xs py-2 sm:py-3 px-2 sm:px-4 rounded-lg sm:rounded-xl border-b-2 sm:border-b-4 border-rose-800 transition">
-                                            Șterge
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mb-4 sm:mb-6 pt-6 sm:pt-8 border-t-2 border-slate-100 dark:border-slate-800">
-                            <h3 className="font-black text-sm sm:text-xl flex items-center gap-2 uppercase tracking-widest text-slate-900 dark:text-white">
-                                <ShoppingBag className="text-blue-500 w-4 h-4 sm:w-6 sm:h-6"/> Incidente Mercato
-                            </h3>
-                        </div>
-                        
-                        <div className="grid gap-3 sm:gap-5">
-                            {reportedListings.map(listing => (
-                                <div key={listing._id} className="bg-blue-50/50 dark:bg-blue-900/10 p-3 sm:p-6 rounded-2xl sm:rounded-3xl border-2 border-blue-200 dark:border-blue-900/50 flex flex-col lg:flex-row justify-between gap-4 relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-1.5 sm:w-2 h-full bg-blue-500"></div>
-                                    <div className="flex-1 pl-2">
-                                        <div className="font-black text-[11px] sm:text-sm bg-blue-600 text-white px-2 py-1 sm:px-3 sm:py-1.5 rounded uppercase inline-block mb-2">{listing.title}</div>
-                                        <p className="text-[10px] sm:text-sm font-bold text-slate-600 mt-1 uppercase">Vânzător: {listing.seller}</p>
-                                        <div className="mt-3 text-[9px] sm:text-xs font-black text-amber-600 uppercase flex items-center gap-1">
-                                            <Users className="w-3 h-3 sm:w-4 sm:h-4"/> {listing.reportedBy?.length || 0} Reports
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-row lg:flex-col gap-2 justify-center shrink-0">
-                                        <button onClick={() => handleDismissListingReport(listing._id)} className="flex-1 bg-white dark:bg-slate-800 text-emerald-600 font-black uppercase text-[9px] sm:text-xs py-2 px-2 rounded-lg border-2 border-emerald-200 shadow-sm transition">
-                                            Curat
-                                        </button>
-                                        <button onClick={() => handleDeleteListing(listing._id, listing.title)} className="flex-1 bg-rose-600 text-white font-black uppercase text-[9px] sm:text-xs py-2 px-2 rounded-lg border-b-2 border-rose-800 transition">
-                                            Șterge
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-                
-                {/* 5. TAB PRIMUL 11 (ADMIN) */}
-                {activeTab === 'xi' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                        {/* Formular Adăugare / Editare */}
-                        <div className="bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-4 border-slate-800 shadow-xl space-y-4">
-                            <div className="flex justify-between items-center mb-3 sm:mb-4 border-b-2 border-slate-800 pb-2">
-                                <h3 className="text-sm sm:text-lg font-black text-white uppercase tracking-widest">
-                                    {editingXiId ? 'Editează Meci' : 'Meci Nou'}
-                                </h3>
-                                {editingXiId && (
-                                    <button onClick={resetXiForm} className="text-[10px] sm:text-xs text-rose-500 hover:text-white font-bold uppercase flex items-center gap-1 bg-rose-900/30 px-2 py-1 rounded">
-                                        <X className="w-3 h-3" /> Anulează
-                                    </button>
-                                )}
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-2 sm:gap-4">
-                                <input type="text" placeholder="Echipa Analizată" value={teamName} onChange={e=>setTeamName(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white font-bold text-[10px] sm:text-sm uppercase outline-none focus:border-blue-500" />
-                                <input type="text" placeholder="Adversar" value={opponent} onChange={e=>setOpponent(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white font-bold text-[10px] sm:text-sm uppercase outline-none focus:border-blue-500" />
-                                <input type="text" placeholder="Scor (Tu - Adv)" value={score} onChange={e=>setScore(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white font-bold text-[10px] sm:text-sm uppercase outline-none focus:border-blue-500" />
-                                <input type="text" placeholder="Data/An" value={date} onChange={e=>setDate(e.target.value)} className="bg-slate-950 border-2 border-slate-700 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white font-bold text-[10px] sm:text-sm uppercase outline-none focus:border-blue-500" />
-                            </div>
-
-                            <div className="pt-2">
-                                <select value={formation} onChange={e=>{setFormation(e.target.value); setSlotPlayers(Array(11).fill(null));}} className="w-full bg-slate-950 border-2 border-slate-700 p-2.5 sm:p-3 rounded-lg sm:rounded-xl text-white font-black text-xs sm:text-sm outline-none">
-                                    <option value="4-3-3">4-3-3</option>
-                                    <option value="4-4-2">4-4-2</option>
-                                    <option value="4-2-3-1">4-2-3-1</option>
-                                    <option value="4-1-4-1">4-1-4-1</option>
-                                    <option value="4-5-1">4-5-1</option>
-                                    <option value="4-4-1-1">4-4-1-1</option>
-                                    <option value="4-3-2-1">4-3-2-1</option>
-                                    <option value="4-1-2-1-2">4-1-2-1-2</option>
-                                    <option value="4-2-2-2">4-2-2-2</option>
-                                    <option value="3-5-2">3-5-2</option>
-                                    <option value="3-4-3">3-4-3</option>
-                                    <option value="3-4-2-1">3-4-2-1</option>
-                                    <option value="3-4-1-2">3-4-1-2</option>
-                                    <option value="5-3-2">5-3-2</option>
-                                    <option value="5-4-1">5-4-1</option>
-                                </select>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 mt-2">
-                                <div className="bg-slate-950 border-2 border-slate-700 p-2 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-1">
-                                    <label className="text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase">Culoare Echipa Ta</label>
-                                    <input type="color" value={teamColor} onChange={e=>setTeamColor(e.target.value)} className="w-6 h-6 sm:w-8 sm:h-8 rounded cursor-pointer bg-transparent border-none outline-none" />
-                                </div>
-                                <div className="bg-slate-950 border-2 border-slate-700 p-2 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-1">
-                                    <label className="text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase">Culoare Adversar</label>
-                                    <input type="color" value={opponentColor} onChange={e=>setOpponentColor(e.target.value)} className="w-6 h-6 sm:w-8 sm:h-8 rounded cursor-pointer bg-transparent border-none outline-none" />
-                                </div>
-                                <div className="bg-slate-950 border-2 border-slate-700 p-2 rounded-lg flex flex-col sm:flex-row items-center justify-center gap-2 col-span-2 sm:col-span-1">
-                                    <label className="text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase">Joci Acasă?</label>
-                                    <input type="checkbox" checked={isHome} onChange={e=>setIsHome(e.target.checked)} className="w-4 h-4 sm:w-5 sm:h-5 accent-blue-500" />
-                                </div>
-                            </div>
-                            
-                            {/* PREVIEW CULORI INTELIGENTE (GAZDĂ STÂNGA, OASPETE DREAPTA) */}
-                            <div className="flex gap-2 sm:gap-4 justify-center py-2">
-                                <div 
-                                    className="px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-sm border border-white/20"
-                                    style={{ 
-                                        backgroundColor: isHome ? teamColor : opponentColor, 
-                                        color: getContrastTextColor(isHome ? teamColor : opponentColor) 
-                                    }}
-                                >
-                                    {(isHome ? teamName : opponent) || "Gazdă"}
-                                </div>
-                                <div 
-                                    className="px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-sm border border-white/20"
-                                    style={{ 
-                                        backgroundColor: isHome ? opponentColor : teamColor, 
-                                        color: getContrastTextColor(isHome ? opponentColor : teamColor) 
-                                    }}
-                                >
-                                    {(isHome ? opponent : teamName) || "Oaspete"}
-                                </div>
-                            </div>
-
-                            <div className="pt-2">
-                                <label className="text-slate-400 font-bold text-[10px] uppercase tracking-widest block mb-2">Introdu Nume (Cei 11 din "Echipa Ta")</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {Array.from({ length: 11 }).map((_, idx) => {
-                                        const player = slotPlayers[idx];
-                                        return (
-                                            <input 
-                                                key={idx} type="text" placeholder={getSlotLabel(idx, formation)} value={player ? player.name : ''}
-                                                onChange={(e) => {
-                                                    const newSlots = [...slotPlayers];
-                                                    newSlots[idx] = { name: e.target.value, gridRow: getGridRowForSlot(idx, formation) };
-                                                    setSlotPlayers(newSlots);
-                                                }}
-                                                className={`p-2 sm:p-2.5 rounded-lg border-2 text-[9px] sm:text-[10px] font-bold uppercase transition-colors outline-none ${
-                                                    player?.name.trim() ? 'bg-blue-900/30 border-blue-500 text-blue-300' : 'bg-slate-950 border-slate-700 text-slate-300'
-                                                }`}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <button onClick={handleSaveXI} className={`w-full text-white p-3 sm:p-4 rounded-xl font-black uppercase text-xs sm:text-sm border-b-4 mt-2 flex items-center justify-center gap-2 ${editingXiId ? 'bg-blue-600 border-blue-800' : 'bg-emerald-600 border-emerald-800'}`}>
-                                <Save className="w-4 h-4" /> {editingXiId ? 'Actualizează Meciul' : 'Salvează Meciul Nou'}
-                            </button>
-                        </div>
-
-                        {/* Lista Meciuri DB cu Edit */}
-                        <div className="bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-4 border-slate-800 shadow-xl flex flex-col mt-4 lg:mt-0">
-                            <h3 className="text-sm sm:text-lg font-black text-white uppercase tracking-widest mb-3 sm:mb-4 border-b-2 border-slate-800 pb-2">Istoric Meciuri</h3>
-                            <div className="flex-1 overflow-y-auto space-y-2 pr-1 sm:pr-2 max-h-[300px] sm:max-h-[600px] scrollbar-hide">
-                                {xis.length === 0 ? (
-                                    <p className="text-slate-500 text-center font-bold text-[10px] sm:text-sm uppercase py-5 sm:py-10">Baza de date e goală.</p>
-                                ) : (
-                                    xis.map(x => {
-                                        // Previziunea în lista de editare păstrează aceeași logică inteligentă de culori stânga(acasă)-dreapta(deplasare)
-                                        const hColor = x.isHome !== false ? (x.teamColor || '#334155') : (x.opponentColor || '#334155');
-                                        const aColor = x.isHome !== false ? (x.opponentColor || '#334155') : (x.teamColor || '#334155');
-                                        const hName = x.isHome !== false ? x.teamName : x.opponent;
-                                        const aName = x.isHome !== false ? x.opponent : x.teamName;
-
-                                        return (
-                                        <div key={x._id || x.id} className={`bg-slate-950 border rounded-lg sm:rounded-xl p-3 flex justify-between items-center transition-colors ${editingXiId === (x._id || x.id) ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]' : 'border-slate-700'}`}>
-                                            <div className="min-w-0 pr-2 flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="font-black text-[9px] sm:text-xs px-2 py-0.5 rounded uppercase truncate max-w-[100px]" style={{ backgroundColor: hColor, color: getContrastTextColor(hColor) }}>
-                                                        {hName}
-                                                    </span>
-                                                    <span className="text-slate-500 font-bold text-[8px] sm:text-[10px]">VS</span>
-                                                    <span className="font-black text-[9px] sm:text-xs px-2 py-0.5 rounded uppercase truncate max-w-[100px]" style={{ backgroundColor: aColor, color: getContrastTextColor(aColor) }}>
-                                                        {aName}
-                                                    </span>
-                                                </div>
-                                                <div className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase mt-0.5">{x.date} • {x.formation}</div>
-                                            </div>
-                                            
-                                            <div className="flex gap-2 shrink-0">
-                                                <button onClick={() => handleEditXI(x)} className="bg-blue-900/30 text-blue-500 p-2 rounded-md hover:bg-blue-600 hover:text-white transition-colors" title="Editează meciul">
-                                                    <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                                </button>
-                                                <button onClick={() => handleDeleteXI(x._id || x.id || '')} className="bg-rose-900/30 text-rose-500 p-2 rounded-md hover:bg-rose-600 hover:text-white transition-colors" title="Șterge meciul">
-                                                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )})
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-                </>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
-        </div>
 
-        {/* MODAL ȘTIRE PĂSTRAT PENTRU REFERINȚĂ, ACUM CU TANSTACK FORM */}
-        {showStoryModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4">
-                <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] border-2 sm:border-4 border-emerald-600/30">
-                    <div className="p-4 border-b-2 sm:border-b-4 border-emerald-500 flex justify-between items-center bg-slate-900 text-white">
-                        <h3 className="text-sm sm:text-lg font-black uppercase tracking-widest flex items-center gap-2">
-                            {editingId ? 'Actualizează' : 'Adaugă Erou'}
-                        </h3>
-                        <button onClick={() => setShowStoryModal(false)} className="bg-slate-800 p-1.5 sm:p-2 rounded-full border border-slate-700"><X className="w-4 h-4 sm:w-5 sm:h-5"/></button>
+            {/* 2. LISTINGS TAB */}
+            {activeTab === 'listings' && (
+              <div className="overflow-x-auto border border-slate-200 dark:border-white/[0.07] rounded-lg">
+                <table className="w-full text-left text-xs sm:text-[13px] min-w-[460px]">
+                  <thead className="bg-slate-50 dark:bg-white/[0.02] text-slate-500 dark:text-slate-400 font-medium text-[11px] border-b border-slate-200 dark:border-white/[0.07]">
+                    <tr>
+                      <th className="py-2.5 px-3">Articol</th>
+                      <th className="py-2.5 px-3">Preț</th>
+                      <th className="py-2.5 px-3 hidden sm:table-cell">Vânzător</th>
+                      <th className="py-2.5 px-3 text-right">Șterge</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05]">
+                    {filteredListings.map(l => (
+                      <tr key={l._id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                        <td className="py-2.5 px-3">
+                          <div className="font-medium text-slate-900 dark:text-slate-100 line-clamp-1">{l.title}</div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">{l.category}</div>
+                        </td>
+                        <td className="py-2.5 px-3 font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{l.price}</td>
+                        <td className="py-2.5 px-3 text-slate-500 hidden sm:table-cell">{l.seller}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <button
+                            onClick={() => handleDeleteListing(l._id, l.title)}
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* 3. NEWS / HEROES TAB */}
+            {activeTab === 'news' && (
+              <div>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 pb-3 border-b border-slate-200 dark:border-white/[0.07]">
+                  <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Articole Legende</h3>
+                  <button
+                    onClick={openAddModal}
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> Adaugă articol
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {filteredStories.map(story => (
+                    <div
+                      key={story._id}
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50 dark:bg-[#0B0F14] p-3.5 rounded-xl border border-slate-200 dark:border-white/[0.07] gap-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-sm text-slate-900 dark:text-white truncate">{story.title}</div>
+                        <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">{story.excerpt}</div>
+                        <div className="flex flex-wrap gap-1.5 mt-2 text-[11px]">
+                          <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-medium">
+                            {story.role}
+                          </span>
+                          <span className="bg-slate-200/70 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded">
+                            {story.organization}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          onClick={() => openEditModal(story)}
+                          className="p-2 bg-white dark:bg-[#11161D] rounded-lg border border-slate-200 dark:border-white/[0.08] text-slate-500 hover:text-emerald-500 transition-colors cursor-pointer"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStory(story._id)}
+                          className="p-2 bg-white dark:bg-[#11161D] rounded-lg border border-slate-200 dark:border-white/[0.08] text-slate-500 hover:text-rose-500 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    
-                    <form
-                      onSubmit={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          storyForm.handleSubmit();
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 4. TAB RAPORTĂRI */}
+            {activeTab === 'reports' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-semibold text-sm flex items-center gap-2 text-slate-900 dark:text-white mb-3">
+                    <Flag className="text-amber-500 w-4 h-4" /> Mesaje raportate ({reportedMessages.length})
+                  </h3>
+
+                  {reportedMessages.length === 0 ? (
+                    <div className="text-center py-8 text-xs text-slate-500 bg-slate-50 dark:bg-[#0B0F14] rounded-xl border border-slate-200 dark:border-white/[0.07]">
+                      Niciun mesaj raportat momentan.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {reportedMessages.map(msg => (
+                        <div
+                          key={msg._id}
+                          className="bg-rose-500/[0.04] p-4 rounded-xl border border-rose-500/20 flex flex-col lg:flex-row justify-between gap-4"
+                        >
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded font-medium">
+                                {msg.room === 'general_chat' ? 'Chat General' : 'Privat'}
+                              </span>
+                              <span className="font-semibold text-slate-900 dark:text-white">{msg.author}</span>
+                              <span className="text-amber-500 font-medium tabular-nums">• {msg.reportedBy.length} raportări</span>
+                            </div>
+
+                            <div className="p-3 bg-white dark:bg-[#0B0F14] rounded-lg border border-slate-200 dark:border-white/[0.07]">
+                              {msg.message && <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">{msg.message}</p>}
+                              {msg.imageUrl && (
+                                <img src={msg.imageUrl} alt="Raportat" className="mt-2 max-w-[220px] max-h-40 rounded-lg object-cover border border-slate-200 dark:border-white/[0.08]" />
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-row lg:flex-col gap-2 justify-center shrink-0">
+                            <button
+                              onClick={() => handleAddStrike(msg.author)}
+                              className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 font-medium text-xs py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                            >
+                              Abatere (+1)
+                            </button>
+                            <button
+                              onClick={() => handleDismissReport(msg._id)}
+                              className="flex-1 bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 font-medium text-xs py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                            >
+                              Ignoră
+                            </button>
+                            <button
+                              onClick={() => handleDeleteReportedMessage(msg._id)}
+                              className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                            >
+                              Șterge
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-5 border-t border-slate-200 dark:border-white/[0.07]">
+                  <h3 className="font-semibold text-sm flex items-center gap-2 text-slate-900 dark:text-white mb-3">
+                    <ShoppingBag className="text-blue-500 w-4 h-4" /> Anunțuri raportate ({reportedListings.length})
+                  </h3>
+
+                  {reportedListings.length === 0 ? (
+                    <div className="text-center py-8 text-xs text-slate-500 bg-slate-50 dark:bg-[#0B0F14] rounded-xl border border-slate-200 dark:border-white/[0.07]">
+                      Niciun anunț raportat momentan.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {reportedListings.map(listing => (
+                        <div
+                          key={listing._id}
+                          className="bg-blue-500/[0.04] p-4 rounded-xl border border-blue-500/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm text-slate-900 dark:text-white">{listing.title}</div>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Vânzător: {listing.seller} • <span className="text-amber-500 font-medium tabular-nums">{listing.reportedBy?.length || 0} raportări</span>
+                            </p>
+                          </div>
+                          <div className="flex gap-2 shrink-0 w-full sm:w-auto">
+                            <button
+                              onClick={() => handleDismissListingReport(listing._id)}
+                              className="flex-1 sm:flex-none bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 font-medium text-xs py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                            >
+                              Ignoră
+                            </button>
+                            <button
+                              onClick={() => handleDeleteListing(listing._id, listing.title)}
+                              className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                            >
+                              Șterge
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 5. TAB PRIMUL 11 (ADMIN) */}
+            {activeTab === 'xi' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* Formular Adăugare / Editare */}
+                <div className="bg-slate-50 dark:bg-[#0B0F14] p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/[0.07] pb-3">
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {editingXiId ? 'Editează meci' : 'Adaugă meci nou'}
+                    </h3>
+                    {editingXiId && (
+                      <button
+                        onClick={resetXiForm}
+                        className="text-xs text-rose-500 hover:underline font-medium flex items-center gap-1 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" /> Anulează
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <input
+                      type="text"
+                      placeholder="Echipa analizată"
+                      value={teamName}
+                      onChange={e => setTeamName(e.target.value)}
+                      className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-lg text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Adversar"
+                      value={opponent}
+                      onChange={e => setOpponent(e.target.value)}
+                      className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-lg text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Scor (ex: 2-1)"
+                      value={score}
+                      onChange={e => setScore(e.target.value)}
+                      className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-lg text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Data / An"
+                      value={date}
+                      onChange={e => setDate(e.target.value)}
+                      className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-lg text-slate-900 dark:text-white text-xs outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <select
+                    value={formation}
+                    onChange={e => {
+                      setFormation(e.target.value);
+                      setSlotPlayers(Array(11).fill(null));
+                    }}
+                    className="w-full bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] px-3 py-2 rounded-lg text-slate-900 dark:text-white font-medium text-xs outline-none cursor-pointer"
+                  >
+                    <option value="4-3-3">4-3-3</option>
+                    <option value="4-4-2">4-4-2</option>
+                    <option value="4-2-3-1">4-2-3-1</option>
+                    <option value="4-1-4-1">4-1-4-1</option>
+                    <option value="4-5-1">4-5-1</option>
+                    <option value="4-4-1-1">4-4-1-1</option>
+                    <option value="4-3-2-1">4-3-2-1</option>
+                    <option value="4-1-2-1-2">4-1-2-1-2</option>
+                    <option value="4-2-2-2">4-2-2-2</option>
+                    <option value="3-5-2">3-5-2</option>
+                    <option value="3-4-3">3-4-3</option>
+                    <option value="3-4-2-1">3-4-2-1</option>
+                    <option value="3-4-1-2">3-4-1-2</option>
+                    <option value="5-3-2">5-3-2</option>
+                    <option value="5-4-1">5-4-1</option>
+                  </select>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] p-2 rounded-lg flex items-center justify-between gap-1">
+                      <label className="text-slate-500 text-[10px] font-medium">Echipă</label>
+                      <input type="color" value={teamColor} onChange={e => setTeamColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-none" />
+                    </div>
+                    <div className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] p-2 rounded-lg flex items-center justify-between gap-1">
+                      <label className="text-slate-500 text-[10px] font-medium">Adversar</label>
+                      <input type="color" value={opponentColor} onChange={e => setOpponentColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-none" />
+                    </div>
+                    <div className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] p-2 rounded-lg flex items-center justify-between gap-1">
+                      <label className="text-slate-500 text-[10px] font-medium">Acasă?</label>
+                      <input type="checkbox" checked={isHome} onChange={e => setIsHome(e.target.checked)} className="w-4 h-4 accent-emerald-500 cursor-pointer" />
+                    </div>
+                  </div>
+
+                  {/* Preview culori */}
+                  <div className="flex gap-2 justify-center py-1">
+                    <span
+                      className="px-3 py-1 rounded-md text-xs font-semibold border border-black/10"
+                      style={{
+                        backgroundColor: isHome ? teamColor : opponentColor,
+                        color: getContrastTextColor(isHome ? teamColor : opponentColor)
                       }}
                     >
-                        <div className="p-4 sm:p-6 overflow-y-auto space-y-3 sm:space-y-5 bg-slate-50 dark:bg-slate-950 max-h-[60vh]">
-                            <storyForm.Field name="title">
-                                {(field) => (
-                                    <input 
-                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" 
-                                        value={field.state.value} 
-                                        onChange={e => field.handleChange(e.target.value)} 
-                                        placeholder="NUME EROU" 
-                                    />
-                                )}
-                            </storyForm.Field>
-                            <storyForm.Field name="date">
-                                {(field) => (
-                                    <input 
-                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" 
-                                        value={field.state.value} 
-                                        onChange={e => field.handleChange(e.target.value)} 
-                                        placeholder="ANUL/PERIOADA" 
-                                    />
-                                )}
-                            </storyForm.Field>
-                            <storyForm.Field name="role">
-                                {(field) => (
-                                    <input 
-                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" 
-                                        value={field.state.value} 
-                                        onChange={e => field.handleChange(e.target.value)} 
-                                        placeholder="ROL (EX: Maseur)" 
-                                    />
-                                )}
-                            </storyForm.Field>
-                            <storyForm.Field name="organization">
-                                {(field) => (
-                                    <input 
-                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase text-white" 
-                                        value={field.state.value} 
-                                        onChange={e => field.handleChange(e.target.value)} 
-                                        placeholder="CLUB/TEREN" 
-                                    />
-                                )}
-                            </storyForm.Field>
-                            <storyForm.Field name="excerpt">
-                                {(field) => (
-                                    <input 
-                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-bold text-white" 
-                                        value={field.state.value} 
-                                        onChange={e => field.handleChange(e.target.value)} 
-                                        placeholder="Prezentare scurtă..." 
-                                    />
-                                )}
-                            </storyForm.Field>
-                            <storyForm.Field name="content">
-                                {(field) => (
-                                    <textarea 
-                                        className="w-full bg-slate-800 border-2 border-slate-700 p-2.5 rounded-lg text-[10px] sm:text-sm font-medium text-white min-h-[100px]" 
-                                        value={field.state.value} 
-                                        onChange={e => field.handleChange(e.target.value)} 
-                                        placeholder="Povestea completă..."
-                                    ></textarea>
-                                )}
-                            </storyForm.Field>
-                        </div>
-                        
-                        <div className="p-3 sm:p-4 border-t-2 border-slate-800 bg-slate-900">
-                            <button 
-                                type="submit"
-                                disabled={!canSubmit || isSubmitting}
-                                className="w-full bg-emerald-600 text-white font-black uppercase text-xs sm:text-sm py-3 rounded-xl border-b-4 border-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isSubmitting ? 'Se salvează...' : 'Salvează'}
-                            </button>
-                        </div>
-                    </form>
+                      {(isHome ? teamName : opponent) || "Gazdă"}
+                    </span>
+                    <span
+                      className="px-3 py-1 rounded-md text-xs font-semibold border border-black/10"
+                      style={{
+                        backgroundColor: isHome ? opponentColor : teamColor,
+                        color: getContrastTextColor(isHome ? opponentColor : teamColor)
+                      }}
+                    >
+                      {(isHome ? opponent : teamName) || "Oaspete"}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-slate-500 text-xs font-medium block">Cei 11 titulari</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Array.from({ length: 11 }).map((_, idx) => {
+                        const player = slotPlayers[idx];
+                        return (
+                          <input
+                            key={idx}
+                            type="text"
+                            placeholder={getSlotLabel(idx, formation)}
+                            value={player ? player.name : ''}
+                            onChange={(e) => {
+                              const newSlots = [...slotPlayers];
+                              newSlots[idx] = { name: e.target.value, gridRow: getGridRowForSlot(idx, formation) };
+                              setSlotPlayers(newSlots);
+                            }}
+                            className={`px-2.5 py-2 rounded-lg border text-xs transition-colors outline-none ${
+                              player?.name.trim()
+                                ? 'bg-emerald-500/10 border-emerald-500/35 text-slate-900 dark:text-white'
+                                : 'bg-white dark:bg-[#11161D] border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-slate-200'
+                            }`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSaveXI}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" /> {editingXiId ? 'Actualizează meciul' : 'Salvează meciul'}
+                  </button>
                 </div>
-            </div>
+
+                {/* Lista Meciuri DB */}
+                <div className="bg-slate-50 dark:bg-[#0B0F14] p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-white/[0.07] flex flex-col">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 pb-3 border-b border-slate-200 dark:border-white/[0.07]">
+                    Istoric meciuri ({xis.length})
+                  </h3>
+                  <div className="flex-1 overflow-y-auto space-y-2 max-h-[520px] pr-1">
+                    {xis.length === 0 ? (
+                      <p className="text-slate-500 text-center text-xs py-10">Nu există meciuri salvate.</p>
+                    ) : (
+                      xis.map(x => {
+                        const hColor = x.isHome !== false ? (x.teamColor || '#334155') : (x.opponentColor || '#334155');
+                        const aColor = x.isHome !== false ? (x.opponentColor || '#334155') : (x.teamColor || '#334155');
+                        const hName = x.isHome !== false ? x.teamName : x.opponent;
+                        const aName = x.isHome !== false ? x.opponent : x.teamName;
+
+                        return (
+                          <div
+                            key={x._id || x.id}
+                            className={`bg-white dark:bg-[#11161D] border rounded-lg p-3 flex justify-between items-center gap-2 transition-colors ${
+                              editingXiId === (x._id || x.id)
+                                ? 'border-emerald-500'
+                                : 'border-slate-200 dark:border-white/[0.07]'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                <span
+                                  className="font-semibold text-[11px] px-2 py-0.5 rounded truncate max-w-[110px]"
+                                  style={{ backgroundColor: hColor, color: getContrastTextColor(hColor) }}
+                                >
+                                  {hName}
+                                </span>
+                                <span className="text-slate-400 text-[10px]">vs</span>
+                                <span
+                                  className="font-semibold text-[11px] px-2 py-0.5 rounded truncate max-w-[110px]"
+                                  style={{ backgroundColor: aColor, color: getContrastTextColor(aColor) }}
+                                >
+                                  {aName}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 tabular-nums">
+                                {x.date} • {x.formation} • {x.score}
+                              </div>
+                            </div>
+
+                            <div className="flex gap-1.5 shrink-0">
+                              <button
+                                onClick={() => handleEditXI(x)}
+                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.05] text-slate-500 hover:text-emerald-500 transition-colors cursor-pointer"
+                                title="Editează"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteXI(x._id || x.id || '')}
+                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.05] text-slate-500 hover:text-rose-500 transition-colors cursor-pointer"
+                                title="Șterge"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
+      </div>
+
+      {/* MODAL ARTICOL (TANSTACK FORM) */}
+      {showStoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4" onClick={() => setShowStoryModal(false)}>
+          <div className="bg-white dark:bg-[#11161D] rounded-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-white/[0.08] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="px-4 py-3.5 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                {editingId ? 'Editează articol' : 'Adaugă articol nou'}
+              </h3>
+              <button
+                onClick={() => setShowStoryModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                storyForm.handleSubmit();
+              }}
+            >
+              <div className="p-4 sm:p-5 overflow-y-auto space-y-3 max-h-[65vh]">
+                <storyForm.Field name="title">
+                  {(field) => (
+                    <input
+                      className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                      value={field.state.value}
+                      onChange={e => field.handleChange(e.target.value)}
+                      placeholder="Titlu / Nume erou"
+                    />
+                  )}
+                </storyForm.Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <storyForm.Field name="date">
+                    {(field) => (
+                      <input
+                        className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                        value={field.state.value}
+                        onChange={e => field.handleChange(e.target.value)}
+                        placeholder="An / Perioadă"
+                      />
+                    )}
+                  </storyForm.Field>
+                  <storyForm.Field name="role">
+                    {(field) => (
+                      <input
+                        className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                        value={field.state.value}
+                        onChange={e => field.handleChange(e.target.value)}
+                        placeholder="Rol (ex: Maseur)"
+                      />
+                    )}
+                  </storyForm.Field>
+                </div>
+                <storyForm.Field name="organization">
+                  {(field) => (
+                    <input
+                      className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                      value={field.state.value}
+                      onChange={e => field.handleChange(e.target.value)}
+                      placeholder="Club / Organizație"
+                    />
+                  )}
+                </storyForm.Field>
+                <storyForm.Field name="excerpt">
+                  {(field) => (
+                    <input
+                      className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                      value={field.state.value}
+                      onChange={e => field.handleChange(e.target.value)}
+                      placeholder="Prezentare scurtă..."
+                    />
+                  )}
+                </storyForm.Field>
+                <storyForm.Field name="content">
+                  {(field) => (
+                    <textarea
+                      className="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] px-3 py-2.5 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500 min-h-[120px] resize-y"
+                      value={field.state.value}
+                      onChange={e => field.handleChange(e.target.value)}
+                      placeholder="Povestea completă..."
+                    />
+                  )}
+                </storyForm.Field>
+              </div>
+
+              <div className="p-4 border-t border-slate-200 dark:border-white/[0.07]">
+                <button
+                  type="submit"
+                  disabled={!canSubmit || isSubmitting}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm py-2.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? 'Se salvează...' : 'Salvează'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

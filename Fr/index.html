@@ -5,19 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="description" content="Platforma oficială de Scouting Fotbal. Bază de date, transferuri și statistici." />
-    
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#022c22" />
+    <meta name="theme-color" content="#0B0F14" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    
-    <!-- Forțează browserul să nu țină cache la acest fișier HTML HTML -->
+
+    <!-- Forțează browserul să nu țină cache la acest fișier HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    
+
     <title>România Scout | Baza Oficială de Date</title>
   </head>
-  <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-emerald-50 antialiased overflow-x-hidden">
+  <body class="bg-[#F8FAFC] dark:bg-[#0B0F14] text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden" style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
@@ -28,14 +32,12 @@
           navigator.serviceWorker.register('/service-worker.js')
             .then(reg => {
               console.log('Service Worker înregistrat cu succes!');
-              
+
               // Verifică dacă există un update (cod nou pe server)
               reg.onupdatefound = () => {
                 const installingWorker = reg.installing;
                 installingWorker.onstatechange = () => {
                   if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // În loc să dăm refresh automat, trimitem semnalul către App.tsx
-                    // pentru a declanșa ecranul de blocare obligatoriu (overlay-ul)
                     window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: reg }));
                   }
                 };

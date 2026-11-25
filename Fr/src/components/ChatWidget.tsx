@@ -1,6 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
-import { MessageCircle, X, Send, ChevronLeft, Image as ImageIcon, Users, CheckCheck, Trash2, ExternalLink, Ban, Loader2, Reply, Smile, Pin, Flag, ShieldCheck, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import {
+  MessageCircle, X, Send, ChevronLeft, Image as ImageIcon, Users,
+  CheckCheck, Trash2, ExternalLink, Ban, Loader2, Reply, Smile,
+  Pin, Flag, ShieldCheck, ZoomIn, ZoomOut, RotateCcw
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const BACKEND_BASE = (import.meta as any).env?.VITE_API_URL || "https://football-backend-m2a4.onrender.com";
@@ -83,9 +87,9 @@ const formatDateSeparator = (dateString: string) => {
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  if (date.toDateString() === now.toDateString()) return "ZI DE MECI (AZI)";
-  if (date.toDateString() === yesterday.toDateString()) return "ANTRENAMENT (IERI)";
-  return date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
+  if (date.toDateString() === now.toDateString()) return "Astăzi";
+  if (date.toDateString() === yesterday.toDateString()) return "Ieri";
+  return date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 export const ChatWidget = ({
@@ -98,7 +102,7 @@ export const ChatWidget = ({
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<'list' | 'chat'>('list');
   const [activeRoom, setActiveRoom] = useState(initialRoomID || "general_chat");
-  const [activeTitle, setActiveTitle] = useState("Tribuna Oficială");
+  const [activeTitle, setActiveTitle] = useState("Chat General");
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messageList, setMessageList] = useState<Message[]>([]);
@@ -155,7 +159,7 @@ export const ChatWidget = ({
             href={part}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline text-emerald-300 hover:text-emerald-100 font-black inline-flex items-center gap-1 mx-1 break-all tracking-wider"
+            className="underline text-emerald-300 hover:text-emerald-100 font-medium inline-flex items-center gap-1 mx-0.5 break-all"
             title={part}
           >
             {displayText} <ExternalLink className="w-3 h-3" />
@@ -184,7 +188,7 @@ export const ChatWidget = ({
   useEffect(() => {
     if (initialRoomID && initialRoomID !== "general_chat") {
       setActiveRoom(initialRoomID);
-      setActiveTitle("Negocieri Transfer");
+      setActiveTitle("Discuție anunț");
       setView('chat');
       setIsOpen(true);
       onClearUnread?.();
@@ -285,8 +289,8 @@ export const ChatWidget = ({
     const element = messageContainerRefs.current[msgId];
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "center" });
-      element.classList.add("bg-emerald-500/20", "transition-colors", "duration-1000", "rounded-2xl");
-      setTimeout(() => element.classList.remove("bg-emerald-500/20", "rounded-2xl"), 2000);
+      element.classList.add("bg-emerald-500/15", "transition-colors", "duration-700", "rounded-xl");
+      setTimeout(() => element.classList.remove("bg-emerald-500/15", "rounded-xl"), 1800);
     }
   };
 
@@ -297,7 +301,7 @@ export const ChatWidget = ({
         const compressed = await compressChatImage(file, 1024, 0.78);
         setSelectedImage(compressed);
       } catch {
-        toast.error("Nu s-a putut procesa fotografia.");
+        toast.error("Nu s-a putut procesa imaginea.");
       } finally {
         e.target.value = '';
       }
@@ -328,7 +332,7 @@ export const ChatWidget = ({
       };
 
       if (replyingTo) {
-        payload.replyTo = { id: replyingTo._id, author: replyingTo.author, text: replyingTo.message || "Fotografie" };
+        payload.replyTo = { id: replyingTo._id, author: replyingTo.author, text: replyingTo.message || "Imagine" };
       }
 
       try {
@@ -344,10 +348,10 @@ export const ChatWidget = ({
           setReplyingTo(null);
           socket.emit("stop_typing", activeRoom);
         } else {
-          toast.error("Eroare pe traseu.");
+          toast.error("Eroare la trimiterea mesajului.");
         }
       } catch {
-        toast.error("Eroare de conexiune la stadion.");
+        toast.error("Eroare de conexiune.");
       } finally {
         setIsSending(false);
       }
@@ -355,7 +359,7 @@ export const ChatWidget = ({
   };
 
   const handleDeleteMessage = async (msgId: string) => {
-    if (!window.confirm("Anulezi mesajul definitiv?")) return;
+    if (!window.confirm("Ștergi definitiv acest mesaj?")) return;
     try {
       await fetch(`${BACKEND_BASE}/api/messages/${msgId}`, {
         method: 'DELETE',
@@ -375,10 +379,10 @@ export const ChatWidget = ({
       });
 
       if (!res.ok) {
-        toast.error("Tabela se actualizează. Mai așteaptă!");
+        toast.error("Nu am putut salva reacția.");
       }
     } catch {
-      toast.error("Fără conexiune la rețea.");
+      toast.error("Eroare de conexiune.");
     }
   };
 
@@ -389,12 +393,12 @@ export const ChatWidget = ({
         headers: getAuthHeaders(),
       });
     } catch {
-      toast.error("Eroare la prinderea mesajului.");
+      toast.error("Eroare la fixarea mesajului.");
     }
   };
 
   const handleReportMessage = async (msgId: string) => {
-    if (!window.confirm("Chemi VAR-ul pentru acest mesaj neadecvat?")) return;
+    if (!window.confirm("Raportezi acest mesaj către administratori?")) return;
     try {
       const res = await fetch(`${BACKEND_BASE}/api/messages/${msgId}/report`, {
         method: 'POST',
@@ -402,10 +406,10 @@ export const ChatWidget = ({
         body: JSON.stringify({ user: user.name }),
       });
       if (res.ok) {
-        toast.success("Incidentul a fost trimis Comisiei Centrale.");
+        toast.success("Mesajul a fost raportat.");
       }
     } catch {
-      toast.error("Eroare la arbitraj.");
+      toast.error("Eroare la raportare.");
     }
   };
 
@@ -477,10 +481,10 @@ export const ChatWidget = ({
 
   return (
     <>
-      {/* Lightbox Imagini (VAR Review Style) */}
+      {/* Lightbox Imagini */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[999999] bg-slate-950/95 backdrop-blur-md flex flex-col justify-between p-3 sm:p-6 select-none animate-in fade-in duration-200"
+          className="fixed inset-0 z-[999999] bg-black/90 backdrop-blur-sm flex flex-col justify-between p-3 sm:p-5 select-none"
           onMouseMove={(e) => {
             if (!isDraggingRef.current || zoomScale <= 1) return;
             setZoomPos({
@@ -492,11 +496,11 @@ export const ChatWidget = ({
           onMouseLeave={() => { isDraggingRef.current = false; }}
         >
           <div className="w-full max-w-4xl mx-auto flex items-center justify-between gap-2 z-20">
-            <div className="bg-rose-600 text-white text-[10px] font-black px-3 py-1.5 uppercase tracking-widest rounded-lg border border-rose-400/40 shadow-lg">
-              Analiză Foto (VAR) • {Math.round(zoomScale * 100)}%
+            <div className="bg-[#11161D] text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-white/[0.08] tabular-nums">
+              Previzualizare • {Math.round(zoomScale * 100)}%
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => {
@@ -505,31 +509,31 @@ export const ChatWidget = ({
                   if (next === 1) setZoomPos({ x: 0, y: 0 });
                 }}
                 disabled={zoomScale <= 1}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white border-2 border-slate-700 transition-colors"
+                className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
               >
-                <ZoomOut className="w-4 h-4 sm:w-5 sm:h-5" />
+                <ZoomOut className="w-4 h-4" />
               </button>
               <button
                 type="button"
                 onClick={() => setZoomScale((prev) => clampZoom(prev + 0.5))}
                 disabled={zoomScale >= 4}
-                className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white border-2 border-emerald-700 transition-colors"
+                className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
               >
-                <ZoomIn className="w-4 h-4 sm:w-5 sm:h-5" />
+                <ZoomIn className="w-4 h-4" />
               </button>
               <button
                 type="button"
                 onClick={() => { setZoomScale(1); setZoomPos({ x: 0, y: 0 }); }}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border-2 border-slate-700 transition-colors"
+                className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
               >
-                <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+                <RotateCcw className="w-4 h-4" />
               </button>
               <button
                 type="button"
                 onClick={() => setLightboxImage(null)}
-                className="p-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white border-2 border-rose-700 transition-colors ml-1"
+                className="p-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/25 transition-colors ml-1 cursor-pointer"
               >
-                <X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -546,7 +550,7 @@ export const ChatWidget = ({
             onTouchEnd={handleLightboxTouchEnd}
             onClick={() => setLightboxImage(null)}
             style={{ touchAction: 'none' }}
-            className="flex-1 w-full max-w-4xl mx-auto my-3 flex items-center justify-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/50 relative"
+            className="flex-1 w-full max-w-4xl mx-auto my-3 flex items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-black/40 relative"
           >
             <img
               src={lightboxImage}
@@ -571,14 +575,14 @@ export const ChatWidget = ({
             />
           </div>
 
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">
-            Desktop: folosește + / - sau rotița • Mobil: ciupește (pinch) sau glisează
+          <p className="text-[11px] text-slate-400 text-center">
+            Desktop: folosește + / - sau rotița • Mobil: pinch sau glisează
           </p>
         </div>
       )}
 
-      {/* CONTAINERUL WIDGET-ULUI */}
-      <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-[100000] flex flex-col items-end font-sans">
+      {/* CONTAINER WIDGET */}
+      <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-[100000] flex flex-col items-end">
         {!isOpen && (
           <button
             type="button"
@@ -586,66 +590,64 @@ export const ChatWidget = ({
               setIsOpen(true);
               onClearUnread?.();
             }}
-            className="group bg-slate-900 border-4 border-emerald-500 hover:bg-slate-800 text-emerald-400 p-4 rounded-full shadow-[0_10px_25px_rgba(16,185,129,0.3)] hover:shadow-[0_10px_25px_rgba(16,185,129,0.5)] transition-all hover:scale-110 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4"
+            aria-label="Deschide mesaje"
+            className="relative bg-slate-900 dark:bg-[#11161D] border border-slate-700 dark:border-white/[0.12] hover:border-emerald-500/60 text-white p-3.5 rounded-full shadow-lg transition-colors flex items-center justify-center cursor-pointer"
           >
-            <div className="absolute inset-0 rounded-full border border-emerald-400 opacity-0 group-hover:opacity-100 group-hover:animate-ping"></div>
-            <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8" />
-            {unreadCount > 0 ? (
-              <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-rose-600 text-white text-[10px] font-black rounded-full border-2 border-slate-900 flex items-center justify-center animate-bounce">
+            <MessageCircle className="w-5 h-5 text-emerald-400" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 bg-rose-500 text-white text-[10px] font-semibold rounded-full border-2 border-white dark:border-[#0B0F14] flex items-center justify-center tabular-nums">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
-            ) : (
-              <span className="absolute top-[-4px] right-[-4px] w-4 h-4 bg-rose-500 rounded-full border-2 border-slate-900 animate-pulse"></span>
             )}
           </button>
         )}
 
         {isOpen && (
-          <div className="bg-white dark:bg-slate-900 w-full sm:w-[350px] md:w-[420px] fixed inset-0 sm:static sm:inset-auto h-[100dvh] sm:h-[65vh] sm:min-h-[500px] sm:max-h-[750px] sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] sm:border-4 border-emerald-600/30 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 z-[100001]">
-            {/* HEADER WIDGET */}
-            <div className="bg-slate-950 p-3 sm:p-4 border-b-4 border-emerald-600 flex justify-between items-center z-20 shrink-0 relative overflow-hidden">
-              <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)] pointer-events-none"></div>
-
+          <div className="bg-white dark:bg-[#0B0F14] w-full sm:w-[360px] md:w-[400px] fixed inset-0 sm:static sm:inset-auto h-[100dvh] sm:h-[62vh] sm:min-h-[480px] sm:max-h-[680px] sm:rounded-xl shadow-2xl sm:border border-slate-200 dark:border-white/[0.08] flex flex-col overflow-hidden z-[100001]">
+            {/* HEADER */}
+            <div className="bg-slate-50 dark:bg-[#11161D] px-3.5 py-3 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center z-20 shrink-0">
               {view === 'chat' && activeRoom.startsWith('listing_') && activeConversationInfo ? (
-                <div className="flex items-center gap-2 sm:gap-3 w-full min-w-0 pr-2 relative z-10">
+                <div className="flex items-center gap-2.5 w-full min-w-0 pr-2">
                   <button
                     type="button"
                     onClick={goBack}
-                    className="bg-slate-800 hover:bg-slate-700 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-700 transition-colors shrink-0"
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors shrink-0 cursor-pointer"
                   >
-                    <ChevronLeft className="w-5 h-5 text-emerald-400" />
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-800 overflow-hidden shrink-0 border-2 border-emerald-500/50">
+                  <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-white/[0.05] overflow-hidden shrink-0 border border-slate-200 dark:border-white/[0.08] flex items-center justify-center">
                     {activeConversationInfo.image ? (
                       <img src={activeConversationInfo.image} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 m-2" />
+                      <ImageIcon className="w-4 h-4 text-slate-400" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="font-black text-white uppercase tracking-tight truncate text-xs sm:text-sm">{activeTitle}</h2>
-                    <span className="text-[8px] sm:text-[9px] text-blue-400 font-black bg-blue-900/30 border border-blue-800 px-1.5 py-0.5 rounded uppercase tracking-widest mt-0.5 inline-block">
-                      Negocieri
+                    <h2 className="font-semibold text-slate-900 dark:text-white truncate text-xs sm:text-sm leading-tight">
+                      {activeTitle}
+                    </h2>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Discuție privată
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 sm:gap-3 relative z-10">
+                <div className="flex items-center gap-2">
                   {view === 'chat' && (
                     <button
                       type="button"
                       onClick={goBack}
-                      className="bg-slate-800 hover:bg-slate-700 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-700 transition-colors"
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                     >
-                      <ChevronLeft className="w-5 h-5 text-emerald-400" />
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                   )}
                   <div className="flex flex-col">
-                    <span className="font-black text-white uppercase tracking-widest text-xs sm:text-sm truncate max-w-[150px] sm:max-w-[180px]">
-                      {view === 'list' ? 'Canale de Discuție' : activeTitle}
+                    <span className="font-semibold text-slate-900 dark:text-white text-sm truncate max-w-[200px]">
+                      {view === 'list' ? 'Mesaje' : activeTitle}
                     </span>
                     {view === 'chat' && isPartnerTyping && (
-                      <span className="text-[9px] sm:text-[10px] text-emerald-400 font-black uppercase tracking-widest animate-pulse mt-0.5">
+                      <span className="text-[11px] text-emerald-500 font-medium">
                         Scrie...
                       </span>
                     )}
@@ -659,94 +661,96 @@ export const ChatWidget = ({
                   setIsOpen(false);
                   onClose?.();
                 }}
-                className="relative z-10 bg-slate-800 hover:bg-rose-600 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-700 transition-colors shrink-0"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors shrink-0 cursor-pointer"
               >
-                <X className="w-5 h-5 text-white" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* ZONA CENTRALĂ */}
             <div
-              className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 relative scrollbar-thin scrollbar-thumb-emerald-500/30"
+              className="flex-1 overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F14] relative"
               onClick={() => setShowReactionPickerId(null)}
             >
-              <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none bg-[repeating-linear-gradient(0deg,transparent,transparent_40px,#000_40px,#000_42px),repeating-linear-gradient(90deg,transparent,transparent_40px,#000_40px,#000_42px)]"></div>
-
+              {/* Mesaj fixat */}
               {view === 'chat' && pinnedMessages.length > 0 && (
                 <div
                   onClick={() => scrollToMessage(pinnedMessages[0]._id)}
-                  className="bg-slate-900 border-b-2 border-amber-500 p-2.5 flex items-center gap-2 sm:gap-3 sticky top-0 z-20 cursor-pointer hover:bg-slate-800 transition-colors shadow-md"
+                  className="bg-amber-500/10 border-b border-amber-500/20 px-3.5 py-2 flex items-center gap-2.5 sticky top-0 z-20 cursor-pointer hover:bg-amber-500/15 transition-colors backdrop-blur-sm"
                 >
-                  <div className="bg-amber-500/20 p-1.5 rounded-md border border-amber-500/50">
-                    <Pin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" />
-                  </div>
+                  <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   <div className="flex-1 truncate">
-                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-amber-400 block mb-0.5">
-                      Anunț (Fixat)
+                    <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 block">
+                      Mesaj fixat
                     </span>
-                    <span className="text-[10px] sm:text-xs font-bold text-white truncate block">
-                      {pinnedMessages[0].message || 'Fotografie/Document'}
+                    <span className="text-xs text-slate-700 dark:text-slate-200 truncate block">
+                      {pinnedMessages[0].message || 'Imagine'}
                     </span>
                   </div>
                 </div>
               )}
 
+              {/* LISTĂ CONVERSAȚII */}
               {view === 'list' && (
-                <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 relative z-10 pb-[100px] sm:pb-4">
+                <div className="p-3 space-y-3 pb-24 sm:pb-4">
                   <div
-                    onClick={() => enterChat("general_chat", "Tribuna Oficială")}
-                    className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl sm:rounded-2xl cursor-pointer hover:border-emerald-500 transition-all flex items-center gap-3 border-2 border-slate-200 dark:border-slate-800 shadow-sm group"
+                    onClick={() => enterChat("general_chat", "Chat General")}
+                    className="bg-white dark:bg-[#11161D] p-3 rounded-xl cursor-pointer hover:border-emerald-500/40 transition-colors flex items-center gap-3 border border-slate-200 dark:border-white/[0.07]"
                   >
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform shadow-inner">
-                      <Users className="w-6 h-6 sm:w-7 sm:h-7" />
+                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+                      <Users className="w-5 h-5" />
                     </div>
-                    <div>
-                      <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white uppercase tracking-wider">Tribuna Oficială</h4>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Discuții Libere</p>
+                    <div className="min-w-0">
+                      <h4 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white">
+                        Chat General
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        Discuții libere cu comunitatea
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 px-2 pt-2">
-                    <div className="h-0.5 flex-1 bg-slate-200 dark:bg-slate-800"></div>
-                    <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Negocieri Private</span>
-                    <div className="h-0.5 flex-1 bg-slate-200 dark:bg-slate-800"></div>
+                  <div className="flex items-center gap-2.5 px-1 pt-1">
+                    <div className="h-px flex-1 bg-slate-200 dark:bg-white/[0.07]" />
+                    <span className="text-[11px] font-medium text-slate-400">Discuții private</span>
+                    <div className="h-px flex-1 bg-slate-200 dark:bg-white/[0.07]" />
                   </div>
 
                   {conversations.length === 0 ? (
-                    <div className="text-center py-8 sm:py-10 opacity-70 flex flex-col items-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-900/50">
-                      <MessageCircle className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-3 text-slate-400" />
-                      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500">Nicio discuție activă.</p>
+                    <div className="text-center py-10 flex flex-col items-center border border-slate-200 dark:border-white/[0.07] rounded-xl bg-white dark:bg-[#11161D]">
+                      <MessageCircle className="w-7 h-7 mb-2 text-slate-400 opacity-60" />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Nicio conversație activă.</p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {conversations.map((conv) => (
                         <div
                           key={conv.roomId}
                           onClick={() => enterChat(conv.roomId, conv.title)}
-                          className="bg-white dark:bg-slate-900 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl cursor-pointer hover:border-blue-500 transition-all flex items-center gap-2.5 sm:gap-3 border-2 border-slate-200 dark:border-slate-800 group shadow-sm"
+                          className="bg-white dark:bg-[#11161D] p-2.5 rounded-xl cursor-pointer hover:border-emerald-500/40 transition-colors flex items-center gap-3 border border-slate-200 dark:border-white/[0.07]"
                         >
                           {conv.image ? (
                             <img
                               src={conv.image}
                               alt=""
-                              className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl object-cover bg-slate-100 border-2 border-slate-200 dark:border-slate-700 group-hover:border-blue-500 transition-colors shrink-0"
+                              className="w-10 h-10 rounded-lg object-cover bg-slate-100 border border-slate-200 dark:border-white/[0.08] shrink-0"
                             />
                           ) : (
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center border-2 border-slate-200 dark:border-slate-700 shrink-0">
-                              <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+                            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-white/[0.04] flex items-center justify-center border border-slate-200 dark:border-white/[0.08] shrink-0">
+                              <ImageIcon className="w-4 h-4 text-slate-400" />
                             </div>
                           )}
                           <div className="overflow-hidden flex-1">
-                            <div className="flex justify-between items-start mb-0.5 sm:mb-1">
-                              <h4 className="font-black text-[11px] sm:text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate max-w-[120px] sm:max-w-[130px]" title={conv.title}>
+                            <div className="flex justify-between items-center gap-2 mb-0.5">
+                              <h4 className="font-semibold text-xs text-slate-900 dark:text-white truncate" title={conv.title}>
                                 {conv.title}
                               </h4>
-                              <span className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase shrink-0">
-                                {new Date(conv.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              <span className="text-[10px] text-slate-400 shrink-0 tabular-nums">
+                                {new Date(conv.timestamp).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric' })}
                               </span>
                             </div>
-                            <p className={`text-[10px] sm:text-[11px] font-bold truncate w-full ${conv.lastMessage === "" ? "italic text-rose-500" : "text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400"}`}>
-                              {conv.lastMessage === "" ? "Semnal Pierdut (Șters)" : conv.lastMessage}
+                            <p className={`text-xs truncate w-full ${conv.lastMessage === "" ? "italic text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>
+                              {conv.lastMessage === "" ? "Mesaj șters" : conv.lastMessage}
                             </p>
                           </div>
                         </div>
@@ -756,22 +760,21 @@ export const ChatWidget = ({
                 </div>
               )}
 
+              {/* ZONĂ MESAJE */}
               {view === 'chat' && (
-                <div className="flex flex-col h-full relative z-10">
-                  <div className="flex-1 p-3 sm:p-4 space-y-4 sm:space-y-6 overflow-y-auto pb-6 sm:pb-4">
+                <div className="flex flex-col h-full">
+                  <div className="flex-1 p-3 space-y-4 overflow-y-auto pb-4">
                     {Object.keys(groupedMessages).length === 0 && (
-                      <div className="flex flex-col items-center justify-center h-full text-center p-6 opacity-70">
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3 sm:mb-4 text-emerald-500 border-2 border-emerald-500/30">
-                          <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8" />
-                        </div>
-                        <p className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-slate-500">Terenul e pregătit. Dă pasa!</p>
+                      <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                        <MessageCircle className="w-8 h-8 text-slate-400 opacity-50 mb-2" />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Nu există mesaje încă. Începe conversația.</p>
                       </div>
                     )}
 
                     {Object.keys(groupedMessages).map((dateKey) => (
                       <div key={dateKey}>
-                        <div className="flex justify-center mb-4 sm:mb-5 mt-2">
-                          <span className="bg-slate-900 border-2 border-slate-800 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-3 py-1 sm:px-4 sm:py-1.5 rounded-lg shadow-sm">
+                        <div className="flex justify-center mb-3 mt-1">
+                          <span className="bg-slate-200/80 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400 text-[10px] font-medium px-2.5 py-0.5 rounded-full">
                             {formatDateSeparator(dateKey)}
                           </span>
                         </div>
@@ -784,51 +787,52 @@ export const ChatWidget = ({
                               <div
                                 key={idx}
                                 ref={(el) => { messageContainerRefs.current[msg._id] = el; }}
-                                className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isFirstInGroup ? "mt-3 sm:mt-4" : "mt-0.5 sm:mt-1"}`}
+                                className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isFirstInGroup ? "mt-3" : "mt-0.5"}`}
                               >
                                 {!isMe && isFirstInGroup && (
-                                  <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 ml-2 mb-0.5 sm:mb-1 flex items-center gap-1">
+                                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 ml-1 mb-1 flex items-center gap-1">
                                     {msg.authorRole === 'admin' && <ShieldCheck className="w-3 h-3 text-rose-500" />}
                                     {msg.author}
                                   </span>
                                 )}
 
-                                <div className={`group relative flex items-center gap-1 sm:gap-2 max-w-[95%] sm:max-w-[92%] ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
+                                <div className={`group relative flex items-center gap-1.5 max-w-[90%] ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
+                                  {/* Bară acțiuni hover */}
                                   {!msg.isDeleted && (
                                     <div
-                                      className={`opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-slate-900 border border-slate-700 shadow-lg p-1 sm:p-1.5 rounded-lg sm:rounded-xl absolute -top-10 sm:-top-12 z-[30] ${isMe ? 'right-0' : 'left-0'} ${
+                                      className={`opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.1] shadow-lg p-1 rounded-lg absolute -top-9 z-[30] ${isMe ? 'right-0' : 'left-0'} ${
                                         showReactionPickerId === msg._id ? 'opacity-100' : ''
                                       } max-md:active:opacity-100 max-md:focus:opacity-100`}
                                     >
                                       <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); setShowReactionPickerId(msg._id); }}
-                                        className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-slate-800 rounded-md transition-colors"
+                                        className="p-1 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded transition-colors cursor-pointer"
                                       >
-                                        <Smile className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                        <Smile className="w-3.5 h-3.5" />
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => setReplyingTo(msg)}
-                                        className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded-md transition-colors"
+                                        className="p-1 text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded transition-colors cursor-pointer"
                                       >
-                                        <Reply className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                        <Reply className="w-3.5 h-3.5" />
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => handlePin(msg._id)}
-                                        className={`p-1.5 hover:bg-slate-800 rounded-md transition-colors ${msg.isPinned ? 'text-amber-500' : 'text-slate-400 hover:text-amber-400'}`}
+                                        className={`p-1 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded transition-colors cursor-pointer ${msg.isPinned ? 'text-amber-500' : 'text-slate-400 hover:text-amber-500'}`}
                                       >
-                                        <Pin className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                        <Pin className="w-3.5 h-3.5" />
                                       </button>
 
                                       {(isMe || isAdmin) && (
                                         <button
                                           type="button"
                                           onClick={() => handleDeleteMessage(msg._id)}
-                                          className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-slate-800 rounded-md transition-colors"
+                                          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded transition-colors cursor-pointer"
                                         >
-                                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                          <Trash2 className="w-3.5 h-3.5" />
                                         </button>
                                       )}
 
@@ -836,24 +840,25 @@ export const ChatWidget = ({
                                         <button
                                           type="button"
                                           onClick={() => handleReportMessage(msg._id)}
-                                          className="p-1.5 text-slate-400 hover:text-orange-500 hover:bg-slate-800 rounded-md transition-colors"
+                                          className="p-1 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded transition-colors cursor-pointer"
                                         >
-                                          <Flag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                          <Flag className="w-3.5 h-3.5" />
                                         </button>
                                       )}
                                     </div>
                                   )}
 
+                                  {/* Picker reacții */}
                                   {showReactionPickerId === msg._id && (
                                     <div
-                                      className={`absolute -top-12 sm:-top-14 z-[40] bg-slate-900 border-2 border-slate-700 shadow-xl rounded-xl sm:rounded-2xl px-1.5 sm:px-2 py-1 sm:py-1.5 flex gap-1 sm:gap-2 animate-in zoom-in ${isMe ? 'right-0' : 'left-0'}`}
+                                      className={`absolute -top-11 z-[40] bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.1] shadow-xl rounded-xl px-1.5 py-1 flex gap-1 ${isMe ? 'right-0' : 'left-0'}`}
                                     >
                                       {AVAILABLE_EMOJIS.map((emoji) => (
                                         <button
                                           type="button"
                                           key={emoji}
                                           onClick={(e) => { e.stopPropagation(); handleReact(msg._id, emoji); }}
-                                          className="hover:scale-125 hover:-translate-y-1 transition-all text-lg sm:text-xl px-1"
+                                          className="hover:scale-125 transition-transform text-base px-1 cursor-pointer"
                                         >
                                           {emoji}
                                         </button>
@@ -862,9 +867,9 @@ export const ChatWidget = ({
                                   )}
 
                                   {msg.isDeleted ? (
-                                    <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-100 dark:bg-slate-800/50 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2">
-                                      <Ban className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400" />
-                                      <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-slate-400">Joc Oprit</span>
+                                    <div className="px-3 py-1.5 bg-slate-100 dark:bg-white/[0.03] border border-dashed border-slate-300 dark:border-white/[0.1] rounded-xl flex items-center gap-1.5">
+                                      <Ban className="w-3 h-3 text-slate-400" />
+                                      <span className="text-xs italic text-slate-400">Mesaj șters</span>
                                     </div>
                                   ) : (
                                     <div
@@ -873,51 +878,51 @@ export const ChatWidget = ({
                                           setShowReactionPickerId(showReactionPickerId === msg._id ? null : msg._id);
                                         }
                                       }}
-                                      className={`relative shadow-md flex flex-col border-2 ${
+                                      className={`relative flex flex-col border ${
                                         isMe
-                                          ? "bg-emerald-600 border-emerald-500 text-white rounded-2xl rounded-tr-sm"
-                                          : "bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 rounded-2xl rounded-tl-sm"
+                                          ? "bg-emerald-600 border-emerald-600 text-white rounded-xl rounded-tr-sm"
+                                          : "bg-white dark:bg-[#11161D] text-slate-900 dark:text-slate-100 border-slate-200 dark:border-white/[0.07] rounded-xl rounded-tl-sm"
                                       }`}
                                     >
                                       {msg.replyTo && (
                                         <div
                                           onClick={(e) => { e.stopPropagation(); scrollToMessage(msg.replyTo!.id); }}
-                                          className={`mx-1.5 sm:mx-2 mt-1.5 sm:mt-2 p-2 sm:p-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs cursor-pointer border-l-4 ${
+                                          className={`mx-2 mt-2 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer border-l-2 ${
                                             isMe
-                                              ? 'bg-emerald-800/40 border-emerald-300 text-emerald-100'
-                                              : 'bg-slate-100 dark:bg-slate-800 border-blue-500 text-slate-600 dark:text-slate-300'
+                                              ? 'bg-black/15 border-emerald-200 text-emerald-50'
+                                              : 'bg-slate-100 dark:bg-white/[0.04] border-emerald-500 text-slate-600 dark:text-slate-300'
                                           }`}
                                         >
-                                          <div className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest mb-0.5 sm:mb-1 ${isMe ? 'text-emerald-300' : 'text-blue-500'}`}>
+                                          <div className={`text-[10px] font-semibold mb-0.5 ${isMe ? 'text-emerald-200' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                             {msg.replyTo.author}
                                           </div>
-                                          <div className="truncate max-w-[150px] sm:max-w-[200px] font-bold">{msg.replyTo.text}</div>
+                                          <div className="truncate max-w-[180px] opacity-90">{msg.replyTo.text}</div>
                                         </div>
                                       )}
 
                                       {msg.imageUrl && (
                                         <div
-                                          className="relative overflow-hidden rounded-xl cursor-pointer m-1"
+                                          className="relative overflow-hidden rounded-lg cursor-pointer m-1"
                                           onClick={(e) => { e.stopPropagation(); setLightboxImage(msg.imageUrl!); }}
                                         >
                                           <img
                                             src={msg.imageUrl}
                                             alt=""
-                                            className={`max-w-[220px] sm:max-w-[280px] w-full max-h-48 sm:max-h-64 object-cover border-2 border-transparent hover:border-white/50 transition-colors rounded-lg ${msg.replyTo ? 'mt-1' : ''}`}
+                                            className={`max-w-[220px] sm:max-w-[260px] w-full max-h-56 object-cover rounded-lg ${msg.replyTo ? 'mt-1' : ''}`}
                                           />
-                                          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-900/90 to-transparent pointer-events-none rounded-b-lg"></div>
-                                          <div className="absolute bottom-2 right-2 text-white font-black text-[8px] sm:text-[9px] uppercase tracking-widest flex items-center gap-1 drop-shadow-md">
-                                            {msg.time} {isMe && <CheckCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />}
+                                          <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/70 to-transparent pointer-events-none rounded-b-lg" />
+                                          <div className="absolute bottom-1.5 right-2 text-white text-[10px] font-medium flex items-center gap-1 tabular-nums">
+                                            {msg.time} {isMe && <CheckCheck className="w-3 h-3 text-emerald-300" />}
                                           </div>
                                         </div>
                                       )}
 
                                       {msg.message && (
-                                        <div className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium leading-snug break-words max-w-[250px] sm:max-w-[320px]">
+                                        <div className="px-3 py-2 text-xs sm:text-[13px] leading-relaxed break-words max-w-[250px] sm:max-w-[300px]">
                                           {renderTextWithLinks(msg.message)}
                                           {!msg.imageUrl && (
-                                            <div className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest flex justify-end items-center gap-1 mt-1 sm:mt-1.5 ${isMe ? "text-emerald-200" : "text-slate-400"}`}>
-                                              {msg.time} {isMe && <CheckCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                                            <div className={`text-[10px] flex justify-end items-center gap-1 mt-1 tabular-nums ${isMe ? "text-emerald-100/80" : "text-slate-400"}`}>
+                                              {msg.time} {isMe && <CheckCheck className="w-3 h-3" />}
                                             </div>
                                           )}
                                         </div>
@@ -925,19 +930,21 @@ export const ChatWidget = ({
 
                                       {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                                         <div
-                                          className={`absolute -bottom-2.5 sm:-bottom-3.5 flex gap-0.5 sm:gap-1 bg-slate-900 border-2 border-slate-700 shadow-md rounded-md sm:rounded-lg px-1 sm:px-2 py-0.5 z-10 ${isMe ? 'right-2 sm:right-4' : 'left-2 sm:left-4'}`}
+                                          className={`absolute -bottom-3 flex gap-1 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.1] shadow-sm rounded-full px-1.5 py-0.5 z-10 ${isMe ? 'right-2' : 'left-2'}`}
                                         >
                                           {Object.entries(msg.reactions).map(([emoji, usersArr]) => (
                                             <button
                                               type="button"
                                               key={emoji}
                                               onClick={(e) => { e.stopPropagation(); handleReact(msg._id, emoji); }}
-                                              className={`text-[9px] sm:text-[10px] font-black flex items-center gap-1 sm:gap-1.5 px-1 sm:px-1.5 py-0.5 rounded transition-colors ${
-                                                usersArr.includes(user.name) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-transparent text-slate-300 hover:bg-slate-800'
+                                              className={`text-[10px] font-medium flex items-center gap-1 px-1 rounded-full transition-colors cursor-pointer ${
+                                                usersArr.includes(user.name)
+                                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                                  : 'text-slate-500 dark:text-slate-300'
                                               }`}
                                             >
-                                              <span className="text-xs sm:text-sm">{emoji}</span>
-                                              <span>{usersArr.length}</span>
+                                              <span className="text-xs">{emoji}</span>
+                                              <span className="tabular-nums">{usersArr.length}</span>
                                             </button>
                                           ))}
                                         </div>
@@ -945,7 +952,7 @@ export const ChatWidget = ({
                                     </div>
                                   )}
                                 </div>
-                                {msg.reactions && Object.keys(msg.reactions).length > 0 && !msg.isDeleted && <div className="h-3 sm:h-4"></div>}
+                                {msg.reactions && Object.keys(msg.reactions).length > 0 && !msg.isDeleted && <div className="h-3" />}
                               </div>
                             );
                           })}
@@ -954,11 +961,11 @@ export const ChatWidget = ({
                     ))}
 
                     {isPartnerTyping && (
-                      <div className="flex items-center gap-2 mt-2 ml-2 sm:mt-3 sm:ml-3 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="bg-slate-900 border-2 border-slate-800 px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl rounded-tl-sm flex gap-1 sm:gap-1.5 shadow-sm">
-                          <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                          <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                          <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-emerald-500 rounded-full animate-bounce"></div>
+                      <div className="flex items-center gap-1.5 mt-2 ml-1">
+                        <div className="bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.07] px-3 py-2 rounded-xl rounded-tl-sm flex gap-1">
+                          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" />
                         </div>
                       </div>
                     )}
@@ -966,46 +973,46 @@ export const ChatWidget = ({
                   </div>
 
                   {/* ZONA DE INPUT */}
-                  <div className="bg-white dark:bg-slate-900 border-t-2 sm:border-t-4 border-slate-200 dark:border-slate-800 flex flex-col z-20 pb-safe">
+                  <div className="bg-white dark:bg-[#11161D] border-t border-slate-200 dark:border-white/[0.07] flex flex-col z-20 pb-safe">
                     {replyingTo && (
-                      <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-100 dark:bg-slate-950 border-b-2 border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                        <div className="flex flex-col min-w-0 flex-1 border-l-4 border-emerald-500 pl-2 sm:pl-3">
-                          <span className="text-[8px] sm:text-[9px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-widest">
-                            Replică pentru {replyingTo.author}
+                      <div className="px-3 py-2 bg-slate-50 dark:bg-[#0B0F14] border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center">
+                        <div className="flex flex-col min-w-0 flex-1 border-l-2 border-emerald-500 pl-2.5">
+                          <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                            Răspuns pentru {replyingTo.author}
                           </span>
-                          <span className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 truncate mt-0.5">
-                            {replyingTo.message || "Imagine (Analiză VAR)"}
+                          <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                            {replyingTo.message || "Imagine"}
                           </span>
                         </div>
                         <button
                           type="button"
                           onClick={() => setReplyingTo(null)}
-                          className="p-1 sm:p-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-rose-500 hover:text-white rounded-md sm:rounded-lg transition-colors ml-2"
+                          className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md transition-colors ml-2 cursor-pointer"
                         >
-                          <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 font-bold" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     )}
 
                     {selectedImage && (
-                      <div className="px-3 sm:px-4 pt-2 sm:pt-3 pb-1 flex items-center gap-2 sm:gap-3 bg-slate-50 dark:bg-slate-900">
-                        <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl overflow-hidden border-2 border-emerald-500 shadow-md">
+                      <div className="px-3 pt-2.5 pb-1 flex items-center gap-2.5">
+                        <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-emerald-500/50">
                           <img src={selectedImage} alt="" className="w-full h-full object-cover" />
                           <button
                             type="button"
                             onClick={() => setSelectedImage(null)}
-                            className="absolute top-1 right-1 bg-rose-600 text-white p-0.5 sm:p-1 rounded hover:bg-rose-500"
+                            className="absolute top-0.5 right-0.5 bg-black/70 text-white p-0.5 rounded hover:bg-rose-500 cursor-pointer"
                           >
-                            <X className="w-2.5 h-2.5 sm:w-3 sm:h-3 font-bold" />
+                            <X className="w-3 h-3" />
                           </button>
                         </div>
-                        <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500">
-                          Fișier Încărcat
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                          Imagine atașată
                         </span>
                       </div>
                     )}
 
-                    <div className="p-2 sm:p-4 flex gap-1.5 sm:gap-2 items-end bg-white dark:bg-slate-900">
+                    <div className="p-2.5 flex gap-2 items-center">
                       <input
                         type="file"
                         ref={fileInputRef}
@@ -1016,28 +1023,30 @@ export const ChatWidget = ({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-slate-500 hover:text-emerald-600 p-2 sm:p-3 transition-colors bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg sm:rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-200 dark:hover:border-emerald-800/50"
+                        className="text-slate-500 hover:text-emerald-500 p-2 transition-colors bg-slate-100 dark:bg-white/[0.04] rounded-lg border border-slate-200 dark:border-white/[0.07] cursor-pointer"
+                        title="Atașează imagine"
                       >
-                        <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <ImageIcon className="w-4 h-4" />
                       </button>
 
-                      <div className="flex-1 bg-slate-50 dark:bg-slate-950 rounded-xl sm:rounded-2xl flex items-center px-3 sm:px-4 py-1 sm:py-1.5 border-2 border-slate-200 dark:border-slate-800 focus-within:border-emerald-500 dark:focus-within:border-emerald-600 transition-all">
+                      <div className="flex-1 bg-slate-50 dark:bg-[#0B0F14] rounded-lg flex items-center px-3 border border-slate-200 dark:border-white/[0.08] focus-within:border-emerald-500/60 transition-colors">
                         <input
                           type="text"
                           value={currentMessage}
                           onChange={handleInputChange}
                           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                          placeholder="SCRIE AICI..."
-                          className="w-full bg-transparent border-none outline-none text-xs sm:text-sm font-bold placeholder:text-slate-400 dark:placeholder:text-slate-600 placeholder:uppercase py-2 sm:py-2.5 text-slate-900 dark:text-white"
+                          placeholder="Scrie un mesaj..."
+                          className="w-full bg-transparent border-none outline-none text-xs sm:text-sm py-2 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                         />
                       </div>
+
                       <button
                         type="button"
                         onClick={sendMessage}
                         disabled={isSending || (!currentMessage.trim() && !selectedImage)}
-                        className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:border-slate-400 dark:disabled:border-slate-700 text-white p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl transition-all active:scale-95 flex-shrink-0 border-b-2 sm:border-b-4 border-emerald-800 hover:border-b-2 sm:hover:border-b-2 hover:translate-y-[1px] sm:hover:translate-y-[2px] disabled:translate-y-0 disabled:border-b-2 sm:disabled:border-b-4 disabled:text-slate-500"
+                        className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white p-2 rounded-lg transition-colors shrink-0 cursor-pointer"
                       >
-                        {isSending ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5" />}
+                        {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>

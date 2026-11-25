@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload, ChevronLeft, ChevronRight, Phone, Maximize2, AlertTriangle, Loader2, MessageCircle, Share2, Copy, Send, Heart, Flag, Shield, FileText, ZoomIn, ZoomOut, RotateCcw, Check } from 'lucide-react';
+import {
+  ShoppingBag, Plus, Search, Tag, Trash2, User, X, Upload,
+  ChevronLeft, ChevronRight, Phone, Maximize2, AlertTriangle,
+  Loader2, MessageCircle, Share2, Copy, Send, Heart, Flag,
+  Shield, FileText, ZoomIn, ZoomOut, RotateCcw, Check
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { SkeletonCard } from './SkeletonCard';
 
@@ -155,9 +160,7 @@ function FullscreenPhotoZoom({
     });
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  const handleMouseUp = () => setIsDragging(false);
 
   const getTouchDistance = (touches: React.TouchList) => {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -196,76 +199,66 @@ function FullscreenPhotoZoom({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (e.touches.length < 2) {
-      pinchStartDistRef.current = null;
-    }
-    if (e.touches.length === 0) {
-      setIsDragging(false);
-    }
+    if (e.touches.length < 2) pinchStartDistRef.current = null;
+    if (e.touches.length === 0) setIsDragging(false);
   };
 
   if (!currentSrc) return null;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1000000] bg-slate-950/95 backdrop-blur-md flex flex-col justify-between p-3 sm:p-6 select-none animate-in fade-in duration-200"
+      className="fixed inset-0 z-[1000000] bg-black/90 backdrop-blur-sm flex flex-col justify-between p-3 sm:p-5 select-none"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      {/* Bara de control sus */}
       <div className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 z-20">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="bg-rose-600 text-white text-[10px] font-black px-2.5 py-1 uppercase tracking-widest rounded-lg border border-rose-400/40 shrink-0">
-            VAR Zoom
-          </span>
-          <span className="text-xs sm:text-sm font-black text-slate-200 truncate">
-            {title} • <span className="text-emerald-400">{Math.round(scale * 100)}%</span>
-          </span>
+        <div className="flex items-center gap-2 min-w-0 bg-[#11161D] border border-white/[0.08] px-3 py-1.5 rounded-lg">
+          <span className="text-xs font-medium text-slate-200 truncate">{title}</span>
+          <span className="text-xs font-semibold text-emerald-400 tabular-nums shrink-0">{Math.round(scale * 100)}%</span>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={handleZoomOut}
             disabled={scale <= 1}
-            title="Micșorează (-)"
-            className="p-2 sm:p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white border-2 border-slate-700 transition-colors"
+            title="Micșorează"
+            className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
           >
-            <ZoomOut className="w-4 h-4 sm:w-5 sm:h-5" />
+            <ZoomOut className="w-4 h-4" />
           </button>
 
           <button
             type="button"
             onClick={handleZoomIn}
             disabled={scale >= 4}
-            title="Mărește (+)"
-            className="p-2 sm:p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white border-2 border-emerald-700 transition-colors"
+            title="Mărește"
+            className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
           >
-            <ZoomIn className="w-4 h-4 sm:w-5 sm:h-5" />
+            <ZoomIn className="w-4 h-4" />
           </button>
 
           <button
             type="button"
             onClick={handleReset}
             title="Resetează (1x)"
-            className="p-2 sm:p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border-2 border-slate-700 transition-colors"
+            className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
           >
-            <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+            <RotateCcw className="w-4 h-4" />
           </button>
 
           <button
             type="button"
             onClick={onClose}
             title="Închide"
-            className="p-2 sm:p-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white border-2 border-rose-700 transition-colors ml-1"
+            className="p-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/25 transition-colors ml-1 cursor-pointer"
           >
-            <X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Zona centrală cu imaginea */}
       <div
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
@@ -273,7 +266,7 @@ function FullscreenPhotoZoom({
         onTouchEnd={handleTouchEnd}
         onClick={onClose}
         style={{ touchAction: 'none' }}
-        className="relative flex-1 w-full max-w-5xl mx-auto my-3 rounded-2xl border border-slate-800 bg-slate-900/50 overflow-hidden flex items-center justify-center"
+        className="relative flex-1 w-full max-w-5xl mx-auto my-3 rounded-xl border border-white/[0.08] bg-black/40 overflow-hidden flex items-center justify-center"
       >
         {images.length > 1 && (
           <button
@@ -282,9 +275,9 @@ function FullscreenPhotoZoom({
               e.stopPropagation();
               onChangeIdx((activeIdx - 1 + images.length) % images.length);
             }}
-            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 bg-slate-900/85 hover:bg-slate-800 text-white p-2 sm:p-3 rounded-full transition-colors border border-slate-700"
+            className="absolute left-3 top-1/2 -translate-y-1/2 z-30 bg-[#11161D]/90 hover:bg-[#1A222C] text-white p-2 rounded-full transition-colors border border-white/[0.1] cursor-pointer"
           >
-            <ChevronLeft className="w-5 h-5 sm:w-7 sm:h-7" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
         )}
 
@@ -311,15 +304,15 @@ function FullscreenPhotoZoom({
               e.stopPropagation();
               onChangeIdx((activeIdx + 1) % images.length);
             }}
-            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 bg-slate-900/85 hover:bg-slate-800 text-white p-2 sm:p-3 rounded-full transition-colors border border-slate-700"
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-30 bg-[#11161D]/90 hover:bg-[#1A222C] text-white p-2 rounded-full transition-colors border border-white/[0.1] cursor-pointer"
           >
-            <ChevronRight className="w-5 h-5 sm:w-7 sm:h-7" />
+            <ChevronRight className="w-5 h-5" />
           </button>
         )}
       </div>
 
-      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-400 text-center z-20">
-        Desktop: folosește + / - sau rotița mouse-ului • Mobil: ciupește (pinch) sau glisează cu degetul
+      <p className="text-[11px] text-slate-400 text-center z-20">
+        Desktop: folosește + / - sau rotița • Mobil: pinch sau glisează
       </p>
     </div>,
     document.body
@@ -368,7 +361,7 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
       const foundProduct = products.find((p) => p._id === initialPostId);
       if (foundProduct) {
         setSelectedProduct(foundProduct);
-        toast.success("Am găsit produsul căutat!");
+        toast.success("Produsul a fost deschis.");
       }
     }
   }, [products, initialPostId]);
@@ -380,7 +373,7 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
       const data = await res.json();
       if (Array.isArray(data)) setProducts(data);
     } catch {
-      toast.error("Gazon impracticabil. Nu s-au încărcat produsele.");
+      toast.error("Nu s-au putut încărca anunțurile.");
     } finally {
       setLoading(false);
     }
@@ -426,10 +419,10 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
     setNewProduct((p) => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }));
 
   const handleAddProduct = async () => {
-    if (!newProduct.title) return toast.error("Trebuie să pui un titlu!");
-    if (!newProduct.price) return toast.error("Setează o cotă de transfer (Preț)!");
-    if (!newProduct.phone) return toast.error("Lasă un telefon pentru oferte!");
-    if (newProduct.images.length === 0) return toast.error("Adaugă cel puțin o poză pentru vizita medicală!");
+    if (!newProduct.title) return toast.error("Introdu un titlu pentru anunț.");
+    if (!newProduct.price) return toast.error("Introdu prețul articolului.");
+    if (!newProduct.phone) return toast.error("Introdu un număr de telefon.");
+    if (newProduct.images.length === 0) return toast.error("Adaugă cel puțin o fotografie.");
 
     setIsSubmitting(true);
     try {
@@ -450,20 +443,20 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
         setProducts([await res.json(), ...products]);
         setShowAddModal(false);
         setNewProduct({ title: '', price: '', category: 'Tricouri', images: [], description: '', phone: '' });
-        toast.success("Transfer înregistrat oficial!");
+        toast.success("Anunțul a fost publicat.");
       } else {
         const data = await res.json();
-        toast.error(data.error || "Eroare la transfer");
+        toast.error(data.error || "Eroare la publicare.");
       }
     } catch {
-      toast.error("Eroare conexiune");
+      toast.error("Eroare de conexiune.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Retragi acest articol de pe piață?")) return;
+    if (!window.confirm("Ștergi definitiv acest anunț?")) return;
     await fetch(`${API_URL}/${id}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -471,14 +464,14 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
     });
     setProducts(products.filter((p) => p._id !== id));
     if (selectedProduct?._id === id) setSelectedProduct(null);
-    toast.success("Articol retras.");
+    toast.success("Anunț șters.");
   };
 
   const handleStartChat = (product: Product) => {
     const roomId = `listing_${product._id}`;
     const partner = { name: product.seller, avatar: product.sellerAvatar };
     onOpenChat(roomId, partner);
-    toast.success(`Sala de negocieri deschisă cu ${product.seller}`);
+    toast.success(`Conversație deschisă cu ${product.seller}.`);
   };
 
   const handleToggleFavorite = async (listingId: string) => {
@@ -492,9 +485,9 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
         const data = await res.json();
         setUserFavorites(data.favorites);
         if (data.favorites.includes(listingId)) {
-          toast.success("Adăugat în Lista de Scout! 📝");
+          toast.success("Salvat la favorite.");
         } else {
-          toast("Tăiat de pe listă.");
+          toast("Eliminat din favorite.");
         }
       }
     } catch {
@@ -525,47 +518,43 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
     return (
       <div
         onClick={() => setSelectedProduct(product)}
-        className="group bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-[0_15px_30px_rgba(37,99,235,0.15)] hover:border-blue-500 transition-all duration-300 flex flex-col h-full cursor-pointer relative hover:-translate-y-1"
+        className="group bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] hover:border-emerald-500/40 overflow-hidden transition-colors flex flex-col h-full cursor-pointer relative"
       >
-        <div className="hidden sm:block absolute top-3 left-3 z-20 bg-slate-900/80 backdrop-blur-md text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-slate-700">
-          <Maximize2 className="w-4 h-4" />
-        </div>
-
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             handleToggleFavorite(product._id);
           }}
-          className={`absolute top-3 right-3 z-20 p-2 sm:p-2.5 rounded-xl shadow-md transition-all border-2 ${
+          className={`absolute top-2.5 right-2.5 z-20 p-1.5 rounded-lg transition-colors border cursor-pointer ${
             isFavorite
-              ? 'bg-rose-50 border-rose-200 text-rose-500 dark:bg-rose-900/30 dark:border-rose-800'
-              : 'bg-white/90 backdrop-blur border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-300 dark:bg-slate-900/80 dark:border-slate-700'
+              ? 'bg-rose-500/15 border-rose-500/30 text-rose-500'
+              : 'bg-black/50 backdrop-blur-sm border-white/10 text-white/80 hover:text-rose-400'
           }`}
-          title="Adaugă în Lista de Scout"
+          title="Salvează la favorite"
         >
-          <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${isFavorite ? 'fill-current' : ''}`} />
+          <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`} />
         </button>
 
-        <div className="relative h-48 sm:h-60 bg-slate-100 dark:bg-slate-800 border-b-2 sm:border-b-4 border-slate-200 dark:border-slate-800 overflow-hidden shrink-0">
+        <div className="relative h-48 sm:h-52 bg-slate-100 dark:bg-[#0B0F14] border-b border-slate-200 dark:border-white/[0.06] overflow-hidden shrink-0">
           {images.length > 0 ? (
             <img
               src={images[currentImgIndex]}
               alt={product.title}
-              className="w-full h-full object-cover transition-transform duration-700 sm:group-hover:scale-105"
+              className="w-full h-full object-cover transition-transform duration-500 sm:group-hover:scale-105"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400?text=Eroare+Imagine';
               }}
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-200 dark:bg-slate-800 p-4 text-center">
-              <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 mb-2 opacity-50" />
-              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest">Fără imagine</span>
+            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 text-center">
+              <AlertTriangle className="w-6 h-6 mb-1.5 opacity-50" />
+              <span className="text-xs">Fără imagine</span>
             </div>
           )}
 
-          <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 bg-slate-900 text-blue-400 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest shadow-md z-10 border border-slate-700 flex items-center gap-1.5">
-            <Tag className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {product.category || "General"}
+          <div className="absolute bottom-2.5 right-2.5 bg-black/70 backdrop-blur-sm text-slate-100 px-2 py-0.5 rounded-md text-[10px] font-medium z-10 border border-white/10">
+            {product.category || "General"}
           </div>
 
           {images.length > 1 && (
@@ -576,9 +565,9 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                   e.stopPropagation();
                   if (images.length > 0) setCurrentImgIndex((prev) => (prev - 1 + images.length) % images.length);
                 }}
-                className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 bg-slate-900/80 hover:bg-slate-900 text-white p-1 sm:p-1.5 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 border border-slate-700"
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-1 rounded-md opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
               >
-                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 type="button"
@@ -586,65 +575,63 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                   e.stopPropagation();
                   if (images.length > 0) setCurrentImgIndex((prev) => (prev + 1) % images.length);
                 }}
-                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 bg-slate-900/80 hover:bg-slate-900 text-white p-1 sm:p-1.5 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 border border-slate-700"
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-1 rounded-md opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
               >
-                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
 
-              <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 flex gap-1 z-10 bg-slate-900/50 backdrop-blur px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full">
+              <div className="absolute bottom-2.5 left-2.5 flex gap-1 z-10 bg-black/50 backdrop-blur-sm px-1.5 py-1 rounded-full">
                 {images.map((_, i) => (
-                  <div key={i} className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${i === currentImgIndex ? 'bg-white' : 'bg-white/40'}`}></div>
+                  <div key={i} className={`w-1 h-1 rounded-full ${i === currentImgIndex ? 'bg-white' : 'bg-white/40'}`} />
                 ))}
               </div>
             </>
           )}
         </div>
 
-        <div className="p-4 sm:p-5 flex-1 flex flex-col bg-slate-50 dark:bg-slate-950">
-          <div className="flex justify-between items-start mb-1.5 sm:mb-2 gap-2 sm:gap-3">
-            <h3 className="font-black text-sm sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight leading-none group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-1 line-clamp-2" title={product.title}>
-              {product.title || "Fără Titlu"}
-            </h3>
+        <div className="p-4 flex-1 flex flex-col">
+          <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100 leading-snug group-hover:text-emerald-500 transition-colors line-clamp-2 mb-1" title={product.title}>
+            {product.title || "Fără titlu"}
+          </h3>
+
+          <div className="text-base font-bold text-emerald-600 dark:text-emerald-400 mb-2 tabular-nums">
+            {product.price || "N/A"}
           </div>
-          <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 mb-2 sm:mb-3">{product.price || "N/A"}</div>
 
-          <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-medium mb-3 sm:mb-4 line-clamp-2 flex-1">{product.description || "Fără descriere."}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mb-4 line-clamp-2 flex-1">
+            {product.description || "Fără descriere."}
+          </p>
 
-          <div className="pt-3 sm:pt-4 border-t-2 border-slate-200 dark:border-slate-800 mt-auto flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3 text-sm text-slate-500">
+          <div className="pt-3 border-t border-slate-100 dark:border-white/[0.06] mt-auto flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               {product.sellerAvatar && !localAvatarError ? (
                 <img
                   src={product.sellerAvatar}
                   alt={sellerName}
-                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700 shadow-sm bg-white"
+                  className="w-7 h-7 rounded-lg object-cover border border-slate-200 dark:border-white/[0.1] shrink-0 bg-white"
                   onError={() => setLocalAvatarError(true)}
                 />
               ) : (
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-xs sm:text-sm uppercase shadow-sm border-2 border-blue-200 dark:border-blue-800">
-                  {sellerName.charAt(0)}
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-semibold text-xs shrink-0">
+                  {sellerName.charAt(0).toUpperCase()}
                 </div>
               )}
-              <div className="flex flex-col leading-none">
-                <span className="text-[8px] sm:text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5 sm:mb-1 flex items-center gap-1">
-                  <Shield className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Impresar
-                </span>
-                <span className="font-bold text-[10px] sm:text-xs uppercase tracking-wider truncate max-w-[80px] sm:max-w-[100px] text-slate-800 dark:text-slate-200">
-                  {sellerName}
-                </span>
-              </div>
+              <span className="font-medium text-xs truncate text-slate-700 dark:text-slate-300">
+                {sellerName}
+              </span>
             </div>
 
-            <div className="flex gap-1.5 sm:gap-2 shrink-0">
+            <div className="flex gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setProductToShare(product);
                 }}
-                className="text-slate-400 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 hover:text-blue-600 hover:border-blue-500 p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-colors z-20"
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] p-1.5 rounded-lg transition-colors cursor-pointer"
                 title="Distribuie anunțul"
               >
-                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Share2 className="w-3.5 h-3.5" />
               </button>
 
               {!isOwner && (
@@ -654,10 +641,10 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                     e.stopPropagation();
                     handleStartChat(product);
                   }}
-                  className="text-blue-600 bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-800/50 hover:bg-blue-600 hover:text-white p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-colors z-20"
-                  title="Negociază"
+                  className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-600 hover:text-white p-1.5 rounded-lg transition-colors cursor-pointer"
+                  title="Trimite mesaj"
                 >
-                  <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <MessageCircle className="w-3.5 h-3.5" />
                 </button>
               )}
 
@@ -668,10 +655,10 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                     e.stopPropagation();
                     handleDelete(product._id);
                   }}
-                  className="text-rose-500 bg-rose-50 dark:bg-rose-900/30 border-2 border-rose-200 dark:border-rose-800/50 hover:bg-rose-600 hover:text-white p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-colors z-20"
-                  title="Retrage Anunț"
+                  className="text-rose-500 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-600 hover:text-white p-1.5 rounded-lg transition-colors cursor-pointer"
+                  title="Șterge anunțul"
                 >
-                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
@@ -681,7 +668,7 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
     );
   };
 
-  // --- MODAL SHARE COMPLET (LINK + NATIVE SHARE + CHAT INTERN) ---
+  // --- MODAL SHARE ---
   const ShareModalComponent = ({ product }: { product: Product }) => {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [loadingConvs, setLoadingConvs] = useState(true);
@@ -711,7 +698,7 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
       try {
         await navigator.clipboard.writeText(shareUrl);
         setCopied(true);
-        toast.success("Link copiat în clipboard! 📋");
+        toast.success("Link copiat în clipboard.");
         setTimeout(() => setCopied(false), 2500);
       } catch {
         toast.error("Nu s-a putut copia link-ul.");
@@ -720,8 +707,8 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
 
     const handleExternalShare = async () => {
       const shareData = {
-        title: `Scout România: ${product.title}`,
-        text: `Salut! Uite ce am găsit pe piața de transferuri: ${product.title} - ${product.price}`,
+        title: `România Scout: ${product.title}`,
+        text: `Uite ce am găsit în Fanshop: ${product.title} - ${product.price}`,
         url: shareUrl,
       };
       try {
@@ -731,7 +718,6 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
           await handleCopyLink();
         }
       } catch (err: any) {
-        // Dacă utilizatorul nu a dat doar cancel, facem fallback pe copy
         if (err?.name !== 'AbortError') {
           await handleCopyLink();
         }
@@ -739,7 +725,7 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
     };
 
     const handleSendToChat = async (roomId: string, chatTitle: string) => {
-      const messageText = `👀 Propunere de transfer:\n**${product.title}**\nCotă: ${product.price}\nVezi detalii aici: ${shareUrl}`;
+      const messageText = `Anunț Fanshop:\n${product.title} (${product.price})\nVezi detalii: ${shareUrl}`;
       const now = new Date();
       const time = `${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()}`;
 
@@ -757,120 +743,115 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
         });
 
         if (res.ok) {
-          toast.success(`Trimis către ${chatTitle}!`);
+          toast.success(`Trimis către ${chatTitle}.`);
           setProductToShare(null);
         } else {
           toast.error("Nu s-a putut trimite mesajul.");
         }
       } catch {
-        toast.error("Eroare la pasă.");
+        toast.error("Eroare la trimitere.");
       }
     };
 
     return createPortal(
       <div
         onClick={() => setProductToShare(null)}
-        className="fixed inset-0 z-[1000001] flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 z-[1000001] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.6)] border-2 sm:border-4 border-blue-600/40 animate-in zoom-in-95"
+          className="bg-white dark:bg-[#11161D] w-full max-w-md rounded-xl overflow-hidden shadow-2xl border border-slate-200 dark:border-white/[0.08]"
         >
-          <div className="bg-slate-900 p-3 sm:p-4 border-b-2 border-blue-600 flex justify-between items-center relative overflow-hidden">
-            <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)]"></div>
-            <h3 className="font-black text-sm sm:text-lg text-white uppercase tracking-widest relative z-10 flex items-center gap-2">
-              <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" /> Distribuie Anunțul
+          <div className="px-4 py-3.5 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center">
+            <h3 className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <Share2 className="w-4 h-4 text-emerald-500" /> Distribuie anunțul
             </h3>
             <button
               type="button"
               onClick={() => setProductToShare(null)}
-              className="relative z-10 bg-slate-800 hover:bg-rose-500 rounded-full p-1.5 transition-colors border border-slate-700 text-white"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
             >
-              <X className="w-4 h-4 font-bold" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="p-4 sm:p-5 space-y-3 sm:space-y-4 bg-slate-50 dark:bg-slate-950">
-            {/* Preview produs */}
-            <div className="flex gap-3 sm:gap-4 bg-white dark:bg-slate-900 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="p-4 space-y-4">
+            <div className="flex gap-3 bg-slate-50 dark:bg-[#0B0F14] p-2.5 rounded-lg border border-slate-200 dark:border-white/[0.07]">
               {product.images[0] ? (
-                <img src={product.images[0]} alt={product.title} className="w-14 h-14 rounded-lg sm:rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0" />
+                <img src={product.images[0]} alt={product.title} className="w-12 h-12 rounded-md object-cover shrink-0" />
               ) : (
-                <div className="w-14 h-14 bg-slate-200 dark:bg-slate-800 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0">
-                  <ShoppingBag className="w-6 h-6 text-slate-400" />
+                <div className="w-12 h-12 bg-slate-200 dark:bg-white/[0.05] rounded-md flex items-center justify-center shrink-0">
+                  <ShoppingBag className="w-5 h-5 text-slate-400" />
                 </div>
               )}
               <div className="flex flex-col justify-center flex-1 min-w-0">
-                <div className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate uppercase tracking-tight">{product.title}</div>
-                <div className="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-widest mt-0.5">{product.price}</div>
+                <div className="font-semibold text-xs text-slate-900 dark:text-white truncate">{product.title}</div>
+                <div className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 tabular-nums">{product.price}</div>
               </div>
             </div>
 
-            {/* Casetă link direct + buton copy rapid */}
-            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl border-2 border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#0B0F14] p-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08]">
               <input
                 type="text"
                 readOnly
                 value={shareUrl}
                 onFocus={(e) => e.target.select()}
-                className="flex-1 bg-transparent text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-300 outline-none px-1 truncate"
+                className="flex-1 bg-transparent text-xs text-slate-600 dark:text-slate-300 outline-none px-1.5 truncate"
               />
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest transition-colors"
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-900 dark:bg-white/[0.08] hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? 'Copiat' : 'Copiază'}
               </button>
             </div>
 
-            {/* Buton Share extern (WhatsApp, Messenger, Instagram etc.) */}
             <button
               type="button"
               onClick={handleExternalShare}
-              className="w-full flex items-center justify-center gap-2 sm:gap-3 p-3 sm:p-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg sm:rounded-xl transition-all border-b-4 border-blue-800 hover:translate-y-[2px] hover:border-b-2 font-black uppercase tracking-widest text-[10px] sm:text-xs"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors font-medium text-xs cursor-pointer"
             >
-              <Share2 className="w-4 h-4" /> Trimite prin Aplicații (WhatsApp / Social)
+              <Share2 className="w-3.5 h-3.5" /> Trimite prin aplicații externe
             </button>
 
-            <div className="border-t-2 border-slate-200 dark:border-slate-800 my-2"></div>
-
-            {/* Trimite direct într-o conversație din platformă */}
-            <div className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-              <Send className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Trimite unui coechipier (Chat intern)
-            </div>
-            <div className="max-h-44 sm:max-h-52 overflow-y-auto space-y-2 pr-1">
-              {loadingConvs ? (
-                <div className="text-center text-[10px] sm:text-xs text-blue-500 py-3 sm:py-4 font-bold uppercase">
-                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin mx-auto mb-1 sm:mb-2" /> Preluare Contacte...
-                </div>
-              ) : conversations.length === 0 ? (
-                <div className="text-center text-[10px] sm:text-xs text-slate-500 py-3 sm:py-4 font-bold uppercase border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg sm:rounded-xl">
-                  Nu ai conversații active încă.
-                </div>
-              ) : (
-                conversations.map((conv) => (
-                  <button
-                    type="button"
-                    key={conv.roomId}
-                    onClick={() => handleSendToChat(conv.roomId, conv.title)}
-                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white dark:bg-slate-900 hover:border-blue-500 border-2 border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl transition-colors text-left group"
-                  >
-                    {conv.image ? (
-                      <img src={conv.image} alt={conv.title} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700" />
-                    ) : (
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 border-2 border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 text-[10px] sm:text-xs font-black uppercase">
-                        CH
+            <div className="pt-3 border-t border-slate-200 dark:border-white/[0.07] space-y-2">
+              <div className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                <Send className="w-3.5 h-3.5" /> Trimite în chat-ul intern
+              </div>
+              <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                {loadingConvs ? (
+                  <div className="text-center text-xs text-slate-500 py-4">
+                    <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1 text-emerald-500" /> Se încarcă conversațiile...
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div className="text-center text-xs text-slate-500 py-4 border border-dashed border-slate-200 dark:border-white/[0.08] rounded-lg">
+                    Nu ai conversații active încă.
+                  </div>
+                ) : (
+                  conversations.map((conv) => (
+                    <button
+                      type="button"
+                      key={conv.roomId}
+                      onClick={() => handleSendToChat(conv.roomId, conv.title)}
+                      className="w-full flex items-center gap-2.5 p-2 bg-slate-50 dark:bg-[#0B0F14] hover:border-emerald-500/40 border border-slate-200 dark:border-white/[0.07] rounded-lg transition-colors text-left group cursor-pointer"
+                    >
+                      {conv.image ? (
+                        <img src={conv.image} alt={conv.title} className="w-8 h-8 rounded-md object-cover shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 text-xs font-semibold shrink-0">
+                          CH
+                        </div>
+                      )}
+                      <div className="flex-1 truncate text-xs font-medium text-slate-900 dark:text-slate-100">
+                        {conv.title}
                       </div>
-                    )}
-                    <div className="flex-1 truncate">
-                      <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate uppercase tracking-tight">{conv.title}</div>
-                    </div>
-                    <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 group-hover:text-blue-500 shrink-0" />
-                  </button>
-                ))
-              )}
+                      <Send className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-500 shrink-0" />
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -880,85 +861,103 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
   };
 
   return (
-    <div className="relative min-h-[80vh] overflow-hidden bg-transparent z-0 animate-in fade-in duration-500 pb-20 px-2 sm:px-4 mt-2 sm:mt-4">
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none">
-        <div className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 w-[50vw] h-[50vw] rounded-full bg-blue-600/5 dark:bg-blue-600/10 blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 -translate-x-1/4 translate-y-1/4 w-[40vw] h-[40vw] rounded-full bg-emerald-500/5 dark:bg-emerald-600/10 blur-[120px] animate-pulse delay-1000"></div>
-      </div>
-
-      {/* HEADER WIDGET RESPONSIVE */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-900 border-b-4 border-blue-600 text-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xl relative overflow-hidden mb-6 sm:mb-8">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,transparent_0,transparent_100px,#fff_101px,#fff_103px,transparent_104px)]"></div>
-
-        <div className="relative z-10 w-full lg:w-auto text-center lg:text-left">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tighter mb-1 sm:mb-2 flex justify-center lg:justify-start items-center gap-2 sm:gap-3 drop-shadow-md">
-            <ShoppingBag className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" /> Fanshop <span className="text-blue-500">Market</span>
-          </h2>
-          <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px] sm:text-xs">Piața oficială de transferuri pentru colecționari.</p>
+    <div className="min-h-[75vh] pb-16">
+      {/* Header Market */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.07] p-4 sm:p-5 rounded-xl mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+            <ShoppingBag className="w-4 h-4 text-emerald-500" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white leading-tight">
+              Fanshop Market
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Anunțuri de la colecționari și pasionați de fotbal.
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap lg:flex-nowrap bg-slate-950 p-1.5 rounded-xl sm:rounded-2xl w-full lg:w-auto border-2 border-slate-800 relative z-10 mx-auto lg:mx-0">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto">
+          <div className="flex bg-slate-100 dark:bg-white/[0.04] p-1 rounded-lg border border-slate-200/80 dark:border-white/[0.06] flex-1 lg:flex-none">
+            <button
+              type="button"
+              onClick={() => setActiveTab('market')}
+              className={`flex-1 lg:flex-none px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                activeTab === 'market'
+                  ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Toate
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('favorites')}
+              className={`flex-1 lg:flex-none px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                activeTab === 'favorites'
+                  ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${activeTab === 'favorites' ? 'fill-rose-500 text-rose-500' : 'text-rose-500'}`} />
+              Favorite
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('my_items')}
+              className={`flex-1 lg:flex-none px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                activeTab === 'my_items'
+                  ? 'bg-white dark:bg-[#1A222C] text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" /> Anunțurile mele
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={() => setActiveTab('market')}
-            className={`flex-1 lg:flex-none px-2 sm:px-5 py-2 sm:py-2.5 whitespace-nowrap rounded-lg sm:rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all border-b-2 ${
-              activeTab === 'market' ? 'bg-blue-600 border-blue-800 text-white' : 'border-transparent text-slate-500 hover:text-white hover:bg-slate-800'
-            }`}
+            onClick={() => setShowAddModal(true)}
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 transition-colors shrink-0 cursor-pointer"
           >
-            Toate
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('favorites')}
-            className={`flex-1 lg:flex-none px-2 sm:px-5 py-2 sm:py-2.5 whitespace-nowrap rounded-lg sm:rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 ${
-              activeTab === 'favorites' ? 'bg-rose-600 border-rose-800 text-white' : 'border-transparent text-slate-500 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <Heart className={`w-3 h-3 sm:w-4 sm:h-4 ${activeTab === 'favorites' ? 'fill-white' : 'text-rose-500'}`} />{' '}
-            <span className="hidden sm:inline">Listă </span>Scout
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('my_items')}
-            className={`flex-1 lg:flex-none px-2 sm:px-5 py-2 sm:py-2.5 whitespace-nowrap rounded-lg sm:rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 ${
-              activeTab === 'my_items' ? 'bg-emerald-600 border-emerald-800 text-white' : 'border-transparent text-slate-500 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <User className="w-3 h-3 sm:w-4 sm:h-4" /> Taraba <span className="hidden sm:inline">Mea</span>
+            <Plus className="w-4 h-4" /> Adaugă anunț
           </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          className="relative z-10 w-full lg:w-auto bg-blue-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center gap-2 border-b-4 border-blue-800 hover:bg-blue-500 hover:border-b-2 hover:translate-y-[2px] transition-all shadow-[0_0_20px_rgba(37,99,235,0.4)] mt-2 lg:mt-0"
-        >
-          <Plus className="w-4 h-4 sm:w-5 sm:h-5 font-bold" /> Pune pe Tarabă
-        </button>
       </div>
 
-      <div className="space-y-4 sm:space-y-5 mb-6 sm:mb-8">
-        <div className="relative w-full mx-auto">
-          <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
+      {/* Căutare și Categorii */}
+      <div className="space-y-3 mb-6">
+        <div className="relative bg-white dark:bg-[#11161D] border border-slate-200 dark:border-white/[0.08] focus-within:border-emerald-500/60 rounded-xl flex items-center transition-colors">
+          <Search className="w-4 h-4 text-slate-400 ml-3.5 shrink-0" />
           <input
             type="text"
-            placeholder="CAUTĂ ÎN MAGAZIN..."
-            className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl focus:border-blue-500 dark:focus:border-blue-500 outline-none font-black uppercase tracking-widest text-[10px] sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 transition-colors shadow-sm"
+            placeholder="Caută tricouri, fulare, bilete..."
+            className="w-full py-2.5 px-3 bg-transparent border-0 outline-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="p-1.5 mr-2 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        <div className="flex justify-start sm:justify-center gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2 sm:mx-0 sm:px-0 snap-x">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
           {CATEGORIES.map((cat) => (
             <button
               type="button"
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`snap-start shrink-0 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest whitespace-nowrap border-2 transition-all ${
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap border transition-colors cursor-pointer ${
                 selectedCategory === cat
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-md'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-900 dark:hover:border-slate-500'
+                  ? 'bg-slate-900 dark:bg-white/[0.1] text-white border-slate-900 dark:border-white/[0.15]'
+                  : 'bg-white dark:bg-[#11161D] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.07] hover:border-slate-300 dark:hover:border-white/[0.15]'
               }`}
             >
               {cat}
@@ -967,30 +966,33 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
         </div>
       </div>
 
+      {/* Grid Produse */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="text-center py-12 sm:py-20 bg-slate-50 dark:bg-slate-900 rounded-2xl sm:rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 max-w-2xl mx-auto px-4">
-          {activeTab === 'favorites' ? (
-            <>
-              <Heart className="w-12 h-12 sm:w-16 sm:h-16 text-rose-300 dark:text-rose-900/50 mx-auto mb-3 sm:mb-4" />
-              <h3 className="text-lg sm:text-xl font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 mb-1">Lista de Scout e goală.</h3>
-              <p className="text-slate-500 font-bold uppercase tracking-wide text-[10px] sm:text-xs">Apasă pe inima de pe carduri pentru a salva aici.</p>
-            </>
-          ) : (
-            <>
-              <Tag className="w-12 h-12 sm:w-16 sm:h-16 text-blue-300 dark:text-blue-900/50 mx-auto mb-3 sm:mb-4" />
-              <h3 className="text-lg sm:text-xl font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 mb-1">Magazia e goală.</h3>
-              <p className="text-slate-500 font-bold uppercase tracking-wide text-[10px] sm:text-xs">Niciun produs nu corespunde căutării tale.</p>
-            </>
-          )}
+        <div className="text-center py-14 bg-white dark:bg-[#11161D] rounded-xl border border-slate-200 dark:border-white/[0.07] max-w-md mx-auto px-6">
+          <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-white/[0.04] flex items-center justify-center mx-auto mb-3">
+            {activeTab === 'favorites' ? (
+              <Heart className="w-5 h-5 text-rose-500" />
+            ) : (
+              <Tag className="w-5 h-5 text-slate-400" />
+            )}
+          </div>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+            {activeTab === 'favorites' ? 'Niciun anunț salvat' : 'Niciun anunț disponibil'}
+          </h3>
+          <p className="text-slate-500 dark:text-slate-400 text-xs">
+            {activeTab === 'favorites'
+              ? 'Apasă pe inimă pentru a salva articolele care te interesează.'
+              : 'Nu există produse care să corespundă căutării tale.'}
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 animate-in slide-in-from-bottom-8 duration-700">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducts.map((product) => (
             <ProductCard
               key={product._id}
@@ -1001,75 +1003,70 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
         </div>
       )}
 
-      {/* RENDER MODAL SHARE */}
+      {/* MODAL SHARE */}
       {productToShare && <ShareModalComponent product={productToShare} />}
 
-      {/* PORTAL: MODAL VIZUALIZARE PRODUS */}
+      {/* MODAL VIZUALIZARE PRODUS */}
       {selectedProduct &&
         createPortal(
-          <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-slate-900 w-full h-[100dvh] sm:h-auto sm:max-w-5xl sm:max-h-[92vh] sm:rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 sm:border-4 border-slate-700 relative">
-              <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-50 flex gap-1.5 sm:gap-2">
+          <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4" onClick={() => setSelectedProduct(null)}>
+            <div className="bg-white dark:bg-[#0B0F14] w-full h-[100dvh] sm:h-auto sm:max-w-4xl sm:max-h-[90vh] sm:rounded-xl overflow-hidden flex flex-col md:flex-row shadow-2xl sm:border border-slate-200 dark:border-white/[0.08] relative" onClick={(e) => e.stopPropagation()}>
+              {/* Acțiuni colț dreapta sus */}
+              <div className="absolute top-3 right-3 z-50 flex gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleToggleFavorite(selectedProduct._id)}
-                  className="bg-slate-900/80 backdrop-blur hover:bg-slate-900 text-white p-2 sm:p-2.5 rounded-lg sm:rounded-xl shadow-lg border border-slate-700 transition"
+                  className="bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white p-2 rounded-lg border border-white/10 transition-colors cursor-pointer"
                 >
-                  <Heart className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${userFavorites.includes(selectedProduct._id) ? 'fill-rose-500 text-rose-500' : ''}`} />
+                  <Heart className={`w-4 h-4 ${userFavorites.includes(selectedProduct._id) ? 'fill-rose-500 text-rose-500' : ''}`} />
                 </button>
                 <button
                   type="button"
                   onClick={() => setProductToShare(selectedProduct)}
-                  className="bg-slate-900/80 backdrop-blur hover:bg-blue-600 text-white p-2 sm:p-2.5 rounded-lg sm:rounded-xl shadow-lg border border-slate-700 transition"
+                  className="bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white p-2 rounded-lg border border-white/10 transition-colors cursor-pointer"
                   title="Distribuie anunțul"
                 >
-                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Share2 className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelectedProduct(null)}
-                  className="bg-slate-900/80 backdrop-blur hover:bg-rose-500 text-white p-2 sm:p-2.5 rounded-lg sm:rounded-xl shadow-lg border border-slate-700 hover:border-rose-500 transition"
+                  className="bg-black/60 backdrop-blur-sm hover:bg-rose-600 text-white p-2 rounded-lg border border-white/10 transition-colors cursor-pointer"
                 >
-                  <X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="w-full h-[40vh] md:h-auto md:w-3/5 bg-slate-100 dark:bg-slate-950 flex flex-col relative border-b-2 sm:border-b-4 md:border-b-0 md:border-r-4 border-slate-200 dark:border-slate-800 shrink-0">
+              {/* Galerie Foto */}
+              <div className="w-full h-[38vh] md:h-auto md:w-3/5 bg-slate-100 dark:bg-[#11161D] flex flex-col relative border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/[0.07] shrink-0">
                 <div
-                  className="flex-1 relative overflow-hidden flex items-center justify-center cursor-zoom-in"
+                  className="flex-1 relative overflow-hidden flex items-center justify-center cursor-zoom-in p-3"
                   onClick={() => {
                     if (selectedProduct.images.length > 0) setIsFullscreen(true);
                   }}
                 >
-                  <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#000_20px,#000_22px)] pointer-events-none"></div>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 md:hover:opacity-100 bg-slate-950/20 transition-opacity z-20 pointer-events-none">
-                    <div className="hidden md:block bg-slate-900 text-white p-3 rounded-full shadow-lg border border-slate-700 backdrop-blur-md">
-                      <Maximize2 className="w-6 h-6" />
-                    </div>
-                  </div>
-
                   {selectedProduct.images.length > 0 ? (
                     <img
                       src={selectedProduct.images[activeIdx]}
                       alt={selectedProduct.title}
-                      className="max-w-full max-h-full object-contain relative z-10 transition-transform duration-200 drop-shadow-xl p-2 sm:p-4"
+                      className="max-w-full max-h-full object-contain rounded-lg"
                     />
                   ) : (
-                    <div className="text-slate-400 flex flex-col items-center font-black uppercase tracking-widest text-[10px] sm:text-base">
-                      <AlertTriangle className="mb-2 w-6 h-6 sm:w-10 sm:h-10" /> Fără fotografie
+                    <div className="text-slate-400 flex flex-col items-center text-xs">
+                      <AlertTriangle className="mb-1.5 w-6 h-6" /> Fără fotografie
                     </div>
                   )}
                 </div>
 
                 {selectedProduct.images.length > 1 && (
-                  <div className="p-2 sm:p-4 bg-slate-200 dark:bg-slate-900 border-t-2 border-slate-300 dark:border-slate-800 flex gap-2 sm:gap-3 overflow-x-auto justify-center z-40 relative">
+                  <div className="p-2.5 bg-slate-200/60 dark:bg-[#0B0F14] border-t border-slate-200 dark:border-white/[0.07] flex gap-2 overflow-x-auto justify-center">
                     {selectedProduct.images.map((img, idx) => (
                       <button
                         type="button"
                         key={idx}
                         onClick={() => setActiveIdx(idx)}
-                        className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl overflow-hidden border-2 sm:border-4 shrink-0 transition-all ${
-                          activeIdx === idx ? 'border-blue-600 sm:scale-110 shadow-lg' : 'border-transparent opacity-50 hover:opacity-100'
+                        className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 shrink-0 transition-opacity cursor-pointer ${
+                          activeIdx === idx ? 'border-emerald-500 opacity-100' : 'border-transparent opacity-55 hover:opacity-100'
                         }`}
                       >
                         <img src={img} alt="" className="w-full h-full object-cover" />
@@ -1089,84 +1086,83 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                 />
               )}
 
-              <div className="w-full md:w-2/5 p-4 sm:p-6 md:p-8 flex flex-col flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 pb-safe">
-                <div className="mb-4 sm:mb-6">
-                  <span className="inline-flex items-center gap-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-[9px] sm:text-[10px] font-black px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg mb-2 sm:mb-3 uppercase tracking-widest border border-blue-200 dark:border-blue-800">
-                    <Tag className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {selectedProduct.category || "General"}
+              {/* Detalii produs */}
+              <div className="w-full md:w-2/5 p-5 sm:p-6 flex flex-col flex-1 overflow-y-auto bg-white dark:bg-[#0B0F14]">
+                <div className="mb-4">
+                  <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 text-[11px] font-medium px-2 py-0.5 rounded-md mb-2 border border-slate-200 dark:border-white/[0.07]">
+                    <Tag className="w-3 h-3" /> {selectedProduct.category || "General"}
                   </span>
-                  <h2 className="text-xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none mb-2 sm:mb-3">
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white leading-snug mb-2">
                     {selectedProduct.title}
                   </h2>
-                  <div className="text-lg sm:text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-emerald-200 dark:border-emerald-900/50">
+                  <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                     {selectedProduct.price}
                   </div>
                 </div>
 
-                <div className="mb-6 sm:mb-8 border-t-2 border-b-2 border-slate-200 dark:border-slate-800 py-4 sm:py-6">
-                  <h4 className="text-[9px] sm:text-[10px] uppercase font-black tracking-widest text-slate-400 mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2">
-                    <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Fișa Produsului
+                <div className="mb-5 border-t border-b border-slate-200 dark:border-white/[0.07] py-4">
+                  <h4 className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" /> Descriere
                   </h4>
-                  <p className="whitespace-pre-wrap text-[11px] sm:text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                  <p className="whitespace-pre-wrap text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                     {selectedProduct.description}
                   </p>
                 </div>
 
-                <div className="mt-auto bg-white dark:bg-slate-950 rounded-xl sm:rounded-2xl p-4 sm:p-5 border-2 border-slate-200 dark:border-slate-800 relative shadow-sm">
+                <div className="mt-auto bg-slate-50 dark:bg-[#11161D] rounded-xl p-4 border border-slate-200 dark:border-white/[0.07] relative">
                   {selectedProduct.sellerEmail !== user.email && user?.role !== 'admin' && user?.email !== 'admin.nou@scout.ro' && (
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!window.confirm("Apeși butonul de VAR? Ești sigur că acest anunț încalcă regulamentul?")) return;
+                        if (!window.confirm("Raportezi acest anunț către administratori?")) return;
                         try {
                           const res = await fetch(`${API_URL}/${selectedProduct._id}/report`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ user: user.name }),
                           });
-                          if (res.ok) toast.success("Incidentul a fost raportat la Comisie (VAR).");
+                          if (res.ok) toast.success("Anunțul a fost raportat.");
                         } catch {
                           toast.error("Eroare la raportare.");
                         }
                       }}
-                      className="absolute top-3 right-3 sm:top-4 sm:right-4 flex items-center gap-1 text-[8px] sm:text-[9px] uppercase font-black tracking-widest text-slate-400 hover:text-amber-500 bg-slate-100 dark:bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-slate-200 dark:border-slate-700 transition-colors"
-                      title="Cheamă VAR-ul dacă anunțul e fals"
+                      className="absolute top-3 right-3 flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-amber-500 transition-colors cursor-pointer"
+                      title="Raportează anunțul"
                     >
-                      <Flag className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> VAR
+                      <Flag className="w-3 h-3" /> Raportează
                     </button>
                   )}
 
-                  <h3 className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
-                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" /> Contact Impresar
-                  </h3>
-                  <div className="space-y-3 sm:space-y-4">
-                    <div className="flex items-center gap-3 sm:gap-4">
+                  <h3 className="font-medium text-xs text-slate-500 mb-3">Vânzător</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
                       {selectedProduct.sellerAvatar && !avatarError ? (
                         <img
                           src={selectedProduct.sellerAvatar}
                           alt={selectedProduct.seller}
-                          className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700 shadow-sm"
+                          className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-white/[0.1]"
                           onError={() => setAvatarError(true)}
                         />
                       ) : (
-                        <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-base sm:text-xl uppercase border-2 border-blue-200 dark:border-blue-800 shadow-sm">
-                          {selectedProduct.seller.charAt(0)}
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-semibold text-sm">
+                          {selectedProduct.seller.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <div className="min-w-0 pr-8 sm:pr-0">
-                        <div className="font-black text-sm sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm text-slate-900 dark:text-white truncate">
                           {selectedProduct.seller}
                         </div>
-                        <div className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">Membru Market</div>
+                        <div className="text-[11px] text-slate-500">Membru Fanshop</div>
                       </div>
                     </div>
 
                     {selectedProduct.sellerPhone && (
                       <a
                         href={`tel:${selectedProduct.sellerPhone}`}
-                        className="flex items-center justify-center gap-2 sm:gap-3 bg-slate-900 hover:bg-slate-800 text-white p-2.5 sm:p-3 rounded-lg sm:rounded-xl border-b-4 border-slate-950 hover:translate-y-[2px] hover:border-b-2 transition-all w-full mt-2"
+                        className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-4 rounded-lg transition-colors w-full text-xs font-medium tabular-nums"
                       >
-                        <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
-                        <span className="font-black uppercase tracking-widest text-[11px] sm:text-sm">{selectedProduct.sellerPhone}</span>
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>{selectedProduct.sellerPhone}</span>
                       </a>
                     )}
                   </div>
@@ -1177,59 +1173,58 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
           document.body
         )}
 
-      {/* PORTAL: MODAL ADĂUGARE PRODUS */}
+      {/* MODAL ADĂUGARE PRODUS */}
       {showAddModal &&
         createPortal(
-          <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-200">
-            <div className="bg-slate-50 dark:bg-slate-900 sm:rounded-3xl w-full h-[100dvh] sm:h-auto sm:max-w-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col sm:max-h-[92vh] sm:border-4 border-blue-600/30 overflow-hidden">
-              <div className="p-3 sm:p-5 border-b-2 sm:border-b-4 border-blue-600 flex justify-between items-center shrink-0 bg-slate-900 text-white relative">
-                <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#fff_10px,#fff_12px)]"></div>
-                <h3 className="text-sm sm:text-xl font-black uppercase tracking-widest flex items-center gap-2 relative z-10">
-                  <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" /> Formular Transfer
+          <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4" onClick={() => setShowAddModal(false)}>
+            <div className="bg-white dark:bg-[#11161D] sm:rounded-xl w-full h-[100dvh] sm:h-auto sm:max-w-lg shadow-2xl flex flex-col sm:max-h-[90vh] sm:border border-slate-200 dark:border-white/[0.08] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="px-4 py-3.5 border-b border-slate-200 dark:border-white/[0.07] flex justify-between items-center shrink-0">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4 text-emerald-500" /> Adaugă anunț nou
                 </h3>
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="relative z-10 bg-slate-800 hover:bg-rose-500 p-1.5 sm:p-2 rounded-full border border-slate-700 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                 >
-                  <X className="w-4 h-4 sm:w-5 sm:h-5 font-bold" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto flex-1 pb-safe-bottom">
-                <div className="bg-white dark:bg-slate-950 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200 dark:border-slate-800">
-                  <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-500 mb-1.5">
-                    Articol <span className="text-rose-500">*</span>
+              <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    Titlu articol <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
-                    className="w-full p-2 sm:p-3 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl outline-none focus:border-blue-500 transition-colors font-bold uppercase tracking-tight text-[11px] sm:text-sm text-slate-900 dark:text-white"
-                    placeholder="EX: TRICOU HAGI 1994"
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] rounded-lg outline-none focus:border-emerald-500 text-sm text-slate-900 dark:text-white"
+                    placeholder="Ex: Tricou Hagi 1994"
                     value={newProduct.title}
                     onChange={(e) => setNewProduct({ ...newProduct, title: e.target.value })}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div className="bg-white dark:bg-slate-950 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200 dark:border-slate-800">
-                    <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 mb-1.5">
-                      Cotă (Preț) <span className="text-rose-500">*</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                      Preț <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
-                      className="w-full p-2 sm:p-3 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl outline-none focus:border-emerald-500 transition-colors font-bold uppercase tracking-tight text-[11px] sm:text-sm text-slate-900 dark:text-white"
-                      placeholder="EX: 500 RON"
+                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] rounded-lg outline-none focus:border-emerald-500 text-sm text-slate-900 dark:text-white"
+                      placeholder="Ex: 500 RON"
                       value={newProduct.price}
                       onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
                     />
                   </div>
-                  <div className="bg-white dark:bg-slate-950 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200 dark:border-slate-800">
-                    <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-500 mb-1.5">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                       Telefon <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="tel"
-                      className="w-full p-2 sm:p-3 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl outline-none focus:border-blue-500 transition-colors font-bold uppercase tracking-tight text-[11px] sm:text-sm text-slate-900 dark:text-white"
+                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] rounded-lg outline-none focus:border-emerald-500 text-sm text-slate-900 dark:text-white"
                       placeholder="07XX..."
                       value={newProduct.phone}
                       onChange={(e) => setNewProduct({ ...newProduct, phone: e.target.value })}
@@ -1237,12 +1232,12 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-950 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200 dark:border-slate-800">
-                  <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-500 mb-1.5">
-                    Tip Echipament
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    Categorie
                   </label>
                   <select
-                    className="w-full p-2 sm:p-3 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl outline-none focus:border-blue-500 transition-colors font-bold uppercase tracking-tight text-[11px] sm:text-sm text-slate-900 dark:text-white cursor-pointer"
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] rounded-lg outline-none focus:border-emerald-500 text-sm text-slate-900 dark:text-white cursor-pointer"
                     value={newProduct.category}
                     onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
                   >
@@ -1252,31 +1247,31 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                   </select>
                 </div>
 
-                <div className="bg-white dark:bg-slate-950 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200 dark:border-slate-800">
-                  <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-500 mb-2">
-                    Imagini (Max 5) <span className="text-rose-500">*</span>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    Imagini (maxim 5) <span className="text-rose-500">*</span>
                   </label>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-4 gap-2">
                     {newProduct.images.map((img, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-lg sm:rounded-xl overflow-hidden border-2 border-blue-500">
+                      <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 dark:border-white/[0.1]">
                         <img src={img} alt="" className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => removeImage(idx)}
-                          className="absolute top-1 right-1 bg-rose-500 text-white p-0.5 sm:p-1 rounded md:rounded-lg hover:bg-rose-600"
+                          className="absolute top-1 right-1 bg-black/70 text-white p-0.5 rounded hover:bg-rose-500 cursor-pointer"
                         >
-                          <X className="w-3 h-3 font-bold" />
+                          <X className="w-3 h-3" />
                         </button>
                       </div>
                     ))}
                     {newProduct.images.length < 5 && (
-                      <label className="aspect-square border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-lg sm:rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:text-blue-500 transition-colors text-slate-400">
+                      <label className="aspect-square border border-dashed border-slate-300 dark:border-white/[0.15] bg-slate-50 dark:bg-[#0B0F14] rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:text-emerald-500 transition-colors text-slate-400">
                         {isCompressingImages ? (
-                          <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin text-blue-500" />
+                          <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
                         ) : (
                           <>
-                            <Upload className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
-                            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest">Încarcă</span>
+                            <Upload className="w-4 h-4 mb-1" />
+                            <span className="text-[10px] font-medium">Încarcă</span>
                           </>
                         )}
                         <input
@@ -1292,27 +1287,27 @@ export function CollectorsHubSection({ user, onOpenChat, initialPostId }: Collec
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-950 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200 dark:border-slate-800 flex-1 min-h-[120px]">
-                  <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-500 mb-1.5">
-                    Fișa Produsului <span className="text-rose-500">*</span>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    Descriere <span className="text-rose-500">*</span>
                   </label>
                   <textarea
-                    className="w-full p-2 sm:p-3 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl h-24 sm:h-28 outline-none focus:border-blue-500 transition-colors font-medium text-[11px] sm:text-sm text-slate-900 dark:text-white resize-y"
-                    placeholder="Stare, defecte, istoric..."
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-white/[0.08] rounded-lg h-24 outline-none focus:border-emerald-500 text-sm text-slate-900 dark:text-white resize-y"
+                    placeholder="Stare, mărime, detalii..."
                     value={newProduct.description}
                     onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                  ></textarea>
+                  />
                 </div>
               </div>
 
-              <div className="p-3 sm:p-5 border-t-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 pb-safe-bottom">
+              <div className="p-4 border-t border-slate-200 dark:border-white/[0.07] shrink-0">
                 <button
                   type="button"
                   onClick={handleAddProduct}
                   disabled={isSubmitting || isCompressingImages}
-                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-[11px] sm:text-sm py-3 sm:py-4 rounded-xl sm:rounded-2xl transition-all border-b-4 border-blue-800 hover:border-b-2 hover:translate-y-[2px] flex justify-center items-center gap-2 sm:gap-3 disabled:opacity-70 disabled:translate-y-0 disabled:border-b-4"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm py-2.5 rounded-lg transition-colors flex justify-center items-center gap-2 disabled:opacity-60 cursor-pointer"
                 >
-                  {isSubmitting ? <Loader2 className="animate-spin w-4 h-4 sm:w-5 sm:h-5" /> : 'Publică Oficial'}
+                  {isSubmitting ? <Loader2 className="animate-spin w-4 h-4" /> : 'Publică anunțul'}
                 </button>
               </div>
             </div>

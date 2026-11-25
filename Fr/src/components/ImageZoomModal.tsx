@@ -124,55 +124,57 @@ export function ImageZoomModal({ src, alt = 'Fotografie', onClose }: ImageZoomMo
 
   return (
     <div
-      className="fixed inset-0 z-[100000] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 select-none"
+      className="fixed inset-0 z-[100000] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-between p-3 sm:p-5 select-none"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
       {/* Bara de control sus */}
-      <div className="w-full max-w-4xl flex items-center justify-between gap-2 mb-3 z-20">
-        <div className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300 truncate">
-          {alt} • <span className="text-emerald-400">{Math.round(scale * 100)}%</span>
+      <div className="w-full max-w-4xl flex items-center justify-between gap-2 z-20">
+        <div className="flex items-center gap-2 min-w-0 bg-[#11161D] border border-white/[0.08] px-3 py-1.5 rounded-lg">
+          <span className="text-xs font-medium text-slate-200 truncate">{alt}</span>
+          <span className="text-xs font-semibold text-emerald-400 tabular-nums shrink-0">
+            {Math.round(scale * 100)}%
+          </span>
         </div>
 
-        {/* Butoane + / - / Reset vizibile pe desktop și utile și pe mobil */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={handleZoomOut}
             disabled={scale <= 1}
-            title="Micșorează (-)"
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white border border-slate-700 transition-colors"
+            title="Micșorează"
+            className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
           >
-            <ZoomOut className="w-4 h-4 sm:w-5 sm:h-5" />
+            <ZoomOut className="w-4 h-4" />
           </button>
 
           <button
             type="button"
             onClick={handleZoomIn}
             disabled={scale >= 3.5}
-            title="Mărește (+)"
-            className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white border border-emerald-700 transition-colors"
+            title="Mărește"
+            className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] disabled:opacity-40 text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
           >
-            <ZoomIn className="w-4 h-4 sm:w-5 sm:h-5" />
+            <ZoomIn className="w-4 h-4" />
           </button>
 
           <button
             type="button"
             onClick={handleReset}
             title="Resetează zoom"
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+            className="p-2 rounded-lg bg-[#11161D] hover:bg-white/[0.08] text-slate-200 border border-white/[0.08] transition-colors cursor-pointer"
           >
-            <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+            <RotateCcw className="w-4 h-4" />
           </button>
 
           <button
             type="button"
             onClick={onClose}
             title="Închide"
-            className="p-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white border border-rose-700 transition-colors ml-1"
+            className="p-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/25 transition-colors ml-1 cursor-pointer"
           >
-            <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -183,8 +185,9 @@ export function ImageZoomModal({ src, alt = 'Fotografie', onClose }: ImageZoomMo
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onClick={onClose}
         style={{ touchAction: 'none' }}
-        className="flex-1 w-full max-w-4xl flex items-center justify-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 relative"
+        className="flex-1 w-full max-w-4xl my-3 flex items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-black/40 relative"
       >
         <img
           src={src}
@@ -195,15 +198,16 @@ export function ImageZoomModal({ src, alt = 'Fotografie', onClose }: ImageZoomMo
             transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
             cursor: scale > 1 ? (isDraggingRef.current ? 'grabbing' : 'grab') : 'zoom-in',
           }}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             if (scale === 1) setScale(2);
           }}
           className="max-h-[75vh] max-w-full object-contain transition-transform duration-150 ease-out"
         />
       </div>
 
-      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-400 mt-3 text-center">
-        Desktop: folosește + / - sau rotița mouse-ului • Mobil: ciupește (pinch) sau glisează cu degetul
+      <p className="text-[11px] text-slate-400 text-center">
+        Desktop: folosește + / - sau rotița • Mobil: pinch sau glisează
       </p>
     </div>
   );
