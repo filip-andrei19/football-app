@@ -21,6 +21,24 @@ const socket = io(API_BASE, {
 });
 const PRIORITY_LEAGUES = [283, 284, 2, 3, 848, 39, 140, 135, 78, 61];
 
+const playNotificationSound = () => {
+    try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(740, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(980, ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+    } catch {}
+};
+
 interface Match {
     fixture_id: number;
     date: string;
@@ -574,6 +592,18 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         localStorage.setItem('scout_notif_prefs', JSON.stringify(notifPrefs));
     }, [notifPrefs]);
 
+    // Ascultă mesajul PLAY_NOTIF_SOUND de la Service Worker când vine un push în fundal cu tab-ul deschis
+    useEffect(() => {
+        if (!('serviceWorker' in navigator)) return;
+        const handleSwMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'PLAY_NOTIF_SOUND') {
+                playNotificationSound();
+            }
+        };
+        navigator.serviceWorker.addEventListener('message', handleSwMessage);
+        return () => navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+    }, []);
+
     const [selectedTeam, setSelectedTeam] = useState<SquadData | null>(null);
     const [loadingRoster, setLoadingRoster] = useState(false);
 
@@ -749,16 +779,19 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             if (permission === 'granted') {
                 await subscribeToPushNotifications(userEmail);
+                playNotificationSound();
                 toast.success("Notificările în bară au fost activate.");
 
                 if (navigator.serviceWorker) {
                     navigator.serviceWorker.ready
                         .then((reg) => {
-                            reg.showNotification("Alerte Live Activate", {
+                            reg.showNotification("România Scout • Alerte Live", {
                                 body: "Vei primi notificări pentru meciurile tale favorite.",
                                 icon: "/icon-192.png",
                                 badge: "/icon-192.png",
-                            });
+                                vibrate: [200, 100, 200],
+                                silent: false,
+                            } as any);
                         })
                         .catch(() => {});
                 }
@@ -856,15 +889,26 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                         const matchTitleStr = `${updatedMatch.home_team_name} ${updatedMatch.home_goals ?? 0} - ${updatedMatch.away_goals ?? 0} ${updatedMatch.away_team_name}`;
 
                         const triggerNotification = (title: string, body: string) => {
+                            playNotificationSound();
                             if (!("Notification" in window) || Notification.permission !== "granted") return;
-                            const options = {
-                                body, icon: updatedMatch.league_logo || '/icon-192.png', badge: '/icon-192.png',
-                                vibrate: [200, 100, 200, 100, 200], data: { fixtureId: updatedMatch.fixture_id }
+
+                            const options: any = {
+                                body,
+                                icon: '/icon-192.png',
+                                badge: '/icon-192.png',
+                                vibrate: [200, 100, 200],
+                                silent: false,
+                                renotify: true,
+                                tag: `match-${updatedMatch.fixture_id}`,
+                                data: { fixtureId: updatedMatch.fixture_id }
                             };
+
                             if (navigator.serviceWorker) {
-                                navigator.serviceWorker.ready.then(reg => { reg.showNotification(title, options); }).catch(() => { new Notification(title, options as any); });
+                                navigator.serviceWorker.ready
+                                    .then(reg => reg.showNotification(`România Scout • ${title}`, options))
+                                    .catch(() => new Notification(`România Scout • ${title}`, options));
                             } else {
-                                new Notification(title, options as any);
+                                new Notification(`România Scout • ${title}`, options);
                             }
                         };
 

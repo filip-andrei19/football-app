@@ -1,10 +1,10 @@
-// Versiunea 3.22 - Update PWA cu notificare personalizată, Web Push & Fix Cache (/assets/ exclus)
+// Versiunea 3.23 - Update PWA, Fix Cache (/assets/ exclus) & Notificări personalizate cu sunet
 
-const CACHE_NAME = 'scoutpro-cache-v3.22';
+const CACHE_NAME = 'scoutpro-cache-v3.23';
 const urlsToCache = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
-    // Aplicația va aștepta confirmarea utilizatorului din bannerul personalizat.
+    // Aplicația așteaptă confirmarea utilizatorului din bannerul de update
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
     );
@@ -77,32 +77,44 @@ self.addEventListener('fetch', (event) => {
 // LOGICA PENTRU NOTIFICĂRI WEB PUSH (BACKGROUND)
 // ==========================================
 
-self.addEventListener('push', function(event) {
-    if (event.data) {
-        const data = event.data.json();
+self.addEventListener('push', function (event) {
+    if (!event.data) return;
 
-        const options = {
-            body: data.body,
-            icon: data.icon || '/icon-192.png',
-            badge: '/icon-192.png',
-            vibrate: [200, 100, 200, 100, 200],
-            data: data.data
-        };
+    const data = event.data.json();
+    const fixtureId = data.data?.fixtureId;
 
-        event.waitUntil(
-            self.registration.showNotification(data.title, options)
-        );
-    }
+    const options = {
+        body: data.body,
+        icon: '/icon-192.png',          // Logo-ul aplicației tale în stânga
+        badge: '/icon-192.png',         // Iconița mică din bara de sus (Android)
+        vibrate: [200, 100, 200],       // Vibrație scurtă, curată
+        silent: false,                  // Forțează redarea sunetului de sistem
+        renotify: true,                 // Redă sunetul din nou chiar dacă e același meci
+        tag: fixtureId ? `match-${fixtureId}` : 'romania-scout-alert',
+        data: data.data
+    };
+
+    event.waitUntil(
+        Promise.all([
+            self.registration.showNotification(data.title || 'România Scout', options),
+            // Dacă aplicația e deschisă într-un tab, îi spunem să redea și sunetul custom
+            clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+                windowClients.forEach((client) => {
+                    client.postMessage({ type: 'PLAY_NOTIF_SOUND' });
+                });
+            })
+        ])
+    );
 });
 
-self.addEventListener('notificationclick', function(event) {
+self.addEventListener('notificationclick', function (event) {
     event.notification.close();
 
     const fixtureId = event.notification.data?.fixtureId;
     const urlToOpen = fixtureId ? `/?matchId=${fixtureId}` : '/';
 
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(windowClients) {
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (windowClients) {
             for (let i = 0; i < windowClients.length; i++) {
                 const client = windowClients[i];
                 if (client.url.includes(self.location.origin) && 'focus' in client) {
