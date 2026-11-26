@@ -146,9 +146,19 @@ export default function App() {
   const [activeChatPartner, setActiveChatPartner] = useState<{ name: string; avatar?: string } | null>(null);
 
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
+  const [targetMatchId, setTargetMatchId] = useState<number | null>(null);
   const [updateRegistration, setUpdateRegistration] = useState<any>(null);
 
   const checkAdminWarnings = (userData: any) => userData;
+
+  const navigateTo = (section: Section) => {
+    setActiveSection((prev) => {
+      if (prev !== section) {
+        window.history.pushState({ section }, '');
+      }
+      return section;
+    });
+  };
 
   useEffect(() => {
     const savedUser = localStorage.getItem('footballAppUser');
@@ -167,12 +177,46 @@ export default function App() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const postId = urlParams.get('postId');
+    const matchId = urlParams.get('matchId');
+
+    // Setăm mereu 'home' ca bază în istoric, ca Back să ducă spre Home înainte de ieșire
+    window.history.replaceState({ section: 'home' }, '', window.location.pathname);
 
     if (postId) {
       setSharedPostId(postId);
       setActiveSection('collectors');
-      window.history.replaceState({}, document.title, window.location.pathname);
+      window.history.pushState({ section: 'collectors' }, '');
+    } else if (matchId && !isNaN(Number(matchId))) {
+      setTargetMatchId(Number(matchId));
+      setActiveSection('matches');
+      window.history.pushState({ section: 'matches' }, '');
     }
+  }, []);
+
+  // Ascultă butonul Înapoi (Android / Browser Back)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const nextSection = (event.state?.section as Section) || 'home';
+      setActiveSection(nextSection);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Ascultă click-ul pe notificare când aplicația este deja deschisă
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'NAVIGATE_TO_MATCH' && event.data?.fixtureId) {
+        const fid = Number(event.data.fixtureId);
+        if (!isNaN(fid)) {
+          setTargetMatchId(fid);
+          navigateTo('matches');
+        }
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', handleSwMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', handleSwMessage);
   }, []);
 
   useEffect(() => {
@@ -313,9 +357,15 @@ export default function App() {
   const renderSection = () => {
     switch (activeSection) {
       case 'home':
-        return <HomeSection user={user!} onNavigate={setActiveSection} />;
+        return <HomeSection user={user!} onNavigate={navigateTo} />;
       case 'matches':
-        return <MatchesSection userEmail={user?.email} />;
+        return (
+          <MatchesSection
+            userEmail={user?.email}
+            initialMatchId={targetMatchId}
+            onClearInitialMatchId={() => setTargetMatchId(null)}
+          />
+        );
       case 'games':
         return <GamesSection user={user!} />;
       case 'stars':
@@ -342,10 +392,10 @@ export default function App() {
         return isAdmin ? (
           <AdminDashboard user={user!} />
         ) : (
-          <HomeSection user={user!} onNavigate={setActiveSection} />
+          <HomeSection user={user!} onNavigate={navigateTo} />
         );
       default:
-        return <HomeSection user={user!} onNavigate={setActiveSection} />;
+        return <HomeSection user={user!} onNavigate={navigateTo} />;
     }
   };
 
@@ -394,7 +444,7 @@ export default function App() {
               {/* Brand */}
               <div
                 className="flex items-center gap-2.5 cursor-pointer select-none group shrink-0"
-                onClick={() => setActiveSection('home')}
+                onClick={() => navigateTo('home')}
               >
                 <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 dark:bg-[#151E30] border border-slate-800 dark:border-white/[0.1] group-hover:border-emerald-500/50 transition-colors overflow-hidden">
                   <span className="text-xs font-bold text-white tracking-tight font-mono-stats">RO</span>
@@ -418,7 +468,7 @@ export default function App() {
                     <button
                       type="button"
                       key={item.id}
-                      onClick={() => setActiveSection(item.id)}
+                      onClick={() => navigateTo(item.id)}
                       className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all cursor-pointer ${
                         isActive
                           ? 'bg-white dark:bg-[#1B263B] text-slate-900 dark:text-white shadow-sm border border-slate-200/70 dark:border-white/[0.08]'
@@ -446,7 +496,7 @@ export default function App() {
                 {/* Mobil: Profil */}
                 <button
                   type="button"
-                  onClick={() => setActiveSection('profile')}
+                  onClick={() => navigateTo('profile')}
                   className={`sm:hidden flex items-center gap-2 h-9 px-2.5 rounded-xl border transition-colors cursor-pointer ${
                     activeSection === 'profile'
                       ? 'bg-slate-900 border-slate-800 text-white dark:bg-[#1B263B] dark:border-white/[0.12]'
@@ -471,7 +521,7 @@ export default function App() {
                   {isAdmin && (
                     <button
                       type="button"
-                      onClick={() => setActiveSection('admin')}
+                      onClick={() => navigateTo('admin')}
                       className={`h-9 px-3 rounded-xl text-xs font-medium inline-flex items-center gap-1.5 border transition-colors cursor-pointer ${
                         activeSection === 'admin'
                           ? 'bg-rose-500/20 border-rose-500/35 text-rose-500 dark:text-rose-400'
@@ -484,7 +534,7 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={() => setActiveSection('profile')}
+                    onClick={() => navigateTo('profile')}
                     className={`h-9 px-2.5 pr-3 rounded-xl text-xs font-medium inline-flex items-center gap-2 border transition-colors cursor-pointer ${
                       activeSection === 'profile'
                         ? 'bg-slate-900 text-white border-slate-900 dark:bg-[#1B263B] dark:border-white/[0.12]'
@@ -533,7 +583,7 @@ export default function App() {
                 <button
                   type="button"
                   key={item.id}
-                  onClick={() => setActiveSection(item.id)}
+                  onClick={() => navigateTo(item.id)}
                   className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-colors ${
                     isActive
                       ? 'text-emerald-600 dark:text-emerald-400'

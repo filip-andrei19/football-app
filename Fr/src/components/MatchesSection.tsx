@@ -559,7 +559,15 @@ const PlayerRadarChart = ({ primaryPlayer }: { primaryPlayer: Player }) => {
     );
 };
 
-export function MatchesSection({ userEmail }: { userEmail?: string }) {
+export function MatchesSection({
+    userEmail,
+    initialMatchId,
+    onClearInitialMatchId,
+}: {
+    userEmail?: string;
+    initialMatchId?: number | null;
+    onClearInitialMatchId?: () => void;
+}) {
     const queryClient = useQueryClient();
 
     const [dates, setDates] = useState<{ date: Date; label: string; isToday: boolean }[]>([]);
@@ -592,7 +600,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         localStorage.setItem('scout_notif_prefs', JSON.stringify(notifPrefs));
     }, [notifPrefs]);
 
-    // Ascultă mesajul PLAY_NOTIF_SOUND de la Service Worker când vine un push în fundal cu tab-ul deschis
+    // Ascultă mesajul PLAY_NOTIF_SOUND de la Service Worker
     useEffect(() => {
         if (!('serviceWorker' in navigator)) return;
         const handleSwMessage = (event: MessageEvent) => {
@@ -631,6 +639,30 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     const [loadingStandings, setLoadingStandings] = useState(false);
 
     const [lineupViewMode, setLineupViewMode] = useState<'both' | 'home' | 'away'>('both');
+
+    // Sincronizează modalele cu butonul Înapoi (stil Flashscore)
+    useEffect(() => {
+        const handlePopState = (e: PopStateEvent) => {
+            const layer = e.state?.layer;
+            if (layer !== 'player') setSelectedPlayer(null);
+            if (layer !== 'team' && layer !== 'player') setSelectedTeam(null);
+            if (!layer) {
+                setSelectedMatchDetails(null);
+                setShowNotifSettings(false);
+                setShowCompareModal(false);
+            }
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
+    const closeModalLayer = (expectedLayer: string, fallbackClose: () => void) => {
+        if (window.history.state?.layer === expectedLayer) {
+            window.history.back();
+        } else {
+            fallbackClose();
+        }
+    };
 
     const getPlayerCacheKey = (rawName: string, fallbackTeam?: string, apiPlayerId?: number) => {
         if (apiPlayerId) return `id_${apiPlayerId}`;
@@ -865,6 +897,40 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         refetchInterval: 60 * 1000,
     });
 
+    // Deschide automat meciul când utilizatorul apasă pe o notificare
+    useEffect(() => {
+        if (!initialMatchId) return;
+
+        const openMatchFromNotification = async () => {
+            const existing = matches.find((m: Match) => m.fixture_id === initialMatchId);
+            if (existing) {
+                handleMatchClick(existing);
+                onClearInitialMatchId?.();
+                return;
+            }
+
+            setLoadingMatchDetails(true);
+            window.history.pushState({ section: 'matches', layer: 'match' }, '');
+            try {
+                const res = await fetch(`${API_BASE}/api/sport/matches/${initialMatchId}/details`);
+                if (res.ok) {
+                    const fullData = await res.json();
+                    setSelectedMatchDetails(fullData);
+                    setLineupViewMode('both');
+                    setActiveMatchTab(fullData.status_short === "NS" ? 'h2h' : 'events');
+                    if (fullData.league_id) fetchStandings(fullData.league_id);
+                }
+            } catch (err) {
+                console.error("Eroare deschidere meci din notificare:", err);
+            } finally {
+                setLoadingMatchDetails(false);
+                onClearInitialMatchId?.();
+            }
+        };
+
+        openMatchFromNotification();
+    }, [initialMatchId]);
+
     useEffect(() => {
         socket.on("live_match_update", (updatedMatch: Match) => {
             queryClient.setQueriesData<Match[]>({ queryKey: ['matches', localDateStr] }, (oldMatches) => {
@@ -1008,6 +1074,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                 },
                 staleTime: 60 * 60 * 1000,
             });
+            window.history.pushState({ section: 'matches', layer: 'team' }, '');
             setSelectedTeam(data);
         } catch (err: any) {
             toast.error(err.message);
@@ -1017,6 +1084,7 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
     };
 
     const handleMatchClick = async (match: Match) => {
+        window.history.pushState({ section: 'matches', layer: 'match' }, '');
         const cachedDetails = queryClient.getQueryData(['matchDetails', match.fixture_id]);
         if (!cachedDetails) setLoadingMatchDetails(true);
 
@@ -1076,6 +1144,8 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
         apiPlayerId?: number
     ) => {
         if (!playerOrName) return;
+
+        window.history.pushState({ section: 'matches', layer: 'player' }, '');
 
         if (typeof playerOrName !== 'string') {
             const normalizedTeam = sanitizeTeamName(playerOrName, fallbackTeam || '');
@@ -1735,12 +1805,15 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* Modal Detalii Meci */}
             {selectedMatchDetails && createPortal(
-                <div className="fixed inset-0 z-[999999] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedMatchDetails(null)}>
+                <div
+                    className="fixed inset-0 z-[999999] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm"
+                    onClick={() => closeModalLayer('match', () => setSelectedMatchDetails(null))}
+                >
                     <div className="bg-white dark:bg-[#090D16] sm:rounded-2xl w-full h-[100dvh] sm:h-auto sm:max-w-3xl sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl sm:border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
                         {/* Header Meci */}
                         <div className="bg-slate-50 dark:bg-[#101726] border-b border-slate-200 dark:border-white/[0.07] p-4 sm:p-5 shrink-0 relative">
                             <button
-                                onClick={() => setSelectedMatchDetails(null)}
+                                onClick={() => closeModalLayer('match', () => setSelectedMatchDetails(null))}
                                 className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                             >
                                 <X className="w-4 h-4" />
@@ -2083,7 +2156,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* Modal Lot Echipă */}
             {selectedTeam && createPortal(
-                <div className="fixed inset-0 z-[9999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4" onClick={() => setSelectedTeam(null)}>
+                <div
+                    className="fixed inset-0 z-[9999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4"
+                    onClick={() => closeModalLayer('team', () => setSelectedTeam(null))}
+                >
                     <div className="bg-white dark:bg-[#090D16] rounded-2xl w-full max-w-3xl max-h-[88vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
                         <div className="bg-slate-50 dark:bg-[#101726] px-4 py-4 flex items-center justify-between shrink-0 border-b border-slate-200 dark:border-white/[0.07]">
                             <div className="flex items-center gap-3 min-w-0">
@@ -2103,7 +2179,10 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
                                     </p>
                                 </div>
                             </div>
-                            <button onClick={() => setSelectedTeam(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
+                            <button
+                                onClick={() => closeModalLayer('team', () => setSelectedTeam(null))}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                            >
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
@@ -2143,12 +2222,15 @@ export function MatchesSection({ userEmail }: { userEmail?: string }) {
 
             {/* Modal Fișă Jucător */}
             {selectedPlayer && createPortal(
-                <div className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4" onClick={() => setSelectedPlayer(null)}>
+                <div
+                    className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4"
+                    onClick={() => closeModalLayer('player', () => setSelectedPlayer(null))}
+                >
                     <div className="bg-white dark:bg-[#090D16] rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col shadow-2xl border border-slate-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
                         <div className="bg-slate-50 dark:bg-[#101726] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/[0.07] shrink-0 relative">
                             <button
                                 type="button"
-                                onClick={() => setSelectedPlayer(null)}
+                                onClick={() => closeModalLayer('player', () => setSelectedPlayer(null))}
                                 className="absolute top-3 right-3 sm:static p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors shrink-0 order-3 sm:order-none cursor-pointer"
                             >
                                 <X className="w-4 h-4" />

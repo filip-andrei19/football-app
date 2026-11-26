@@ -1,6 +1,6 @@
-// Versiunea 3.23 - Update PWA, Fix Cache (/assets/ exclus) & Notificări personalizate cu sunet
+// Versiunea 3.24 - Update PWA, Fix Cache (/assets/ exclus) & Notificări personalizate cu sunet
 
-const CACHE_NAME = 'scoutpro-cache-v3.23';
+const CACHE_NAME = 'scoutpro-cache-v3.24';
 const urlsToCache = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
